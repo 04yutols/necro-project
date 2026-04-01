@@ -5,13 +5,18 @@ import {
   NecroStatus, 
   Tribe 
 } from '../types/game';
+import { MasterDataService } from './MasterDataService';
 
 /**
  * 死霊術システム (GDD-005) に関するビジネスロジックを担当するサービス
  * Prisma を用いた永続化に対応。
  */
 export class NecroService {
-  constructor(private prisma: PrismaClient) {}
+  private masterData: MasterDataService;
+
+  constructor(private prisma: PrismaClient) {
+    this.masterData = MasterDataService.getInstance();
+  }
 
   /**
    * 魂石化 (Soul Stoning): モンスターを魂の欠片に変換し DB に保存する
@@ -24,6 +29,8 @@ export class NecroService {
 
       if (!monster) throw new Error("Monster not found");
 
+      // 本来は MonsterMaster から成長限界などを加味すべきだが、
+      // ここでは簡略化して現在のステータスから生成
       const atkBonus = Math.floor(monster.atk * 0.1);
       const matkBonus = Math.floor(monster.matk * 0.1);
 
