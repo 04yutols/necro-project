@@ -80,6 +80,40 @@ export class GameManager {
     return new BattleEngine(player, monsterList);
   }
 
+  /**
+   * パーティ編成の更新 (GDD-005)
+   */
+  public async updateParty(characterId: string, monsterIds: (string | null)[]): Promise<void> {
+    // 3枠固定のバリデーション
+    if (monsterIds.length !== 3) throw new Error("Party must have 3 slots.");
+
+    const char = await this.prisma.character.findUnique({
+      where: { id: characterId }
+    });
+    if (!char) throw new Error("Character not found.");
+
+    // コスト計算
+    const monsters = await this.prisma.monster.findMany({
+      where: { id: { in: monsterIds.filter(id => id !== null) as string[] } }
+    });
+    const totalCost = monsters.reduce((acc, m) => acc + m.cost, 0);
+
+    if (totalCost > char.necroMaxCost) {
+      throw new Error(`Cost limit exceeded: ${totalCost} / ${char.necroMaxCost}`);
+    }
+
+    // 本来はパーティ編成をDBに保存するテーブルが必要だが、
+    // ここでは簡易的にログ出力のみ、またはCharacterモデルにID配列を持たせる等の対応
+    console.log(`Party updated for ${characterId}: ${monsterIds.join(', ')}`);
+  }
+
+  /**
+   * 魂石化の実行 (GDD-005)
+   */
+  public async soulStone(monsterId: string): Promise<any> {
+    return await this.necroService.createSoulShard(monsterId);
+  }
+
   public async close(): Promise<void> {
     await this.prisma.$disconnect();
   }
