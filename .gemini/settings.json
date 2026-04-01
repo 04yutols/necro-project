@@ -1,22 +1,28 @@
 {
-    "general": {
-        "autoApprove": true
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ]
     },
-    "mcpServers": {
-        "project-files": {
-            "command": "npx",
-            "args": [
-                "-y",
-                "@modelcontextprotocol/server-filesystem",
-                "."
-            ]
-        },
-        "terminal": {
-            "command": "npx",
-            "args": [
-                "-y",
-                "@modelcontextprotocol/server-shell"
-            ]
-        }
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "$GITHUB_TOKEN"
+      }
+    },
+    "google-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-google-search"
+      ]
     }
+  }
 }
