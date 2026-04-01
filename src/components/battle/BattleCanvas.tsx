@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
 import { useGameStore } from '../../store/useGameStore';
 import { BattleEngine } from '../../logic/BattleEngine';
 import { BattleLog } from '../../types/game';
+import { Sword, Sparkles } from 'lucide-react';
 
 interface BattleCanvasProps {
   onEnd: () => void;
@@ -12,8 +13,18 @@ interface BattleCanvasProps {
 
 export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const { player, party } = useGameStore();
+  const { player, party, updateMP, updateHP } = useGameStore();
   const appRef = useRef<PIXI.Application | null>(null);
+  const engineRef = useRef<BattleEngine | null>(null);
+  
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [battleLogs, setBattleLogs] = useState<string[]>(['戦闘開始...']);
+  
+  // モックターゲット（ステートで管理して撃破判定なども可能に）
+  const [target, setTarget] = useState({
+    name: 'スケルトン兵',
+    stats: { hp: 150, maxHp: 150, mp: 0, atk: 15, def: 5, matk: 0, mdef: 2, agi: 5, luck: 0, tec: 5 },
+  });
 
   useEffect(() => {
     if (!canvasRef.current || !player) return;
@@ -22,25 +33,15 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
       const app = new PIXI.Application();
       await app.init({
         width: 800,
-        height: 600,
+        height: 400,
         backgroundColor: 0x050505,
         antialias: true,
       });
       appRef.current = app;
       canvasRef.current?.appendChild(app.canvas);
 
-      // モックターゲット
-      const target = {
-        name: 'スケルトン兵',
-        stats: { hp: 50, mp: 0, atk: 15, def: 5, matk: 0, mdef: 2, agi: 5, luck: 0, tec: 5 },
-      };
-
-      // バトルエンジン起動
-      const engine = new BattleEngine(player, party);
-      const logs = engine.simulateAction('PHYSICAL_ATTACK', target);
-
-      // ログプレイヤーの開始
-      playLogs(app, logs);
+      // バトルエンジン初期化
+      engineRef.current = new BattleEngine(player, party);
     };
 
     initPixi();
@@ -53,75 +54,131 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     };
   }, [player, party]);
 
-  const playLogs = async (app: PIXI.Application, logs: BattleLog[]) => {
+  const handleAction = async (type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL') => {
+    if (isProcessing || !engineRef.current || !appRef.current) return;
+
+    setIsProcessing(true);
+    const logs = engineRef.current.simulateAction(type, target);
+    
+    // ログの再生
     for (const log of logs) {
-      await showLogAnimation(app, log);
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      setBattleLogs(prev => [...prev, `> ${log.description}`].slice(-10));
+      await showLogAnimation(appRef.current, log);
+      
+      // ステータス更新の反映（簡易版）
+      if (log.damage && log.targetName === target.name) {
+        setTarget(prev => ({
+          ...prev,
+          stats: { ...prev.stats, hp: Math.max(0, prev.stats.hp - (log.damage || 0)) }
+        }));
+      }
+      if (log.playerMP !== undefined) updateMP(log.playerMP);
+      if (log.playerHP !== undefined) updateHP(log.playerHP);
+
+      await new Promise((resolve) => setTimeout(resolve, 600));
     }
+
+    if (target.stats.hp <= 0) {
+      setBattleLogs(prev => [...prev, `> ${target.name}を撃破した！`]);
+      setTimeout(onEnd, 2000);
+    }
+
+    setIsProcessing(false);
   };
 
   const showLogAnimation = async (app: PIXI.Application, log: BattleLog) => {
     const container = new PIXI.Container();
     app.stage.addChild(container);
 
-    // テキスト表示
     const style = new PIXI.TextStyle({
       fontFamily: 'monospace',
-      fontSize: 24,
-      fill: log.action.includes('ATTACK') ? '#ff0000' : '#ffffff',
+      fontSize: 20,
+      fill: log.action.includes('ATTACK') ? '#ff4444' : '#00ccff',
       fontWeight: 'bold',
-      dropShadow: {
-        alpha: 0.5,
-        angle: 4.7,
-        blur: 4,
-        color: '#000000',
-        distance: 2,
-      },
     });
 
-    const text = new PIXI.Text({ text: `${log.actorName}: ${log.description}`, style });
-    text.x = 100;
-    text.y = 250;
+    const text = new PIXI.Text({ text: log.description, style });
+    text.x = 50;
+    text.y = 150;
     container.addChild(text);
 
-    // ダメージポップアップ
     if (log.damage !== undefined) {
       const damageText = new PIXI.Text({
         text: log.damage.toString(),
-        style: { ...style, fontSize: 48, fill: log.isCritical ? '#ffff00' : '#ff0000' }
+        style: { ...style, fontSize: 40, fill: log.isCritical ? '#ffff00' : '#ff0000' }
       });
-      damageText.x = 500;
-      damageText.y = 200;
+      damageText.x = 400;
+      damageText.y = 100;
       container.addChild(damageText);
 
       // シェイク演出
       const originalX = app.stage.x;
-      for (let i = 0; i < 6; i++) {
-        app.stage.x += (Math.random() - 0.5) * 20;
-        await new Promise(r => setTimeout(r, 20));
+      for (let i = 0; i < 4; i++) {
+        app.stage.x += (Math.random() - 0.5) * 15;
+        await new Promise(r => setTimeout(r, 30));
         app.stage.x = originalX;
       }
     }
 
     // フェードアウト
     let alpha = 1.0;
-    const fadeOut = () => {
-      alpha -= 0.05;
+    const ticker = (delta: PIXI.Ticker) => {
+      alpha -= 0.04 * delta.deltaTime;
       container.alpha = alpha;
       if (alpha <= 0) {
         app.stage.removeChild(container);
-        app.ticker.remove(fadeOut);
+        app.ticker.remove(ticker);
       }
     };
-    app.ticker.add(fadeOut);
+    app.ticker.add(ticker);
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <div ref={canvasRef} className="border-4 border-blood/50 shadow-2xl rounded" />
-      <div className="mt-4 p-4 bg-black/80 border border-blood w-[800px] text-sm text-green-500 font-mono overflow-y-auto h-32">
-        {/* ここにリアルタイムログを表示 */}
-        {"> "} 戦闘開始...
+    <div className="flex flex-col items-center gap-4">
+      {/* ターゲット情報 */}
+      <div className="w-[800px] flex justify-between items-end px-4 mb-2">
+        <div className="text-left">
+          <div className="text-sm text-gray-400">TARGET</div>
+          <div className="text-xl font-bold">{target.name}</div>
+          <div className="w-64 bg-gray-800 h-3 rounded-full mt-1 border border-blood/30">
+            <div 
+              className="bg-blood h-full transition-all duration-500" 
+              style={{ width: `${(target.stats.hp / 150) * 100}%` }}
+            />
+          </div>
+        </div>
+        <div className="text-right text-blood font-bold text-2xl">
+          HP: {target.stats.hp}
+        </div>
+      </div>
+
+      <div ref={canvasRef} className="border-4 border-blood/50 shadow-2xl rounded overflow-hidden bg-black" />
+      
+      <div className="flex gap-4 w-[800px]">
+        {/* アクションボタン */}
+        <div className="flex flex-col gap-2 w-1/3">
+          <button 
+            disabled={isProcessing}
+            onClick={() => handleAction('PHYSICAL_ATTACK')}
+            className="flex items-center justify-center gap-2 py-3 bg-blood/80 hover:bg-blood disabled:opacity-50 transition-all font-bold rounded border border-red-500"
+          >
+            <Sword size={20} /> 物理攻撃
+          </button>
+          <button 
+            disabled={isProcessing}
+            onClick={() => handleAction('MAGIC_SKILL')}
+            className="flex items-center justify-center gap-2 py-3 bg-blue-900/80 hover:bg-blue-800 disabled:opacity-50 transition-all font-bold rounded border border-blue-500"
+          >
+            <Sparkles size={20} /> 魔法スキル (MP 3/15)
+          </button>
+        </div>
+
+        {/* リアルタイムログ */}
+        <div className="w-2/3 p-3 bg-black/80 border border-blood text-xs text-green-500 font-mono h-24 overflow-y-auto rounded">
+          {battleLogs.map((log, i) => (
+            <div key={i}>{log}</div>
+          ))}
+        </div>
       </div>
     </div>
   );

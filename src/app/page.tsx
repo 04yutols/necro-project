@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import BattleCanvas from '../components/battle/BattleCanvas';
 import NecroLab from '../components/necro/NecroLab';
+import { Skull, Map, Shield, Activity } from 'lucide-react';
 
 export default function Home() {
   const { player, setPlayer, setNecroStatus, setInventoryMonsters, party } = useGameStore();
   const [isInBattle, setIsInBattle] = useState(false);
+  const [activeTab, setActiveTab] = useState<'HUB' | 'LAB' | 'MAP'>('HUB');
 
   useEffect(() => {
     // モックデータの初期化
@@ -22,7 +24,7 @@ export default function Home() {
         jobs: [],
         isAwakened: false,
       });
-      
+
       setNecroStatus({
         level: 1,
         rank: 1,
@@ -38,68 +40,138 @@ export default function Home() {
     }
   }, [player, setPlayer, setNecroStatus, setInventoryMonsters]);
 
-  if (!player) return <div className="p-8 text-center">Loading Hero Data...</div>;
+  if (!player) return <div className="p-8 text-center bg-dark min-h-screen">Loading Hero Data...</div>;
 
   return (
-    <main className="min-h-screen bg-dark text-white p-4 font-mono">
-      {!isInBattle ? (
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="border-2 border-blood/50 p-6 bg-necro/20 backdrop-blur-sm rounded-lg shadow-[0_0_20px_rgba(136,8,8,0.2)]">
-            <header className="mb-8 border-b border-blood/30 pb-4">
-              <h1 className="text-3xl font-bold text-blood tracking-widest uppercase">ネクロマンス・ブレイブ - 拠点</h1>
-            </header>
-
-            <section className="grid grid-cols-2 gap-8 mb-12">
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold border-l-4 border-blood pl-2">ステータス</h2>
-                <div className="space-y-1 text-lg">
-                  <p>NAME: <span className="text-blood">{player.name}</span></p>
-                  <p>JOB: <span className="text-blood">{player.currentJobId.toUpperCase()}</span></p>
-                  <div className="w-full bg-gray-800 h-2 mt-4 rounded-full overflow-hidden">
-                     <div className="bg-red-600 h-full" style={{ width: `${(player.stats.hp / 100) * 100}%` }}></div>
-                  </div>
-                  <p className="text-sm text-right">HP: {player.stats.hp} / 100</p>
-                  
-                  <div className="w-full bg-gray-800 h-2 mt-2 rounded-full overflow-hidden">
-                     <div className="bg-blue-600 h-full" style={{ width: `${(player.stats.mp / 20) * 100}%` }}></div>
-                  </div>
-                  <p className="text-sm text-right">MP: {player.stats.mp} / 20</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold border-l-4 border-blood pl-2">軍団編成</h2>
-                <div className="grid grid-cols-3 gap-2">
-                  {party.map((m, i) => (
-                    <div key={i} className="aspect-square border border-blood/30 flex items-center justify-center bg-black/40 text-xs">
-                      {m ? m.name : 'EMPTY'}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <button 
-              onClick={() => setIsInBattle(true)}
-              className="w-full py-4 bg-blood hover:bg-red-700 transition-colors text-xl font-bold tracking-tighter shadow-lg shadow-black/50 active:translate-y-1"
-            >
-              ワールドマップへ出撃
+    <main className="min-h-screen bg-dark text-white font-mono flex flex-col">
+      {/* ナビゲーションバー */}
+      <nav className="bg-black/80 border-b border-blood/30 p-4 sticky top-0 z-10 backdrop-blur-md">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <h1 className="text-xl font-bold text-blood tracking-tighter uppercase">Necromance Brave</h1>
+          <div className="flex gap-6">
+            <button onClick={() => setActiveTab('HUB')} className={`flex items-center gap-2 ${activeTab === 'HUB' ? 'text-blood' : 'text-gray-500 hover:text-white'}`}>
+              <Shield size={18} /> 拠点
+            </button>
+            <button onClick={() => setActiveTab('LAB')} className={`flex items-center gap-2 ${activeTab === 'LAB' ? 'text-blood' : 'text-gray-500 hover:text-white'}`}>
+              <Skull size={18} /> 研究所
+            </button>
+            <button onClick={() => setActiveTab('MAP')} className={`flex items-center gap-2 ${activeTab === 'MAP' ? 'text-blood' : 'text-gray-500 hover:text-white'}`}>
+              <Map size={18} /> 出撃
             </button>
           </div>
+        </div>
+      </nav>
 
-          <NecroLab />
-        </div>
-      ) : (
-        <div className="relative">
-          <BattleCanvas onEnd={() => setIsInBattle(false)} />
-          <button 
-            onClick={() => setIsInBattle(false)}
-            className="absolute top-4 right-4 px-4 py-2 bg-black/50 border border-blood text-sm hover:bg-black"
-          >
-            撤退
-          </button>
-        </div>
-      )}
+      <div className="flex-1 p-4 overflow-y-auto">
+        {!isInBattle ? (
+          <div className="max-w-4xl mx-auto py-4">
+            {activeTab === 'HUB' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-500">
+                <section className="border-2 border-blood/50 p-6 bg-necro/10 rounded-lg shadow-lg">
+                  <h2 className="text-xl font-bold border-l-4 border-blood pl-3 mb-6 uppercase flex items-center gap-2">
+                    <Activity size={20} className="text-blood" /> ステータス
+                  </h2>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-end">
+                      <span className="text-gray-400">NAME:</span>
+                      <span className="text-2xl font-bold text-white">{player.name}</span>
+                    </div>
+                    <div className="flex justify-between items-end border-b border-gray-800 pb-2">
+                      <span className="text-gray-400">JOB:</span>
+                      <span className="text-blood font-bold">{player.currentJobId.toUpperCase()}</span>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>HP</span>
+                        <span>{player.stats.hp} / 100</span>
+                      </div>
+                      <div className="w-full bg-gray-900 h-3 rounded-full overflow-hidden border border-gray-800">
+                        <div className="bg-red-600 h-full transition-all duration-1000" style={{ width: `${(player.stats.hp / 100) * 100}%` }}></div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>MP</span>
+                        <span>{player.stats.mp} / 20</span>
+                      </div>
+                      <div className="w-full bg-gray-900 h-3 rounded-full overflow-hidden border border-gray-800">
+                        <div className="bg-blue-600 h-full transition-all duration-1000" style={{ width: `${(player.stats.mp / 20) * 100}%` }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="border-2 border-blood/50 p-6 bg-black/40 rounded-lg shadow-lg">
+                  <h2 className="text-xl font-bold border-l-4 border-blood pl-3 mb-6 uppercase flex items-center gap-2">
+                    <Skull size={20} className="text-blood" /> 現在の軍団
+                  </h2>
+                  <div className="grid grid-cols-1 gap-3">
+                    {party.map((m, i) => (
+                      <div key={i} className={`p-3 border ${m ? 'border-necro bg-necro/10' : 'border-dashed border-gray-800 bg-black/20'} rounded flex items-center justify-between`}>
+                        {m ? (
+                          <>
+                            <div>
+                              <div className="font-bold">{m.name}</div>
+                              <div className="text-[10px] text-gray-500 uppercase tracking-tighter">{m.tribe}</div>
+                            </div>
+                            <div className="text-necro font-bold">COST {m.cost}</div>
+                          </>
+                        ) : (
+                          <div className="text-gray-700 italic text-sm">空きスロット</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {activeTab === 'LAB' && (
+              <div className="animate-in slide-in-from-right-4 duration-300">
+                <NecroLab />
+              </div>
+            )}
+
+            {activeTab === 'MAP' && (
+              <div className="max-w-2xl mx-auto bg-black/60 border-2 border-blood/50 p-8 rounded-xl shadow-2xl animate-in slide-in-from-left-4 duration-300">
+                <h2 className="text-2xl font-bold text-center mb-8 tracking-widest text-blood uppercase">エリア1：始まりの平原</h2>
+                <div className="space-y-4">
+                  <button
+                    onClick={() => setIsInBattle(true)}
+                    className="w-full group p-6 border border-gray-800 hover:border-blood bg-gray-900/50 hover:bg-blood/10 transition-all flex justify-between items-center rounded-lg"
+                  >
+                    <div className="text-left">
+                      <div className="text-blood text-sm font-bold">STAGE 1-1</div>
+                      <div className="text-xl font-bold group-hover:text-white">平原の入り口</div>
+                    </div>
+                    <Map className="text-gray-700 group-hover:text-blood transition-colors" />
+                  </button>
+
+                  <div className="w-full p-6 border border-gray-900 bg-gray-900/20 flex justify-between items-center rounded-lg grayscale opacity-50 cursor-not-allowed">
+                    <div className="text-left">
+                      <div className="text-gray-600 text-sm font-bold">STAGE 1-2</div>
+                      <div className="text-xl font-bold">平原の奥地 (Locked)</div>
+                    </div>
+                    <Skull size={24} className="text-gray-800" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="relative pt-8 animate-in zoom-in-95 duration-500">
+            <BattleCanvas onEnd={() => setIsInBattle(false)} />
+            <button
+              onClick={() => setIsInBattle(false)}
+              className="fixed top-20 right-8 px-6 py-2 bg-blood hover:bg-red-700 border border-red-500 font-bold text-sm transition-all shadow-lg rounded"
+            >
+              撤退
+            </button>
+          </div>
+        )}
+      </div>
     </main>
   );
 }
