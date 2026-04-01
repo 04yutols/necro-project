@@ -3,7 +3,8 @@ import {
   MonsterData, 
   BattleState, 
   BattleLog, 
-  PermanentStats, 
+  BaseStats, 
+  PassiveBonuses,
   ClassCategory 
 } from '../types/game';
 
@@ -29,7 +30,7 @@ export class BattleEngine {
    * 戦闘シミュレーションを実行し、ログを返す。
    * フロントエンドでのアニメーション駆動に使用される。
    */
-  public simulateAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: { name: string; stats: PermanentStats }): BattleLog[] {
+  public simulateAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: { name: string; stats: BaseStats }): BattleLog[] {
     this.logs = [];
 
     // 1. ターン開始時のエリアギミック判定 (GDD-006)
@@ -52,8 +53,8 @@ export class BattleEngine {
    * TECがダメージ安定性に寄与するように設計。
    */
   private calculateDamage(
-    attackerStats: PermanentStats, 
-    defenderStats: PermanentStats, 
+    attackerStats: BaseStats, 
+    defenderStats: BaseStats, 
     type: 'PHYSICAL' | 'MAGICAL'
   ): { damage: number; isCritical: boolean } {
     
@@ -84,19 +85,19 @@ export class BattleEngine {
     };
   }
 
-  private processPlayerAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: { name: string; stats: PermanentStats }): void {
+  private processPlayerAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: { name: string; stats: BaseStats }): void {
     const { player } = this.state;
     const stats = this.getTotalStats(player);
     
     // MPコスト判定 (GDD-003)
     const cost = this.getMPCost(player.category, actionType);
-    if (player.baseStats.mp < cost) {
+    if (player.stats.mp < cost) {
       this.addLog('NO_MP', player.name, target.name, `MPが不足しています！（必要MP: ${cost}）`);
       return;
     }
 
     // MP消費
-    player.baseStats.mp -= cost;
+    player.stats.mp -= cost;
 
     const type = actionType === 'PHYSICAL_ATTACK' ? 'PHYSICAL' : 'MAGICAL';
     const { damage, isCritical } = this.calculateDamage(stats, target.stats, type);
@@ -104,7 +105,7 @@ export class BattleEngine {
     this.addLog(actionType, player.name, target.name, `${player.name}の攻撃！`, damage, isCritical);
   }
 
-  private processMonsterActions(target: { name: string; stats: PermanentStats }): void {
+  private processMonsterActions(target: { name: string; stats: BaseStats }): void {
     const { player, monsters } = this.state;
 
     monsters.forEach(monster => {
@@ -125,8 +126,8 @@ export class BattleEngine {
   private processAreaGimmick(): void {
     const { areaGimmick, player } = this.state;
     if (areaGimmick === 'SLIP_DAMAGE') {
-      const damage = Math.floor(player.baseStats.hp * 0.05);
-      player.baseStats.hp -= damage;
+      const damage = Math.floor(player.stats.hp * 0.05);
+      player.stats.hp -= damage;
       this.addLog('GIMMICK', 'Area', player.name, `エリアギミック：スリップダメージにより${damage}ダメージ。`);
     }
   }
@@ -142,13 +143,14 @@ export class BattleEngine {
     }
   }
 
-  private getTotalStats(player: CharacterData): PermanentStats {
-    const total = { ...player.baseStats };
+  private getTotalStats(player: CharacterData): BaseStats {
+    const total = { ...player.stats };
     // パッシブ蓄積を反映 (GDD-004)
-    Object.keys(player.passiveBonuses).forEach(key => {
-      const k = key as keyof PermanentStats;
-      (total[k] as number) += (player.passiveBonuses[k] || 0);
-    });
+    total.atk += player.passives.passiveAtkBonus;
+    total.def += player.passives.passiveDefBonus;
+    total.matk += player.passives.passiveMatkBonus;
+    total.mdef += player.passives.passiveMdefBonus;
+    
     return total;
   }
 
@@ -170,8 +172,8 @@ export class BattleEngine {
       targetName,
       damage,
       isCritical,
-      playerMP: this.state.player.baseStats.mp,
-      playerHP: this.state.player.baseStats.hp,
+      playerMP: this.state.player.stats.mp,
+      playerHP: this.state.player.stats.hp,
       description
     });
   }
