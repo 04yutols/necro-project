@@ -57,4 +57,21 @@ test.describe('Necro-Lab E2E Tests', () => {
     // Actually the current component logic just fills empty slots.
     // If no empty slot, findIndex returns -1 and it does nothing.
   });
+
+  test('Feedback: warning appears when trying to add to a full party', async ({ page }) => {
+    const addButtons = page.locator('button:has-text("配置")');
+    
+    // Add 3 monsters to fill slots
+    await addButtons.nth(0).click();
+    await addButtons.nth(1).click();
+    await addButtons.nth(2).click();
+
+    // Try to add a 4th monster (click any "配置" button again)
+    await addButtons.nth(0).click();
+
+    // Check for the specific error message
+    const warning = page.locator('text=軍団の枠がいっぱいです。配置を解除してから再度試してください');
+    await expect(warning).toBeVisible();
+    await expect(warning).toHaveClass(/bg-blood/);
+  });
 });

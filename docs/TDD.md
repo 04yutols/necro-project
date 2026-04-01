@@ -171,6 +171,8 @@ export interface CharacterData {
 - **制限の反映**: 
   - `totalCost > NecroStatus.maxCost` の場合、UIコンポーネント（`NecroLab.tsx`）にて警告ステートを有効化する。
   - 出撃ボタンの `disabled` 属性にこのバリデーション結果を連動させ、不正な編成での戦闘開始を物理的に阻止する。
+- **スロット満空バリデーション**: `party.findIndex(p => p === null) === -1` の条件下で「配置」アクションが実行された際、ステートベースのトースト通知システムをトリガーし、ユーザーにエラーをフィードバックする。
+
 
 ### 魂石化の技術フロー
 1.  **リクエスト**: フロントエンドから `soulStoneAction(monsterId)` を呼び出す。
