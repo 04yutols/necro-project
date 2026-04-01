@@ -22,5 +22,11 @@
     "tribe": "DEMON",
     "cost": 2,
     "stats": { "hp": 60, "mp": 20, "atk": 15, "def": 10, "matk": 15, "mdef": 10, "agi": 12, "luck": 10, "tec": 10 }
+  },
+  "boss_goblin": {
+    "name": "Goblin King",
+    "tribe": "HUMANOID",
+    "cost": 3,
+    "stats": { "hp": 300, "mp": 50, "atk": 40, "def": 30, "matk": 10, "mdef": 20, "agi": 10, "luck": 20, "tec": 15 }
   }
 }
