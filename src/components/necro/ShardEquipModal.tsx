@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useGameStore } from '../../store/useGameStore';
 import { MonsterData, SoulShardData } from '../../types/game';
 import { equipShardAction } from '../../app/actions';
@@ -15,6 +16,15 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
   const { soulShards, equipShard } = useGameStore();
   const [selectedShard, setSelectedShard] = useState<SoulShardData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  const currentShard = soulShards.find(s => s.id === monster.equippedShardId);
+  const currentAtk = monster.stats.atk + (currentShard?.effect.atkBonus || 0);
 
   const handleEquip = async () => {
     if (!selectedShard) return;
@@ -32,10 +42,10 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-dark border-2 border-necro w-full max-w-lg rounded-xl shadow-2xl overflow-hidden font-mono text-gray-300">
-        <header className="p-4 border-b border-necro/30 flex justify-between items-center">
+  const modalContent = (
+    <div className="fixed top-0 left-0 w-full h-full z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="bg-dark border-2 border-necro w-full max-w-lg rounded-xl shadow-[0_0_50px_rgba(0,0,0,1)] overflow-hidden font-mono text-gray-300 my-auto">
+        <header className="p-4 border-b border-necro/30 flex justify-between items-center bg-black/20">
           <h2 className="text-xl font-bold text-necro uppercase flex items-center gap-2">
             <Sparkles size={20} /> 魂の欠片 装備
           </h2>
@@ -53,7 +63,7 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
             </div>
             <div className="text-right">
               <div className="text-xs text-gray-500 mb-1 uppercase">Current ATK</div>
-              <div className="text-xl font-bold">{monster.stats.atk}</div>
+              <div className="text-xl font-bold">{currentAtk}</div>
             </div>
           </div>
 
@@ -62,8 +72,9 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
             <h3 className="text-sm font-bold mb-3 text-gray-400 uppercase">Available Soul Shards</h3>
             <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
               {soulShards.length === 0 ? (
-                <div className="text-center py-8 text-gray-600 italic border border-dashed border-gray-800 rounded">
-                  No shards available.
+                <div className="text-center py-8 text-gray-600 border border-dashed border-gray-800 rounded px-4">
+                  <p className="italic mb-2">No shards available.</p>
+                  <p className="text-[10px] uppercase">モンスターを「魂石化」して欠片を生成してください。</p>
                 </div>
               ) : (
                 soulShards.map((shard) => (
@@ -92,15 +103,17 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
               <h3 className="text-xs font-bold mb-3 text-blood uppercase tracking-widest text-center">Status Preview</h3>
               <div className="flex justify-around items-center">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-white">{monster.stats.atk}</div>
-                  <div className="text-[10px] text-gray-500 uppercase mt-1">Base</div>
+                  <div className="text-2xl font-bold text-white">{currentAtk}</div>
+                  <div className="text-[10px] text-gray-500 uppercase mt-1">Current</div>
                 </div>
                 <ArrowRight className="text-blood animate-pulse" />
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]">
                     {monster.stats.atk + selectedShard.effect.atkBonus}
                   </div>
-                  <div className="text-[10px] text-green-500 uppercase font-bold mt-1">After (+{selectedShard.effect.atkBonus})</div>
+                  <div className="text-[10px] text-green-500 uppercase font-bold mt-1">
+                    After ({selectedShard.effect.atkBonus >= (currentShard?.effect.atkBonus || 0) ? '+' : ''}{selectedShard.effect.atkBonus - (currentShard?.effect.atkBonus || 0)})
+                  </div>
                 </div>
               </div>
             </div>
@@ -125,4 +138,7 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  return createPortal(modalContent, document.body);
 }

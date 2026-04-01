@@ -37,6 +37,14 @@ export default function Home() {
         { id: 'm2', name: 'スケルトン', tribe: 'UNDEAD', cost: 4, stats: { hp: 40, mp: 0, atk: 12, def: 8, matk: 0, mdef: 2, agi: 5, luck: 0, tec: 8 } },
         { id: 'm3', name: 'ゾンビ', tribe: 'UNDEAD', cost: 4, stats: { hp: 80, mp: 0, atk: 8, def: 4, matk: 0, mdef: 0, agi: 2, luck: 2, tec: 2 } },
       ]);
+
+      // 初期状態で欠片を一つ持たせる
+      const { addSoulShard } = useGameStore.getState();
+      addSoulShard({
+        id: 'initial-shard-1',
+        originMonsterName: 'ゴブリン',
+        effect: { atkBonus: 2, matkBonus: 0 }
+      });
     }
   }, [player, setPlayer, setNecroStatus, setInventoryMonsters]);
 

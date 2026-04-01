@@ -70,7 +70,7 @@ export default function NecroLab() {
   if (!necroStatus) return <div className="text-blood text-center p-8 border-2 border-blood/20 rounded-xl bg-blood/5 font-bold uppercase tracking-widest animate-pulse">死霊術師の資格がありません。</div>;
 
   return (
-    <div className="bg-dark/90 border-2 border-necro/50 p-6 rounded-xl shadow-2xl backdrop-blur-md max-w-4xl mx-auto font-mono text-gray-300 relative">
+    <div className="bg-dark/90 border-2 border-necro/50 p-6 rounded-xl shadow-2xl backdrop-blur-md max-w-4xl mx-auto font-mono text-gray-300">
       <header className="flex items-center gap-4 mb-8 border-b border-necro/30 pb-4">
         <Skull className="text-necro w-8 h-8" />
         <h1 className="text-2xl font-bold tracking-widest text-necro uppercase">死霊術研究所 (Necro-Lab)</h1>
@@ -143,8 +143,13 @@ export default function NecroLab() {
                 </div>
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => setEquippingMonster(m)}
-                    className="p-2 bg-gray-900 hover:bg-necro/20 border border-gray-700 hover:border-necro text-gray-500 hover:text-necro rounded transition-all tooltip"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      console.log("Equip button clicked for monster:", m.id);
+                      setEquippingMonster(m);
+                    }}
+                    className="p-2 bg-gray-900 hover:bg-necro/20 border border-gray-700 hover:border-necro text-gray-500 hover:text-necro rounded transition-all cursor-pointer z-10"
                     title="欠片を装備"
                   >
                     <Shield size={16} />
