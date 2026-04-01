@@ -6,6 +6,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { BattleEngine } from '../../logic/BattleEngine';
 import { BattleLog } from '../../types/game';
 import { Sword, Sparkles } from 'lucide-react';
+import ResultScreen from './ResultScreen';
 
 interface BattleCanvasProps {
   onEnd: () => void;
@@ -19,6 +20,13 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [battleLogs, setBattleLogs] = useState<string[]>(['戦闘開始...']);
+  const [showResult, setShowResult] = useState(false);
+  const [battleResult, setBattleResult] = useState<{
+    isVictory: boolean;
+    expGained: number;
+    itemsGained: string[];
+    monstersGained: string[];
+  } | null>(null);
   
   // モックターゲット（ステートで管理して撃破判定なども可能に）
   const [target, setTarget] = useState({
@@ -80,11 +88,26 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
 
     if (target.stats.hp <= 0) {
       setBattleLogs(prev => [...prev, `> ${target.name}を撃破した！`]);
-      setTimeout(onEnd, 2000);
+      setBattleResult({
+        isVictory: true,
+        expGained: 150,
+        itemsGained: ['Iron Sword'],
+        monstersGained: ['Skeleton']
+      });
+      setTimeout(() => setShowResult(true), 1000);
     }
 
     setIsProcessing(false);
   };
+
+  if (showResult && battleResult) {
+    return (
+      <ResultScreen 
+        {...battleResult} 
+        onFinish={onEnd} 
+      />
+    );
+  }
 
   const showLogAnimation = async (app: PIXI.Application, log: BattleLog) => {
     const container = new PIXI.Container();

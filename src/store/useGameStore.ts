@@ -16,6 +16,8 @@ interface GameState {
   
   updateHP: (hp: number) => void;
   updateMP: (mp: number) => void;
+  addExp: (amount: number) => void;
+  addGold: (amount: number) => void;
   
   // パーティ編成の更新
   updatePartySlot: (index: number, monster: MonsterData | null) => void;
@@ -45,6 +47,21 @@ export const useGameStore = create<GameState>((set) => ({
   })),
   updateMP: (mp) => set((state) => ({
     player: state.player ? { ...state.player, stats: { ...state.player.stats, mp } } : null
+  })),
+  addExp: (amount) => set((state) => {
+    if (!state.player) return { player: null };
+    const newJobs = state.player.jobs.map(j => {
+      if (j.jobId === state.player?.currentJobId) {
+        const newExp = j.exp + amount;
+        const newLevel = Math.floor(newExp / 100) + 1; // 簡易レベルアップロジック
+        return { ...j, exp: newExp, level: newLevel };
+      }
+      return j;
+    });
+    return { player: { ...state.player, jobs: newJobs } };
+  }),
+  addGold: (amount) => set((state) => ({
+    // 本来はGoldフィールドが必要
   })),
   
   updatePartySlot: (index, monster) => set((state) => {
