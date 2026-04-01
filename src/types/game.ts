@@ -2,6 +2,7 @@
 // docs/TDD.md の Prisma スキーマと整合性を取った定義
 
 export type ClassCategory = 'PHYSICAL' | 'MAGICAL';
+export type Tribe = 'UNDEAD' | 'DEMON' | 'BEAST' | 'HUMANOID';
 
 export interface BaseStats {
   hp: number;
@@ -34,25 +35,39 @@ export interface CharacterData {
   name: string;
   currentJobId: string;
   category: ClassCategory;
-  
-  // 基礎ステータス (Characterモデルのフィールドに対応)
   stats: BaseStats;
-  
-  // 累積パッシブ (Characterモデルのフィールドに対応)
   passives: PassiveBonuses;
-  
-  // 職業リスト
   jobs: UserJobState[];
-  
   isAwakened: boolean;
+}
+
+// 魂の欠片 (GDD-005)
+export interface SoulShardEffect {
+  atkBonus: number;
+  matkBonus: number;
+  specialAbility?: string; // 例: "UNDEAD_SYNERGY_BOOST"
+}
+
+export interface SoulShardData {
+  id: string;
+  originMonsterName: string;
+  effect: SoulShardEffect;
 }
 
 export interface MonsterData {
   id: string;
   name: string;
+  tribe: Tribe; // 種族 (GDD-005)
   cost: number;
   stats: BaseStats;
   equippedShardId?: string;
+}
+
+export interface NecroStatus {
+  level: number;       // Max: 99
+  rank: number;        // Max: 10
+  maxCost: number;
+  baseStatsBonus: number; // ランクアップで蓄積される基礎ステータス倍率補正
 }
 
 export interface BattleState {
