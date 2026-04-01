@@ -38,7 +38,7 @@ model Character {
   equipHeadId     String?
   equipBodyId     String?
   equipArmsId     String?
-  equipLegs     String?
+  equipLegsId     String?
   equipAcc1Id     String?
   equipAcc2Id     String?
 

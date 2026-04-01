@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: necro_user
+      POSTGRES_PASSWORD: necro_password
+      POSTGRES_DB: necro_db
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U necro_user -d necro_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    restart: always
+    ports:
+      - "3080:3000"
+    environment:
+      DATABASE_URL: "postgresql://necro_user:necro_password@db:5432/necro_db"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.59.0-jammy
+    working_dir: /work
+    volumes:
+      - .:/work
+    environment:
+      - PLAYWRIGHT_TEST_BASE_URL=http://app:3000
+    depends_on:
+      - app
+    entrypoint: /bin/sh -c "npm install && npx playwright test"
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: necro-network
