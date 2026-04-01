@@ -18,6 +18,12 @@ export default function NecroLab() {
   } = useGameStore();
 
   const [isProcessing, setIsInProcessing] = useState(false);
+  const [notification, setNotification] = useState<string | null>(null);
+
+  const showNotification = (message: string) => {
+    setNotification(message);
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   // 合計コストの計算
   const totalCost = useMemo(() => {
@@ -35,7 +41,7 @@ export default function NecroLab() {
       if (result.success && result.data) {
         removeMonster(monsterId);
         addSoulShard(result.data as any);
-        alert(`${result.data.originMonsterName}は魂の欠片になりました。`);
+        showNotification(`${result.data.originMonsterName}は魂の欠片になりました。`);
       }
     } catch (e) {
       console.error(e);
@@ -53,11 +59,21 @@ export default function NecroLab() {
   if (!necroStatus) return <div className="text-blood">死霊術師の資格がありません。</div>;
 
   return (
-    <div className="bg-dark/90 border-2 border-necro/50 p-6 rounded-xl shadow-2xl backdrop-blur-md max-w-4xl mx-auto font-mono text-gray-300">
+    <div className="bg-dark/90 border-2 border-necro/50 p-6 rounded-xl shadow-2xl backdrop-blur-md max-w-4xl mx-auto font-mono text-gray-300 relative">
       <header className="flex items-center gap-4 mb-8 border-b border-necro/30 pb-4">
         <Skull className="text-necro w-8 h-8" />
         <h1 className="text-2xl font-bold tracking-widest text-necro uppercase">死霊術研究所 (Necro-Lab)</h1>
       </header>
+
+      {/* 通知ポップアップ */}
+      {notification && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-blood border-2 border-red-500 text-white px-6 py-3 rounded-lg shadow-[0_0_20px_rgba(136,8,8,0.5)] animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5" />
+            <span className="font-bold">{notification}</span>
+          </div>
+        </div>
+      )}
 
       {/* パーティ編成セクション */}
       <section className="mb-12">
@@ -83,7 +99,7 @@ export default function NecroLab() {
               {m ? (
                 <>
                   <span className="text-xs text-necro mb-2">SLOT {i + 1}</span>
-                  <div className="text-lg font-bold text-white">{m.name}</div>
+                  <div className="text-lg font-bold text-white text-center px-2">{m.name}</div>
                   <div className="text-xs mt-2 text-gray-400">COST: {m.cost}</div>
                 </>
               ) : (
@@ -116,7 +132,11 @@ export default function NecroLab() {
                 <button 
                   onClick={() => {
                     const emptyIndex = party.findIndex(p => p === null);
-                    if (emptyIndex !== -1) handleSlotClick(emptyIndex, m);
+                    if (emptyIndex !== -1) {
+                      handleSlotClick(emptyIndex, m);
+                    } else {
+                      showNotification('軍団の枠がいっぱいです。配置を解除してから再度試してください');
+                    }
                   }}
                   className="px-3 py-1 bg-necro/20 hover:bg-necro border border-necro/50 text-necro hover:text-white rounded text-xs transition-all"
                 >
