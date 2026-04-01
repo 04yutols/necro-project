@@ -16,12 +16,12 @@ export default function NecroLab() {
     soulShards,
     updatePartySlot, 
     removeMonster, 
-    addSoulShard 
+    addSoulShard,
+    setEquippingMonsterId
   } = useGameStore();
 
   const [isProcessing, setIsInProcessing] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
-  const [equippingMonster, setEquippingMonster] = useState<MonsterData | null>(null);
 
   const showNotification = (message: string) => {
     setNotification(message);
@@ -146,10 +146,9 @@ export default function NecroLab() {
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      console.log("Equip button clicked for monster:", m.id);
-                      setEquippingMonster(m);
+                      setEquippingMonsterId(m.id);
                     }}
-                    className="p-2 bg-gray-900 hover:bg-necro/20 border border-gray-700 hover:border-necro text-gray-500 hover:text-necro rounded transition-all cursor-pointer z-10"
+                    className="p-2 bg-gray-900 hover:bg-necro/20 border border-gray-700 hover:border-necro text-gray-500 hover:text-necro rounded transition-all cursor-pointer z-10 relative"
                     title="欠片を装備"
                   >
                     <Shield size={16} />
@@ -157,7 +156,7 @@ export default function NecroLab() {
                   <button 
                     disabled={isProcessing}
                     onClick={() => handleSoulStone(m.id)}
-                    className="p-2 bg-gray-900 hover:bg-blood/20 border border-gray-700 hover:border-blood text-gray-500 hover:text-blood rounded transition-all tooltip"
+                    className="p-2 bg-gray-900 hover:bg-blood/20 border border-gray-700 hover:border-blood text-gray-500 hover:text-blood rounded transition-all tooltip relative z-10"
                     title="魂石化"
                   >
                     <Sparkles className="w-4 h-4" />
@@ -171,7 +170,7 @@ export default function NecroLab() {
                         showNotification('軍団の枠がいっぱいです。配置を解除してから再度試してください');
                       }
                     }}
-                    className="px-3 py-1 bg-necro/20 hover:bg-necro border border-necro/50 text-necro hover:text-white rounded text-xs transition-all font-bold uppercase"
+                    className="px-3 py-1 bg-necro/20 hover:bg-necro border border-necro/50 text-necro hover:text-white rounded text-xs transition-all font-bold uppercase relative z-10"
                   >
                     配置
                   </button>
@@ -181,14 +180,6 @@ export default function NecroLab() {
           })}
         </div>
       </section>
-
-      {/* 装備モーダル */}
-      {equippingMonster && (
-        <ShardEquipModal 
-          monster={equippingMonster} 
-          onClose={() => setEquippingMonster(null)} 
-        />
-      )}
 
       {isOverCost && (
         <div className="mt-6 p-3 bg-blood/10 border border-blood text-red-400 text-sm flex items-center gap-3 rounded animate-bounce">

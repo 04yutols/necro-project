@@ -6,10 +6,14 @@ import BattleCanvas from '../components/battle/BattleCanvas';
 import NecroLab from '../components/necro/NecroLab';
 import { Skull, Map, Shield, Activity } from 'lucide-react';
 
+import ShardEquipModal from '../components/necro/ShardEquipModal';
+
 export default function Home() {
-  const { player, setPlayer, setNecroStatus, setInventoryMonsters, party } = useGameStore();
+  const { player, setPlayer, setNecroStatus, setInventoryMonsters, party, equippingMonsterId, inventoryMonsters: allMonsters, setEquippingMonsterId } = useGameStore();
   const [isInBattle, setIsInBattle] = useState(false);
   const [activeTab, setActiveTab] = useState<'HUB' | 'LAB' | 'MAP'>('HUB');
+
+  const equippingMonster = equippingMonsterId ? allMonsters.find(m => m.id === equippingMonsterId) : null;
 
   useEffect(() => {
     // モックデータの初期化
@@ -137,13 +141,13 @@ export default function Home() {
             )}
 
             {activeTab === 'LAB' && (
-              <div className="animate-in slide-in-from-right-4 duration-300">
+              <div className="duration-300">
                 <NecroLab />
               </div>
             )}
 
             {activeTab === 'MAP' && (
-              <div className="max-w-2xl mx-auto bg-black/60 border-2 border-blood/50 p-8 rounded-xl shadow-2xl animate-in slide-in-from-left-4 duration-300">
+              <div className="max-w-2xl mx-auto bg-black/60 border-2 border-blood/50 p-8 rounded-xl shadow-2xl duration-300">
                 <h2 className="text-2xl font-bold text-center mb-8 tracking-widest text-blood uppercase">エリア1：始まりの平原</h2>
                 <div className="space-y-4">
                   <button
@@ -180,6 +184,13 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {equippingMonster && (
+        <ShardEquipModal 
+          monster={equippingMonster} 
+          onClose={() => setEquippingMonsterId(null)} 
+        />
+      )}
     </main>
   );
 }

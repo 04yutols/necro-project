@@ -30,6 +30,10 @@ interface GameState {
 
   // 魂の欠片の装備
   equipShard: (monsterId: string, shardId: string) => void;
+
+  // モーダル制御状態
+  equippingMonsterId: string | null;
+  setEquippingMonsterId: (id: string | null) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -38,12 +42,14 @@ export const useGameStore = create<GameState>((set) => ({
   party: [null, null, null],
   inventoryMonsters: [],
   soulShards: [],
+  equippingMonsterId: null,
   
   setPlayer: (player) => set({ player }),
   setNecroStatus: (status) => set({ necroStatus: status }),
   setParty: (party) => set({ party }),
   setInventoryMonsters: (monsters) => set({ inventoryMonsters: monsters }),
   setSoulShards: (shards) => set({ soulShards: shards }),
+  setEquippingMonsterId: (id) => set({ equippingMonsterId: id }),
   
   updateHP: (hp) => set((state) => ({
     player: state.player ? { ...state.player, stats: { ...state.player.stats, hp } } : null

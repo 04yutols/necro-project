@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { MonsterData, SoulShardData } from '../../types/game';
 import { equipShardAction } from '../../app/actions';
@@ -16,12 +15,6 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
   const { soulShards, equipShard } = useGameStore();
   const [selectedShard, setSelectedShard] = useState<SoulShardData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
 
   const currentShard = soulShards.find(s => s.id === monster.equippedShardId);
   const currentAtk = monster.stats.atk + (currentShard?.effect.atkBonus || 0);
@@ -42,9 +35,9 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
     }
   };
 
-  const modalContent = (
-    <div className="fixed top-0 left-0 w-full h-full z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="bg-dark border-2 border-necro w-full max-w-lg rounded-xl shadow-[0_0_50px_rgba(0,0,0,1)] overflow-hidden font-mono text-gray-300 my-auto">
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="bg-dark border-2 border-necro w-full max-w-lg rounded-xl shadow-[0_0_50px_rgba(0,0,0,1)] overflow-hidden font-mono text-gray-300 relative z-[101]">
         <header className="p-4 border-b border-necro/30 flex justify-between items-center bg-black/20">
           <h2 className="text-xl font-bold text-necro uppercase flex items-center gap-2">
             <Sparkles size={20} /> 魂の欠片 装備
@@ -138,7 +131,4 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
       </div>
     </div>
   );
-
-  if (!mounted) return null;
-  return createPortal(modalContent, document.body);
 }
