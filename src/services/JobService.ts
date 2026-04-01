@@ -1,12 +1,17 @@
 import { PrismaClient } from '@prisma/client';
 import { CharacterData, UserJobState } from '../types/game';
+import { MasterDataService } from './MasterDataService';
 
 /**
  * 職業に関するビジネスロジックを担当するサービス (GDD-004)
  * Prisma を用いた永続化に対応。
  */
 export class JobService {
-  constructor(private prisma: PrismaClient) {}
+  private masterData: MasterDataService;
+
+  constructor(private prisma: PrismaClient) {
+    this.masterData = MasterDataService.getInstance();
+  }
 
   /**
    * 転職処理。
@@ -14,6 +19,10 @@ export class JobService {
    */
   public async changeJob(characterId: string, nextJobId: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
+      // マスターデータの存在確認
+      const jobData = this.masterData.getJob(nextJobId);
+      if (!jobData) throw new Error(`Job ${nextJobId} not found in master data`);
+
       // 既存の UserJob を確認
       const userJob = await tx.userJob.findUnique({
         where: {
@@ -62,8 +71,9 @@ export class JobService {
       });
 
       // 特定レベル到達時の永続パッシブ加算処理 (GDD-004)
-      if (newLevel % 10 === 0) {
-        await this.applyPassiveBonus(tx, characterId, jobId, newLevel);
+      const jobData = this.masterData.getJob(jobId);
+      if (jobData && jobData.levelBonuses && jobData.levelBonuses[newLevel.toString()]) {
+        await this.applyPassiveBonus(tx, characterId, jobData.levelBonuses[newLevel.toString()]);
       }
     });
   }
@@ -71,37 +81,14 @@ export class JobService {
   /**
    * 職業とレベルに応じたパッシブボーナスの適用を DB に反映
    */
-  private async applyPassiveBonus(tx: any, characterId: string, jobId: string, level: number): Promise<void> {
-    let bonus = {
-      passiveAtkBonus: 0,
-      passiveDefBonus: 0,
-      passiveMatkBonus: 0,
-      passiveMdefBonus: 0,
-    };
-
-    switch (jobId) {
-      case 'warrior':
-        bonus.passiveAtkBonus = 5;
-        break;
-      case 'mage':
-        bonus.passiveMatkBonus = 5;
-        break;
-      case 'dark_priest':
-        bonus.passiveMatkBonus = 3;
-        bonus.passiveMdefBonus = 2;
-        break;
-      case 'rogue':
-        bonus.passiveAtkBonus = 2;
-        break;
-    }
-
+  private async applyPassiveBonus(tx: any, characterId: string, bonus: any): Promise<void> {
     await tx.character.update({
       where: { id: characterId },
       data: {
-        passiveAtkBonus: { increment: bonus.passiveAtkBonus },
-        passiveDefBonus: { increment: bonus.passiveDefBonus },
-        passiveMatkBonus: { increment: bonus.passiveMatkBonus },
-        passiveMdefBonus: { increment: bonus.passiveMdefBonus },
+        passiveAtkBonus: { increment: bonus.passiveAtkBonus || 0 },
+        passiveDefBonus: { increment: bonus.passiveDefBonus || 0 },
+        passiveMatkBonus: { increment: bonus.passiveMatkBonus || 0 },
+        passiveMdefBonus: { increment: bonus.passiveMdefBonus || 0 },
       },
     });
   }

@@ -1,0 +1,27 @@
+{
+  "iron_sword": {
+    "name": "Iron Sword",
+    "type": "WEAPON",
+    "rarity": "COMMON",
+    "stats": { "atk": 10, "def": 0, "matk": 0, "mdef": 0 }
+  },
+  "wooden_staff": {
+    "name": "Wooden Staff",
+    "type": "WEAPON",
+    "rarity": "COMMON",
+    "stats": { "atk": 2, "def": 0, "matk": 8, "mdef": 0 }
+  },
+  "leather_armor": {
+    "name": "Leather Armor",
+    "type": "BODY",
+    "rarity": "COMMON",
+    "stats": { "atk": 0, "def": 5, "matk": 0, "mdef": 2 }
+  },
+  "hero_soul_blade": {
+    "name": "Hero Soul Blade",
+    "type": "WEAPON",
+    "rarity": "UNIQUE",
+    "stats": { "atk": 50, "def": 10, "matk": 50, "mdef": 10 },
+    "specialEffect": "SOUL_RESONANCE"
+  }
+}

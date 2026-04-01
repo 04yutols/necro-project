@@ -1,0 +1,58 @@
+{
+  "warrior": {
+    "name": "Warrior",
+    "tier": 1,
+    "category": "PHYSICAL",
+    "mpCurve": { "baseMaxMP": 10, "mpGrowth": 1, "skillCost": 3 },
+    "levelBonuses": {
+      "10": { "passiveAtkBonus": 5 },
+      "20": { "passiveAtkBonus": 10 },
+      "30": { "passiveAtkBonus": 15, "passiveDefBonus": 5 }
+    }
+  },
+  "mage": {
+    "name": "Mage",
+    "tier": 1,
+    "category": "MAGICAL",
+    "mpCurve": { "baseMaxMP": 50, "mpGrowth": 10, "skillCost": 15 },
+    "levelBonuses": {
+      "10": { "passiveMatkBonus": 5 },
+      "20": { "passiveMatkBonus": 10 },
+      "30": { "passiveMatkBonus": 15, "passiveMdefBonus": 5 }
+    }
+  },
+  "dark_priest": {
+    "name": "Dark Priest",
+    "tier": 1,
+    "category": "MAGICAL",
+    "mpCurve": { "baseMaxMP": 40, "mpGrowth": 8, "skillCost": 12 },
+    "levelBonuses": {
+      "10": { "passiveMatkBonus": 3, "passiveMdefBonus": 2 },
+      "20": { "passiveMatkBonus": 6, "passiveMdefBonus": 4 },
+      "30": { "passiveMatkBonus": 9, "passiveMdefBonus": 6 }
+    }
+  },
+  "rogue": {
+    "name": "Rogue",
+    "tier": 1,
+    "category": "PHYSICAL",
+    "mpCurve": { "baseMaxMP": 15, "mpGrowth": 1.5, "skillCost": 4 },
+    "levelBonuses": {
+      "10": { "passiveAtkBonus": 3 },
+      "20": { "passiveAtkBonus": 6 },
+      "30": { "passiveAtkBonus": 9 }
+    }
+  },
+  "necromancer": {
+    "name": "Necromancer",
+    "tier": 2,
+    "category": "MAGICAL",
+    "mpCurve": { "baseMaxMP": 60, "mpGrowth": 12, "skillCost": 18 },
+    "levelBonuses": {
+      "10": { "passiveMatkBonus": 8 },
+      "20": { "passiveMatkBonus": 16 },
+      "30": { "passiveMatkBonus": 24 },
+      "40": { "passiveMatkBonus": 32, "passiveMdefBonus": 10 }
+    }
+  }
+}
