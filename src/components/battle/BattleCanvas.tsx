@@ -109,7 +109,14 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
         monstersGained: ['Skeleton']
       });
       setTimeout(() => {
-        if (mountedRef.current) setShowResult(true);
+        if (mountedRef.current) {
+          // ResultScreenへ切り替える前に、現在のPixiJSアプリを完全に破棄する
+          if (appRef.current) {
+            appRef.current.destroy(true, { children: true });
+            appRef.current = null;
+          }
+          setShowResult(true);
+        }
       }, 1000);
     }
 

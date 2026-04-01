@@ -79,7 +79,7 @@ export default function ResultScreen({ isVictory, expGained, itemsGained, monste
   };
 
   const showBanner = async (app: PIXI.Application) => {
-    if (!mountedRef.current || !app.stage) return;
+    if (!mountedRef.current || !app.stage || app.renderer === null) return;
     const container = new PIXI.Container();
     app.stage.addChild(container);
 
@@ -99,13 +99,13 @@ export default function ResultScreen({ isVictory, expGained, itemsGained, monste
 
     // Slide down animation
     let y = -100;
-    while (y < 100 && mountedRef.current) {
+    while (y < 100 && mountedRef.current && !text.destroyed) {
       y += 10;
       text.y = y;
       await new Promise(r => setTimeout(r, 16));
     }
 
-    if (!mountedRef.current || !app.stage) return;
+    if (!mountedRef.current || !app.stage || app.renderer === null) return;
 
     // Flash effect
     const graphics = new PIXI.Graphics();
@@ -114,20 +114,20 @@ export default function ResultScreen({ isVictory, expGained, itemsGained, monste
     app.stage.addChild(graphics);
     
     let alpha = 0.5;
-    while (alpha > 0 && mountedRef.current) {
+    while (alpha > 0 && mountedRef.current && !graphics.destroyed) {
       alpha -= 0.05;
       graphics.alpha = alpha;
       await new Promise(r => setTimeout(r, 16));
     }
     
-    if (mountedRef.current && !graphics.destroyed) {
+    if (mountedRef.current && !graphics.destroyed && !app.renderer === null) {
       app.stage.removeChild(graphics);
       graphics.destroy();
     }
   };
 
   const animateExpBar = async (app: PIXI.Application) => {
-    if (!mountedRef.current || !app.stage) return;
+    if (!mountedRef.current || !app.stage || app.renderer === null) return;
     const currentJob = player?.jobs.find(j => j.jobId === player.currentJobId);
     if (!currentJob) return;
 
@@ -155,7 +155,7 @@ export default function ResultScreen({ isVictory, expGained, itemsGained, monste
 
     return new Promise<void>((resolve) => {
       const ticker = () => {
-        if (!mountedRef.current || fillBar.destroyed) {
+        if (!mountedRef.current || fillBar.destroyed || !app.renderer) {
           app.ticker.remove(ticker);
           resolve();
           return;
@@ -164,9 +164,16 @@ export default function ResultScreen({ isVictory, expGained, itemsGained, monste
         const now = Date.now();
         const progress = Math.min(1, (now - startTime) / duration);
         
-        fillBar.clear();
-        fillBar.rect(100, 40, 600 * progress, 20);
-        fillBar.fill({ color: 0x00ff00 });
+        try {
+          fillBar.clear();
+          fillBar.rect(100, 40, 600 * progress, 20);
+          fillBar.fill({ color: 0x00ff00 });
+        } catch (e) {
+          console.error("EXP Bar animation error:", e);
+          app.ticker.remove(ticker);
+          resolve();
+          return;
+        }
 
         if (progress >= 1) {
           app.ticker.remove(ticker);
@@ -178,10 +185,10 @@ export default function ResultScreen({ isVictory, expGained, itemsGained, monste
   };
 
   const showDrops = async (app: PIXI.Application) => {
-    if (!mountedRef.current || !app.stage) return;
+    if (!mountedRef.current || !app.stage || app.renderer === null) return;
     const allDrops = [...itemsGained, ...monstersGained];
     for (let i = 0; i < allDrops.length; i++) {
-      if (!mountedRef.current) break;
+      if (!mountedRef.current || !app.stage || app.renderer === null) break;
       
       const dropText = new PIXI.Text({ 
         text: `GET: ${allDrops[i]}`, 
@@ -195,7 +202,7 @@ export default function ResultScreen({ isVictory, expGained, itemsGained, monste
 
       let alpha = 0;
       let scale = 2;
-      while (alpha < 1 && mountedRef.current) {
+      while (alpha < 1 && mountedRef.current && !dropText.destroyed) {
         alpha += 0.1;
         scale -= 0.1;
         dropText.alpha = alpha;
