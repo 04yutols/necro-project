@@ -175,11 +175,23 @@ export interface CharacterData {
 
 
 ### 魂石化の技術フロー
-1.  **リクエスト**: フロントエンドから `soulStoneAction(monsterId)` を呼び出す。
-2.  **永続化処理**: `NecroService.createSoulShard` 内で、Prismaトランザクションを用いて以下の処理を完結させる。
-    - 対象 `Monster` レコードの削除。
-    - ステータスの10%を継承した `SoulShard` レコードの新規作成。
+（中略）
 3.  **状態同期**: 成功レスポンスを受け取り、Zustandストアの `inventoryMonsters` から削除、`soulShards` へ追加することで、リロードなしで画面を更新する。
+
+## 6. Visual Effects Logic (PixiJS)
+リザルト画面における動的な演出の技術仕様。
+
+### 経験値バーの補完アニメーション
+- **技術要素**: `PixiJS Ticker`, `Date.now()` による経過時間計算。
+- **ロジック**: 
+  - 開始時間から指定期間（1000ms等）にかけて、獲得EXPを線形補完して描画。
+  - `currentWidth = maxWidth * (currentTime - startTime) / duration`。
+  - バーの描画更新は 60fps で行われ、DOMベースの更新と比較して極めて滑らかに動作する。
+
+### 報酬ポップアップ
+- **技術要素**: `while` ループと `alpha` / `scale` プロパティの操作。
+- **ロジック**:
+  - 各報酬テキストに対し、不透明度 0→1、スケール 2→1 への変化を非同期で適用し、『画面に飛び出す』ような視覚効果を実現。
 
 ## 4. Test Strategy (E2E)
 UIのクリティカルなパスを Playwright で常時監視する。

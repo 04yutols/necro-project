@@ -6,6 +6,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { BattleEngine } from '../../logic/BattleEngine';
 import { BattleLog } from '../../types/game';
 import { Sword, Sparkles } from 'lucide-react';
+import ResultScreen from './ResultScreen';
 
 interface BattleCanvasProps {
   onEnd: () => void;
@@ -16,9 +17,17 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const { player, party, updateMP, updateHP } = useGameStore();
   const appRef = useRef<PIXI.Application | null>(null);
   const engineRef = useRef<BattleEngine | null>(null);
+  const mountedRef = useRef(true);
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [battleLogs, setBattleLogs] = useState<string[]>(['戦闘開始...']);
+  const [showResult, setShowResult] = useState(false);
+  const [battleResult, setBattleResult] = useState<{
+    isVictory: boolean;
+    expGained: number;
+    itemsGained: string[];
+    monstersGained: string[];
+  } | null>(null);
   
   // モックターゲット（ステートで管理して撃破判定なども可能に）
   const [target, setTarget] = useState({
@@ -27,26 +36,38 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   });
 
   useEffect(() => {
+    mountedRef.current = true;
     if (!canvasRef.current || !player) return;
 
     const initPixi = async () => {
       const app = new PIXI.Application();
-      await app.init({
-        width: 800,
-        height: 400,
-        backgroundColor: 0x050505,
-        antialias: true,
-      });
-      appRef.current = app;
-      canvasRef.current?.appendChild(app.canvas);
+      try {
+        await app.init({
+          width: 800,
+          height: 400,
+          backgroundColor: 0x050505,
+          antialias: true,
+        });
+        
+        if (!mountedRef.current) {
+          app.destroy(true, { children: true });
+          return;
+        }
 
-      // バトルエンジン初期化
-      engineRef.current = new BattleEngine(player, party);
+        appRef.current = app;
+        canvasRef.current?.appendChild(app.canvas);
+
+        // バトルエンジン初期化
+        engineRef.current = new BattleEngine(player, party);
+      } catch (e) {
+        console.error("BattleCanvas PixiJS init error:", e);
+      }
     };
 
     initPixi();
 
     return () => {
+      mountedRef.current = false;
       if (appRef.current) {
         appRef.current.destroy(true, { children: true });
         appRef.current = null;
@@ -55,13 +76,14 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   }, [player, party]);
 
   const handleAction = async (type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL') => {
-    if (isProcessing || !engineRef.current || !appRef.current) return;
+    if (isProcessing || !engineRef.current || !appRef.current || !mountedRef.current) return;
 
     setIsProcessing(true);
     const logs = engineRef.current.simulateAction(type, target);
     
     // ログの再生
     for (const log of logs) {
+      if (!mountedRef.current) break;
       setBattleLogs(prev => [...prev, `> ${log.description}`].slice(-10));
       await showLogAnimation(appRef.current, log);
       
@@ -78,15 +100,44 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
       await new Promise((resolve) => setTimeout(resolve, 600));
     }
 
-    if (target.stats.hp <= 0) {
+    if (mountedRef.current && target.stats.hp <= 0) {
       setBattleLogs(prev => [...prev, `> ${target.name}を撃破した！`]);
-      setTimeout(onEnd, 2000);
+      setBattleResult({
+        isVictory: true,
+        expGained: 150,
+        itemsGained: ['Iron Sword'],
+        monstersGained: ['Skeleton']
+      });
+      setTimeout(() => {
+        if (mountedRef.current) {
+          // ResultScreenへ切り替える前に、現在のPixiJSアプリを完全に破棄する
+          if (appRef.current) {
+            appRef.current.destroy(true, { children: true });
+            appRef.current = null;
+          }
+          setShowResult(true);
+        }
+      }, 1000);
     }
 
     setIsProcessing(false);
   };
 
+  if (showResult && battleResult) {
+    return (
+      <ResultScreen 
+        {...battleResult} 
+        onFinish={onFinishBattle} 
+      />
+    );
+  }
+
+  function onFinishBattle() {
+    onEnd();
+  }
+
   const showLogAnimation = async (app: PIXI.Application, log: BattleLog) => {
+    if (!mountedRef.current || !app.stage) return;
     const container = new PIXI.Container();
     app.stage.addChild(container);
 
@@ -114,19 +165,25 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
       // シェイク演出
       const originalX = app.stage.x;
       for (let i = 0; i < 4; i++) {
+        if (!mountedRef.current || !app.stage) break;
         app.stage.x += (Math.random() - 0.5) * 15;
         await new Promise(r => setTimeout(r, 30));
-        app.stage.x = originalX;
+        if (app.stage) app.stage.x = originalX;
       }
     }
 
     // フェードアウト
     let alpha = 1.0;
     const ticker = (delta: PIXI.Ticker) => {
+      if (!mountedRef.current || container.destroyed) {
+        app.ticker.remove(ticker);
+        return;
+      }
       alpha -= 0.04 * delta.deltaTime;
       container.alpha = alpha;
       if (alpha <= 0) {
-        app.stage.removeChild(container);
+        if (app.stage) app.stage.removeChild(container);
+        container.destroy({ children: true });
         app.ticker.remove(ticker);
       }
     };
