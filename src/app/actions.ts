@@ -28,3 +28,8 @@ export async function updatePartyAction(characterId: string, monsterIds: (string
   // パーティ編成の更新
   return { success: true };
 }
+
+export async function equipShardAction(monsterId: string, shardId: string) {
+  // GameManagerを介した装備
+  return { success: true };
+}

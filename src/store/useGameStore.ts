@@ -27,6 +27,9 @@ interface GameState {
   
   // 魂の欠片の追加
   addSoulShard: (shard: SoulShardData) => void;
+
+  // 魂の欠片の装備
+  equipShard: (monsterId: string, shardId: string) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -77,5 +80,14 @@ export const useGameStore = create<GameState>((set) => ({
   
   addSoulShard: (shard) => set((state) => ({
     soulShards: [...state.soulShards, shard]
+  })),
+
+  equipShard: (monsterId, shardId) => set((state) => ({
+    inventoryMonsters: state.inventoryMonsters.map(m => 
+      m.id === monsterId ? { ...m, equippedShardId: shardId } : m
+    ),
+    party: state.party.map(m => 
+      m?.id === monsterId ? { ...m, equippedShardId: shardId } : m
+    ) as [MonsterData | null, MonsterData | null, MonsterData | null]
   })),
 }));

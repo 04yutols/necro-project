@@ -193,6 +193,13 @@ export class GameManager {
     return await this.necroService.createSoulShard(monsterId);
   }
 
+  /**
+   * 魂の欠片装備の実行 (GDD-005)
+   */
+  public async equipShard(monsterId: string, shardId: string): Promise<void> {
+    return await this.necroService.equipSoulShard(monsterId, shardId);
+  }
+
   public async close(): Promise<void> {
     await this.prisma.$disconnect();
   }
