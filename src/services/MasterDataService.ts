@@ -1,6 +1,7 @@
 import jobs from '../data/master/jobs.json';
 import monsters from '../data/master/monsters.json';
 import items from '../data/master/items.json';
+import stages from '../data/master/stages.json';
 
 export class MasterDataService {
   private static instance: MasterDataService;
@@ -26,6 +27,10 @@ export class MasterDataService {
     return (items as any)[id];
   }
 
+  public getStage(id: string) {
+    return (stages as any)[id];
+  }
+
   public getAllJobs() {
     return jobs;
   }
@@ -36,5 +41,9 @@ export class MasterDataService {
 
   public getAllItems() {
     return items;
+  }
+
+  public getAllStages() {
+    return stages;
   }
 }

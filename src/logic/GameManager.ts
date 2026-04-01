@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { JobService } from '../services/JobService';
 import { NecroService } from '../services/NecroService';
+import { RewardService } from '../services/RewardService';
+import { MasterDataService } from '../services/MasterDataService';
 import { BattleEngine } from './BattleEngine';
 import { CharacterData, MonsterData } from '../types/game';
 
@@ -11,11 +13,15 @@ export class GameManager {
   private prisma: PrismaClient;
   private jobService: JobService;
   private necroService: NecroService;
+  private rewardService: RewardService;
+  private masterData: MasterDataService;
 
   constructor() {
     this.prisma = new PrismaClient();
     this.jobService = new JobService(this.prisma);
     this.necroService = new NecroService(this.prisma);
+    this.rewardService = new RewardService();
+    this.masterData = MasterDataService.getInstance();
   }
 
   /**
@@ -46,12 +52,12 @@ export class GameManager {
       where: { id: { in: monsters } },
     });
 
-    // CharacterData 型への変換 (簡易版)
+    // CharacterData 型への変換
     const player: CharacterData = {
       id: char.id,
       name: char.name,
       currentJobId: char.currentJobId || 'warrior',
-      category: 'PHYSICAL', // 本来は Job モデルから取得
+      category: (this.masterData.getJob(char.currentJobId || 'warrior')?.category as any) || 'PHYSICAL',
       stats: {
         hp: char.hp, mp: char.mp, atk: char.atk, def: char.def,
         matk: char.matk, mdef: char.mdef, agi: char.agi, luck: char.luck, tec: char.tec
@@ -78,6 +84,79 @@ export class GameManager {
     }));
 
     return new BattleEngine(player, monsterList);
+  }
+
+  /**
+   * ステージクリア後のリザルト処理 (GDD-002)
+   */
+  public async processStageResult(characterId: string, stageId: string): Promise<any> {
+    const stage = this.masterData.getStage(stageId);
+    if (!stage) throw new Error("Stage not found");
+
+    const char = await this.prisma.character.findUnique({
+      where: { id: characterId },
+      include: { jobs: true }
+    });
+    if (!char) throw new Error("Character not found");
+
+    // 1. 経験値と報酬の計算
+    const playerConverted = this.convertToCharacterData(char);
+    const expGain = this.rewardService.calculateExp(stage.rewards.baseExp, playerConverted);
+    const rewards = this.rewardService.calculateDrops(stage.rewards.dropTable, char.luck);
+
+    // 2. DBへの反映 (トランザクション)
+    await this.prisma.$transaction(async (tx) => {
+      // 経験値加算
+      const currentJob = char.jobs.find(j => j.jobId === char.currentJobId);
+      if (currentJob) {
+        const newExp = currentJob.exp + expGain;
+        const newLevel = Math.floor(newExp / 100) + 1; // 簡易的なレベルアップ式
+        
+        await tx.userJob.update({
+          where: { characterId_jobId: { characterId, jobId: char.currentJobId! } },
+          data: { exp: newExp, level: newLevel }
+        });
+
+        // パッシブ加算チェック (JobServiceのロジックを流用)
+        // 本来は JobService を tx 内で呼ぶべき
+      }
+
+      // ドロップモンスターの追加
+      for (const mId of rewards.monsters) {
+        const mMaster = this.masterData.getMonster(mId);
+        await tx.monster.create({
+          data: {
+            name: mMaster.name,
+            tribe: mMaster.tribe,
+            cost: mMaster.cost,
+            ...mMaster.stats
+          }
+        });
+      }
+    });
+
+    return { expGain, rewards };
+  }
+
+  private convertToCharacterData(char: any): CharacterData {
+    return {
+      id: char.id,
+      name: char.name,
+      currentJobId: char.currentJobId || 'warrior',
+      category: (this.masterData.getJob(char.currentJobId || 'warrior')?.category as any) || 'PHYSICAL',
+      stats: {
+        hp: char.hp, mp: char.mp, atk: char.atk, def: char.def,
+        matk: char.matk, mdef: char.mdef, agi: char.agi, luck: char.luck, tec: char.tec
+      },
+      passives: {
+        passiveAtkBonus: char.passiveAtkBonus,
+        passiveDefBonus: char.passiveDefBonus,
+        passiveMatkBonus: char.passiveMatkBonus,
+        passiveMdefBonus: char.passiveMdefBonus
+      },
+      jobs: char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
+      isAwakened: false
+    };
   }
 
   /**
