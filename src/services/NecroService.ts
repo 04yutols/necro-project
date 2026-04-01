@@ -1,3 +1,4 @@
+import { PrismaClient } from '@prisma/client';
 import { 
   MonsterData, 
   SoulShardData, 
@@ -7,90 +8,77 @@ import {
 
 /**
  * 死霊術システム (GDD-005) に関するビジネスロジックを担当するサービス
+ * Prisma を用いた永続化に対応。
  */
 export class NecroService {
-  /**
-   * 魂石化 (Soul Stoning): モンスターを魂の欠片に変換する
-   * @param monster 変換元のモンスター
-   * @returns 生成された魂の欠片データ
-   */
-  public createSoulShard(monster: MonsterData): SoulShardData {
-    // 元のステータスの 10% を補正値として継承する (バランス調整の一環)
-    const atkBonus = Math.floor(monster.stats.atk * 0.1);
-    const matkBonus = Math.floor(monster.stats.matk * 0.1);
-
-    return {
-      id: `shard-${Date.now()}-${monster.id}`,
-      originMonsterName: monster.name,
-      effect: {
-        atkBonus,
-        matkBonus,
-        specialAbility: this.deriveSpecialAbility(monster.tribe)
-      }
-    };
-  }
+  constructor(private prisma: PrismaClient) {}
 
   /**
-   * パーティ編成バリデーション (3枠コスト制)
-   * @param status 現在の死霊術ステータス
-   * @param slots 編成スロット
-   * @throws コスト超過時にエラー
+   * 魂石化 (Soul Stoning): モンスターを魂の欠片に変換し DB に保存する
    */
-  public validatePartyFormation(status: NecroStatus, slots: (MonsterData | null)[]): boolean {
-    if (slots.length !== 3) {
-      throw new Error("パーティ編成は3枠固定です。");
-    }
+  public async createSoulShard(monsterId: string): Promise<SoulShardData> {
+    return await this.prisma.$transaction(async (tx) => {
+      const monster = await tx.monster.findUnique({
+        where: { id: monsterId },
+      });
 
-    const totalCost = slots.reduce((acc, monster) => acc + (monster?.cost || 0), 0);
+      if (!monster) throw new Error("Monster not found");
 
-    if (totalCost > status.maxCost) {
-      throw new Error(`コスト超過です (Total: ${totalCost}, Max: ${status.maxCost})`);
-    }
+      const atkBonus = Math.floor(monster.atk * 0.1);
+      const matkBonus = Math.floor(monster.matk * 0.1);
 
-    // シナジー判定の実行 (将来的な拡張)
-    this.checkTribeSynergy(slots);
+      const soulShard = await tx.soulShard.create({
+        data: {
+          originMonster: monster.name,
+          atkBonus,
+          matkBonus,
+          specialAbility: this.deriveSpecialAbility(monster.tribe as Tribe),
+        },
+      });
 
-    return true;
+      // 魂石化したモンスターを削除 (GDD-005)
+      await tx.monster.delete({
+        where: { id: monsterId },
+      });
+
+      return {
+        id: soulShard.id,
+        originMonsterName: soulShard.originMonster,
+        effect: {
+          atkBonus: soulShard.atkBonus,
+          matkBonus: soulShard.matkBonus,
+          specialAbility: soulShard.specialAbility || undefined,
+        },
+      };
+    });
   }
 
   /**
    * ランクアップ (Reincarnation): Lv.99到達後の転生
-   * @param status 現在の死霊術ステータス
-   * @param isTrialCompleted 試練クリアフラグ
-   * @returns 更新された死霊術ステータス
+   * Character モデルの necroXxx フィールドを更新する。
    */
-  public performRankUp(status: NecroStatus, isTrialCompleted: boolean): NecroStatus {
-    if (status.level < 99) {
-      throw new Error("ランクアップにはLv.99到達が必要です。");
-    }
-    if (!isTrialCompleted) {
-      throw new Error("ランクアップには試練のクリアが必要です。");
-    }
+  public async performRankUp(characterId: string, isTrialCompleted: boolean): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const character = await tx.character.findUnique({
+        where: { id: characterId },
+      });
 
-    // 次のランクへ (最大 Rank 10)
-    const nextRank = Math.min(10, status.rank + 1);
-    
-    // 倍率処理: MaxCost と基礎ステータスボーナスを爆発的に上昇させる (GDD-005)
-    // ランクごとに MaxCost +5, ステータス倍率 +50% 蓄積
-    return {
-      level: 1, // Lv 1 にリセット
-      rank: nextRank,
-      maxCost: status.maxCost + 5,
-      baseStatsBonus: status.baseStatsBonus + 0.5
-    };
-  }
+      if (!character) throw new Error("Character not found");
+      if (character.necroLevel < 99) throw new Error("ランクアップにはLv.99到達が必要です。");
+      if (!isTrialCompleted) throw new Error("ランクアップには試練のクリアが必要です。");
 
-  /**
-   * 種族シナジー判定 (GDD-005 プレースホルダー)
-   */
-  private checkTribeSynergy(slots: (MonsterData | null)[]): void {
-    const tribes = slots.filter(m => m !== null).map(m => m!.tribe);
-    const uniqueTribes = new Set(tribes);
+      const nextRank = Math.min(10, character.necroRank + 1);
 
-    // 同一種類3体などの判定ロジックをここに実装予定
-    if (tribes.length === 3 && uniqueTribes.size === 1) {
-      // console.log(`Synergy Active: ${tribes[0]} x3!`);
-    }
+      await tx.character.update({
+        where: { id: characterId },
+        data: {
+          necroLevel: 1,
+          necroRank: nextRank,
+          necroMaxCost: character.necroMaxCost + 5,
+          necroBaseStatsBonus: character.necroBaseStatsBonus + 0.5,
+        },
+      });
+    });
   }
 
   private deriveSpecialAbility(tribe: Tribe): string | undefined {

@@ -1,77 +1,108 @@
+import { PrismaClient } from '@prisma/client';
 import { CharacterData, UserJobState } from '../types/game';
 
 /**
  * 職業に関するビジネスロジックを担当するサービス (GDD-004)
+ * Prisma を用いた永続化に対応。
  */
 export class JobService {
+  constructor(private prisma: PrismaClient) {}
+
   /**
    * 転職処理。
-   * @param character キャラクターデータ
-   * @param nextJobId 転職先の職業ID
-   * @returns 更新されたキャラクターデータ
+   * トランザクションを用いて UserJob の生成・更新を行う。
    */
-  public async changeJob(character: CharacterData, nextJobId: string): Promise<CharacterData> {
-    // 既存の職業リストから検索
-    let userJob = character.jobs.find(j => j.jobId === nextJobId);
+  public async changeJob(characterId: string, nextJobId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // 既存の UserJob を確認
+      const userJob = await tx.userJob.findUnique({
+        where: {
+          characterId_jobId: {
+            characterId: characterId,
+            jobId: nextJobId,
+          },
+        },
+      });
 
-    // 初めての職業の場合はLv1で新規作成 (GDD-004: 転職するとLv1に戻る)
-    if (!userJob) {
-      userJob = {
-        jobId: nextJobId,
-        level: 1,
-        exp: 0
-      };
-      character.jobs.push(userJob);
-    }
+      // 初めての職業の場合は Lv1 で新規作成 (GDD-004)
+      if (!userJob) {
+        await tx.userJob.create({
+          data: {
+            characterId: characterId,
+            jobId: nextJobId,
+            level: 1,
+            exp: 0,
+          },
+        });
+      }
 
-    // 現在の職業を更新
-    character.currentJobId = nextJobId;
-
-    return character;
+      // 現在の職業を更新
+      await tx.character.update({
+        where: { id: characterId },
+        data: { currentJobId: nextJobId },
+      });
+    });
   }
 
   /**
    * 職業レベルアップ時の処理とパッシブ蓄積。
-   * @param character キャラクターデータ
-   * @param jobId レベルアップした職業ID
-   * @param newLevel 到達レベル
-   * @returns 更新されたキャラクターデータ
+   * Character モデルの passiveXxxBonus を確実に更新。
    */
-  public async onLevelUp(character: CharacterData, jobId: string, newLevel: number): Promise<CharacterData> {
-    const userJob = character.jobs.find(j => j.jobId === jobId);
-    if (!userJob) return character;
+  public async onLevelUp(characterId: string, jobId: string, newLevel: number): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // UserJob のレベルを更新
+      await tx.userJob.update({
+        where: {
+          characterId_jobId: {
+            characterId,
+            jobId,
+          },
+        },
+        data: { level: newLevel },
+      });
 
-    userJob.level = newLevel;
-
-    // 特定レベル到達時の永続パッシブ加算処理 (GDD-004)
-    // 例: Lv10ごとに対応するステータスにボーナス
-    if (newLevel % 10 === 0) {
-      this.applyPassiveBonus(character, jobId, newLevel);
-    }
-
-    return character;
+      // 特定レベル到達時の永続パッシブ加算処理 (GDD-004)
+      if (newLevel % 10 === 0) {
+        await this.applyPassiveBonus(tx, characterId, jobId, newLevel);
+      }
+    });
   }
 
   /**
-   * 職業とレベルに応じたパッシブボーナスの適用
+   * 職業とレベルに応じたパッシブボーナスの適用を DB に反映
    */
-  private applyPassiveBonus(character: CharacterData, jobId: string, level: number): void {
-    // 職業ごとの特性に応じたボーナス (本来はJobマスターデータから取得すべきだが、ここでは簡易的に実装)
+  private async applyPassiveBonus(tx: any, characterId: string, jobId: string, level: number): Promise<void> {
+    let bonus = {
+      passiveAtkBonus: 0,
+      passiveDefBonus: 0,
+      passiveMatkBonus: 0,
+      passiveMdefBonus: 0,
+    };
+
     switch (jobId) {
       case 'warrior':
-        character.passives.passiveAtkBonus += 5;
+        bonus.passiveAtkBonus = 5;
         break;
       case 'mage':
-        character.passives.passiveMatkBonus += 5;
+        bonus.passiveMatkBonus = 5;
         break;
       case 'dark_priest':
-        character.passives.passiveMatkBonus += 3;
-        character.passives.passiveMdefBonus += 2;
+        bonus.passiveMatkBonus = 3;
+        bonus.passiveMdefBonus = 2;
         break;
       case 'rogue':
-        character.passives.passiveAtkBonus += 2;
-        // AGIボーナスなども将来的に追加
+        bonus.passiveAtkBonus = 2;
         break;
     }
+
+    await tx.character.update({
+      where: { id: characterId },
+      data: {
+        passiveAtkBonus: { increment: bonus.passiveAtkBonus },
+        passiveDefBonus: { increment: bonus.passiveDefBonus },
+        passiveMatkBonus: { increment: bonus.passiveMatkBonus },
+        passiveMdefBonus: { increment: bonus.passiveMdefBonus },
+      },
+    });
   }
 }
