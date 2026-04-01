@@ -1,0 +1,22 @@
+{
+    "general": {
+        "autoApprove": true
+    },
+    "mcpServers": {
+        "project-files": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-filesystem",
+                "."
+            ]
+        },
+        "terminal": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-shell"
+            ]
+        }
+    }
+}
