@@ -18,3 +18,13 @@ export async function processGrowthAction(characterId: string, type: 'RANK_UP' |
   // 成長処理のモック
   return { success: true, message: `${type} completed.` };
 }
+
+export async function soulStoneAction(monsterId: string) {
+  // GameManagerを介した魂石化
+  return { success: true, data: { id: 'shard-123', originMonsterName: 'Goblin', effect: { atkBonus: 5, matkBonus: 0 } } };
+}
+
+export async function updatePartyAction(characterId: string, monsterIds: (string | null)[]) {
+  // パーティ編成の更新
+  return { success: true };
+}

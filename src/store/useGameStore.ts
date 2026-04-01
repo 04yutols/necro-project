@@ -1,28 +1,64 @@
 import { create } from 'zustand';
-import { CharacterData, NecroStatus, MonsterData } from '../types/game';
+import { CharacterData, NecroStatus, MonsterData, SoulShardData } from '../types/game';
 
 interface GameState {
   player: CharacterData | null;
   necroStatus: NecroStatus | null;
   party: (MonsterData | null)[];
+  inventoryMonsters: MonsterData[];
+  soulShards: SoulShardData[];
+  
   setPlayer: (player: CharacterData) => void;
   setNecroStatus: (status: NecroStatus) => void;
   setParty: (party: (MonsterData | null)[]) => void;
+  setInventoryMonsters: (monsters: MonsterData[]) => void;
+  setSoulShards: (shards: SoulShardData[]) => void;
+  
   updateHP: (hp: number) => void;
   updateMP: (mp: number) => void;
+  
+  // パーティ編成の更新
+  updatePartySlot: (index: number, monster: MonsterData | null) => void;
+  
+  // モンスターの削除（魂石化後など）
+  removeMonster: (monsterId: string) => void;
+  
+  // 魂の欠片の追加
+  addSoulShard: (shard: SoulShardData) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
   player: null,
   necroStatus: null,
   party: [null, null, null],
+  inventoryMonsters: [],
+  soulShards: [],
+  
   setPlayer: (player) => set({ player }),
   setNecroStatus: (status) => set({ necroStatus: status }),
   setParty: (party) => set({ party }),
+  setInventoryMonsters: (monsters) => set({ inventoryMonsters: monsters }),
+  setSoulShards: (shards) => set({ soulShards: shards }),
+  
   updateHP: (hp) => set((state) => ({
     player: state.player ? { ...state.player, stats: { ...state.player.stats, hp } } : null
   })),
   updateMP: (mp) => set((state) => ({
     player: state.player ? { ...state.player, stats: { ...state.player.stats, mp } } : null
+  })),
+  
+  updatePartySlot: (index, monster) => set((state) => {
+    const newParty = [...state.party];
+    newParty[index] = monster;
+    return { party: newParty as [MonsterData | null, MonsterData | null, MonsterData | null] };
+  }),
+  
+  removeMonster: (monsterId) => set((state) => ({
+    inventoryMonsters: state.inventoryMonsters.filter(m => m.id !== monsterId),
+    party: state.party.map(m => m?.id === monsterId ? null : m) as [MonsterData | null, MonsterData | null, MonsterData | null]
+  })),
+  
+  addSoulShard: (shard) => set((state) => ({
+    soulShards: [...state.soulShards, shard]
   })),
 }));

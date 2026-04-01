@@ -163,44 +163,21 @@ export interface CharacterData {
 ## 3. Necro-System Logic
 3枠コスト制と死霊術ランクアップのインターフェース
 
-```typescript
-export interface MonsterData {
-  id: string;
-  cost: number;
-  equippedShardId?: string;
-}
+（中略）
 
-export interface NecroStatus {
-  level: number;       // Max: 99
-  rank: number;        // Max: 10
-  maxCost: number;
-}
+### UI上のコスト計算・バリデーション仕様
+- **計算タイミング**: Zustandストアの `party` 配列が更新されるたびに、フロントエンドの `useMemo` により合計コストを再計算する。
+- **バリデーションロジック**: `totalCost = sum(monster.cost for monster in party if monster != null)`。
+- **制限の反映**: 
+  - `totalCost > NecroStatus.maxCost` の場合、UIコンポーネント（`NecroLab.tsx`）にて警告ステートを有効化する。
+  - 出撃ボタンの `disabled` 属性にこのバリデーション結果を連動させ、不正な編成での戦闘開始を物理的に阻止する。
 
-export interface IPartyService {
-  /**
-   * 3枠の使役モンスター編成を検証・保存する。
-   * SoulShardによるコスト変動やシナジー計算もここで行う。
-   */
-  updatePartyFormation(
-    necroStatus: NecroStatus, 
-    monsterSlots: [MonsterData | null, MonsterData | null, MonsterData | null]
-  ): Promise<void>;
-}
-
-export interface IJobService {
-  /**
-   * 転職処理。現在の職業レベルを維持したまま変更。
-   * 初めての職業の場合はUserJobを新規作成しLv1から開始。
-   */
-  changeJob(characterId: string, nextJobId: string): Promise<void>;
-  
-  /**
-   * 職業レベルアップ時のパッシブ蓄積。
-   * 一定Lv到達時にCharacterモデルのpassiveXxxBonusを更新。
-   */
-  onLevelUp(characterId: string, jobId: string, newLevel: number): Promise<void>;
-}
-```
+### 魂石化の技術フロー
+1.  **リクエスト**: フロントエンドから `soulStoneAction(monsterId)` を呼び出す。
+2.  **永続化処理**: `NecroService.createSoulShard` 内で、Prismaトランザクションを用いて以下の処理を完結させる。
+    - 対象 `Monster` レコードの削除。
+    - ステータスの10%を継承した `SoulShard` レコードの新規作成。
+3.  **状態同期**: 成功レスポンスを受け取り、Zustandストアの `inventoryMonsters` から削除、`soulShards` へ追加することで、リロードなしで画面を更新する。
 
 ---
 
