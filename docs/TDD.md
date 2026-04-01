@@ -178,6 +178,14 @@ export interface CharacterData {
 （中略）
 3.  **状態同期**: 成功レスポンスを受け取り、Zustandストアの `inventoryMonsters` から削除、`soulShards` へ追加することで、リロードなしで画面を更新する。
 
+### 魂の欠片による特殊能力と拡張データ構造
+- **特殊能力 (Special Abilities)**: `SoulShardEffect` インターフェースにより、単なるステータス加算以外の効果を定義可能。
+  - `REGENERATE_SOUL`: [アンデッド]系の欠片。戦闘中、微量のHP回復を付与。
+  - `BANE_OF_LIGHT`: [悪魔]系の欠片。光属性耐性を持つ敵へのダメージ増加。
+- **シナジー計算ロジック**: 
+  - パーティ編成時に `tribe` だけでなく `equippedShardId` の特殊能力も走査する。
+  - 同一系統の特殊能力が複数存在する場合、効果を累積または上位変換（スタック）して `BattleEngine` へ渡す。
+
 ## 6. Visual Effects Logic (PixiJS)
 リザルト画面における動的な演出の技術仕様。
 

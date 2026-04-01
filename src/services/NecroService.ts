@@ -88,6 +88,26 @@ export class NecroService {
     });
   }
 
+  /**
+   * 魂の欠片 (SoulShard) をモンスターに装備する
+   */
+  public async equipSoulShard(monsterId: string, shardId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const monster = await tx.monster.findUnique({ where: { id: monsterId } });
+      const shard = await tx.soulShard.findUnique({ where: { id: shardId } });
+
+      if (!monster) throw new Error("Monster not found");
+      if (!shard) throw new Error("SoulShard not found");
+
+      // すでに他のモンスターに装備されているか等のチェックは将来的に必要
+
+      await tx.monster.update({
+        where: { id: monsterId },
+        data: { soulShardId: shardId }
+      });
+    });
+  }
+
   private deriveSpecialAbility(tribe: Tribe): string | undefined {
     switch (tribe) {
       case 'UNDEAD': return "REGENERATE_SOUL";

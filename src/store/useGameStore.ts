@@ -27,6 +27,13 @@ interface GameState {
   
   // 魂の欠片の追加
   addSoulShard: (shard: SoulShardData) => void;
+
+  // 魂の欠片の装備
+  equipShard: (monsterId: string, shardId: string) => void;
+
+  // モーダル制御状態
+  equippingMonsterId: string | null;
+  setEquippingMonsterId: (id: string | null) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -35,12 +42,14 @@ export const useGameStore = create<GameState>((set) => ({
   party: [null, null, null],
   inventoryMonsters: [],
   soulShards: [],
+  equippingMonsterId: null,
   
   setPlayer: (player) => set({ player }),
   setNecroStatus: (status) => set({ necroStatus: status }),
   setParty: (party) => set({ party }),
   setInventoryMonsters: (monsters) => set({ inventoryMonsters: monsters }),
   setSoulShards: (shards) => set({ soulShards: shards }),
+  setEquippingMonsterId: (id) => set({ equippingMonsterId: id }),
   
   updateHP: (hp) => set((state) => ({
     player: state.player ? { ...state.player, stats: { ...state.player.stats, hp } } : null
@@ -77,5 +86,14 @@ export const useGameStore = create<GameState>((set) => ({
   
   addSoulShard: (shard) => set((state) => ({
     soulShards: [...state.soulShards, shard]
+  })),
+
+  equipShard: (monsterId, shardId) => set((state) => ({
+    inventoryMonsters: state.inventoryMonsters.map(m => 
+      m.id === monsterId ? { ...m, equippedShardId: shardId } : m
+    ),
+    party: state.party.map(m => 
+      m?.id === monsterId ? { ...m, equippedShardId: shardId } : m
+    ) as [MonsterData | null, MonsterData | null, MonsterData | null]
   })),
 }));
