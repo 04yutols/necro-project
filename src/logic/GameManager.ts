@@ -214,6 +214,54 @@ export class GameManager {
     return await this.necroService.equipSoulShard(monsterId, shardId);
   }
 
+  /**
+   * アイテムの装備 (GDD-007)
+   */
+  public async equipItem(characterId: string, slot: string, itemId: string): Promise<void> {
+    const fieldMap: Record<string, string> = {
+      'weapon': 'equipWeaponId',
+      'sub': 'equipSubId',
+      'head': 'equipHeadId',
+      'body': 'equipBodyId',
+      'arms': 'equipArmsId',
+      'legs': 'equipLegsId',
+      'acc1': 'equipAcc1Id',
+      'acc2': 'equipAcc2Id',
+    };
+    
+    const dbField = fieldMap[slot];
+    if (!dbField) throw new Error("Invalid equipment slot");
+
+    await this.prisma.character.update({
+      where: { id: characterId },
+      data: { [dbField]: itemId }
+    });
+  }
+
+  /**
+   * アイテムの装備解除 (GDD-007)
+   */
+  public async unequipItem(characterId: string, slot: string): Promise<void> {
+    const fieldMap: Record<string, string> = {
+      'weapon': 'equipWeaponId',
+      'sub': 'equipSubId',
+      'head': 'equipHeadId',
+      'body': 'equipBodyId',
+      'arms': 'equipArmsId',
+      'legs': 'equipLegsId',
+      'acc1': 'equipAcc1Id',
+      'acc2': 'equipAcc2Id',
+    };
+    
+    const dbField = fieldMap[slot];
+    if (!dbField) throw new Error("Invalid equipment slot");
+
+    await this.prisma.character.update({
+      where: { id: characterId },
+      data: { [dbField]: null }
+    });
+  }
+
   public async close(): Promise<void> {
     await this.prisma.$disconnect();
   }

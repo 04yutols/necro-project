@@ -7,11 +7,11 @@ import NecroLab from '../components/necro/NecroLab';
 import { Skull, Map, Shield, Activity } from 'lucide-react';
 
 import ShardEquipModal from '../components/necro/ShardEquipModal';
-
+import EquipmentManager from '../components/character/EquipmentManager';
 import AreaMap from '../components/map/AreaMap';
 
 export default function Home() {
-  const { player, setPlayer, setNecroStatus, setInventoryMonsters, party, equippingMonsterId, inventoryMonsters: allMonsters, setEquippingMonsterId, addClearedStage } = useGameStore();
+  const { player, setPlayer, setNecroStatus, setInventoryMonsters, setInventoryItems, party, equippingMonsterId, inventoryMonsters: allMonsters, setEquippingMonsterId, addClearedStage } = useGameStore();
   const [isInBattle, setIsInBattle] = useState(false);
   const [activeTab, setActiveTab] = useState<'HUB' | 'LAB' | 'MAP'>('HUB');
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
@@ -28,6 +28,7 @@ export default function Home() {
         category: 'PHYSICAL',
         stats: { hp: 100, mp: 20, atk: 50, def: 30, matk: 10, mdef: 10, agi: 10, luck: 10, tec: 20 },
         passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveMatkBonus: 0, passiveMdefBonus: 0 },
+        equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
         jobs: [],
         isAwakened: false,
         clearedStages: [],
@@ -46,6 +47,12 @@ export default function Home() {
         { id: 'm2', name: 'スケルトン', tribe: 'UNDEAD', cost: 4, stats: { hp: 40, mp: 0, atk: 12, def: 8, matk: 0, mdef: 2, agi: 5, luck: 0, tec: 8 } },
         { id: 'm3', name: 'ゾンビ', tribe: 'UNDEAD', cost: 4, stats: { hp: 80, mp: 0, atk: 8, def: 4, matk: 0, mdef: 0, agi: 2, luck: 2, tec: 2 } },
       ]);
+      
+      setInventoryItems([
+        { id: 'i1', name: 'Iron Sword', type: 'WEAPON', rarity: 'COMMON', stats: { atk: 10 } },
+        { id: 'i2', name: 'Leather Armor', type: 'BODY', rarity: 'COMMON', stats: { def: 5, mdef: 2 } },
+        { id: 'i3', name: 'Hero Soul Blade', type: 'WEAPON', rarity: 'UNIQUE', stats: { atk: 50, matk: 50, def: 10, mdef: 10 }, specialEffect: 'SOUL_RESONANCE' },
+      ]);
 
       // 初期状態で欠片を一つ持たせる
       const { addSoulShard } = useGameStore.getState();
@@ -55,7 +62,7 @@ export default function Home() {
         effect: { atkBonus: 2, matkBonus: 0 }
       });
     }
-  }, [player, setPlayer, setNecroStatus, setInventoryMonsters]);
+  }, [player, setPlayer, setNecroStatus, setInventoryMonsters, setInventoryItems]);
 
   if (!player) return <div className="p-8 text-center bg-dark min-h-screen">Loading Hero Data...</div>;
 
@@ -83,7 +90,8 @@ export default function Home() {
         {!isInBattle ? (
           <div className="max-w-4xl mx-auto py-4">
             {activeTab === 'HUB' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-500">
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-500">
                 <section className="border-2 border-blood/50 p-6 bg-necro/10 rounded-lg shadow-lg">
                   <h2 className="text-xl font-bold border-l-4 border-blood pl-3 mb-6 uppercase flex items-center gap-2">
                     <Activity size={20} className="text-blood" /> ステータス
@@ -143,9 +151,13 @@ export default function Home() {
                   </div>
                 </section>
               </div>
-            )}
+              <div className="mt-6 animate-in fade-in duration-500 delay-150">
+                <EquipmentManager />
+              </div>
+            </>
+          )}
 
-            {activeTab === 'LAB' && (
+          {activeTab === 'LAB' && (
               <div className="duration-300">
                 <NecroLab />
               </div>

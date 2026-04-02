@@ -34,3 +34,13 @@ export async function equipShardAction(monsterId: string, shardId: string) {
   // GameManagerを介した装備
   return { success: true };
 }
+
+export async function equipItemAction(characterId: string, slot: string, itemId: string) {
+  // GameManagerを介したアイテム装備
+  return { success: true };
+}
+
+export async function unequipItemAction(characterId: string, slot: string) {
+  // GameManagerを介したアイテム装備解除
+  return { success: true };
+}

@@ -30,6 +30,26 @@ export interface UserJobState {
   exp: number;
 }
 
+export interface ItemData {
+  id: string;
+  name: string;
+  type: 'WEAPON' | 'SUB' | 'HEAD' | 'BODY' | 'ARMS' | 'LEGS' | 'ACC1' | 'ACC2';
+  rarity: 'COMMON' | 'UNIQUE';
+  stats: Partial<BaseStats>;
+  specialEffect?: string;
+}
+
+export interface EquipmentSlots {
+  weapon: ItemData | null;
+  sub: ItemData | null;
+  head: ItemData | null;
+  body: ItemData | null;
+  arms: ItemData | null;
+  legs: ItemData | null;
+  acc1: ItemData | null;
+  acc2: ItemData | null;
+}
+
 export interface CharacterData {
   id: string;
   name: string;
@@ -37,6 +57,7 @@ export interface CharacterData {
   category: ClassCategory;
   stats: BaseStats;
   passives: PassiveBonuses;
+  equipment: EquipmentSlots;
   jobs: UserJobState[];
   isAwakened: boolean;
   clearedStages: string[];
