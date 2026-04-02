@@ -233,6 +233,21 @@ LUCKステータスがドロップ率に直接寄与する。
 - **BaseRate**: アイテム/モンスターごとにドロップテーブルで定義された基本確率。
 - **LUCK影響**: LUCKが100の場合、ドロップ率は基本値の2倍になる。これにより、育成が進んだキャラクターでの素材集めや、強力なモンスターの「魂」集めが容易になる。
 
+## 6. Stage Progression Flow
+ステージ進行に伴うデータ遷移（Hub ↔ Map ↔ Battle ↔ Result）の技術フロー。
+
+### データ遷移プロセス
+1.  **マップ（Map）**: 
+    - `MasterDataService` から `stages.json` を読み込み、`Character.clearedStages` の状態と照合。
+    - 前のステージIDが `clearedStages` に含まれていない場合、UI上のボタンを `disabled` にし、「LOCK」状態を視覚化。
+2.  **出撃確認（Sortie Dialog）**: 
+    - ステージを選択すると、`stage.enemies` から出現モンスターIDを抽出し、想定難易度とともに提示。
+3.  **戦闘初期化（BattleEngine）**: 
+    - `GameManager.startStage` において、指定された `stageId` に紐づく敵編成（マスターデータ）とプレイヤーの `party` を取得し、`BattleEngine` クラスを初期化する。
+4.  **リザルトと永続化（Result）**: 
+    - 戦闘勝利後、`GameManager.processStageResult` が呼ばれる。
+    - `Prisma $transaction` 内で、報酬（EXP、アイテム、モンスター）の付与と共に、`clearedStages` 配列への `push`（DBの更新）を原子的に実行し、進行状態を確定させる。
+
 ---
 
 ### リファクタリング要約：職業レベルのリセットとパッシブ蓄積の実現方法

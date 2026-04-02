@@ -8,10 +8,13 @@ import { Skull, Map, Shield, Activity } from 'lucide-react';
 
 import ShardEquipModal from '../components/necro/ShardEquipModal';
 
+import AreaMap from '../components/map/AreaMap';
+
 export default function Home() {
-  const { player, setPlayer, setNecroStatus, setInventoryMonsters, party, equippingMonsterId, inventoryMonsters: allMonsters, setEquippingMonsterId } = useGameStore();
+  const { player, setPlayer, setNecroStatus, setInventoryMonsters, party, equippingMonsterId, inventoryMonsters: allMonsters, setEquippingMonsterId, addClearedStage } = useGameStore();
   const [isInBattle, setIsInBattle] = useState(false);
   const [activeTab, setActiveTab] = useState<'HUB' | 'LAB' | 'MAP'>('HUB');
+  const [activeStageId, setActiveStageId] = useState<string | null>(null);
 
   const equippingMonster = equippingMonsterId ? allMonsters.find(m => m.id === equippingMonsterId) : null;
 
@@ -27,7 +30,9 @@ export default function Home() {
         passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveMatkBonus: 0, passiveMdefBonus: 0 },
         jobs: [],
         isAwakened: false,
+        clearedStages: [],
       });
+
 
       setNecroStatus({
         level: 1,
@@ -147,34 +152,22 @@ export default function Home() {
             )}
 
             {activeTab === 'MAP' && (
-              <div className="max-w-2xl mx-auto bg-black/60 border-2 border-blood/50 p-8 rounded-xl shadow-2xl duration-300">
-                <h2 className="text-2xl font-bold text-center mb-8 tracking-widest text-blood uppercase">エリア1：始まりの平原</h2>
-                <div className="space-y-4">
-                  <button
-                    onClick={() => setIsInBattle(true)}
-                    className="w-full group p-6 border border-gray-800 hover:border-blood bg-gray-900/50 hover:bg-blood/10 transition-all flex justify-between items-center rounded-lg"
-                  >
-                    <div className="text-left">
-                      <div className="text-blood text-sm font-bold">STAGE 1-1</div>
-                      <div className="text-xl font-bold group-hover:text-white">平原の入り口</div>
-                    </div>
-                    <Map className="text-gray-700 group-hover:text-blood transition-colors" />
-                  </button>
-
-                  <div className="w-full p-6 border border-gray-900 bg-gray-900/20 flex justify-between items-center rounded-lg grayscale opacity-50 cursor-not-allowed">
-                    <div className="text-left">
-                      <div className="text-gray-600 text-sm font-bold">STAGE 1-2</div>
-                      <div className="text-xl font-bold">平原の奥地 (Locked)</div>
-                    </div>
-                    <Skull size={24} className="text-gray-800" />
-                  </div>
-                </div>
+              <div className="duration-300">
+                <AreaMap onStartStage={(stageId) => {
+                  setActiveStageId(stageId);
+                  setIsInBattle(true);
+                }} />
               </div>
             )}
           </div>
         ) : (
           <div className="relative pt-8 animate-in zoom-in-95 duration-500">
-            <BattleCanvas onEnd={() => setIsInBattle(false)} />
+            <BattleCanvas onEnd={() => {
+              setIsInBattle(false);
+              if (activeStageId) {
+                addClearedStage(activeStageId);
+              }
+            }} />
             <button
               onClick={() => setIsInBattle(false)}
               className="fixed top-20 right-8 px-6 py-2 bg-blood hover:bg-red-700 border border-red-500 font-bold text-sm transition-all shadow-lg rounded"

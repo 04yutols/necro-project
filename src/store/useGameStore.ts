@@ -72,6 +72,16 @@ export const useGameStore = create<GameState>((set) => ({
   addGold: (amount) => set((state) => ({
     // 本来はGoldフィールドが必要
   })),
+  addClearedStage: (stageId) => set((state) => {
+    if (!state.player) return { player: null };
+    if (state.player.clearedStages.includes(stageId)) return state;
+    return {
+      player: {
+        ...state.player,
+        clearedStages: [...state.player.clearedStages, stageId]
+      }
+    };
+  }),
   
   updatePartySlot: (index, monster) => set((state) => {
     const newParty = [...state.party];

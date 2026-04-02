@@ -38,8 +38,9 @@ export class GameManager {
 
   /**
    * 戦闘フェーズの開始 (GDD-002)
+   * ステージIDを引数に取り、敵編成を取得して返す
    */
-  public async startStage(characterId: string, monsters: string[]): Promise<BattleEngine> {
+  public async startStage(characterId: string, partyMonsterIds: string[], stageId: string): Promise<{ engine: BattleEngine, stageData: any }> {
     // DB から最新のキャラクターとモンスターを取得
     const char = await this.prisma.character.findUnique({
       where: { id: characterId },
@@ -49,8 +50,11 @@ export class GameManager {
     if (!char) throw new Error("Character not found");
 
     const monsterData = await this.prisma.monster.findMany({
-      where: { id: { in: monsters } },
+      where: { id: { in: partyMonsterIds } },
     });
+
+    const stageData = this.masterData.getStage(stageId);
+    if (!stageData) throw new Error("Stage not found");
 
     // CharacterData 型への変換
     const player: CharacterData = {
@@ -69,7 +73,8 @@ export class GameManager {
         passiveMdefBonus: char.passiveMdefBonus
       },
       jobs: char.jobs.map(j => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
-      isAwakened: false
+      isAwakened: false,
+      clearedStages: char.clearedStages
     };
 
     const monsterList = monsterData.map(m => ({
@@ -83,7 +88,8 @@ export class GameManager {
       }
     }));
 
-    return new BattleEngine(player, monsterList);
+    const engine = new BattleEngine(player, monsterList);
+    return { engine, stageData };
   }
 
   /**
@@ -131,6 +137,14 @@ export class GameManager {
             cost: mMaster.cost,
             ...mMaster.stats
           }
+        });
+      }
+
+      // クリアフラグの追加
+      if (!char.clearedStages.includes(stageId)) {
+        await tx.character.update({
+          where: { id: characterId },
+          data: { clearedStages: { push: stageId } }
         });
       }
     });

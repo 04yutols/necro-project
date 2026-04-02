@@ -56,6 +56,9 @@ model Character {
   necroRank       Int      @default(1)
   necroMaxCost    Int      @default(10)
   necroBaseStatsBonus Float @default(1.0)
+  
+  // 進行管理 (GDD-002)
+  clearedStages   String[] @default([])
 }
 
 model Job {
