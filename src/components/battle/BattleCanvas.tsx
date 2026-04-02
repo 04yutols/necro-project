@@ -39,12 +39,13 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   });
 
   // 使用可能なスキルの取得
-  const availableSkills = player?.jobs
-    .find(j => j.jobId === player.currentJobId)
-    ?.level >= 1 ? (masterData.getJob(player.currentJobId)?.skills || [])
-    .filter((s: any) => s.level <= (player.jobs.find(j => j.jobId === player.currentJobId)?.level || 1))
-    .map((s: any) => masterData.getSkill(s.skillId))
-    .filter(Boolean) : [];
+  const currentJob = player?.jobs.find(j => j.jobId === player?.currentJobId);
+  const availableSkills = currentJob && player
+    ? (masterData.getJob(player.currentJobId)?.skills || [])
+        .filter((s: any) => s.level <= currentJob.level)
+        .map((s: any) => masterData.getSkill(s.skillId))
+        .filter(Boolean)
+    : [];
 
   useEffect(() => {
     mountedRef.current = true;
