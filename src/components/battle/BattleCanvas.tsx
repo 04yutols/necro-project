@@ -33,9 +33,13 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   } | null>(null);
   
   // モックターゲット（ステートで管理して撃破判定なども可能に）
-  const [target, setTarget] = useState({
+  const [target, setTarget] = useState<MonsterData & { stats: { maxHp: number } }>({
+    id: 'target_1',
     name: 'スケルトン兵',
+    tribe: 'UNDEAD',
+    cost: 4,
     stats: { hp: 150, maxHp: 150, mp: 0, atk: 15, def: 5, matk: 0, mdef: 2, agi: 5, luck: 0, tec: 5 },
+    resistances: { LIGHT: -50, DARK: 50 }, // 弱点と耐性
   });
 
   // 使用可能なスキルの取得
@@ -173,6 +177,24 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
       damageText.x = 400;
       damageText.y = 100;
       container.addChild(damageText);
+
+      if (log.isWeakness) {
+        const weakText = new PIXI.Text({
+          text: 'WEAK!',
+          style: { ...style, fontSize: 32, fill: '#ffaa00', fontStyle: 'italic', dropShadow: { color: '#000', blur: 4, distance: 2 } }
+        });
+        weakText.x = 400;
+        weakText.y = 60;
+        container.addChild(weakText);
+      } else if (log.isResisted) {
+        const resistText = new PIXI.Text({
+          text: 'RESIST',
+          style: { ...style, fontSize: 24, fill: '#aaaaaa', fontStyle: 'italic' }
+        });
+        resistText.x = 400;
+        resistText.y = 70;
+        container.addChild(resistText);
+      }
 
       // シェイク演出
       const originalX = app.stage.x;

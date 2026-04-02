@@ -169,6 +169,7 @@ export class GameManager {
         passiveMatkBonus: char.passiveMatkBonus,
         passiveMdefBonus: char.passiveMdefBonus
       },
+      baseResistances: {},
       equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null }, // TODO: Load equipment properly
       jobs: char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
       isAwakened: false,
@@ -260,6 +261,16 @@ export class GameManager {
     if (!dbField) throw new Error("Invalid equipment slot");
 
     await this.prisma.character.update({
+      where: { id: characterId },
+      data: { [dbField]: null }
+    });
+  }
+
+  public async close(): Promise<void> {
+    await this.prisma.$disconnect();
+  }
+}
+t this.prisma.character.update({
       where: { id: characterId },
       data: { [dbField]: null }
     });

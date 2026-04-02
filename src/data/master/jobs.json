@@ -10,7 +10,8 @@
       "30": { "passiveAtkBonus": 15, "passiveDefBonus": 5 }
     },
     "skills": [
-      { "level": 1, "skillId": "skill_warrior_1" }
+      { "level": 1, "skillId": "skill_warrior_1" },
+      { "level": 1, "skillId": "skill_warrior_2" }
     ]
   },
   "mage": {
