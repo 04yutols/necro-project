@@ -39,6 +39,7 @@ export interface CharacterData {
   passives: PassiveBonuses;
   jobs: UserJobState[];
   isAwakened: boolean;
+  clearedStages: string[];
 }
 
 // 魂の欠片 (GDD-005)
