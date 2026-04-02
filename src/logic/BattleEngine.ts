@@ -7,6 +7,7 @@ import {
   PassiveBonuses,
   ClassCategory 
 } from '../types/game';
+import { MasterDataService } from '../services/MasterDataService';
 
 /**
  * Necromance Brave Battle Engine
@@ -15,6 +16,7 @@ import {
 export class BattleEngine {
   private state: BattleState;
   private logs: BattleLog[] = [];
+  private masterData: MasterDataService;
 
   constructor(player: CharacterData, monsters: (MonsterData | null)[], areaGimmick: BattleState['areaGimmick'] = 'NONE') {
     this.state = {
@@ -24,20 +26,21 @@ export class BattleEngine {
       turn: 1,
       areaGimmick
     };
+    this.masterData = MasterDataService.getInstance();
   }
 
   /**
    * 戦闘シミュレーションを実行し、ログを返す。
    * フロントエンドでのアニメーション駆動に使用される。
    */
-  public simulateAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: { name: string; stats: BaseStats }): BattleLog[] {
+  public simulateAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: { name: string; stats: BaseStats }, skillId?: string): BattleLog[] {
     this.logs = [];
 
     // 1. ターン開始時のエリアギミック判定 (GDD-006)
     this.processAreaGimmick();
 
     // 2. プレイヤー行動 (GDD-003)
-    this.processPlayerAction(actionType, target);
+    this.processPlayerAction(actionType, target, skillId);
 
     // 3. 軍団の追撃・シナジー (GDD-005)
     this.processMonsterActions(target);
@@ -55,7 +58,8 @@ export class BattleEngine {
   private calculateDamage(
     attackerStats: BaseStats, 
     defenderStats: BaseStats, 
-    type: 'PHYSICAL' | 'MAGICAL'
+    type: 'PHYSICAL' | 'MAGICAL',
+    powerMultiplier: number = 1.0
   ): { damage: number; isCritical: boolean } {
     
     // 会心判定 (LUCK)
@@ -68,6 +72,9 @@ export class BattleEngine {
     } else {
       damage = (Math.pow(attackerStats.matk, 2)) / (attackerStats.matk + defenderStats.mdef);
     }
+
+    // スキル威力倍率
+    damage *= powerMultiplier;
 
     // TECの安定性と倍率寄与 (GDD-003)
     // ダメージ = 基礎 * (1 + TEC / 100)
@@ -85,12 +92,33 @@ export class BattleEngine {
     };
   }
 
-  private processPlayerAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: { name: string; stats: BaseStats }): void {
+  private processPlayerAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: { name: string; stats: BaseStats }, skillId?: string): void {
     const { player } = this.state;
     const stats = this.getTotalStats(player);
     
+    let cost = 0;
+    let power = 1.0;
+    let type: 'PHYSICAL' | 'MAGICAL' = 'PHYSICAL';
+    let actionName = '攻撃';
+
+    if (actionType === 'PHYSICAL_ATTACK') {
+      cost = 0;
+      type = 'PHYSICAL';
+    } else if (actionType === 'MAGIC_SKILL' && skillId) {
+      const skillData = this.masterData.getSkill(skillId);
+      if (skillData) {
+        cost = skillData.mpCost;
+        power = skillData.power;
+        type = skillData.type === 'MAGICAL' ? 'MAGICAL' : 'PHYSICAL'; // HEAL等は簡略化のため省略
+        actionName = skillData.name;
+      }
+    } else {
+      // フォールバック (旧ロジック互換)
+      cost = this.getMPCost(player.category, actionType);
+      type = player.category === 'MAGICAL' ? 'MAGICAL' : 'PHYSICAL';
+    }
+
     // MPコスト判定 (GDD-003)
-    const cost = this.getMPCost(player.category, actionType);
     if (player.stats.mp < cost) {
       this.addLog('NO_MP', player.name, target.name, `MPが不足しています！（必要MP: ${cost}）`);
       return;
@@ -99,10 +127,9 @@ export class BattleEngine {
     // MP消費
     player.stats.mp -= cost;
 
-    const type = actionType === 'PHYSICAL_ATTACK' ? 'PHYSICAL' : 'MAGICAL';
-    const { damage, isCritical } = this.calculateDamage(stats, target.stats, type);
+    const { damage, isCritical } = this.calculateDamage(stats, target.stats, type, power);
 
-    this.addLog(actionType, player.name, target.name, `${player.name}の攻撃！`, damage, isCritical);
+    this.addLog(actionType, player.name, target.name, `${player.name}の${actionName}！`, damage, isCritical);
   }
 
   private processMonsterActions(target: { name: string; stats: BaseStats }): void {

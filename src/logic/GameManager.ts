@@ -72,6 +72,7 @@ export class GameManager {
         passiveMatkBonus: char.passiveMatkBonus,
         passiveMdefBonus: char.passiveMdefBonus
       },
+      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null }, // TODO: Load equipment properly
       jobs: char.jobs.map(j => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
       isAwakened: false,
       clearedStages: char.clearedStages
@@ -168,8 +169,10 @@ export class GameManager {
         passiveMatkBonus: char.passiveMatkBonus,
         passiveMdefBonus: char.passiveMdefBonus
       },
+      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null }, // TODO: Load equipment properly
       jobs: char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
-      isAwakened: false
+      isAwakened: false,
+      clearedStages: char.clearedStages || []
     };
   }
 

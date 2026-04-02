@@ -8,6 +8,8 @@ import { BattleLog } from '../../types/game';
 import { Sword, Sparkles } from 'lucide-react';
 import ResultScreen from './ResultScreen';
 
+import { MasterDataService } from '../../services/MasterDataService';
+
 interface BattleCanvasProps {
   onEnd: () => void;
 }
@@ -18,6 +20,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const appRef = useRef<PIXI.Application | null>(null);
   const engineRef = useRef<BattleEngine | null>(null);
   const mountedRef = useRef(true);
+  const masterData = MasterDataService.getInstance();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [battleLogs, setBattleLogs] = useState<string[]>(['戦闘開始...']);
@@ -34,6 +37,15 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     name: 'スケルトン兵',
     stats: { hp: 150, maxHp: 150, mp: 0, atk: 15, def: 5, matk: 0, mdef: 2, agi: 5, luck: 0, tec: 5 },
   });
+
+  // 使用可能なスキルの取得
+  const currentJob = player?.jobs.find(j => j.jobId === player?.currentJobId);
+  const availableSkills = currentJob && player
+    ? (masterData.getJob(player.currentJobId)?.skills || [])
+        .filter((s: any) => s.level <= currentJob.level)
+        .map((s: any) => masterData.getSkill(s.skillId))
+        .filter(Boolean)
+    : [];
 
   useEffect(() => {
     mountedRef.current = true;
@@ -75,11 +87,11 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     };
   }, [player, party]);
 
-  const handleAction = async (type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL') => {
+  const handleAction = async (type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', skillId?: string) => {
     if (isProcessing || !engineRef.current || !appRef.current || !mountedRef.current) return;
 
     setIsProcessing(true);
-    const logs = engineRef.current.simulateAction(type, target);
+    const logs = engineRef.current.simulateAction(type, target, skillId);
     
     // ログの再生
     for (const log of logs) {
@@ -221,13 +233,21 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
           >
             <Sword size={20} /> 物理攻撃
           </button>
-          <button 
-            disabled={isProcessing}
-            onClick={() => handleAction('MAGIC_SKILL')}
-            className="flex items-center justify-center gap-2 py-3 bg-blue-900/80 hover:bg-blue-800 disabled:opacity-50 transition-all font-bold rounded border border-blue-500"
-          >
-            <Sparkles size={20} /> 魔法スキル (MP 3/15)
-          </button>
+          
+          {availableSkills.map((skill: any) => {
+            const isMpEnough = player && player.stats.mp >= skill.mpCost;
+            return (
+              <button 
+                key={skill.id}
+                disabled={isProcessing || !isMpEnough}
+                onClick={() => handleAction('MAGIC_SKILL', skill.id)}
+                className={`flex items-center justify-center gap-2 py-3 transition-all font-bold rounded border 
+                  ${isMpEnough ? 'bg-blue-900/80 hover:bg-blue-800 border-blue-500 text-white' : 'bg-gray-800 border-gray-600 text-gray-500 grayscale'}`}
+              >
+                <Sparkles size={20} /> {skill.name} (MP {skill.mpCost})
+              </button>
+            );
+          })}
         </div>
 
         {/* リアルタイムログ */}

@@ -29,7 +29,7 @@ export default function Home() {
         stats: { hp: 100, mp: 20, atk: 50, def: 30, matk: 10, mdef: 10, agi: 10, luck: 10, tec: 20 },
         passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveMatkBonus: 0, passiveMdefBonus: 0 },
         equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
-        jobs: [],
+        jobs: [{ jobId: 'warrior', level: 1, exp: 0 }],
         isAwakened: false,
         clearedStages: [],
       });
