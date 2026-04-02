@@ -30,6 +30,16 @@ export interface UserJobState {
   exp: number;
 }
 
+export interface SkillData {
+  id: string;
+  name: string;
+  mpCost: number;
+  power: number;
+  type: 'PHYSICAL' | 'MAGICAL' | 'HEAL';
+  element?: string;
+  description: string;
+}
+
 export interface ItemData {
   id: string;
   name: string;

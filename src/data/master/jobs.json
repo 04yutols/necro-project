@@ -8,7 +8,10 @@
       "10": { "passiveAtkBonus": 5 },
       "20": { "passiveAtkBonus": 10 },
       "30": { "passiveAtkBonus": 15, "passiveDefBonus": 5 }
-    }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_warrior_1" }
+    ]
   },
   "mage": {
     "name": "Mage",
@@ -19,7 +22,10 @@
       "10": { "passiveMatkBonus": 5 },
       "20": { "passiveMatkBonus": 10 },
       "30": { "passiveMatkBonus": 15, "passiveMdefBonus": 5 }
-    }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_mage_1" }
+    ]
   },
   "dark_priest": {
     "name": "Dark Priest",
@@ -30,7 +36,10 @@
       "10": { "passiveMatkBonus": 3, "passiveMdefBonus": 2 },
       "20": { "passiveMatkBonus": 6, "passiveMdefBonus": 4 },
       "30": { "passiveMatkBonus": 9, "passiveMdefBonus": 6 }
-    }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_darkpriest_1" }
+    ]
   },
   "rogue": {
     "name": "Rogue",
@@ -41,7 +50,10 @@
       "10": { "passiveAtkBonus": 3 },
       "20": { "passiveAtkBonus": 6 },
       "30": { "passiveAtkBonus": 9 }
-    }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_rogue_1" }
+    ]
   },
   "necromancer": {
     "name": "Necromancer",
@@ -53,6 +65,9 @@
       "20": { "passiveMatkBonus": 16 },
       "30": { "passiveMatkBonus": 24 },
       "40": { "passiveMatkBonus": 32, "passiveMdefBonus": 10 }
-    }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_necromancer_1" }
+    ]
   }
 }

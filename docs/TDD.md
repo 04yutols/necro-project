@@ -254,6 +254,19 @@ LUCKステータスがドロップ率に直接寄与する。
     - 戦闘勝利後、`GameManager.processStageResult` が呼ばれる。
     - `Prisma $transaction` 内で、報酬（EXP、アイテム、モンスター）の付与と共に、`clearedStages` 配列への `push`（DBの更新）を原子的に実行し、進行状態を確定させる。
 
+## 7. Active Skill System
+アクティブスキルの発動とデータフロー、ダメージ計算の拡張仕様。
+
+### スキルのデータ構造と解決フロー
+- **構造**: `MasterDataService` 内に `skills.json` を持ち、各スキルは `SkillData` インターフェース (`id`, `name`, `mpCost`, `power`, `type`等) で定義される。
+- **習得**: `jobs.json` の各職業オブジェクトに `skills: [{ level: number, skillId: string }]` 配列を定義。プレイヤーの職業レベルがこの `level` 以上であれば、使用可能なスキルとしてフロントエンドに展開される。
+- **UI連携**: `BattleCanvas.tsx` において、`player.stats.mp` と `skill.mpCost` をリアルタイムで比較。MPが不足しているスキルは `disabled` および `grayscale` スタイルが適用され、選択できなくなる。
+
+### ダメージ計算式の拡張
+`BattleEngine.simulateAction` メソッドを拡張し、スキルの `power` (威力倍率) を計算式に組み込む。
+`最終ダメージ = 基礎計算式 * スキル威力倍率 * TEC補正 * 会心補正`
+これにより、魔法職の高コスト・高威力スキル（例: 倍率2.0）や物理職の低コスト・低威力スキル（例: 倍率1.5）などの特性をダイナミックに表現可能となる。
+
 ---
 
 ### リファクタリング要約：職業レベルのリセットとパッシブ蓄積の実現方法
