@@ -33,7 +33,7 @@ export class BattleEngine {
    * 戦闘シミュレーションを実行し、ログを返す。
    * フロントエンドでのアニメーション駆動に使用される。
    */
-  public simulateAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: { name: string; stats: BaseStats }, skillId?: string): BattleLog[] {
+  public simulateAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: MonsterData, skillId?: string): BattleLog[] {
     this.logs = [];
 
     // 1. ターン開始時のエリアギミック判定 (GDD-006)
@@ -58,9 +58,11 @@ export class BattleEngine {
   private calculateDamage(
     attackerStats: BaseStats, 
     defenderStats: BaseStats, 
+    defenderResistances: Resistances,
     type: 'PHYSICAL' | 'MAGICAL',
-    powerMultiplier: number = 1.0
-  ): { damage: number; isCritical: boolean } {
+    powerMultiplier: number = 1.0,
+    element: ElementType = 'NONE'
+  ): { damage: number; isCritical: boolean; isWeakness: boolean; isResisted: boolean } {
     
     // 会心判定 (LUCK)
     const isCritical = Math.random() * 100 < attackerStats.luck;
@@ -76,9 +78,17 @@ export class BattleEngine {
     // スキル威力倍率
     damage *= powerMultiplier;
 
+    // 属性耐性計算
+    let isWeakness = false;
+    let isResisted = false;
+    if (element !== 'NONE') {
+      const resistance = defenderResistances[element] || 0;
+      if (resistance < 0) isWeakness = true;
+      if (resistance > 0) isResisted = true;
+      damage *= (1 - (resistance / 100));
+    }
+
     // TECの安定性と倍率寄与 (GDD-003)
-    // ダメージ = 基礎 * (1 + TEC / 100)
-    // TECはダメージの底上げ（安定性）と最大威力の両方に寄与する。
     damage *= (1 + attackerStats.tec / 100);
 
     // 会心時はTECを威力倍率にさらに反映 (GDD-003)
@@ -87,12 +97,14 @@ export class BattleEngine {
     }
 
     return { 
-      damage: Math.floor(damage), 
-      isCritical 
+      damage: Math.max(1, Math.floor(damage)), // 最低ダメージ1を保証
+      isCritical,
+      isWeakness,
+      isResisted
     };
   }
 
-  private processPlayerAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: { name: string; stats: BaseStats }, skillId?: string): void {
+  private processPlayerAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: MonsterData, skillId?: string): void {
     const { player } = this.state;
     const stats = this.getTotalStats(player);
     
@@ -100,6 +112,7 @@ export class BattleEngine {
     let power = 1.0;
     let type: 'PHYSICAL' | 'MAGICAL' = 'PHYSICAL';
     let actionName = '攻撃';
+    let element: ElementType = 'NONE';
 
     if (actionType === 'PHYSICAL_ATTACK') {
       cost = 0;
@@ -111,6 +124,7 @@ export class BattleEngine {
         power = skillData.power;
         type = skillData.type === 'MAGICAL' ? 'MAGICAL' : 'PHYSICAL'; // HEAL等は簡略化のため省略
         actionName = skillData.name;
+        if (skillData.element) element = skillData.element;
       }
     } else {
       // フォールバック (旧ロジック互換)
@@ -127,12 +141,16 @@ export class BattleEngine {
     // MP消費
     player.stats.mp -= cost;
 
-    const { damage, isCritical } = this.calculateDamage(stats, target.stats, type, power);
+    const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(stats, target.stats, target.resistances, type, power, element);
 
-    this.addLog(actionType, player.name, target.name, `${player.name}の${actionName}！`, damage, isCritical);
+    let desc = `${player.name}の${actionName}！`;
+    if (isWeakness) desc += ` 弱点を突いた！`;
+    else if (isResisted) desc += ` 効果はいまひとつのようだ。`;
+
+    this.addLog(actionType, player.name, target.name, desc, damage, isCritical, isWeakness, isResisted);
   }
 
-  private processMonsterActions(target: { name: string; stats: BaseStats }): void {
+  private processMonsterActions(target: MonsterData): void {
     const { player, monsters } = this.state;
 
     monsters.forEach(monster => {
@@ -145,8 +163,9 @@ export class BattleEngine {
         monsterStats.matk = Math.floor(monsterStats.matk * 1.5);
       }
 
-      const { damage, isCritical } = this.calculateDamage(monsterStats, target.stats, 'PHYSICAL');
-      this.addLog('MONSTER_ATTACK', monster.name, target.name, `${monster.name}の追撃！`, damage, isCritical);
+      // 敵への追撃はとりあえず無属性とする
+      const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(monsterStats, target.stats, target.resistances, 'PHYSICAL', 1.0, 'NONE');
+      this.addLog('MONSTER_ATTACK', monster.name, target.name, `${monster.name}の追撃！`, damage, isCritical, isWeakness, isResisted);
     });
   }
 
@@ -190,7 +209,7 @@ export class BattleEngine {
     }
   }
 
-  private addLog(action: string, actorName: string, targetName: string, description: string, damage?: number, isCritical?: boolean): void {
+  private addLog(action: string, actorName: string, targetName: string, description: string, damage?: number, isCritical?: boolean, isWeakness?: boolean, isResisted?: boolean): void {
     this.logs.push({
       turn: this.state.turn,
       wave: this.state.wave,
@@ -199,6 +218,8 @@ export class BattleEngine {
       targetName,
       damage,
       isCritical,
+      isWeakness,
+      isResisted,
       playerMP: this.state.player.stats.mp,
       playerHP: this.state.player.stats.hp,
       description

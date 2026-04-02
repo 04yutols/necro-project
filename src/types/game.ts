@@ -3,6 +3,7 @@
 
 export type ClassCategory = 'PHYSICAL' | 'MAGICAL';
 export type Tribe = 'UNDEAD' | 'DEMON' | 'BEAST' | 'HUMANOID';
+export type ElementType = 'FIRE' | 'ICE' | 'THUNDER' | 'LIGHT' | 'DARK' | 'NONE';
 
 export interface BaseStats {
   hp: number;
@@ -15,6 +16,8 @@ export interface BaseStats {
   luck: number;
   tec: number;
 }
+
+export type Resistances = Partial<Record<ElementType, number>>;
 
 // 永続パッシブの累積補正 (GDD-004)
 export interface PassiveBonuses {
@@ -36,7 +39,7 @@ export interface SkillData {
   mpCost: number;
   power: number;
   type: 'PHYSICAL' | 'MAGICAL' | 'HEAL';
-  element?: string;
+  element?: ElementType;
   description: string;
 }
 
@@ -46,6 +49,7 @@ export interface ItemData {
   type: 'WEAPON' | 'SUB' | 'HEAD' | 'BODY' | 'ARMS' | 'LEGS' | 'ACC1' | 'ACC2';
   rarity: 'COMMON' | 'UNIQUE';
   stats: Partial<BaseStats>;
+  resistances?: Resistances;
   specialEffect?: string;
 }
 
@@ -68,6 +72,7 @@ export interface CharacterData {
   stats: BaseStats;
   passives: PassiveBonuses;
   equipment: EquipmentSlots;
+  baseResistances: Resistances;
   jobs: UserJobState[];
   isAwakened: boolean;
   clearedStages: string[];
@@ -92,6 +97,7 @@ export interface MonsterData {
   tribe: Tribe; // 種族 (GDD-005)
   cost: number;
   stats: BaseStats;
+  resistances: Resistances;
   equippedShardId?: string;
 }
 
@@ -118,6 +124,8 @@ export interface BattleLog {
   targetName: string;
   damage?: number;
   isCritical?: boolean;
+  isWeakness?: boolean;
+  isResisted?: boolean;
   playerMP: number;
   playerHP: number;
   description: string;
