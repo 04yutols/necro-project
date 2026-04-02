@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { CharacterData, NecroStatus, MonsterData, SoulShardData } from '../types/game';
+import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots } from '../types/game';
 
 interface GameState {
   player: CharacterData | null;
@@ -7,29 +7,36 @@ interface GameState {
   party: (MonsterData | null)[];
   inventoryMonsters: MonsterData[];
   soulShards: SoulShardData[];
-  
+  inventoryItems: ItemData[];
+
   setPlayer: (player: CharacterData) => void;
   setNecroStatus: (status: NecroStatus) => void;
   setParty: (party: (MonsterData | null)[]) => void;
   setInventoryMonsters: (monsters: MonsterData[]) => void;
   setSoulShards: (shards: SoulShardData[]) => void;
-  
+  setInventoryItems: (items: ItemData[]) => void;
+
   updateHP: (hp: number) => void;
   updateMP: (mp: number) => void;
   addExp: (amount: number) => void;
   addGold: (amount: number) => void;
-  
+  addClearedStage: (stageId: string) => void;
+
   // パーティ編成の更新
   updatePartySlot: (index: number, monster: MonsterData | null) => void;
-  
+
   // モンスターの削除（魂石化後など）
   removeMonster: (monsterId: string) => void;
-  
+
   // 魂の欠片の追加
   addSoulShard: (shard: SoulShardData) => void;
 
   // 魂の欠片の装備
   equipShard: (monsterId: string, shardId: string) => void;
+
+  // アイテムの装備/解除
+  equipItem: (slot: keyof EquipmentSlots, item: ItemData) => void;
+  unequipItem: (slot: keyof EquipmentSlots) => void;
 
   // モーダル制御状態
   equippingMonsterId: string | null;
@@ -42,15 +49,16 @@ export const useGameStore = create<GameState>((set) => ({
   party: [null, null, null],
   inventoryMonsters: [],
   soulShards: [],
+  inventoryItems: [],
   equippingMonsterId: null,
-  
+
   setPlayer: (player) => set({ player }),
   setNecroStatus: (status) => set({ necroStatus: status }),
   setParty: (party) => set({ party }),
   setInventoryMonsters: (monsters) => set({ inventoryMonsters: monsters }),
   setSoulShards: (shards) => set({ soulShards: shards }),
+  setInventoryItems: (items) => set({ inventoryItems: items }),
   setEquippingMonsterId: (id) => set({ equippingMonsterId: id }),
-  
   updateHP: (hp) => set((state) => ({
     player: state.player ? { ...state.player, stats: { ...state.player.stats, hp } } : null
   })),
@@ -106,4 +114,30 @@ export const useGameStore = create<GameState>((set) => ({
       m?.id === monsterId ? { ...m, equippedShardId: shardId } : m
     ) as [MonsterData | null, MonsterData | null, MonsterData | null]
   })),
+
+  equipItem: (slot, item) => set((state) => {
+    if (!state.player) return state;
+    return {
+      player: {
+        ...state.player,
+        equipment: {
+          ...state.player.equipment,
+          [slot]: item
+        }
+      }
+    };
+  }),
+
+  unequipItem: (slot) => set((state) => {
+    if (!state.player) return state;
+    return {
+      player: {
+        ...state.player,
+        equipment: {
+          ...state.player.equipment,
+          [slot]: null
+        }
+      }
+    };
+  })
 }));

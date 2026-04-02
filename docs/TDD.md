@@ -233,6 +233,12 @@ LUCKステータスがドロップ率に直接寄与する。
 - **BaseRate**: アイテム/モンスターごとにドロップテーブルで定義された基本確率。
 - **LUCK影響**: LUCKが100の場合、ドロップ率は基本値の2倍になる。これにより、育成が進んだキャラクターでの素材集めや、強力なモンスターの「魂」集めが容易になる。
 
+### 装備補正加算アルゴリズム (Equipment Stat Calculation)
+キャラクターの最終ステータスは以下の順序で算出される。
+1.  **Base + Passive**: `player.stats` (DBの基礎値) に対し、`player.passives` (職業によって累積した永続パッシブ) を全て加算。
+2.  **Equipment Aggregation**: 8つの装備スロット (`EquipmentSlots`) に装着された `ItemData` を走査し、各アイテムが持つ `stats` (Partial<BaseStats>) のキーごとに加算処理を行う。
+3.  **Real-time Preview**: フロントエンドにおいて `useMemo` を用い、`currentStats`（現在の合計値）と `previewStats`（選択中のアイテムを仮に装備した際の合計値）の差分を動的に計算。差分が `0` 以外の場合のみ、カラー強調付きで画面に反映する。
+
 ## 6. Stage Progression Flow
 ステージ進行に伴うデータ遷移（Hub ↔ Map ↔ Battle ↔ Result）の技術フロー。
 
