@@ -7,7 +7,8 @@ import { BattleEngine } from '../../logic/BattleEngine';
 import { BattleLog } from '../../types/game';
 import { Sword, Sparkles } from 'lucide-react';
 import ResultScreen from './ResultScreen';
-
+import { BloodButton } from '../ui/BloodButton';
+import { GameFrame } from '../ui/GameFrame';
 import { MasterDataService } from '../../services/MasterDataService';
 
 interface BattleCanvasProps {
@@ -68,6 +69,12 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
         if (!mountedRef.current) {
           app.destroy(true, { children: true });
           return;
+        }
+
+        if (app.canvas) {
+          app.canvas.style.width = '100%';
+          app.canvas.style.height = 'auto';
+          app.canvas.style.maxWidth = '800px';
         }
 
         appRef.current = app;
@@ -225,59 +232,61 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   };
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-4 w-full max-w-[800px]">
       {/* ターゲット情報 */}
-      <div className="w-[800px] flex justify-between items-end px-4 mb-2">
-        <div className="text-left">
-          <div className="text-sm text-gray-400">TARGET</div>
-          <div className="text-xl font-bold">{target.name}</div>
-          <div className="w-64 bg-gray-800 h-3 rounded-full mt-1 border border-blood/30">
+      <div className="w-full flex justify-between items-end px-4 mb-2">
+        <div className="text-left w-1/2">
+          <div className="text-sm text-gray-400 font-cinzel font-bold tracking-widest">TARGET</div>
+          <div className="text-xl font-bold font-noto">{target.name}</div>
+          <div className="w-full max-w-[250px] bg-gray-800 h-3 rounded-full mt-1 border border-blood/30">
             <div 
               className="bg-blood h-full transition-all duration-500" 
               style={{ width: `${(target.stats.hp / 150) * 100}%` }}
             />
           </div>
         </div>
-        <div className="text-right text-blood font-bold text-2xl">
+        <div className="text-right text-blood font-bold text-2xl font-cinzel">
           HP: {target.stats.hp}
         </div>
       </div>
 
-      <div ref={canvasRef} className="border-4 border-blood/50 shadow-2xl rounded overflow-hidden bg-black" />
+      <div ref={canvasRef} className="w-full border-4 border-blood/50 shadow-[0_0_30px_rgba(136,8,8,0.3)] rounded-lg overflow-hidden bg-black" />
       
-      <div className="flex gap-4 w-[800px]">
+      <div className="flex flex-col md:flex-row gap-4 w-full">
         {/* アクションボタン */}
-        <div className="flex flex-col gap-2 w-1/3">
-          <button 
+        <div className="flex flex-col gap-2 w-full md:w-1/3">
+          <BloodButton 
             disabled={isProcessing}
             onClick={() => handleAction('PHYSICAL_ATTACK')}
-            className="flex items-center justify-center gap-2 py-3 bg-blood/80 hover:bg-blood disabled:opacity-50 transition-all font-bold rounded border border-red-500"
+            className="w-full justify-start"
           >
             <Sword size={20} /> 物理攻撃
-          </button>
+          </BloodButton>
           
           {availableSkills.map((skill: any) => {
             const isMpEnough = player && player.stats.mp >= skill.mpCost;
             return (
-              <button 
+              <BloodButton 
                 key={skill.id}
+                variant="secondary"
                 disabled={isProcessing || !isMpEnough}
                 onClick={() => handleAction('MAGIC_SKILL', skill.id)}
-                className={`flex items-center justify-center gap-2 py-3 transition-all font-bold rounded border 
-                  ${isMpEnough ? 'bg-blue-900/80 hover:bg-blue-800 border-blue-500 text-white' : 'bg-gray-800 border-gray-600 text-gray-500 grayscale'}`}
+                className={`w-full justify-start ${isMpEnough ? 'border-blue-900/50 hover:border-blue-500 text-blue-100 hover:bg-blue-900/20' : ''}`}
               >
-                <Sparkles size={20} /> {skill.name} (MP {skill.mpCost})
-              </button>
+                <Sparkles size={20} /> {skill.name} <span className="text-xs ml-auto">MP {skill.mpCost}</span>
+              </BloodButton>
             );
           })}
         </div>
 
         {/* リアルタイムログ */}
-        <div className="w-2/3 p-3 bg-black/80 border border-blood text-xs text-green-500 font-mono h-24 overflow-y-auto rounded">
-          {battleLogs.map((log, i) => (
-            <div key={i}>{log}</div>
-          ))}
-        </div>
+        <GameFrame borderColor="gray" className="w-full md:w-2/3 h-32 md:h-auto overflow-y-auto">
+          <div className="text-xs text-green-400 font-mono space-y-1">
+            {battleLogs.map((log, i) => (
+              <div key={i}>{log}</div>
+            ))}
+          </div>
+        </GameFrame>
       </div>
     </div>
   );
