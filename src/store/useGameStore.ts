@@ -46,9 +46,13 @@ interface GameState {
   battleLogs: string[];
   addBattleLog: (log: string) => void;
   clearBattleLogs: () => void;
-  }
 
-  export const useGameStore = create<GameState>((set) => ({
+  // グローバルアクション用トリガー
+  actionTrigger: { type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', skillId?: string } | null;
+  setActionTrigger: (trigger: { type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', skillId?: string } | null) => void;
+}
+
+export const useGameStore = create<GameState>((set) => ({
   player: null,
   necroStatus: null,
   party: [null, null, null],
@@ -57,6 +61,7 @@ interface GameState {
   inventoryItems: [],
   equippingMonsterId: null,
   battleLogs: ['SYSTEM STANDBY...'],
+  actionTrigger: null,
 
   setPlayer: (player) => set({ player }),
   setNecroStatus: (status) => set({ necroStatus: status }),
@@ -66,7 +71,8 @@ interface GameState {
   setInventoryItems: (items) => set({ inventoryItems: items }),
   setEquippingMonsterId: (id) => set({ equippingMonsterId: id }),
   addBattleLog: (log) => set((state) => ({ battleLogs: [...state.battleLogs, log].slice(-50) })),
-  clearBattleLogs: () => set({ battleLogs: ['SYSTEM STANDBY...'] }),  updateHP: (hp) => set((state) => ({
+  clearBattleLogs: () => set({ battleLogs: ['SYSTEM STANDBY...'] }),
+  setActionTrigger: (trigger) => set({ actionTrigger: trigger }),  updateHP: (hp) => set((state) => ({
     player: state.player ? { ...state.player, stats: { ...state.player.stats, hp } } : null
   })),
   updateMP: (mp) => set((state) => ({
