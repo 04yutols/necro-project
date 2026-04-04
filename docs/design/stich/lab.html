@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=Manrope:wght@300;400;500;600;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#d978ff",
+                        "primary": "#e08dff",
+                        "on-primary-fixed-variant": "#4c0068",
+                        "on-tertiary-container": "#000000",
+                        "tertiary-dim": "#e30071",
+                        "tertiary-fixed-dim": "#ff75a0",
+                        "on-tertiary": "#47001f",
+                        "on-error-container": "#ffb2b9",
+                        "on-error": "#490013",
+                        "error-dim": "#d73357",
+                        "outline": "#73757d",
+                        "secondary-container": "#006c46",
+                        "surface-container-highest": "#22262f",
+                        "secondary-fixed-dim": "#00efa0",
+                        "on-secondary-container": "#e1ffea",
+                        "error": "#ff6e84",
+                        "tertiary-container": "#ff067f",
+                        "surface-variant": "#22262f",
+                        "tertiary-fixed": "#ff8eae",
+                        "primary-dim": "#bc00fb",
+                        "on-primary": "#4f006c",
+                        "on-background": "#ecedf6",
+                        "surface-container-high": "#1c2028",
+                        "on-tertiary-fixed": "#380017",
+                        "outline-variant": "#45484f",
+                        "inverse-on-surface": "#52555c",
+                        "on-secondary": "#005c3b",
+                        "primary-container": "#d978ff",
+                        "background": "#0b0e14",
+                        "on-secondary-fixed-variant": "#006742",
+                        "primary-fixed-dim": "#d160ff",
+                        "inverse-primary": "#9a00cf",
+                        "secondary": "#00ffab",
+                        "on-primary-fixed": "#000000",
+                        "error-container": "#a70138",
+                        "on-surface-variant": "#a9abb3",
+                        "on-secondary-fixed": "#00472d",
+                        "inverse-surface": "#f9f9ff",
+                        "secondary-fixed": "#00ffab",
+                        "on-surface": "#ecedf6",
+                        "secondary-dim": "#00efa0",
+                        "tertiary": "#ff6b9b",
+                        "surface-container": "#161a21",
+                        "on-tertiary-fixed-variant": "#760037",
+                        "surface-container-low": "#10131a",
+                        "surface-bright": "#282c36",
+                        "on-primary-container": "#3d0055",
+                        "surface-container-lowest": "#000000",
+                        "surface-tint": "#e08dff",
+                        "surface-dim": "#0b0e14",
+                        "surface": "#0b0e14"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Manrope"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .liquid-fill {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 20%, rgba(0, 0, 0, 0.1) 80%, rgba(0, 0, 0, 0.3) 100%);
+        }
+
+        .dot-font {
+            font-family: 'Courier New', Courier, monospace;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                filter: drop-shadow(0 0 5px rgba(0, 255, 255, 0.6));
+            }
+
+            50% {
+                filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.9));
+            }
+        }
+
+        .glow-pulse {
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-on-background font-body min-h-screen overflow-hidden">
+    <!-- Top Navigation Bar -->
+    <nav
+        class="fixed top-0 w-full z-50 bg-[#0B0E14] flex justify-between items-center px-6 h-16 w-full shadow-[0_4px_20px_rgba(191,0,255,0.1)] backdrop-blur-xl bg-opacity-80">
+        <div class="flex items-center gap-4">
+            <span
+                class="text-2xl font-black text-[#BF00FF] drop-shadow-[0_0_8px_rgba(191,0,255,0.6)] font-['Space_Grotesk'] tracking-wider uppercase">NECROMANCE
+                BRAVE</span>
+        </div>
+        <div class="hidden md:flex gap-8">
+            <a class="text-[#E08DFF] font-bold font-['Space_Grotesk'] tracking-wider uppercase hover:text-[#00FFAB] transition-colors duration-300"
+                href="#">Battle</a>
+            <a class="text-[#73757D] font-['Space_Grotesk'] tracking-wider uppercase hover:text-[#00FFAB] transition-colors duration-300"
+                href="#">Citadel</a>
+            <a class="text-[#73757D] font-['Space_Grotesk'] tracking-wider uppercase hover:text-[#00FFAB] transition-colors duration-300"
+                href="#">Grimoire</a>
+            <a class="text-[#73757D] font-['Space_Grotesk'] tracking-wider uppercase hover:text-[#00FFAB] transition-colors duration-300"
+                href="#">Legion</a>
+        </div>
+        <div class="flex items-center gap-4">
+            <button class="text-[#BF00FF] hover:text-[#00FFAB] transition-colors duration-300">
+                <span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+            </button>
+            <button class="text-[#BF00FF] hover:text-[#00FFAB] transition-colors duration-300">
+                <span class="material-symbols-outlined" data-icon="settings">settings</span>
+            </button>
+            <div class="w-10 h-10 rounded-full border-2 border-primary overflow-hidden">
+                <img alt="Necromancer Profile Avatar"
+                    data-alt="Stylized necromancer avatar with glowing purple eyes and dark hood in digital art style"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCx7LzkAoEc1WGfaB9mcpO5zl4188ClJS5cpkd2RcpjllaZI4ui4DQAMBEKloH6U9KNPTUJDaN8quGDFegNzLKxViv4U3h0J_XEblxRrI7uzOXS2dq6d8AZ5Jc0qsGRCtOaf1acNHCO6lGO9JLT7XTw8RXF9S0hOcGhsrf5I6j2IWWY949jQSwrAYL0x1NX1q0g86T67jRmPnq9uOxnbN1XlQQk8pfWoL-fTmYU-T-vKPDPa1vJxtkOPdQ1eXevF9ByWU570js4M4xS" />
+            </div>
+        </div>
+    </nav>
+    <!-- Side Navigation Bar -->
+    <aside
+        class="fixed left-0 top-16 h-[calc(100vh-128px)] w-64 z-40 bg-[#10131A] flex flex-col py-8 shadow-[10px_0_30px_rgba(0,0,0,0.5)] hidden md:flex">
+        <div class="px-6 mb-8 text-center">
+            <div class="text-xs text-secondary font-bold uppercase tracking-widest mb-1">ARCH-LICH</div>
+            <div class="text-on-surface-variant text-[10px] uppercase font-bold">Level 99</div>
+        </div>
+        <nav class="flex-1">
+            <a class="flex items-center gap-4 bg-gradient-to-r from-[#BF00FF]/20 to-transparent text-[#BF00FF] border-l-4 border-[#BF00FF] py-4 px-6 font-['Space_Grotesk'] text-sm uppercase font-bold"
+                href="#">
+                <span class="material-symbols-outlined" data-icon="fort">fort</span> Citadel
+            </a>
+            <a class="flex items-center gap-4 text-[#73757D] py-4 px-6 font-['Space_Grotesk'] text-sm uppercase font-bold hover:bg-[#1C2028] hover:text-[#00FFAB] transition-all duration-200"
+                href="#">
+                <span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span> Grimoire
+            </a>
+            <a class="flex items-center gap-4 text-[#73757D] py-4 px-6 font-['Space_Grotesk'] text-sm uppercase font-bold hover:bg-[#1C2028] hover:text-[#00FFAB] transition-all duration-200"
+                href="#">
+                <span class="material-symbols-outlined" data-icon="auto_fix_high">auto_fix_high</span> Ritual
+            </a>
+            <a class="flex items-center gap-4 text-[#73757D] py-4 px-6 font-['Space_Grotesk'] text-sm uppercase font-bold hover:bg-[#1C2028] hover:text-[#00FFAB] transition-all duration-200"
+                href="#">
+                <span class="material-symbols-outlined" data-icon="groups">groups</span> Legion
+            </a>
+        </nav>
+        <div class="px-6 mt-auto">
+            <button
+                class="w-full bg-gradient-to-r from-secondary to-secondary-container text-on-tertiary-container py-3 rounded-full font-bold text-xs uppercase shadow-[0_0_20px_rgba(0,255,171,0.3)] hover:scale-105 transition-transform">
+                SUMMON MINION
+            </button>
+        </div>
+    </aside>
+    <!-- Main Content Area -->
+    <main class="pt-16 pb-20 md:pb-0 md:pl-64 h-screen flex flex-row gap-4 p-4">
+        <!-- Left Column (20%) -->
+        <section class="w-1/5 h-full flex flex-col gap-6">
+            <!-- Player Status -->
+            <div class="bg-surface-container-low rounded-lg p-6 flex flex-col items-center shadow-lg">
+                <div class="relative mb-4">
+                    <div
+                        class="w-32 h-32 rounded-full border-4 border-secondary p-1 shadow-[0_0_20px_rgba(0,255,171,0.5)] glow-pulse">
+                        <img class="w-full h-full rounded-full object-cover"
+                            data-alt="Digital portrait of a dark fantasy hero with vibrant teal energy glowing around their armor"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUw9cySbpgwGNmwx--9eR1lWosEHddv2_w3tFaLwlHzNAtbIZjXMJUEyKZtVGM-WuHgqeUdvtSArX2cbYA8HY5wh9Lp1stUBETkdQ1jqMcixGc3NVCYt-PpUJFLqAvn1Ithv4YwozxcSAfSq9absvdRgmpr4awqGKjAhPktXU6hEjjVckEEt5Xt_ran8yLwjDju2zC_FbYtO5XDQ4-OoFEnKsl8vpkBgIk_fXpsozvKXkWBqCT79glEocaHGQ7-OYc39RL47xVHf2v" />
+                    </div>
+                    <div
+                        class="absolute -bottom-2 -right-2 bg-primary w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs">
+                        99</div>
+                </div>
+                <div class="w-full space-y-4">
+                    <!-- HP Bar -->
+                    <div class="space-y-1">
+                        <div
+                            class="flex justify-between text-[10px] font-bold text-tertiary uppercase tracking-tighter">
+                            <span>Health Essence</span>
+                            <span>4,500 / 4,500</span>
+                        </div>
+                        <div class="h-4 w-full bg-surface-container-highest rounded-full overflow-hidden p-[2px]">
+                            <div
+                                class="h-full w-full bg-tertiary rounded-full liquid-fill shadow-[0_0_10px_rgba(255,107,155,0.5)]">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- MP Bar -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[10px] font-bold text-primary uppercase tracking-tighter">
+                            <span>Void Mana</span>
+                            <span>1,200 / 2,000</span>
+                        </div>
+                        <div class="h-4 w-full bg-surface-container-highest rounded-full overflow-hidden p-[2px]">
+                            <div
+                                class="h-full w-[60%] bg-primary rounded-full liquid-fill shadow-[0_0_10px_rgba(224,141,255,0.5)]">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Stats/Inventory Small Grid -->
+            <div class="grid grid-cols-2 gap-2 flex-1">
+                <div
+                    class="bg-surface-container-low rounded-lg p-3 flex flex-col items-center justify-center border border-outline-variant/10">
+                    <span class="material-symbols-outlined text-secondary mb-1" data-icon="shield">shield</span>
+                    <span class="text-[10px] text-on-surface-variant uppercase">Defense</span>
+                    <span class="font-headline font-bold text-on-surface">842</span>
+                </div>
+                <div
+                    class="bg-surface-container-low rounded-lg p-3 flex flex-col items-center justify-center border border-outline-variant/10">
+                    <span class="material-symbols-outlined text-primary mb-1" data-icon="bolt">bolt</span>
+                    <span class="text-[10px] text-on-surface-variant uppercase">Speed</span>
+                    <span class="font-headline font-bold text-on-surface">156</span>
+                </div>
+                <div
+                    class="bg-surface-container-low rounded-lg p-3 flex flex-col items-center justify-center border border-outline-variant/10">
+                    <span class="material-symbols-outlined text-tertiary mb-1" data-icon="skull">skull</span>
+                    <span class="text-[10px] text-on-surface-variant uppercase">Kills</span>
+                    <span class="font-headline font-bold text-on-surface">12.4K</span>
+                </div>
+                <div
+                    class="bg-surface-container-low rounded-lg p-3 flex flex-col items-center justify-center border border-outline-variant/10">
+                    <span class="material-symbols-outlined text-cyan-400 mb-1" data-icon="diamond">diamond</span>
+                    <span class="text-[10px] text-on-surface-variant uppercase">Soul Gems</span>
+                    <span class="font-headline font-bold text-on-surface">432</span>
+                </div>
+            </div>
+        </section>
+        <!-- Central Monitor (60%) -->
+        <section class="w-3/5 h-full flex flex-col gap-4">
+            <!-- Battle Scene Monitor -->
+            <div
+                class="relative w-full aspect-video bg-surface-container-lowest rounded-lg overflow-hidden border-2 border-primary/20 shadow-[0_0_40px_rgba(191,0,255,0.1)]">
+                <!-- Environment Layer -->
+                <div class="absolute inset-0 opacity-40">
+                    <img class="w-full h-full object-cover"
+                        data-alt="Dark futuristic cyber dungeon with neon purple lights reflecting on obsidian floors and floating debris"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuDu5o7X_o-PiC-c4gX1Z7wbXpoUYFl8AbngoSD-5AKEGCKfQfJt-HjutRHjWSqkiIp-Sl6Mxs6wUPhKPY_8RdW8DPzA7CrPcbGwCR6yTK_JOhy6XZbLEScn40ZSwbfxvFdbRw9IZeJCOlfTLjt3vIB7_6NsresECgILYB34z1_9ZdvWo6nxyJUSTgE9E6bw_88feQ6hCc88t7E5r4asTfZhCo1NWIxZAkadbAvhWFsOKfndmVA3lH6MvXRvyxWe6TLbCzgat8lpqdbN" />
+                </div>
+                <!-- Boss HP Bar Overlay -->
+                <div class="absolute top-6 left-1/2 -translate-x-1/2 w-3/4 z-10">
+                    <div class="flex flex-col items-center">
+                        <div
+                            class="text-xs font-headline font-black text-cyan-400 uppercase tracking-widest mb-1 drop-shadow-md">
+                            Void Behemoth : Xul-Gath</div>
+                        <div class="w-full h-6 bg-surface/80 backdrop-blur rounded-full border border-cyan-400/50 p-1">
+                            <div
+                                class="h-full w-[85%] bg-cyan-400 rounded-full liquid-fill shadow-[0_0_20px_rgba(34,211,238,0.7)] relative">
+                                <div class="absolute inset-0 bg-gradient-to-t from-transparent to-white/20 opacity-50">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-[10px] font-bold text-cyan-400 mt-1">HP: 1,452,000 / 2,000,000</div>
+                    </div>
+                </div>
+                <!-- Battlefield -->
+                <div class="absolute inset-0 flex items-end justify-between px-16 pb-20">
+                    <!-- Player Army (Chibi style logic) -->
+                    <div class="flex gap-4 items-end">
+                        <div class="relative group">
+                            <div class="w-24 h-32 bg-contain bg-no-repeat bg-bottom transition-transform hover:scale-110"
+                                data-alt="Chibi-style cute necromancer knight with tiny body and large helmet glowing with purple eyes"
+                                style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuANm9iDKtRN6UUu3gQkWat6rUD2ZYmrURuSd3ZKP8h9OEgxE3Z9-xpKoakehXNWrGzKcmB4ImYSVdsAsscWkLbkIc2tLyzATwWWYH_xqdiW7Ht_CEkYCkVSc0DPY2Zad9CpxBNcIfJYv8hL_-d119-k4hHGu1Cxvwb8UTQstzIG42TY8MzsVLs0YgjnRXajnKHXOu65Ut0eM_y2NZgrRDok3MmtgcKtfgnlMpsq8ThxgDszSjFmRPs3o_OfyRD16jasklwurO6bqadU');">
+                            </div>
+                            <div
+                                class="absolute -top-12 left-0 dot-font text-secondary text-lg font-black bg-black/50 px-2 rounded">
+                                MISS!</div>
+                        </div>
+                        <div class="relative mb-4">
+                            <div class="w-20 h-24 bg-contain bg-no-repeat bg-bottom opacity-80"
+                                data-alt="Small cute ghost minion with big glowing eyes and a tiny crown"
+                                style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB6rI5DbXxdW2JP__60e8FYxt7J_-ff_om_n1mMf4ae5pnHPArks95roAGZjS52jC9peE9v5i4-MYIJWZ5ael5_hpORBxiESnXthVWX2jyXmvMCpk3dm0t2ibqul5FRn0SiVZGlDxpWDpJL5v-qEK9-b6mWlAegRYnh4vdjL13zIpQf3aUPzq8HP0HzWXZESs4C49mOh1PPU0GjdkOTOMJUDmhCxFNECYoX-SFMa9I2FKaXfDEvzdxq8jYE41Jd5GoRd64P2EGAFBj3');">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Damage Numbers & Effects -->
+                    <div class="absolute inset-0 pointer-events-none">
+                        <div
+                            class="absolute top-1/2 right-1/4 dot-font text-error text-3xl font-black italic -rotate-12 transform scale-125">
+                            WEAK!</div>
+                        <div class="absolute top-1/3 right-[30%] dot-font text-secondary text-2xl font-black">9,999
+                        </div>
+                        <div class="absolute top-[45%] right-[20%] dot-font text-primary text-xl font-black">2,450</div>
+                    </div>
+                    <!-- Boss Enemy -->
+                    <div class="relative">
+                        <div class="w-64 h-80 bg-contain bg-no-repeat bg-bottom drop-shadow-[0_0_30px_rgba(34,211,238,0.4)]"
+                            data-alt="Large monstrous dark entity with multiple glowing cyan eyes and ethereal wings looming over the battlefield"
+                            style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCpi6q2OdCskZ-GhmCAkYIEMDZJlr7CnN-xU8uEHZKExJqmiObROaElaPs_3uciFK6osdr2xLWCKwMV7xXr7UyfpjgGeKny0vjFF5ULt8WQhNPOxTxJpOqBf5HoK0hCdW85KH0HeZRzcqY7cIoSYG32JgPlKGyqcWXDAzVDuzom2suLKZHJFAtvKvg1WvohAhdK4Rt-etjUgX91liz5sUqWLAZY26tRAlT81zQKA7lmUI4Pv3FcDMgdElbVx_5BIsDPeBmg_CnKXgvv');">
+                        </div>
+                    </div>
+                </div>
+                <!-- Screen Vignette & Scanlines -->
+                <div
+                    class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)]">
+                </div>
+                <div
+                    class="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]">
+                </div>
+            </div>
+            <!-- Control Panel -->
+            <div
+                class="bg-surface-container-high rounded-lg p-6 flex items-center justify-center gap-8 shadow-2xl relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none"></div>
+                <!-- Circular Skill Buttons -->
+                <div class="flex gap-6 z-10">
+                    <button class="group flex flex-col items-center gap-2">
+                        <div
+                            class="w-16 h-16 rounded-full bg-surface-container-highest border-2 border-primary flex items-center justify-center text-primary shadow-[0_0_15px_rgba(224,141,255,0.3)] transition-all hover:scale-110 active:scale-90 hover:shadow-[0_0_25px_rgba(224,141,255,0.6)]">
+                            <span class="material-symbols-outlined text-3xl" data-icon="flare">flare</span>
+                        </div>
+                        <span class="text-[10px] font-bold uppercase text-primary">Soul Blast</span>
+                    </button>
+                    <button class="group flex flex-col items-center gap-2">
+                        <div
+                            class="w-16 h-16 rounded-full bg-surface-container-highest border-2 border-secondary flex items-center justify-center text-secondary shadow-[0_0_15px_rgba(0,255,171,0.3)] transition-all hover:scale-110 active:scale-90 hover:shadow-[0_0_25px_rgba(0,255,171,0.6)]">
+                            <span class="material-symbols-outlined text-3xl" data-icon="vital_signs">vital_signs</span>
+                        </div>
+                        <span class="text-[10px] font-bold uppercase text-secondary">Drain Life</span>
+                    </button>
+                    <button class="group flex flex-col items-center gap-2">
+                        <div
+                            class="w-20 h-20 rounded-full bg-gradient-to-br from-tertiary to-tertiary-container border-2 border-white/20 flex items-center justify-center text-white shadow-[0_0_20px_rgba(255,6,127,0.5)] transition-all hover:scale-110 active:scale-95">
+                            <span class="material-symbols-outlined text-4xl" data-icon="auto_fix_high"
+                                style="font-variation-settings: 'FILL' 1;">auto_fix_high</span>
+                        </div>
+                        <span class="text-[10px] font-bold uppercase text-tertiary">ULTIMATE</span>
+                    </button>
+                    <button class="group flex flex-col items-center gap-2">
+                        <div
+                            class="w-16 h-16 rounded-full bg-surface-container-highest border-2 border-cyan-400 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all hover:scale-110 active:scale-90 hover:shadow-[0_0_25px_rgba(34,211,238,0.6)]">
+                            <span class="material-symbols-outlined text-3xl" data-icon="security">security</span>
+                        </div>
+                        <span class="text-[10px] font-bold uppercase text-cyan-400">Void Shield</span>
+                    </button>
+                    <button class="group flex flex-col items-center gap-2">
+                        <div
+                            class="w-16 h-16 rounded-full bg-surface-container-highest border-2 border-outline flex items-center justify-center text-outline shadow-md transition-all hover:scale-110 active:scale-90">
+                            <span class="material-symbols-outlined text-3xl" data-icon="backpack">backpack</span>
+                        </div>
+                        <span class="text-[10px] font-bold uppercase text-outline">Items</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+        <!-- Right Column (20%) -->
+        <section class="w-1/5 h-full flex flex-col gap-4">
+            <!-- Battle Log -->
+            <div
+                class="flex-1 bg-surface-container-low rounded-lg p-4 flex flex-col gap-3 shadow-lg border border-primary/5">
+                <div class="flex items-center gap-2 text-primary">
+                    <span class="material-symbols-outlined text-sm" data-icon="terminal">terminal</span>
+                    <span class="text-xs font-bold uppercase tracking-widest">Combat Protocol</span>
+                </div>
+                <div class="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide">
+                    <div class="dot-font text-[11px] leading-tight">
+                        <span class="text-outline">[04:12]</span> <span class="text-secondary">Arch-Lich</span> cast
+                        <span class="text-primary">Soul Blast</span> for <span class="text-secondary-fixed">9,999</span>
+                        damage.
+                    </div>
+                    <div class="dot-font text-[11px] leading-tight">
+                        <span class="text-outline">[04:13]</span> <span class="text-cyan-400">Xul-Gath</span> resists
+                        <span class="text-error">Stun</span> effect.
+                    </div>
+                    <div class="dot-font text-[11px] leading-tight">
+                        <span class="text-outline">[04:15]</span> <span class="text-primary-fixed">Minion 01</span>
+                        performed <span class="text-secondary-dim">Critical Strike</span>!
+                    </div>
+                    <div class="dot-font text-[11px] leading-tight">
+                        <span class="text-outline">[04:16]</span> <span class="text-error">Xul-Gath</span> is charging
+                        <span class="text-tertiary">Void Nova</span>...
+                    </div>
+                    <div class="dot-font text-[11px] leading-tight opacity-50">
+                        <span class="text-outline">[04:17]</span> System: Analysis complete. Target weak to <span
+                            class="text-secondary">Holy</span> damage.
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-outline-variant/10">
+                    <button
+                        class="w-full py-2 text-[10px] font-bold uppercase text-primary-fixed bg-primary-fixed/5 rounded hover:bg-primary-fixed/10 transition-colors">Clear
+                        Logs</button>
+                </div>
+            </div>
+            <!-- Monster Pods / Digital Slots -->
+            <div class="h-1/3 space-y-3">
+                <div class="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Active Legion
+                </div>
+                <div class="grid grid-cols-2 gap-3 h-[calc(100%-20px)]">
+                    <div
+                        class="bg-surface-container-high rounded-lg p-2 border-2 border-primary/20 flex flex-col items-center justify-between relative overflow-hidden group">
+                        <div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        </div>
+                        <div class="w-12 h-12 rounded-full border border-primary overflow-hidden">
+                            <img class="w-full h-full object-cover"
+                                data-alt="Small cute skeleton soldier in armor with glowing purple eyes"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDX8L8_0YF_S3nHFhgCFkNSuuPB2BbSQrQI9AlTVzmrEyw4HpUsjoaENbI-uXTyY9g1YGBrvUB7NpbAg6MfkGL58MN97ELYDaA--0FXucbrFyT_Z61ivQHufBeMP0r-2vI5CHYWnHUjHEg-kDO5UphtVGK_4zuOg_PseHwGDzsT49S-4HBcK8YFar6jfvAtB4uyvUBuONFVM1Hm9jdhct3RulDLaQ-LhD_8o1iFeHZabe_JYLugmF6drRtgap5Dsw_fwTM5vIK6hLK6" />
+                        </div>
+                        <div class="w-full h-1 bg-primary/20 rounded-full mt-2">
+                            <div class="h-full w-full bg-primary rounded-full"></div>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-surface-container-high rounded-lg p-2 border-2 border-secondary/20 flex flex-col items-center justify-between relative overflow-hidden group">
+                        <div class="w-12 h-12 rounded-full border border-secondary overflow-hidden">
+                            <img class="w-full h-full object-cover"
+                                data-alt="Small cute robot-like creature with mint green accents and digital eye"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1_lZJg5ZZjtJXwttxvYD3qUkV3qDAxGHo0G8S19yEErkZzp_2IMHalnM6OpLJFJTOd3a3Usj8n9Cn9B_K1S4-AOn11LTy7CnIFynFga274VyhKQvCz7qHRL2F-oxxHg4HxBkNhgIZQb9SalT2x97h53p8_5S2RezWvd5rhZG8eYeiJ7KTWzxfoNt3ZxO9BGVHXnPTcLveA6lNti7vFs8yZraYtoKJ5DNfk_iLmvUE1aAXTpWB6eUbJmEkPTuiSZxl8Z6jMl7KDQ5J" />
+                        </div>
+                        <div class="w-full h-1 bg-secondary/20 rounded-full mt-2">
+                            <div class="h-full w-[45%] bg-secondary rounded-full"></div>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-surface-container-high rounded-lg p-2 border-2 border-outline-variant/20 flex flex-col items-center justify-center border-dashed">
+                        <span class="material-symbols-outlined text-outline" data-icon="add">add</span>
+                        <span class="text-[8px] uppercase text-outline mt-1">Empty Pod</span>
+                    </div>
+                    <div
+                        class="bg-surface-container-high rounded-lg p-2 border-2 border-outline-variant/20 flex flex-col items-center justify-center border-dashed">
+                        <span class="material-symbols-outlined text-outline" data-icon="lock">lock</span>
+                        <span class="text-[8px] uppercase text-outline mt-1">Locked</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <!-- Bottom Navigation Bar (Mobile only) -->
+    <nav
+        class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-4 pt-2 bg-[#0B0E14]/90 backdrop-blur-2xl border-t border-[#BF00FF]/10 z-50 rounded-t-[2rem] shadow-[0_-10px_40px_rgba(191,0,255,0.15)]">
+        <button
+            class="flex flex-col items-center justify-center bg-[#BF00FF] text-[#0B0E14] rounded-full px-6 py-2 scale-110 shadow-[0_0_15px_#BF00FF]">
+            <span class="material-symbols-outlined" data-icon="swords">swords</span>
+            <span class="text-[10px] font-bold tracking-tighter uppercase font-['Plus_Jakarta_Sans']">Battle</span>
+        </button>
+        <button
+            class="flex flex-col items-center justify-center text-[#73757D] p-2 hover:text-[#E08DFF] transition-all">
+            <span class="material-symbols-outlined" data-icon="backpack">backpack</span>
+            <span class="text-[10px] font-bold tracking-tighter uppercase font-['Plus_Jakarta_Sans']">Inventory</span>
+        </button>
+        <button
+            class="flex flex-col items-center justify-center text-[#73757D] p-2 hover:text-[#E08DFF] transition-all">
+            <span class="material-symbols-outlined" data-icon="map">map</span>
+            <span class="text-[10px] font-bold tracking-tighter uppercase font-['Plus_Jakarta_Sans']">Map</span>
+        </button>
+        <button
+            class="flex flex-col items-center justify-center text-[#73757D] p-2 hover:text-[#E08DFF] transition-all">
+            <span class="material-symbols-outlined" data-icon="forum">forum</span>
+            <span class="text-[10px] font-bold tracking-tighter uppercase font-['Plus_Jakarta_Sans']">Social</span>
+        </button>
+    </nav>
+</body>
+
+</html>
