@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
 import { useGameStore } from '../../store/useGameStore';
 import { BattleEngine } from '../../logic/BattleEngine';
-import { BattleLog } from '../../types/game';
+import { BattleLog, MonsterData } from '../../types/game';
 import { Sword, Sparkles } from 'lucide-react';
 import ResultScreen from './ResultScreen';
 import { BloodButton } from '../ui/BloodButton';
@@ -42,6 +42,15 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     stats: { hp: 150, maxHp: 150, mp: 0, atk: 15, def: 5, matk: 0, mdef: 2, agi: 5, luck: 0, tec: 5 },
     resistances: { LIGHT: -50, DARK: 50 }, // 弱点と耐性
   });
+
+  // 使用可能なスキルの取得
+  const currentJob = player?.jobs.find(j => j.jobId === player?.currentJobId);
+  const availableSkills = currentJob && player
+    ? (masterData.getJob(player.currentJobId)?.skills || [])
+        .filter((s: any) => s.level <= currentJob.level)
+        .map((s: any) => masterData.getSkill(s.skillId))
+        .filter(Boolean)
+    : [];
 
   useEffect(() => {
     mountedRef.current = true;

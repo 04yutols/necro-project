@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-interface GameFrameProps extends React.HTMLAttributes<HTMLDivElement> {
+interface GameFrameProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
   children: React.ReactNode;
   title?: React.ReactNode;
   borderColor?: 'blood' | 'necro' | 'gray';
