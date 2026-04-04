@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Character {
+  id              String   @id @default(uuid())
+  name            String
+  
+  // 9種の基礎ステータス (GDD-003)
+  hp              Int
+  mp              Int
+  atk             Int
+  def             Int
+  matk            Int
+  mdef            Int
+  agi             Int
+  luck            Int
+  tec             Int
+  
+  // 職業レベル到達時に獲得する永続パッシブの累積補正 (GDD-004)
+  passiveAtkBonus  Int      @default(0)
+  passiveDefBonus  Int      @default(0)
+  passiveMatkBonus Int      @default(0)
+  passiveMdefBonus Int      @default(0)
+  
+  // 職業システム (GDD-004)
+  jobs            UserJob[]
+  currentJobId    String?
+  
+  // 8枠装備スロット (GDD-007)
+  equipWeaponId   String?
+  equipSubId      String?
+  equipHeadId     String?
+  equipBodyId     String?
+  equipArmsId     String?
+  equipLegsId     String?
+  equipAcc1Id     String?
+  equipAcc2Id     String?
+
+  equipWeapon     Item?    @relation("Weapon", fields: [equipWeaponId], references: [id])
+  equipSub        Item?    @relation("Sub", fields: [equipSubId], references: [id])
+  equipHead       Item?    @relation("Head", fields: [equipHeadId], references: [id])
+  equipBody       Item?    @relation("Body", fields: [equipBodyId], references: [id])
+  equipArms       Item?    @relation("Arms", fields: [equipArmsId], references: [id])
+  equipLegs       Item?    @relation("Legs", fields: [equipLegsId], references: [id])
+  equipAcc1       Item?    @relation("Acc1", fields: [equipAcc1Id], references: [id])
+  equipAcc2       Item?    @relation("Acc2", fields: [equipAcc2Id], references: [id])
+
+  // 死霊術ステータス
+  necroLevel      Int      @default(1)
+  necroRank       Int      @default(1)
+  necroMaxCost    Int      @default(10)
+  necroBaseStatsBonus Float @default(1.0)
+  
+  // 進行管理 (GDD-002)
+  clearedStages   String[] @default([])
+}
+
+model Job {
+  id              String   @id
+  name            String
+  tier            Int
+  category        String   // PHYSICAL | MAGICAL
+  userJobs        UserJob[]
+}
+
+model UserJob {
+  characterId     String
+  jobId           String
+  level           Int      @default(1)
+  exp             Int      @default(0)
+  character       Character @relation(fields: [characterId], references: [id])
+  job             Job       @relation(fields: [jobId], references: [id])
+
+  @@id([characterId, jobId])
+}
+
+model Item {
+  id              String   @id @default(uuid())
+  name            String
+  type            String   // WEAPON | HEAD | BODY ...
+  rarity          String   // COMMON | UNIQUE
+  atk             Int      @default(0)
+  def             Int      @default(0)
+  matk            Int      @default(0)
+  mdef            Int      @default(0)
+  specialEffect   String?
+  
+  equippedWeapon  Character[] @relation("Weapon")
+  equippedSub     Character[] @relation("Sub")
+  equippedHead    Character[] @relation("Head")
+  equippedBody    Character[] @relation("Body")
+  equippedArms    Character[] @relation("Arms")
+  equippedLegs    Character[] @relation("Legs")
+  equippedAcc1    Character[] @relation("Acc1")
+  equippedAcc2    Character[] @relation("Acc2")
+}
+
+model Monster {
+  id              String   @id @default(uuid())
+  name            String
+  tribe           String
+  cost            Int
+  hp              Int
+  mp              Int
+  atk             Int
+  def             Int
+  matk            Int
+  mdef            Int
+  agi             Int
+  luck            Int
+  tec             Int
+  
+  soulShardId     String?
+  soulShard       SoulShard? @relation(fields: [soulShardId], references: [id])
+}
+
+model SoulShard {
+  id              String   @id @default(uuid())
+  originMonster   String
+  atkBonus        Int      @default(0)
+  matkBonus       Int      @default(0)
+  specialAbility  String?
+  monsters        Monster[]
+}

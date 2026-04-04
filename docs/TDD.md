@@ -163,44 +163,116 @@ export interface CharacterData {
 ## 3. Necro-System Logic
 3枠コスト制と死霊術ランクアップのインターフェース
 
-```typescript
-export interface MonsterData {
-  id: string;
-  cost: number;
-  equippedShardId?: string;
-}
+（中略）
 
-export interface NecroStatus {
-  level: number;       // Max: 99
-  rank: number;        // Max: 10
-  maxCost: number;
-}
+### UI上のコスト計算・バリデーション仕様
+- **計算タイミング**: Zustandストアの `party` 配列が更新されるたびに、フロントエンドの `useMemo` により合計コストを再計算する。
+- **バリデーションロジック**: `totalCost = sum(monster.cost for monster in party if monster != null)`。
+- **制限の反映**: 
+  - `totalCost > NecroStatus.maxCost` の場合、UIコンポーネント（`NecroLab.tsx`）にて警告ステートを有効化する。
+  - 出撃ボタンの `disabled` 属性にこのバリデーション結果を連動させ、不正な編成での戦闘開始を物理的に阻止する。
+- **スロット満空バリデーション**: `party.findIndex(p => p === null) === -1` の条件下で「配置」アクションが実行された際、ステートベースのトースト通知システムをトリガーし、ユーザーにエラーをフィードバックする。
 
-export interface IPartyService {
-  /**
-   * 3枠の使役モンスター編成を検証・保存する。
-   * SoulShardによるコスト変動やシナジー計算もここで行う。
-   */
-  updatePartyFormation(
-    necroStatus: NecroStatus, 
-    monsterSlots: [MonsterData | null, MonsterData | null, MonsterData | null]
-  ): Promise<void>;
-}
 
-export interface IJobService {
-  /**
-   * 転職処理。現在の職業レベルを維持したまま変更。
-   * 初めての職業の場合はUserJobを新規作成しLv1から開始。
-   */
-  changeJob(characterId: string, nextJobId: string): Promise<void>;
-  
-  /**
-   * 職業レベルアップ時のパッシブ蓄積。
-   * 一定Lv到達時にCharacterモデルのpassiveXxxBonusを更新。
-   */
-  onLevelUp(characterId: string, jobId: string, newLevel: number): Promise<void>;
-}
-```
+### 魂石化の技術フロー
+（中略）
+3.  **状態同期**: 成功レスポンスを受け取り、Zustandストアの `inventoryMonsters` から削除、`soulShards` へ追加することで、リロードなしで画面を更新する。
+
+### 魂の欠片による特殊能力と拡張データ構造
+- **特殊能力 (Special Abilities)**: `SoulShardEffect` インターフェースにより、単なるステータス加算以外の効果を定義可能。
+  - `REGENERATE_SOUL`: [アンデッド]系の欠片。戦闘中、微量のHP回復を付与。
+  - `BANE_OF_LIGHT`: [悪魔]系の欠片。光属性耐性を持つ敵へのダメージ増加。
+- **シナジー計算ロジック**: 
+  - パーティ編成時に `tribe` だけでなく `equippedShardId` の特殊能力も走査する。
+  - 同一系統の特殊能力が複数存在する場合、効果を累積または上位変換（スタック）して `BattleEngine` へ渡す。
+
+## 6. Visual Effects Logic (PixiJS)
+リザルト画面における動的な演出の技術仕様。
+
+### 経験値バーの補完アニメーション
+- **技術要素**: `PixiJS Ticker`, `Date.now()` による経過時間計算。
+- **ロジック**: 
+  - 開始時間から指定期間（1000ms等）にかけて、獲得EXPを線形補完して描画。
+  - `currentWidth = maxWidth * (currentTime - startTime) / duration`。
+  - バーの描画更新は 60fps で行われ、DOMベースの更新と比較して極めて滑らかに動作する。
+
+### 報酬ポップアップ
+- **技術要素**: `while` ループと `alpha` / `scale` プロパティの操作。
+- **ロジック**:
+  - 各報酬テキストに対し、不透明度 0→1、スケール 2→1 への変化を非同期で適用し、『画面に飛び出す』ような視覚効果を実現。
+
+## 4. Test Strategy (E2E)
+UIのクリティカルなパスを Playwright で常時監視する。
+
+### 基本方針
+- **自動テストの範囲**: ユーザー体験に直結する複雑なロジック（コスト計算、魂石化）を対象とする。
+- **実行環境**: Docker Compose を用いた隔離環境で、最新の Chromium ブラウザを使用して実行。
+
+### 主要テストケース
+- **コストバリデーション**:
+  - モンスターを配置した際、合計コストが `NecroStatus.maxCost` を超過していないか。
+  - 超過時に `animate-pulse` クラスや警告メッセージが正しく表示されるか。
+- **魂石化フロー**:
+  - 魂石化ボタン押下時の確認ダイアログが正しく機能するか。
+  - 処理完了後にモンスターがリストから削除され、状態が同期されるか。
+- **配置制限**:
+  - 3つのパーティスロットが独立して機能し、空きスロットがない場合の挙動が制御されているか。
+
+## 5. Reward Algorithm
+戦闘終了後の獲得リソース計算ロジック。
+
+### 経験値スケーリング (EXP Calculation)
+`TotalEXP = BaseExp * (1 + JobLevel / 100) * CategoryMultiplier`
+- **BaseExp**: ステージごとに設定された基礎値。
+- **JobLevel**: 現在の職業レベルが高いほど、より効率的に経験値を獲得できる。
+- **CategoryMultiplier**: 職業カテゴリによる補正（魔法系は+10%等の調整が可能）。
+
+### ドロップ率計算 (Drop Rate Logic)
+LUCKステータスがドロップ率に直接寄与する。
+`AdjustedRate = BaseRate * (1 + LUCK / 100)`
+- **BaseRate**: アイテム/モンスターごとにドロップテーブルで定義された基本確率。
+- **LUCK影響**: LUCKが100の場合、ドロップ率は基本値の2倍になる。これにより、育成が進んだキャラクターでの素材集めや、強力なモンスターの「魂」集めが容易になる。
+
+### 装備補正加算アルゴリズム (Equipment Stat Calculation)
+キャラクターの最終ステータスは以下の順序で算出される。
+1.  **Base + Passive**: `player.stats` (DBの基礎値) に対し、`player.passives` (職業によって累積した永続パッシブ) を全て加算。
+2.  **Equipment Aggregation**: 8つの装備スロット (`EquipmentSlots`) に装着された `ItemData` を走査し、各アイテムが持つ `stats` (Partial<BaseStats>) のキーごとに加算処理を行う。
+3.  **Real-time Preview**: フロントエンドにおいて `useMemo` を用い、`currentStats`（現在の合計値）と `previewStats`（選択中のアイテムを仮に装備した際の合計値）の差分を動的に計算。差分が `0` 以外の場合のみ、カラー強調付きで画面に反映する。
+
+## 6. Stage Progression Flow
+ステージ進行に伴うデータ遷移（Hub ↔ Map ↔ Battle ↔ Result）の技術フロー。
+
+### データ遷移プロセス
+1.  **マップ（Map）**: 
+    - `MasterDataService` から `stages.json` を読み込み、`Character.clearedStages` の状態と照合。
+    - 前のステージIDが `clearedStages` に含まれていない場合、UI上のボタンを `disabled` にし、「LOCK」状態を視覚化。
+2.  **出撃確認（Sortie Dialog）**: 
+    - ステージを選択すると、`stage.enemies` から出現モンスターIDを抽出し、想定難易度とともに提示。
+3.  **戦闘初期化（BattleEngine）**: 
+    - `GameManager.startStage` において、指定された `stageId` に紐づく敵編成（マスターデータ）とプレイヤーの `party` を取得し、`BattleEngine` クラスを初期化する。
+4.  **リザルトと永続化（Result）**: 
+    - 戦闘勝利後、`GameManager.processStageResult` が呼ばれる。
+    - `Prisma $transaction` 内で、報酬（EXP、アイテム、モンスター）の付与と共に、`clearedStages` 配列への `push`（DBの更新）を原子的に実行し、進行状態を確定させる。
+
+## 7. Active Skill System
+アクティブスキルの発動とデータフロー、ダメージ計算の拡張仕様。
+
+### スキルのデータ構造と解決フロー
+- **構造**: `MasterDataService` 内に `skills.json` を持ち、各スキルは `SkillData` インターフェース (`id`, `name`, `mpCost`, `power`, `type`等) で定義される。
+- **習得**: `jobs.json` の各職業オブジェクトに `skills: [{ level: number, skillId: string }]` 配列を定義。プレイヤーの職業レベルがこの `level` 以上であれば、使用可能なスキルとしてフロントエンドに展開される。
+- **UI連携**: `BattleCanvas.tsx` において、`player.stats.mp` と `skill.mpCost` をリアルタイムで比較。MPが不足しているスキルは `disabled` および `grayscale` スタイルが適用され、選択できなくなる。
+
+### ダメージ計算式の拡張
+`BattleEngine.simulateAction` メソッドを拡張し、スキルの `power` (威力倍率) を計算式に組み込む。
+`最終ダメージ = 基礎計算式 * スキル威力倍率 * 属性耐性補正 * TEC補正 * 会心補正`
+これにより、魔法職の高コスト・高威力スキル（例: 倍率2.0）や物理職の低コスト・低威力スキル（例: 倍率1.5）などの特性をダイナミックに表現可能となる。
+
+### 属性相性と耐性計算アルゴリズム (Elemental Resistance Algorithm)
+スキルの `element` 属性（FIRE, ICE 等）と、防御側の `resistances` (例: `{ "FIRE": -20 }`) を用いてダメージを補正する。
+- **耐性補正 (Resistance Multiplier)**: `1 - (resistance / 100)`。
+  - 耐性 `-50%` (弱点) の場合: `1 - (-50 / 100) = 1.5` 倍のダメージ。
+  - 耐性 `50%` の場合: `1 - (50 / 100) = 0.5` 倍のダメージ。
+- **UIとの連携**: 計算時に `isWeakness` (弱点) および `isResisted` (耐性) フラグを算出し、`BattleLog` に乗せてフロントエンドへ渡す。PixiJSはこれらのフラグを解釈し、「WEAK!」や「RESIST」の文字アニメーションと専用カラーのテキストで戦闘の爽快感・戦略性をフィードバックする。
 
 ---
 

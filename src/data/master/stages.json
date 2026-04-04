@@ -1,0 +1,45 @@
+{
+  "1-1": {
+    "name": "Beginner's Plain - Entrance",
+    "area": 1,
+    "waves": 2,
+    "enemies": [["goblin"], ["goblin", "goblin"]],
+    "rewards": {
+      "baseExp": 50,
+      "baseGold": 100,
+      "dropTable": [
+        { "itemId": "iron_sword", "rate": 0.05 },
+        { "monsterId": "goblin", "rate": 0.1 }
+      ]
+    }
+  },
+  "1-2": {
+    "name": "Beginner's Plain - Deep",
+    "area": 1,
+    "waves": 3,
+    "enemies": [["goblin"], ["skeleton"], ["goblin", "skeleton"]],
+    "rewards": {
+      "baseExp": 80,
+      "baseGold": 150,
+      "dropTable": [
+        { "itemId": "leather_armor", "rate": 0.05 },
+        { "monsterId": "skeleton", "rate": 0.1 }
+      ]
+    }
+  },
+  "boss-1": {
+    "name": "Goblin's Fortress",
+    "area": 1,
+    "waves": 1,
+    "enemies": [["boss_goblin", "goblin", "goblin"]],
+    "rewards": {
+      "baseExp": 500,
+      "baseGold": 1000,
+      "dropTable": [
+        { "itemId": "hero_soul_blade", "rate": 0.01 },
+        { "monsterId": "boss_goblin", "rate": 0.05 }
+      ]
+    },
+    "isAreaBoss": true
+  }
+}
