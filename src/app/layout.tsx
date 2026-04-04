@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cinzel, Noto_Sans_JP } from "next/font/google";
+import { Cinzel, Noto_Sans_JP, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
 const cinzel = Cinzel({
@@ -9,8 +9,14 @@ const cinzel = Cinzel({
 });
 
 const notoSansJP = Noto_Sans_JP({
-  subsets: ["latin"], // Note: Next.js doesn't fully support "japanese" subset in the same way, but it works
+  subsets: ["latin"],
   variable: "--font-noto-sans-jp",
+  weight: ["400", "700"],
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
   weight: ["400", "700"],
 });
 
@@ -25,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className={`${cinzel.variable} ${notoSansJP.variable}`}>
+    <html lang="ja" className={`${cinzel.variable} ${notoSansJP.variable} ${spaceGrotesk.variable}`}>
       <body className="antialiased bg-dark text-foreground font-noto">
         {children}
       </body>

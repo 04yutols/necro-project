@@ -41,9 +41,14 @@ interface GameState {
   // モーダル制御状態
   equippingMonsterId: string | null;
   setEquippingMonsterId: (id: string | null) => void;
-}
 
-export const useGameStore = create<GameState>((set) => ({
+  // バトルログ
+  battleLogs: string[];
+  addBattleLog: (log: string) => void;
+  clearBattleLogs: () => void;
+  }
+
+  export const useGameStore = create<GameState>((set) => ({
   player: null,
   necroStatus: null,
   party: [null, null, null],
@@ -51,6 +56,7 @@ export const useGameStore = create<GameState>((set) => ({
   soulShards: [],
   inventoryItems: [],
   equippingMonsterId: null,
+  battleLogs: ['SYSTEM STANDBY...'],
 
   setPlayer: (player) => set({ player }),
   setNecroStatus: (status) => set({ necroStatus: status }),
@@ -59,7 +65,8 @@ export const useGameStore = create<GameState>((set) => ({
   setSoulShards: (shards) => set({ soulShards: shards }),
   setInventoryItems: (items) => set({ inventoryItems: items }),
   setEquippingMonsterId: (id) => set({ equippingMonsterId: id }),
-  updateHP: (hp) => set((state) => ({
+  addBattleLog: (log) => set((state) => ({ battleLogs: [...state.battleLogs, log].slice(-50) })),
+  clearBattleLogs: () => set({ battleLogs: ['SYSTEM STANDBY...'] }),  updateHP: (hp) => set((state) => ({
     player: state.player ? { ...state.player, stats: { ...state.player.stats, hp } } : null
   })),
   updateMP: (mp) => set((state) => ({

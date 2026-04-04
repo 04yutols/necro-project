@@ -7,13 +7,29 @@ import BattleCanvas from '../components/battle/BattleCanvas';
 import NecroLab from '../components/necro/NecroLab';
 import EquipmentManager from '../components/character/EquipmentManager';
 import AreaMap from '../components/map/AreaMap';
-import { Skull, Map, Shield, Activity, Sword } from 'lucide-react';
 import ShardEquipModal from '../components/necro/ShardEquipModal';
-import { GameFrame } from '../components/ui/GameFrame';
+import { DashboardFrame } from '../components/layout/DashboardFrame';
+import { CapsuleStatBar } from '../components/ui/CapsuleStatBar';
+import { NecroLog } from '../components/ui/NecroLog';
+import { ArmySlot } from '../components/ui/ArmySlot';
+import { Shield, Skull, Map, Activity, Image as ImageIcon } from 'lucide-react';
 import { BloodButton } from '../components/ui/BloodButton';
 
 export default function Home() {
-  const { player, setPlayer, setNecroStatus, setInventoryMonsters, setInventoryItems, party, equippingMonsterId, inventoryMonsters: allMonsters, setEquippingMonsterId, addClearedStage } = useGameStore();
+  const { 
+    player, 
+    setPlayer, 
+    setNecroStatus, 
+    setInventoryMonsters, 
+    setInventoryItems, 
+    party, 
+    equippingMonsterId, 
+    inventoryMonsters: allMonsters, 
+    setEquippingMonsterId, 
+    addClearedStage,
+    battleLogs
+  } = useGameStore();
+
   const [isInBattle, setIsInBattle] = useState(false);
   const [activeTab, setActiveTab] = useState<'HUB' | 'LAB' | 'MAP'>('HUB');
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
@@ -64,184 +80,165 @@ export default function Home() {
     }
   }, [player, setPlayer, setNecroStatus, setInventoryMonsters, setInventoryItems]);
 
-  if (!player) return <div className="p-8 text-center bg-dark min-h-screen font-cinzel text-white">Loading Hero Data...</div>;
+  if (!player) return <div className="p-8 text-center bg-dark min-h-screen font-cinzel text-white">Loading Digital Soul...</div>;
 
   const tabVariants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: 20 }
+    hidden: { opacity: 0, scale: 0.95 },
+    visible: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.95 }
   };
 
-  return (
-    <main className="min-h-screen bg-necro-gradient text-white flex flex-col font-noto">
-      <nav className="bg-black/80 border-b border-blood/30 p-4 sticky top-0 z-40 backdrop-blur-md">
-        <div className="max-w-[1536px] mx-auto flex justify-between items-center">
-          <h1 className="text-xl md:text-2xl font-bold font-cinzel text-blood tracking-widest uppercase drop-shadow-[0_0_8px_rgba(136,8,8,0.8)]">Necromance Brave</h1>
-          <div className="flex gap-2 md:gap-4">
-            <button onClick={() => setActiveTab('HUB')} className={`flex items-center gap-2 px-3 py-2 font-cinzel font-bold transition-all ${activeTab === 'HUB' ? 'text-white border-b-2 border-blood' : 'text-gray-500 hover:text-white'}`}>
-              <Shield size={18} /> <span className="hidden md:inline">HUB</span>
-            </button>
-            <button onClick={() => setActiveTab('LAB')} className={`flex items-center gap-2 px-3 py-2 font-cinzel font-bold transition-all ${activeTab === 'LAB' ? 'text-white border-b-2 border-blood' : 'text-gray-500 hover:text-white'}`}>
-              <Skull size={18} /> <span className="hidden md:inline">LAB</span>
-            </button>
-            <button onClick={() => setActiveTab('MAP')} className={`flex items-center gap-2 px-3 py-2 font-cinzel font-bold transition-all ${activeTab === 'MAP' ? 'text-white border-b-2 border-blood' : 'text-gray-500 hover:text-white'}`}>
-              <Map size={18} /> <span className="hidden md:inline">MAP</span>
-            </button>
-          </div>
-        </div>
-      </nav>
+  const leftSidebarContent = (
+    <>
+      <div className="flex items-center gap-2 border-b border-primary/30 pb-2 mb-2 font-cinzel font-bold text-primary">
+        <Activity size={16} /> PROFILE
+      </div>
+      <div className="flex-1 flex flex-col justify-center items-center">
+        <motion.div 
+          animate={{ y: [0, -10, 0] }} 
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className="w-full aspect-square border-4 border-primary/50 rounded-lg bg-black/60 shadow-[0_0_20px_rgba(224,141,255,0.3)] relative flex items-center justify-center overflow-hidden mb-4"
+        >
+          {/* image_99510a.png reference: 2D SD Chibi Character */}
+          <img 
+            src="/image_99510a.png" 
+            alt="Hero Avatar" 
+            className="w-[80%] h-auto object-contain [image-rendering:pixelated]"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+              e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+            }}
+          />
+          {/* Fallback text if image missing */}
+          <span className="absolute text-gray-700 font-bold font-space pointer-events-none -z-10 flex flex-col items-center">
+            <ImageIcon className="w-8 h-8 mb-1" />
+            2D AVATAR
+          </span>
+        </motion.div>
 
-      <div className="flex-1 p-4 overflow-y-auto overflow-x-hidden">
-        <div className="max-w-[1536px] mx-auto w-full h-full flex flex-col lg:flex-row gap-6">
+        <div className="w-full font-space">
+          <div className="text-2xl font-bold text-white text-center drop-shadow-md mb-1">{player.name}</div>
+          <div className="text-sm font-bold text-cursedGold text-center tracking-widest mb-4">Class: {player.currentJobId.toUpperCase()}</div>
           
-          {!isInBattle && (
-            <GameFrame 
-              className="lg:w-1/4 flex-shrink-0 self-start sticky top-24" 
-              borderColor="gray" 
-              title={<span className="flex items-center gap-2"><Activity size={18} /> PROFILE</span>}
-            >
-              <div className="space-y-6">
-                <div>
-                  <div className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-1">Name</div>
-                  <div className="text-2xl font-bold font-cinzel text-white">{player.name}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-1">Class</div>
-                  <div className="text-lg font-bold font-cinzel text-cursedGold">{player.currentJobId}</div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm mb-1 font-bold">
-                    <span>HP</span>
-                    <span>{player.stats.hp} / 100</span>
-                  </div>
-                  <div className="w-full bg-gray-900 h-2 rounded-full overflow-hidden border border-gray-800">
-                    <motion.div 
-                      className="bg-red-600 h-full" 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(player.stats.hp / 100) * 100}%` }}
-                      transition={{ duration: 0.5 }}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm mb-1 font-bold">
-                    <span>MP</span>
-                    <span>{player.stats.mp} / 20</span>
-                  </div>
-                  <div className="w-full bg-gray-900 h-2 rounded-full overflow-hidden border border-gray-800">
-                    <motion.div 
-                      className="bg-blue-600 h-full" 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(player.stats.mp / 20) * 100}%` }}
-                      transition={{ duration: 0.5 }}
-                    />
-                  </div>
-                </div>
-                <div className="pt-4 border-t border-white/10">
-                  <div className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-2 flex items-center gap-2"><Sword size={16}/> Weapon</div>
-                  <div className="text-md font-bold text-white bg-black/40 p-2 rounded border border-gray-800">
-                    {player.equipment.weapon ? player.equipment.weapon.name : <span className="text-gray-600 italic">None</span>}
-                  </div>
-                </div>
-              </div>
-            </GameFrame>
-          )}
-
-          <div className="flex-1 min-w-0">
-            {!isInBattle ? (
-              <AnimatePresence mode="wait">
-                {activeTab === 'HUB' && (
-                  <motion.div 
-                    key="HUB"
-                    variants={tabVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    transition={{ duration: 0.3 }}
-                    className="space-y-6"
-                  >
-                    <GameFrame title={<span className="flex items-center gap-2"><Skull size={18}/> CURRENT PARTY</span>}>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {party.map((m, i) => (
-                          <div key={i} className={`p-4 border ${m ? 'border-necro bg-necro/10' : 'border-dashed border-gray-800 bg-black/20'} rounded flex flex-col justify-center items-center h-24`}>
-                            {m ? (
-                              <>
-                                <div className="font-bold text-lg text-white">{m.name}</div>
-                                <div className="text-xs text-gray-400 uppercase tracking-tighter">{m.tribe} | COST {m.cost}</div>
-                              </>
-                            ) : (
-                              <div className="text-gray-700 italic text-sm font-bold uppercase">Empty Slot</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </GameFrame>
-                    <EquipmentManager />
-                  </motion.div>
-                )}
-
-                {activeTab === 'LAB' && (
-                  <motion.div 
-                    key="LAB"
-                    variants={tabVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    transition={{ duration: 0.3 }}
-                  >
-                    <NecroLab />
-                  </motion.div>
-                )}
-
-                {activeTab === 'MAP' && (
-                  <motion.div 
-                    key="MAP"
-                    variants={tabVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    transition={{ duration: 0.3 }}
-                  >
-                    <AreaMap onStartStage={(stageId) => {
-                      setActiveStageId(stageId);
-                      setIsInBattle(true);
-                    }} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            ) : (
-              <motion.div 
-                className="w-full flex flex-col items-center justify-center h-full"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <BattleCanvas onEnd={() => {
-                  setIsInBattle(false);
-                  if (activeStageId) {
-                    addClearedStage(activeStageId);
-                  }
-                }} />
-                <BloodButton 
-                  variant="ghost"
-                  className="mt-8"
-                  onClick={() => setIsInBattle(false)}
-                >
-                  撤退 (RETREAT)
-                </BloodButton>
-              </motion.div>
-            )}
-          </div>
+          <CapsuleStatBar label="HP" value={player.stats.hp} max={100} color="blood" />
+          <CapsuleStatBar label="MP" value={player.stats.mp} max={20} color="secondary" />
         </div>
       </div>
 
+      <div className="mt-auto">
+        <div className="flex gap-2 flex-col">
+          <motion.button 
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+            onClick={() => setActiveTab('HUB')} 
+            className={`w-full py-2 border-2 rounded-lg font-bold transition-all ${activeTab === 'HUB' ? 'border-primary bg-primary/20 text-white' : 'border-gray-700 text-gray-500 hover:border-primary/50 hover:text-primary'}`}
+          >
+            HUB
+          </motion.button>
+          <motion.button 
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+            onClick={() => setActiveTab('LAB')} 
+            className={`w-full py-2 border-2 rounded-lg font-bold transition-all ${activeTab === 'LAB' ? 'border-primary bg-primary/20 text-white' : 'border-gray-700 text-gray-500 hover:border-primary/50 hover:text-primary'}`}
+          >
+            LAB
+          </motion.button>
+          <motion.button 
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+            onClick={() => setActiveTab('MAP')} 
+            className={`w-full py-2 border-2 rounded-lg font-bold transition-all ${activeTab === 'MAP' ? 'border-primary bg-primary/20 text-white' : 'border-gray-700 text-gray-500 hover:border-primary/50 hover:text-primary'}`}
+          >
+            MAP
+          </motion.button>
+        </div>
+      </div>
+    </>
+  );
+
+  const rightSidebarContent = (
+    <>
+      <div className="flex items-center gap-2 border-b border-primary/30 pb-2 mb-2 font-cinzel font-bold text-primary">
+        <Shield size={16} /> ARMY STATUS
+      </div>
+      <div className="flex flex-col gap-2 mb-4">
+        {party.map((m, i) => (
+          <ArmySlot 
+            key={i} 
+            index={i} 
+            monster={m} 
+            onClick={() => setActiveTab('LAB')} 
+            onEquipClick={() => m && setEquippingMonsterId(m.id)}
+          />
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 border-b border-primary/30 pb-2 mt-auto mb-2 font-cinzel font-bold text-primary">
+        <Activity size={16} /> SYSTEM LOG
+      </div>
+      <NecroLog logs={battleLogs} />
+    </>
+  );
+
+  const mainMonitorContent = (
+    <>
+      {!isInBattle ? (
+        <div className="w-full h-full overflow-y-auto custom-scrollbar p-6">
+          <AnimatePresence mode="wait">
+            {activeTab === 'HUB' && (
+              <motion.div key="HUB" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
+                <EquipmentManager />
+              </motion.div>
+            )}
+
+            {activeTab === 'LAB' && (
+              <motion.div key="LAB" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
+                <NecroLab />
+              </motion.div>
+            )}
+
+            {activeTab === 'MAP' && (
+              <motion.div key="MAP" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
+                <AreaMap onStartStage={(stageId) => {
+                  setActiveStageId(stageId);
+                  setIsInBattle(true);
+                }} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ) : (
+        <motion.div 
+          className="w-full h-full flex flex-col relative"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <BattleCanvas onEnd={() => {
+            setIsInBattle(false);
+            if (activeStageId) {
+              addClearedStage(activeStageId);
+            }
+          }} />
+          <div className="absolute top-4 right-4 z-50">
+            <BloodButton variant="secondary" onClick={() => setIsInBattle(false)}>RETREAT</BloodButton>
+          </div>
+        </motion.div>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      <DashboardFrame
+        leftSidebar={leftSidebarContent}
+        mainMonitor={mainMonitorContent}
+        rightSidebar={rightSidebarContent}
+      />
+      
       {equippingMonster && (
         <ShardEquipModal 
           monster={equippingMonster} 
           onClose={() => setEquippingMonsterId(null)} 
         />
       )}
-    </main>
+    </>
   );
 }
