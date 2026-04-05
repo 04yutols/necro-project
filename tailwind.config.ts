@@ -59,6 +59,10 @@ const config: Config = {
         noto: ['var(--font-noto-sans-jp)', 'sans-serif'],
         space: ['var(--font-space-grotesk)', 'sans-serif'],
       },
+      letterSpacing: {
+        'widest-plus': '0.3em',
+        'mega': '0.5em',
+      },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'necro-gradient': 'linear-gradient(to bottom, #0a0b14, #1a0a2a)',

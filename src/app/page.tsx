@@ -12,7 +12,7 @@ import { DashboardFrame } from '../components/layout/DashboardFrame';
 import { CapsuleStatBar } from '../components/ui/CapsuleStatBar';
 import { NecroLog } from '../components/ui/NecroLog';
 import { ArmySlot } from '../components/ui/ArmySlot';
-import { Shield, Skull, Map, Activity, Image as ImageIcon } from 'lucide-react';
+import { Shield, Skull, Map, Activity, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { FuchsiaButton } from '../components/ui/FuchsiaButton';
 
 import { MasterDataService } from '../services/MasterDataService';
@@ -71,218 +71,204 @@ export default function Home() {
   };
 
   const leftSidebarContent = (
-    <>
-      <div className="flex items-center gap-2 border-b border-white/5 pb-2 mb-4 font-space font-bold text-gray-400 text-xs tracking-[0.2em] uppercase">
-        <Activity size={14} /> System Navigation
+    <div className="flex flex-col h-full">
+      {/* Profile Section */}
+      <div className="flex items-center gap-4 mb-10 p-4 rounded-2xl bg-white/5 border border-white/5 relative overflow-hidden group">
+        <div className="absolute inset-0 focus-lines opacity-10 group-hover:opacity-20 transition-opacity" />
+        <div className="w-12 h-12 rounded-full border-2 border-primary p-0.5 shadow-[0_0_10px_#BC00FB]">
+          <div className="w-full h-full rounded-full bg-black/40 overflow-hidden">
+            <img 
+              src="/images/character/sd-necromancer.png" 
+              alt="Avatar" 
+              className="w-full h-full object-cover [image-rendering:pixelated]"
+              onError={(e) => (e.currentTarget.style.display = 'none')}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col">
+          <div className="text-xs font-bold text-primary tracking-widest uppercase">{player.currentJobId}</div>
+          <div className="text-[10px] text-gray-400 font-bold tracking-widest">LEVEL 99 ABYSS WALKER</div>
+        </div>
+      </div>
+
+      <div className="text-[10px] font-bold text-gray-500 tracking-[0.3em] uppercase mb-6 px-2">
+        Navigation
       </div>
       
-      {/* Icon-only Navigation */}
-      <div className="flex gap-4 justify-between mb-8">
+      {/* Menu Items */}
+      <div className="flex flex-col gap-2 mb-auto">
         {[
-          { id: 'HUB', icon: Skull, label: 'HUB' },
-          { id: 'LAB', icon: Activity, label: 'LAB' },
-          { id: 'MAP', icon: Map, label: 'MAP' }
+          { id: 'HUB', icon: Skull, label: 'CITADEL' },
+          { id: 'MAP', icon: Map, label: 'MAP' },
+          { id: 'LAB', icon: Activity, label: 'ARMY' }
         ].map((tab) => (
           <motion.button 
             key={tab.id}
-            whileHover={{ scale: 1.1, y: -2 }} 
-            whileTap={{ scale: 0.9, y: 1 }} 
-            transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+            whileHover={{ x: 4 }} 
+            whileTap={{ scale: 0.98 }} 
             onClick={() => setActiveTab(tab.id as any)} 
-            className={`flex-1 aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 transition-all border-b-4
+            className={`flex items-center gap-4 px-4 py-3 rounded-full transition-all relative
               ${activeTab === tab.id 
-                ? 'bg-primary text-dark border-fuchsia/80 shadow-[0_0_20px_rgba(188, 0, 251, 0.4)]' 
-                : 'bg-black/60 text-gray-500 border-gray-900 hover:border-primary/40 hover:text-primary'}`}
+                ? 'text-white' 
+                : 'text-gray-500 hover:text-gray-300'}`}
           >
-            <tab.icon size={20} />
-            <span className="text-[9px] font-bold tracking-tighter">{tab.label}</span>
+            {activeTab === tab.id && (
+              <motion.div 
+                layoutId="active-nav"
+                className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent border-l-2 border-primary rounded-r-lg"
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              />
+            )}
+            <tab.icon size={18} className={`relative z-10 ${activeTab === tab.id ? 'text-primary' : ''}`} />
+            <span className="text-[11px] font-bold tracking-[0.2em] relative z-10">{tab.label}</span>
           </motion.button>
         ))}
       </div>
 
-      <div className="flex-1 flex flex-col">
-        <div className="flex items-center gap-2 border-b border-white/5 pb-2 mb-4 font-space font-bold text-gray-400 text-xs tracking-[0.2em] uppercase">
-          <Activity size={14} /> Digital Soul
-        </div>
-
-        <div className="relative w-full aspect-square mb-6">
-          {/* Digital Effects Background */}
-          <div className="absolute inset-0 bg-black/40 rounded-3xl border-1 border-white/10 overflow-hidden">
-            {/* Honeycomb Grid Effect */}
-            <div className="absolute inset-0 honeycomb-grid opacity-30" />
-            
-            {/* Focus Lines Effect */}
-            <div className="absolute inset-0 focus-lines opacity-20" />
-
-            {/* Circular Grid Effect (Kept but refined) */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-20">
-              <div className="w-[120%] h-[120%] border-[1px] border-primary rounded-full animate-pulse" />
-              <div className="absolute w-[80%] h-[80%] border-[1px] border-primary rounded-full animate-[ping_3s_linear_infinite]" />
-            </div>
-          </div>
-
-          <motion.div 
-            animate={{ y: [0, -10, 0], scale: [1, 1.02, 1] }} 
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute inset-0 flex items-center justify-center z-10"
-          >
-            {/* SD Necromancer Chibi Character */}
-            <img 
-              src="/images/character/sd-necromancer.png" 
-              alt="Hero Avatar" 
-              className="w-[85%] h-auto object-contain [image-rendering:pixelated] drop-shadow-[0_0_30px_rgba(188,0,251,0.5)]"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-                e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-              }}
-            />
-            {/* Fallback text if image missing */}
-            <span className="absolute text-gray-700 font-bold font-space pointer-events-none -z-10 flex flex-col items-center opacity-30">
-              <ImageIcon className="w-12 h-12 mb-1" />
-              AVATAR.OS
-            </span>
-          </motion.div>
-        </div>
-
-        <div className="w-full font-space space-y-4">
-          <div className="text-center">
-            <div className="text-2xl font-black text-white tracking-widest drop-shadow-[0_0_15px_rgba(188,0,251,0.4)]">{player.name}</div>
-            <div className="text-[10px] font-bold text-primary tracking-[0.3em] uppercase opacity-80 mt-1">ID: {player.currentJobId.toUpperCase()} // LV.99</div>
-          </div>
-          
-          <div className="bg-black/40 p-4 rounded-2xl border-1 border-white/5 space-y-1 backdrop-blur-sm">
-            <CapsuleStatBar label="Vitality" value={player.stats.hp} max={100} color="fuchsia" />
-            <CapsuleStatBar label="Energy" value={player.stats.mp} max={20} color="secondary" />
-          </div>
-        </div>
+      {/* Bottom Sidebar Action */}
+      <div className="mt-8">
+        <FuchsiaButton className="w-full rounded-full py-4 text-xs tracking-[0.3em] shadow-[0_0_20px_rgba(255,0,255,0.3)]">
+          SUMMON MINION
+        </FuchsiaButton>
       </div>
-    </>
+    </div>
   );
 
   const rightSidebarContent = (
-    <>
-      <div className="flex items-center gap-2 border-b border-primary/30 pb-2 mb-2 font-cinzel font-bold text-primary">
-        <Shield size={16} /> ARMY STATUS
+    <div className="flex flex-col h-full">
+      <div className="text-[10px] font-bold text-gray-500 tracking-[0.3em] uppercase mb-6 px-2">
+        Soul Log
       </div>
-      <div className="flex flex-col gap-2 mb-4">
-        {party.map((m, i) => (
-          <ArmySlot 
-            key={i} 
-            index={i} 
-            monster={m} 
-            onClick={() => setActiveTab('LAB')} 
-            onEquipClick={() => m && setEquippingMonsterId(m.id)}
-          />
-        ))}
-      </div>
-
-      <div className="flex items-center gap-2 border-b border-primary/30 pb-2 mt-auto mb-2 font-cinzel font-bold text-primary">
-        <Activity size={16} /> SYSTEM LOG
-      </div>
+      
       <NecroLog logs={battleLogs} />
-    </>
+
+      <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/5">
+        <div className="flex justify-between items-end mb-2">
+          <span className="text-[9px] font-bold text-fuchsia tracking-widest uppercase">Corruption Level</span>
+          <span className="text-[10px] font-bold text-white">78%</span>
+        </div>
+        <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
+          <div className="h-full bg-fuchsia shadow-[0_0_10px_#FF00FF]" style={{ width: '78%' }} />
+        </div>
+      </div>
+    </div>
   );
 
   const mainMonitorContent = (
-    <>
-      {!isInBattle ? (
-        <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar p-6">
-          <AnimatePresence mode="wait">
-            {activeTab === 'HUB' && (
-              <motion.div key="HUB" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6 pb-24">
-                <EquipmentManager />
-              </motion.div>
-            )}
-
-            {activeTab === 'LAB' && (
-              <motion.div key="LAB" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6 pb-24">
-                <NecroLab />
-              </motion.div>
-            )}
-
-            {activeTab === 'MAP' && (
-              <motion.div key="MAP" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6 pb-24 h-full">
-                <AreaMap onStartStage={(stageId) => {
-                  setActiveStageId(stageId);
-                  setIsInBattle(true);
-                }} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      ) : (
-        <motion.div 
-          className="flex-1 w-full h-full flex flex-col relative"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <BattleCanvas onEnd={() => {
-            setIsInBattle(false);
-            if (activeStageId) {
-              addClearedStage(activeStageId);
-            }
-          }} />
-          <div className="absolute top-4 right-4 z-50">
-            <FuchsiaButton variant="secondary" onClick={() => setIsInBattle(false)}>RETREAT</FuchsiaButton>
+    <div className="flex flex-col h-full relative">
+      <div className="flex justify-between items-start mb-10">
+        <div>
+          <h2 className="text-3xl font-black text-white tracking-[0.1em] uppercase mb-1">
+            {activeTab === 'MAP' ? 'ABYSSAL SECTOR 04' : activeTab === 'HUB' ? 'CITADEL HUB' : 'NECRO LABORATORY'}
+          </h2>
+          <div className="text-xs font-bold text-secondary tracking-widest uppercase opacity-80">
+            {activeTab === 'MAP' ? 'Map Synchronization: 94%' : 'System Status: Optimal'}
           </div>
-        </motion.div>
-      )}
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-secondary/30 bg-secondary/5">
+          <div className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+          <span className="text-[9px] font-bold text-secondary tracking-widest uppercase">System Online</span>
+        </div>
+      </div>
 
-      {/* Global Command Buttons (Always visible at the bottom of the central monitor) */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-6">
-        <motion.button 
-          whileHover={isInBattle ? { scale: 1.1, y: -5 } : {}}
-          whileTap={isInBattle ? { scale: 0.9, y: 2 } : {}}
-          transition={{ type: "spring", stiffness: 500, damping: 15 }}
-          disabled={!isInBattle}
+      <div className="flex-1 min-h-0">
+        {!isInBattle ? (
+          <div className="w-full h-full overflow-y-auto custom-scrollbar pr-2">
+            <AnimatePresence mode="wait">
+              {activeTab === 'HUB' && (
+                <motion.div key="HUB" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6 pb-24">
+                  <EquipmentManager />
+                </motion.div>
+              )}
+
+              {activeTab === 'LAB' && (
+                <motion.div key="LAB" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6 pb-24">
+                  <NecroLab />
+                </motion.div>
+              )}
+
+              {activeTab === 'MAP' && (
+                <motion.div key="MAP" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="h-full">
+                  <AreaMap onStartStage={(stageId) => {
+                    setActiveStageId(stageId);
+                    setIsInBattle(true);
+                  }} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <motion.div 
+            className="w-full h-full flex flex-col relative"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <BattleCanvas onEnd={() => {
+              setIsInBattle(false);
+              if (activeStageId) {
+                addClearedStage(activeStageId);
+              }
+            }} />
+            <div className="absolute top-4 right-4 z-50">
+              <FuchsiaButton variant="secondary" onClick={() => setIsInBattle(false)}>RETREAT</FuchsiaButton>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Global Bottom Action Bar */}
+      <div className="mt-auto pt-6 flex items-center justify-between gap-8 border-t border-white/5 bg-black/20 -mx-8 px-8 pb-4">
+        <div className="flex gap-8 flex-1">
+          <div className="flex flex-col gap-1.5 flex-1 max-w-[120px]">
+            <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">Active Mana</span>
+            <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
+              <div className="h-full bg-primary shadow-[0_0_10px_#BC00FB]" style={{ width: '60%' }} />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5 flex-1 max-w-[120px]">
+            <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">Essence</span>
+            <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
+              <div className="h-full bg-secondary shadow-[0_0_10px_#00FFFF]" style={{ width: '40%' }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <motion.button 
+            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+            className="w-10 h-10 rounded-full border border-primary/30 bg-primary/5 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors"
+          >
+            <Sparkles size={16} />
+          </motion.button>
+          <motion.button 
+            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+            className="w-10 h-10 rounded-full border border-secondary/30 bg-secondary/5 flex items-center justify-center text-secondary hover:bg-secondary/20 transition-colors"
+          >
+            <Shield size={16} />
+          </motion.button>
+          <motion.button 
+            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+            className="w-10 h-10 rounded-full border border-fuchsia/30 bg-fuchsia/5 flex items-center justify-center text-fuchsia hover:bg-fuchsia/20 transition-colors"
+          >
+            <Activity size={16} />
+          </motion.button>
+        </div>
+
+        <motion.button
+          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
           onClick={() => {
-            if (isInBattle) {
-              const { setActionTrigger } = useGameStore.getState();
-              setActionTrigger({ type: 'PHYSICAL_ATTACK' });
+            if (activeTab === 'MAP' && !isInBattle) {
+              // Trigger first stage or handle as "Auto Combat"
             }
           }}
-          className={`relative w-20 h-20 rounded-3xl border-4 border-secondary/80 bg-secondary flex flex-col items-center justify-center text-dark hover:shadow-[0_0_30px_#00FFFF] transition-all group focus:outline-none shadow-2xl border-b-8 active:border-b-0 active:translate-y-2
-            ${!isInBattle ? 'opacity-30 cursor-not-allowed grayscale border-gray-700' : ''}
-          `}
+          className="flex items-center gap-3 px-8 py-3 bg-secondary text-dark font-black text-[11px] tracking-[0.2em] rounded-full shadow-[0_0_20px_rgba(0,255,255,0.3)] hover:brightness-110 transition-all uppercase"
         >
-          <Skull size={24} className="mb-1" />
-          <span className="text-[10px] font-black font-space uppercase">ATK</span>
+          <Map size={16} />
+          Combat Start
         </motion.button>
-
-        {availableSkills.map((skill: any) => {
-          const isMpEnough = player && player.stats.mp >= skill.mpCost;
-          const canUse = isInBattle && isMpEnough;
-          return (
-            <motion.button 
-              key={skill.id}
-              whileHover={canUse ? { scale: 1.1, y: -5 } : {}}
-              whileTap={canUse ? { scale: 0.9, y: 2 } : {}}
-              transition={{ type: "spring", stiffness: 500, damping: 15 }}
-              disabled={!canUse}
-              onClick={() => {
-                if (isInBattle) {
-                  const { setActionTrigger } = useGameStore.getState();
-                  setActionTrigger({ type: 'MAGIC_SKILL', skillId: skill.id });
-                }
-              }}
-              className={`relative w-20 h-20 rounded-3xl border-4 flex flex-col items-center justify-center transition-all group focus:outline-none shadow-2xl border-b-8 active:border-b-0 active:translate-y-2
-                ${isMpEnough ? 'border-fuchsia/80 bg-primary text-dark hover:shadow-[0_0_30px_#BC00FB]' : 'border-gray-800 bg-gray-900 text-gray-600 grayscale'}
-                ${!isInBattle ? 'opacity-30 cursor-not-allowed grayscale' : ''}
-              `}
-            >
-              <Activity size={20} className="mb-1" />
-              <span className="text-[8px] font-black font-space uppercase truncate w-full px-2 text-center leading-none" title={skill.name}>
-                {skill.name}
-              </span>
-              <span className="absolute -top-3 -right-3 bg-black border-2 border-primary text-primary text-[10px] px-2 py-0.5 rounded-full font-black font-space shadow-xl">
-                {skill.mpCost}
-              </span>
-            </motion.button>
-          );
-        })}
       </div>
-    </>
+    </div>
   );
 
   return (

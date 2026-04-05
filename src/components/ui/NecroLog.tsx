@@ -6,22 +6,33 @@ interface NecroLogProps {
 
 export function NecroLog({ logs }: NecroLogProps) {
   return (
-    <div className="flex-1 overflow-y-auto bg-black/80 border-4 border-white/5 rounded-2xl p-4 font-space text-[12px] text-primary custom-scrollbar flex flex-col gap-2 shadow-inner relative">
-      <div className="absolute inset-0 pointer-events-none bg-dot-pattern opacity-10 z-0" />
-      <div className="relative z-10 flex flex-col gap-1.5">
-        {logs.map((log, i) => (
-          <div key={i} className="animate-in fade-in slide-in-from-left-2 duration-300 flex items-start gap-2">
-            <span className="text-secondary font-black opacity-80 mt-0.5">»</span>
-            <span className="leading-relaxed drop-shadow-[0_0_8px_rgba(224,141,255,0.4)]">{log}</span>
+    <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-3 pr-2">
+      {logs.map((log, i) => {
+        const isUnlock = log.includes('unlocked');
+        const isQuest = log.includes('cleared') || log.includes('complete');
+        
+        return (
+          <div 
+            key={i} 
+            className={`animate-in fade-in slide-in-from-right-4 duration-500 p-4 rounded-2xl bg-white/5 border-l-2 relative overflow-hidden
+              ${isUnlock ? 'border-primary' : isQuest ? 'border-secondary' : 'border-gray-700'}`}
+          >
+            <div className={`text-[8px] font-bold tracking-[0.2em] uppercase mb-1 
+              ${isUnlock ? 'text-primary' : isQuest ? 'text-secondary' : 'text-gray-500'}`}>
+              {isUnlock ? 'New Minion Available' : isQuest ? 'Quest Complete' : 'System Log'}
+            </div>
+            <div className="text-[10px] font-medium text-gray-300 leading-relaxed">
+              {log}
+            </div>
           </div>
-        ))}
-        {logs.length === 0 && (
-          <div className="text-primary/30 italic animate-pulse flex items-center gap-2 mt-4 justify-center uppercase font-black tracking-widest text-[10px]">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary/30" />
-            Standby for data...
-          </div>
-        )}
-      </div>
+        );
+      })}
+      {logs.length === 0 && (
+        <div className="text-gray-600 italic flex items-center gap-3 mt-4 justify-center uppercase font-bold tracking-widest text-[9px]">
+          <div className="w-1 h-1 rounded-full bg-gray-700 animate-pulse" />
+          No Soul Data
+        </div>
+      )}
     </div>
   );
 }
