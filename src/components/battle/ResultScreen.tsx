@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
 import { Trophy, ArrowRight, Package, User } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
+import { FuchsiaButton } from '../ui/FuchsiaButton';
 
 interface ResultScreenProps {
   isVictory: boolean;
@@ -218,12 +219,12 @@ export default function ResultScreen({ isVictory, expGained, itemsGained, monste
       
       {showButton && (
         <div className="mt-8 w-full flex justify-center animate-in slide-in-from-bottom-4 duration-500">
-          <button 
+          <FuchsiaButton 
             onClick={onFinish}
-            className="flex items-center gap-3 px-12 py-4 bg-fuchsia hover:bg-fuchsia/80 text-white font-bold text-xl rounded-full border-2 border-fuchsia shadow-[0_0_20px_rgba(255,0,255,0.5)] transition-all active:scale-95"
+            className="flex items-center gap-3 px-12 py-4 text-xl rounded-full"
           >
             <ArrowRight size={24} /> 拠点へ戻る
-          </button>
+          </FuchsiaButton>
         </div>
       )}
     </div>

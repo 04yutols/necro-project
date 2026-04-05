@@ -5,6 +5,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { Map as MapIcon, Skull, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import stagesData from '../../data/master/stages.json';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FuchsiaButton } from '../ui/FuchsiaButton';
 
 interface AreaMapProps {
   onStartStage: (stageId: string) => void;

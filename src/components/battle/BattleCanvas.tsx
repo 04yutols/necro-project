@@ -7,7 +7,6 @@ import { BattleEngine } from '../../logic/BattleEngine';
 import { BattleLog, MonsterData } from '../../types/game';
 import { Sword, Sparkles } from 'lucide-react';
 import ResultScreen from './ResultScreen';
-import { FuchsiaButton } from '../ui/FuchsiaButton';
 import { GameFrame } from '../ui/GameFrame';
 import { MasterDataService } from '../../services/MasterDataService';
 import { motion } from 'framer-motion';
