@@ -72,13 +72,14 @@ export class GameManager {
         passiveMatkBonus: char.passiveMatkBonus,
         passiveMdefBonus: char.passiveMdefBonus
       },
+      baseResistances: {},
       equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null }, // TODO: Load equipment properly
-      jobs: char.jobs.map(j => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
+      jobs: char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
       isAwakened: false,
       clearedStages: char.clearedStages
     };
 
-    const monsterList = monsterData.map(m => ({
+    const monsterList = monsterData.map((m: any) => ({
       id: m.id,
       name: m.name,
       tribe: m.tribe as any,
@@ -112,9 +113,9 @@ export class GameManager {
     const rewards = this.rewardService.calculateDrops(stage.rewards.dropTable, char.luck);
 
     // 2. DBへの反映 (トランザクション)
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: any) => {
       // 経験値加算
-      const currentJob = char.jobs.find(j => j.jobId === char.currentJobId);
+      const currentJob = char.jobs.find((j: any) => j.jobId === char.currentJobId);
       if (currentJob) {
         const newExp = currentJob.exp + expGain;
         const newLevel = Math.floor(newExp / 100) + 1; // 簡易的なレベルアップ式
@@ -193,7 +194,7 @@ export class GameManager {
     const monsters = await this.prisma.monster.findMany({
       where: { id: { in: monsterIds.filter(id => id !== null) as string[] } }
     });
-    const totalCost = monsters.reduce((acc, m) => acc + m.cost, 0);
+    const totalCost = monsters.reduce((acc: any, m: any) => acc + m.cost, 0);
 
     if (totalCost > char.necroMaxCost) {
       throw new Error(`Cost limit exceeded: ${totalCost} / ${char.necroMaxCost}`);
@@ -261,16 +262,6 @@ export class GameManager {
     if (!dbField) throw new Error("Invalid equipment slot");
 
     await this.prisma.character.update({
-      where: { id: characterId },
-      data: { [dbField]: null }
-    });
-  }
-
-  public async close(): Promise<void> {
-    await this.prisma.$disconnect();
-  }
-}
-t this.prisma.character.update({
       where: { id: characterId },
       data: { [dbField]: null }
     });

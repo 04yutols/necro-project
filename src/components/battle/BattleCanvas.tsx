@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
 import { useGameStore } from '../../store/useGameStore';
 import { BattleEngine } from '../../logic/BattleEngine';
-import { BattleLog } from '../../types/game';
+import { BattleLog, MonsterData } from '../../types/game';
 import { Sword, Sparkles } from 'lucide-react';
 import ResultScreen from './ResultScreen';
 import { BloodButton } from '../ui/BloodButton';
@@ -17,7 +17,7 @@ interface BattleCanvasProps {
 
 export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const { player, party, updateMP, updateHP } = useGameStore();
+  const { player, party, updateMP, updateHP, actionTrigger, setActionTrigger } = useGameStore();
   const appRef = useRef<PIXI.Application | null>(null);
   const engineRef = useRef<BattleEngine | null>(null);
   const mountedRef = useRef(true);
@@ -97,6 +97,13 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
       }
     };
   }, [player, party]);
+
+  useEffect(() => {
+    if (actionTrigger && !isProcessing) {
+      handleAction(actionTrigger.type, actionTrigger.skillId);
+      setActionTrigger(null); // Reset trigger
+    }
+  }, [actionTrigger]);
 
   const handleAction = async (type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', skillId?: string) => {
     if (isProcessing || !engineRef.current || !appRef.current || !mountedRef.current) return;
@@ -232,61 +239,57 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   };
 
   return (
-    <div className="flex flex-col items-center gap-4 w-full max-w-[800px]">
+    <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden">
       {/* ターゲット情報 */}
-      <div className="w-full flex justify-between items-end px-4 mb-2">
-        <div className="text-left w-1/2">
-          <div className="text-sm text-gray-400 font-cinzel font-bold tracking-widest">TARGET</div>
-          <div className="text-xl font-bold font-noto">{target.name}</div>
-          <div className="w-full max-w-[250px] bg-gray-800 h-3 rounded-full mt-1 border border-blood/30">
-            <div 
-              className="bg-blood h-full transition-all duration-500" 
-              style={{ width: `${(target.stats.hp / 150) * 100}%` }}
-            />
-          </div>
-        </div>
-        <div className="text-right text-blood font-bold text-2xl font-cinzel">
-          HP: {target.stats.hp}
+      <div className="absolute top-4 left-4 z-20 bg-dark/80 backdrop-blur-md p-4 rounded-xl border-2 border-blood shadow-[0_0_20px_rgba(136,8,8,0.5)] min-w-[250px]">
+        <div className="text-[10px] text-gray-400 font-cinzel font-bold tracking-widest uppercase mb-1">Target Identified</div>
+        <div className="text-xl font-bold font-noto text-white">{target.name}</div>
+        <div className="text-sm font-bold text-blood font-mono mt-2">HP: {target.stats.hp}</div>
+        <div className="w-full bg-gray-900 h-2 rounded-full mt-1 border border-blood/30 overflow-hidden">
+          <div 
+            className="bg-red-500 h-full transition-all duration-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]" 
+            style={{ width: `${(target.stats.hp / 150) * 100}%` }}
+          />
         </div>
       </div>
 
-      <div ref={canvasRef} className="w-full border-4 border-blood/50 shadow-[0_0_30px_rgba(136,8,8,0.3)] rounded-lg overflow-hidden bg-black" />
-      
-      <div className="flex flex-col md:flex-row gap-4 w-full">
-        {/* アクションボタン */}
-        <div className="flex flex-col gap-2 w-full md:w-1/3">
-          <BloodButton 
-            disabled={isProcessing}
-            onClick={() => handleAction('PHYSICAL_ATTACK')}
-            className="w-full justify-start"
-          >
-            <Sword size={20} /> 物理攻撃
-          </BloodButton>
-          
-          {availableSkills.map((skill: any) => {
-            const isMpEnough = player && player.stats.mp >= skill.mpCost;
-            return (
-              <BloodButton 
-                key={skill.id}
-                variant="secondary"
-                disabled={isProcessing || !isMpEnough}
-                onClick={() => handleAction('MAGIC_SKILL', skill.id)}
-                className={`w-full justify-start ${isMpEnough ? 'border-blue-900/50 hover:border-blue-500 text-blue-100 hover:bg-blue-900/20' : ''}`}
-              >
-                <Sparkles size={20} /> {skill.name} <span className="text-xs ml-auto">MP {skill.mpCost}</span>
-              </BloodButton>
-            );
-          })}
-        </div>
+      {/* 16:9 Canvas Container */}
+      <div className="relative w-full max-w-5xl aspect-video border-4 border-secondary/50 shadow-[0_0_30px_rgba(0,255,171,0.2)] rounded-2xl overflow-hidden bg-black hologram-scan">
+        <div ref={canvasRef} className="absolute inset-0 [&>canvas]:w-full [&>canvas]:h-full [&>canvas]:object-cover" />
+      </div>
 
-        {/* リアルタイムログ */}
-        <GameFrame borderColor="gray" className="w-full md:w-2/3 h-32 md:h-auto overflow-y-auto">
-          <div className="text-xs text-green-400 font-mono space-y-1">
-            {battleLogs.map((log, i) => (
-              <div key={i}>{log}</div>
-            ))}
-          </div>
-        </GameFrame>
+      {/* 円形コマンドボタン（Stich デザイン） */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-6">
+        <button 
+          disabled={isProcessing}
+          onClick={() => handleAction('PHYSICAL_ATTACK')}
+          className="puni-puni relative w-20 h-20 rounded-full border-4 border-secondary bg-black/80 flex flex-col items-center justify-center text-secondary hover:bg-secondary/20 hover:shadow-[0_0_20px_rgba(0,255,171,0.8)] transition-all disabled:opacity-50 disabled:grayscale group focus:outline-none"
+        >
+          <Sword size={24} className="group-hover:scale-110 transition-transform" />
+          <span className="text-[10px] font-bold font-space mt-1">ATTACK</span>
+        </button>
+        
+        {availableSkills.map((skill: any) => {
+          const isMpEnough = player && player.stats.mp >= skill.mpCost;
+          return (
+            <button 
+              key={skill.id}
+              disabled={isProcessing || !isMpEnough}
+              onClick={() => handleAction('MAGIC_SKILL', skill.id)}
+              className={`puni-puni relative w-20 h-20 rounded-full border-4 flex flex-col items-center justify-center transition-all group focus:outline-none
+                ${isMpEnough ? 'border-primary bg-black/80 text-primary hover:bg-primary/20 hover:shadow-[0_0_20px_rgba(224,141,255,0.8)]' : 'border-gray-700 bg-gray-900 text-gray-600 grayscale'}
+              `}
+            >
+              <Sparkles size={24} className={isMpEnough ? "group-hover:scale-110 transition-transform" : ""} />
+              <span className="text-[10px] font-bold font-space mt-1 uppercase truncate w-full px-1 text-center leading-none leading-tight" title={skill.name}>
+                {skill.name}
+              </span>
+              <span className="absolute -top-2 -right-2 bg-black border border-primary text-primary text-[8px] px-1.5 py-0.5 rounded-full font-mono">
+                {skill.mpCost}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

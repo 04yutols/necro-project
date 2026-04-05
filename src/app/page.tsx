@@ -15,6 +15,8 @@ import { ArmySlot } from '../components/ui/ArmySlot';
 import { Shield, Skull, Map, Activity, Image as ImageIcon } from 'lucide-react';
 import { BloodButton } from '../components/ui/BloodButton';
 
+import { MasterDataService } from '../services/MasterDataService';
+
 export default function Home() {
   const { 
     player, 
@@ -33,8 +35,19 @@ export default function Home() {
   const [isInBattle, setIsInBattle] = useState(false);
   const [activeTab, setActiveTab] = useState<'HUB' | 'LAB' | 'MAP'>('HUB');
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  
+  const masterData = MasterDataService.getInstance();
 
   const equippingMonster = equippingMonsterId ? allMonsters.find(m => m.id === equippingMonsterId) : null;
+
+  // 使用可能なスキルの取得 (グローバル)
+  const currentJob = player?.jobs.find(j => j.jobId === player?.currentJobId);
+  const availableSkills = currentJob && player
+    ? (masterData.getJob(player.currentJobId)?.skills || [])
+        .filter((s: any) => s.level <= currentJob.level)
+        .map((s: any) => masterData.getSkill(s.skillId))
+        .filter(Boolean)
+    : [];
 
   useEffect(() => {
     if (!player) {
