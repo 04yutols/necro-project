@@ -18,33 +18,37 @@ body {
 @layer utilities {
   .pixel-grid {
     background-image: 
-      linear-gradient(to right, rgba(224, 141, 255, 0.05) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(224, 141, 255, 0.05) 1px, transparent 1px);
+      linear-gradient(to right, rgba(188, 0, 251, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(188, 0, 251, 0.05) 1px, transparent 1px);
     background-size: 20px 20px;
   }
 
   .pixel-border-primary {
-    border-width: 4px;
-    border-style: solid;
-    border-color: #e08dff;
+    border: 1px solid #BC00FB;
     border-radius: 1.5rem;
-    box-shadow: 0 0 20px rgba(224, 141, 255, 0.4), inset 0 0 10px rgba(224, 141, 255, 0.2);
+    box-shadow: 0 0 15px rgba(188, 0, 251, 0.5), inset 0 0 5px rgba(188, 0, 251, 0.3);
   }
 
   .pixel-border-secondary {
-    border-width: 4px;
-    border-style: solid;
-    border-color: #00ffab;
+    border: 1px solid #00FFFF;
     border-radius: 1.5rem;
-    box-shadow: 0 0 20px rgba(0, 255, 171, 0.4), inset 0 0 10px rgba(0, 255, 171, 0.2);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.5), inset 0 0 5px rgba(0, 255, 255, 0.3);
   }
 
-  .pixel-border-blood {
-    border-width: 4px;
-    border-style: solid;
-    border-color: #ff2e2e;
+  .pixel-border-fuchsia {
+    border: 1px solid #FF00FF;
     border-radius: 1.5rem;
-    box-shadow: 0 0 20px rgba(255, 46, 46, 0.4), inset 0 0 10px rgba(255, 46, 46, 0.2);
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.5), inset 0 0 5px rgba(255, 0, 255, 0.3);
+  }
+
+  .honeycomb-grid {
+    background-color: transparent;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cpath fill='%23BC00FB' fill-opacity='0.1' d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9l11-6.35 11 6.35v13.2l-11 6.35L3 31.1V17.9z'/%3E%3C/svg%3E");
+  }
+
+  .focus-lines {
+    background: radial-gradient(circle, transparent 20%, rgba(188, 0, 251, 0.05) 100%),
+                repeating-conic-gradient(from 0deg, transparent 0deg 15deg, rgba(188, 0, 251, 0.1) 15deg 30deg);
   }
 
   .hologram-scan {
@@ -62,9 +66,9 @@ body {
     background: linear-gradient(
       to bottom,
       transparent 0%,
-      rgba(0, 255, 171, 0.05) 40%,
-      rgba(0, 255, 171, 0.2) 50%,
-      rgba(0, 255, 171, 0.05) 60%,
+      rgba(0, 255, 255, 0.05) 40%,
+      rgba(0, 255, 255, 0.2) 50%,
+      rgba(0, 255, 255, 0.05) 60%,
       transparent 100%
     );
     animation: scan 6s linear infinite;
@@ -80,11 +84,11 @@ body {
     border-radius: 4px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(224, 141, 255, 0.5);
+    background: rgba(188, 0, 251, 0.5);
     border-radius: 4px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 255, 171, 0.8);
+    background: rgba(0, 255, 255, 0.8);
   }
 }
 

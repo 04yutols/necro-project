@@ -13,7 +13,7 @@ import { CapsuleStatBar } from '../components/ui/CapsuleStatBar';
 import { NecroLog } from '../components/ui/NecroLog';
 import { ArmySlot } from '../components/ui/ArmySlot';
 import { Shield, Skull, Map, Activity, Image as ImageIcon } from 'lucide-react';
-import { BloodButton } from '../components/ui/BloodButton';
+import { FuchsiaButton } from '../components/ui/FuchsiaButton';
 
 import { MasterDataService } from '../services/MasterDataService';
 
@@ -91,7 +91,7 @@ export default function Home() {
             onClick={() => setActiveTab(tab.id as any)} 
             className={`flex-1 aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 transition-all border-b-4
               ${activeTab === tab.id 
-                ? 'bg-primary text-dark border-purple-800 shadow-[0_0_20px_rgba(224,141,255,0.4)]' 
+                ? 'bg-primary text-dark border-fuchsia/80 shadow-[0_0_20px_rgba(188, 0, 251, 0.4)]' 
                 : 'bg-black/60 text-gray-500 border-gray-900 hover:border-primary/40 hover:text-primary'}`}
           >
             <tab.icon size={20} />
@@ -107,20 +107,17 @@ export default function Home() {
 
         <div className="relative w-full aspect-square mb-6">
           {/* Digital Effects Background */}
-          <div className="absolute inset-0 bg-black/40 rounded-3xl border-4 border-white/5 overflow-hidden">
-            {/* Circular Grid Effect */}
+          <div className="absolute inset-0 bg-black/40 rounded-3xl border-1 border-white/10 overflow-hidden">
+            {/* Honeycomb Grid Effect */}
+            <div className="absolute inset-0 honeycomb-grid opacity-30" />
+            
+            {/* Focus Lines Effect */}
+            <div className="absolute inset-0 focus-lines opacity-20" />
+
+            {/* Circular Grid Effect (Kept but refined) */}
             <div className="absolute inset-0 flex items-center justify-center opacity-20">
               <div className="w-[120%] h-[120%] border-[1px] border-primary rounded-full animate-pulse" />
               <div className="absolute w-[80%] h-[80%] border-[1px] border-primary rounded-full animate-[ping_3s_linear_infinite]" />
-              <div className="absolute w-[40%] h-[40%] border-[1px] border-primary rounded-full" />
-            </div>
-            
-            {/* Focus Lines */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none">
-              <div className="absolute top-1/2 left-0 w-full h-[1px] bg-primary" />
-              <div className="absolute top-0 left-1/2 w-[1px] h-full bg-primary" />
-              <div className="absolute top-1/2 left-0 w-full h-[1px] bg-primary rotate-45" />
-              <div className="absolute top-1/2 left-0 w-full h-[1px] bg-primary -rotate-45" />
             </div>
           </div>
 
@@ -133,7 +130,7 @@ export default function Home() {
             <img 
               src="/images/character/sd-necromancer.png" 
               alt="Hero Avatar" 
-              className="w-[85%] h-auto object-contain [image-rendering:pixelated] drop-shadow-[0_0_20px_rgba(224,141,255,0.4)]"
+              className="w-[85%] h-auto object-contain [image-rendering:pixelated] drop-shadow-[0_0_30px_rgba(188,0,251,0.5)]"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
                 e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
@@ -149,12 +146,12 @@ export default function Home() {
 
         <div className="w-full font-space space-y-4">
           <div className="text-center">
-            <div className="text-2xl font-black text-white tracking-widest drop-shadow-[0_0_10px_rgba(224,141,255,0.3)]">{player.name}</div>
+            <div className="text-2xl font-black text-white tracking-widest drop-shadow-[0_0_15px_rgba(188,0,251,0.4)]">{player.name}</div>
             <div className="text-[10px] font-bold text-primary tracking-[0.3em] uppercase opacity-80 mt-1">ID: {player.currentJobId.toUpperCase()} // LV.99</div>
           </div>
           
-          <div className="bg-black/40 p-4 rounded-2xl border-2 border-white/5 space-y-1">
-            <CapsuleStatBar label="Vitality" value={player.stats.hp} max={100} color="blood" />
+          <div className="bg-black/40 p-4 rounded-2xl border-1 border-white/5 space-y-1 backdrop-blur-sm">
+            <CapsuleStatBar label="Vitality" value={player.stats.hp} max={100} color="fuchsia" />
             <CapsuleStatBar label="Energy" value={player.stats.mp} max={20} color="secondary" />
           </div>
         </div>
@@ -227,7 +224,7 @@ export default function Home() {
             }
           }} />
           <div className="absolute top-4 right-4 z-50">
-            <BloodButton variant="secondary" onClick={() => setIsInBattle(false)}>RETREAT</BloodButton>
+            <FuchsiaButton variant="secondary" onClick={() => setIsInBattle(false)}>RETREAT</FuchsiaButton>
           </div>
         </motion.div>
       )}
@@ -245,7 +242,7 @@ export default function Home() {
               setActionTrigger({ type: 'PHYSICAL_ATTACK' });
             }
           }}
-          className={`relative w-20 h-20 rounded-3xl border-4 border-emerald-800 bg-secondary flex flex-col items-center justify-center text-dark hover:shadow-[0_0_30px_#00ffab] transition-all group focus:outline-none shadow-2xl border-b-8 active:border-b-0 active:translate-y-2
+          className={`relative w-20 h-20 rounded-3xl border-4 border-secondary/80 bg-secondary flex flex-col items-center justify-center text-dark hover:shadow-[0_0_30px_#00FFFF] transition-all group focus:outline-none shadow-2xl border-b-8 active:border-b-0 active:translate-y-2
             ${!isInBattle ? 'opacity-30 cursor-not-allowed grayscale border-gray-700' : ''}
           `}
         >
@@ -270,7 +267,7 @@ export default function Home() {
                 }
               }}
               className={`relative w-20 h-20 rounded-3xl border-4 flex flex-col items-center justify-center transition-all group focus:outline-none shadow-2xl border-b-8 active:border-b-0 active:translate-y-2
-                ${isMpEnough ? 'border-purple-800 bg-primary text-dark hover:shadow-[0_0_30px_#e08dff]' : 'border-gray-800 bg-gray-900 text-gray-600 grayscale'}
+                ${isMpEnough ? 'border-fuchsia/80 bg-primary text-dark hover:shadow-[0_0_30px_#BC00FB]' : 'border-gray-800 bg-gray-900 text-gray-600 grayscale'}
                 ${!isInBattle ? 'opacity-30 cursor-not-allowed grayscale' : ''}
               `}
             >

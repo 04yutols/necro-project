@@ -7,7 +7,7 @@ import { BattleEngine } from '../../logic/BattleEngine';
 import { BattleLog, MonsterData } from '../../types/game';
 import { Sword, Sparkles } from 'lucide-react';
 import ResultScreen from './ResultScreen';
-import { BloodButton } from '../ui/BloodButton';
+import { FuchsiaButton } from '../ui/FuchsiaButton';
 import { GameFrame } from '../ui/GameFrame';
 import { MasterDataService } from '../../services/MasterDataService';
 import { motion } from 'framer-motion';
@@ -175,7 +175,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     const style = new PIXI.TextStyle({
       fontFamily: 'monospace',
       fontSize: 20,
-      fill: log.action.includes('ATTACK') ? '#ff4444' : '#00ccff',
+      fill: log.action.includes('ATTACK') ? '#FF00FF' : '#00ccff',
       fontWeight: 'bold',
     });
 
@@ -187,7 +187,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     if (log.damage !== undefined) {
       const damageText = new PIXI.Text({
         text: log.damage.toString(),
-        style: { ...style, fontSize: 40, fill: log.isCritical ? '#ffff00' : '#ff0000' }
+        style: { ...style, fontSize: 40, fill: log.isCritical ? '#ffff00' : '#FF00FF' }
       });
       damageText.x = 400;
       damageText.y = 100;
@@ -247,13 +247,13 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
         <div className="relative z-10">
           <div className="text-[10px] text-primary font-black font-space tracking-[0.3em] uppercase mb-1 opacity-80">Enemy Encountered</div>
           <div className="text-2xl font-black font-space text-white tracking-wider">{target.name.toUpperCase()}</div>
-          <div className="text-sm font-black text-blood font-space mt-3 flex justify-between items-center bg-black/40 px-3 py-1.5 rounded-full border-2 border-white/5">
+          <div className="text-sm font-black text-fuchsia font-space mt-3 flex justify-between items-center bg-black/40 px-3 py-1.5 rounded-full border border-white/5">
             <span>HP STATUS</span>
             <span>{target.stats.hp} / {target.stats.maxHp}</span>
           </div>
-          <div className="w-full bg-black/60 h-4 rounded-full mt-3 border-2 border-white/5 overflow-hidden shadow-inner p-0.5">
+          <div className="w-full bg-black/60 h-4 rounded-full mt-3 border border-white/5 overflow-hidden shadow-inner p-0.5">
             <motion.div 
-              className="bg-blood h-full rounded-full shadow-[0_0_20px_#ff2e2e]" 
+              className="bg-fuchsia h-full rounded-full shadow-[0_0_20px_#FF00FF]" 
               initial={{ width: '100%' }}
               animate={{ width: `${(target.stats.hp / target.stats.maxHp) * 100}%` }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
@@ -275,7 +275,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
           transition={{ type: "spring", stiffness: 500, damping: 15 }}
           disabled={isProcessing}
           onClick={() => handleAction('PHYSICAL_ATTACK')}
-          className="relative w-24 h-24 rounded-3xl border-4 border-emerald-800 bg-secondary flex flex-col items-center justify-center text-dark hover:shadow-[0_0_40px_#00ffab] transition-all disabled:opacity-30 disabled:grayscale group focus:outline-none shadow-2xl border-b-8 active:border-b-0 active:translate-y-2"
+          className="relative w-24 h-24 rounded-3xl border-4 border-secondary/80 bg-secondary flex flex-col items-center justify-center text-dark hover:shadow-[0_0_40px_#00FFFF] transition-all disabled:opacity-30 disabled:grayscale group focus:outline-none shadow-2xl border-b-8 active:border-b-0 active:translate-y-2"
         >
           <Sword size={28} className="group-hover:scale-110 transition-transform mb-1" />
           <span className="text-[10px] font-black font-space">ATTACK</span>
@@ -293,7 +293,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
               disabled={!canUse}
               onClick={() => handleAction('MAGIC_SKILL', skill.id)}
               className={`relative w-24 h-24 rounded-3xl border-4 flex flex-col items-center justify-center transition-all group focus:outline-none shadow-2xl border-b-8 active:border-b-0 active:translate-y-2
-                ${isMpEnough ? 'border-purple-800 bg-primary text-dark hover:shadow-[0_0_40px_#e08dff]' : 'border-gray-800 bg-gray-900 text-gray-600 grayscale'}
+                ${isMpEnough ? 'border-fuchsia/80 bg-primary text-dark hover:shadow-[0_0_40px_#BC00FB]' : 'border-gray-800 bg-gray-900 text-gray-600 grayscale'}
                 ${isProcessing ? 'opacity-30' : ''}
               `}
             >

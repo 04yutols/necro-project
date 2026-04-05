@@ -6,7 +6,7 @@ import { MonsterData } from '../../types/game';
 import { soulStoneAction } from '../../app/actions';
 import { Ghost, Skull, Sparkles, AlertTriangle, Shield } from 'lucide-react';
 import { GameFrame } from '../ui/GameFrame';
-import { BloodButton } from '../ui/BloodButton';
+import { FuchsiaButton } from '../ui/FuchsiaButton';
 
 export default function NecroLab() {
   const { 
@@ -66,13 +66,13 @@ export default function NecroLab() {
     };
   };
 
-  if (!necroStatus) return <div className="text-blood text-center p-8 border-2 border-blood/20 rounded-xl bg-blood/5 font-bold uppercase tracking-widest animate-pulse font-cinzel">NOT QUALIFIED AS A NECROMANCER.</div>;
+  if (!necroStatus) return <div className="text-fuchsia text-center p-8 border-2 border-fuchsia/20 rounded-xl bg-fuchsia/5 font-bold uppercase tracking-widest animate-pulse font-cinzel">NOT QUALIFIED AS A NECROMANCER.</div>;
 
   return (
     <GameFrame title={<span className="flex items-center gap-2"><Skull size={18} /> NECRO-LAB</span>} borderColor="necro" className="w-full">
       {/* 通知ポップアップ */}
       {notification && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-blood border-2 border-red-500 text-white px-6 py-3 rounded-lg shadow-[0_0_20px_rgba(136,8,8,0.5)] animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-fuchsia border-2 border-fuchsia text-white px-6 py-3 rounded-lg shadow-[0_0_20px_rgba(255,0,255,0.5)] animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5" />
             <span className="font-bold font-noto">{notification}</span>
@@ -87,7 +87,7 @@ export default function NecroLab() {
             <h2 className="text-sm font-bold font-cinzel text-gray-400 tracking-widest flex items-center gap-2">
               <Ghost className="w-4 h-4" /> CURRENT PARTY
             </h2>
-            <div className={`text-sm font-bold px-3 py-1 rounded transition-colors border ${isOverCost ? 'bg-blood/20 border-blood text-red-500 animate-pulse' : 'bg-necro/20 border-necro text-necro'}`}>
+            <div className={`text-sm font-bold px-3 py-1 rounded transition-colors border ${isOverCost ? 'bg-fuchsia/20 border-fuchsia text-fuchsia animate-pulse' : 'bg-necro/20 border-necro text-necro'}`}>
               COST: {totalCost} / {necroStatus.maxCost}
               {isOverCost && <AlertTriangle className="inline ml-2 w-4 h-4" />}
             </div>
@@ -111,7 +111,7 @@ export default function NecroLab() {
                     {m.equippedShardId && <Sparkles size={12} className="text-necro mt-2 animate-pulse" />}
                     
                     {/* Hover to unequip layer */}
-                    <div className="absolute inset-0 bg-red-900/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 bg-fuchsia/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <span className="text-xs font-bold text-white font-cinzel">REMOVE</span>
                     </div>
                   </>
@@ -123,7 +123,7 @@ export default function NecroLab() {
           </div>
 
           {isOverCost && (
-            <div className="mt-6 p-3 bg-blood/10 border border-blood text-red-400 text-xs flex items-center gap-3 rounded animate-bounce font-noto">
+            <div className="mt-6 p-3 bg-fuchsia/10 border border-fuchsia text-fuchsia text-xs flex items-center gap-3 rounded animate-bounce font-noto">
               <AlertTriangle className="shrink-0 w-4 h-4" />
               <span>軍団の合計コストが最大値を超えています。このままでは出撃できません。</span>
             </div>
@@ -168,12 +168,12 @@ export default function NecroLab() {
                     <button 
                       disabled={isProcessing}
                       onClick={() => handleSoulStone(m.id)}
-                      className="p-2 bg-gray-900 hover:bg-blood/20 border border-gray-700 hover:border-blood text-gray-500 hover:text-blood rounded transition-all tooltip relative z-10 disabled:opacity-50"
+                      className="p-2 bg-gray-900 hover:bg-fuchsia/20 border border-gray-700 hover:border-fuchsia text-gray-500 hover:text-fuchsia rounded transition-all tooltip relative z-10 disabled:opacity-50"
                       title="魂石化"
                     >
                       <Sparkles className="w-4 h-4" />
                     </button>
-                    <BloodButton 
+                    <FuchsiaButton 
                       variant="ghost"
                       onClick={() => {
                         const emptyIndex = party.findIndex(p => p === null);
@@ -186,7 +186,7 @@ export default function NecroLab() {
                       className="px-3 py-1 text-[10px] border border-gray-700 h-auto"
                     >
                       DEPLOY
-                    </BloodButton>
+                    </FuchsiaButton>
                   </div>
                 </div>
               );

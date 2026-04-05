@@ -7,7 +7,7 @@ import { equipItemAction, unequipItemAction } from '../../app/actions';
 import { Shield, Sword, X, ArrowRight, Package } from 'lucide-react';
 
 import { GameFrame } from '../ui/GameFrame';
-import { BloodButton } from '../ui/BloodButton';
+import { FuchsiaButton } from '../ui/FuchsiaButton';
 
 const SLOT_LABELS: Record<keyof EquipmentSlots, string> = {
   weapon: 'WEAPON',
@@ -119,8 +119,8 @@ export default function EquipmentManager() {
           <span className="font-bold text-white">{currentVal}</span>
           {diff !== 0 && (
             <>
-              <ArrowRight size={14} className={diff > 0 ? "text-green-500" : "text-blood"} />
-              <span className={`font-bold ${diff > 0 ? "text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]" : "text-blood"}`}>
+              <ArrowRight size={14} className={diff > 0 ? "text-green-500" : "text-fuchsia"} />
+              <span className={`font-bold ${diff > 0 ? "text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]" : "text-fuchsia"}`}>
                 {previewVal}
               </span>
             </>
@@ -161,26 +161,26 @@ export default function EquipmentManager() {
           </div>
 
           {previewItem && selectedSlot && (
-            <div className="bg-blood/10 border border-blood/50 rounded-md p-4 animate-in fade-in zoom-in duration-300">
-              <h3 className="text-blood font-bold font-cinzel text-sm mb-3 flex items-center justify-between">
+            <div className="bg-fuchsia/10 border border-fuchsia/50 rounded-md p-4 animate-in fade-in zoom-in duration-300">
+              <h3 className="text-fuchsia font-bold font-cinzel text-sm mb-3 flex items-center justify-between">
                 <span>PREVIEW: {previewItem.name}</span>
-                <span className="text-[10px] bg-blood text-white px-2 py-0.5 rounded">{previewItem.rarity}</span>
+                <span className="text-[10px] bg-fuchsia text-white px-2 py-0.5 rounded">{previewItem.rarity}</span>
               </h3>
               <div className="flex gap-4">
-                <BloodButton
+                <FuchsiaButton
                   variant="ghost"
                   onClick={() => setPreviewItem(null)}
                   className="flex-1 py-2 text-xs"
                 >
                   CANCEL
-                </BloodButton>
-                <BloodButton
+                </FuchsiaButton>
+                <FuchsiaButton
                   disabled={isProcessing}
                   onClick={handleEquip}
                   className="flex-1 py-2 text-xs"
                 >
                   EQUIP
-                </BloodButton>
+                </FuchsiaButton>
               </div>
             </div>
           )}
@@ -204,7 +204,7 @@ export default function EquipmentManager() {
                         setPreviewItem(null);
                       }}
                       className={`w-full h-16 flex flex-col items-center justify-center border-2 rounded-md transition-all
-                        ${isSelected ? 'border-blood bg-blood/10 shadow-[0_0_10px_rgba(136,8,8,0.3)]' : 'border-gray-800 bg-black/40 hover:border-gray-600'}
+                        ${isSelected ? 'border-fuchsia bg-fuchsia/10 shadow-[0_0_10px_rgba(255,0,255,0.3)]' : 'border-gray-800 bg-black/40 hover:border-gray-600'}
                       `}
                     >
                       {equippedItem ? (
@@ -223,7 +223,7 @@ export default function EquipmentManager() {
                           e.stopPropagation();
                           handleUnequip(slot);
                         }}
-                        className="absolute top-5 right-1 text-gray-500 hover:text-red-500 transition-colors bg-black rounded-full opacity-0 group-hover:opacity-100"
+                        className="absolute top-5 right-1 text-gray-500 hover:text-fuchsia transition-colors bg-black rounded-full opacity-0 group-hover:opacity-100"
                         title="Unequip"
                       >
                         <X size={14} />
@@ -252,7 +252,7 @@ export default function EquipmentManager() {
                       key={item.id}
                       onClick={() => setPreviewItem(item)}
                       className={`p-3 border rounded-md flex justify-between items-center transition-colors text-left
-                        ${previewItem?.id === item.id ? 'border-blood bg-blood/20' : 'border-gray-800 bg-black/60 hover:border-gray-600'}
+                        ${previewItem?.id === item.id ? 'border-fuchsia bg-fuchsia/20' : 'border-gray-800 bg-black/60 hover:border-gray-600'}
                       `}
                     >
                       <div className="font-bold text-sm text-white">{item.name}</div>

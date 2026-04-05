@@ -34,8 +34,8 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-4xl aspect-[16/9] bg-black/40 border-2 border-secondary/30 rounded-xl p-8 shadow-[0_0_30px_rgba(0,255,171,0.1)] relative overflow-hidden flex flex-col">
-        <h2 className="text-2xl font-bold font-cinzel text-center mb-4 tracking-widest text-secondary drop-shadow-[0_0_8px_rgba(0,255,171,0.5)] flex items-center justify-center gap-3 relative z-20 bg-dark/80 inline-block px-4 py-2 rounded-full self-center">
+      <div className="w-full max-w-4xl aspect-[16/9] bg-black/40 border-2 border-secondary/30 rounded-xl p-8 shadow-[0_0_30px_rgba(0,255,255,0.1)] relative overflow-hidden flex flex-col">
+        <h2 className="text-2xl font-bold font-cinzel text-center mb-4 tracking-widest text-secondary drop-shadow-[0_0_8px_rgba(0,255,255,0.5)] flex items-center justify-center gap-3 relative z-20 bg-dark/80 inline-block px-4 py-2 rounded-full self-center">
           <MapIcon /> AREA 1: BEGINNER'S PLAIN
         </h2>
 
@@ -70,8 +70,8 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   className={`w-24 h-24 rounded-3xl border-4 flex items-center justify-center transition-all duration-300 shadow-2xl border-b-8 active:border-b-0 active:translate-y-2
                     ${unlocked 
                       ? isBoss 
-                        ? 'border-red-800 bg-blood text-white hover:shadow-[0_0_30px_#ff2e2e]' 
-                        : 'border-emerald-800 bg-secondary text-dark hover:shadow-[0_0_30px_#00ffab]'
+                        ? 'border-fuchsia bg-fuchsia text-white hover:shadow-[0_0_30px_#FF00FF]' 
+                        : 'border-secondary/80 bg-secondary text-dark hover:shadow-[0_0_30px_#00FFFF]'
                       : 'border-gray-800 bg-black/80 text-gray-700 cursor-not-allowed opacity-50'
                     }
                   `}
@@ -79,7 +79,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   {cleared ? <CheckCircle2 size={40} /> : isBoss ? <Skull size={40} /> : <MapIcon size={36} />}
                 </motion.button>
                 <div className="text-center font-space bg-black/90 p-2 rounded-xl border-2 border-white/5 backdrop-blur-md shadow-xl group-hover:border-primary/50 transition-colors">
-                  <div className={`text-[10px] font-black tracking-widest ${unlocked ? (isBoss ? 'text-blood' : 'text-secondary') : 'text-gray-600'}`}>
+                  <div className={`text-[10px] font-black tracking-widest ${unlocked ? (isBoss ? 'text-fuchsia' : 'text-secondary') : 'text-gray-600'}`}>
                     STAGE {stage.id.toUpperCase()}
                   </div>
                   <div className={`text-sm font-black ${unlocked ? 'text-white' : 'text-gray-700'} uppercase`}>
@@ -94,7 +94,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
         {/* 出撃確認ダイアログ */}
         {selectedStage && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-dark border-2 border-secondary w-full max-w-md rounded-xl shadow-[0_0_50px_rgba(0,255,171,0.3)] overflow-hidden font-mono text-gray-300 animate-in zoom-in-95 duration-200">
+            <div className="bg-dark border-2 border-secondary w-full max-w-md rounded-xl shadow-[0_0_50px_rgba(0, 255, 255, 0.3)] overflow-hidden font-mono text-gray-300 animate-in zoom-in-95 duration-200">
               <header className="p-4 border-b border-secondary/30 flex justify-between items-center bg-secondary/10">
                 <h3 className="text-lg font-bold font-cinzel text-white uppercase tracking-widest">SORTIE CONFIRMATION</h3>
               </header>
@@ -136,7 +136,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => onStartStage(selectedStage.id)}
-                    className="flex-1 py-3 bg-secondary text-dark font-black font-space rounded-2xl shadow-[0_0_30px_#00ffab] transition-all border-4 border-emerald-800 border-b-8 active:border-b-0 active:translate-y-2"
+                    className="flex-1 py-3 bg-secondary text-dark font-black font-space rounded-2xl shadow-[0_0_30px_#00FFFF] transition-all border-4 border-secondary/80 border-b-8 active:border-b-0 active:translate-y-2"
                   >
                     DEPLOY
                   </motion.button>

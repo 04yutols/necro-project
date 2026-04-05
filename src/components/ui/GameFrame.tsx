@@ -9,40 +9,42 @@ export function cn(...inputs: ClassValue[]) {
 interface GameFrameProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
   children: React.ReactNode;
   title?: React.ReactNode;
-  borderColor?: 'blood' | 'necro' | 'gray';
+  borderColor?: 'fuchsia' | 'necro' | 'primary' | 'secondary' | 'gray';
 }
 
 export function GameFrame({ 
   children, 
   className, 
   title, 
-  borderColor = 'blood', 
+  borderColor = 'fuchsia', 
   ...props 
 }: GameFrameProps) {
   const borderStyles = {
-    blood: 'pixel-border-blood',
+    fuchsia: 'pixel-border-fuchsia',
     necro: 'pixel-border-primary border-purple-600',
-    gray: 'border-4 border-gray-800 rounded-2xl'
+    primary: 'pixel-border-primary',
+    secondary: 'pixel-border-secondary',
+    gray: 'border border-gray-800 rounded-2xl'
   };
 
-  const bgStyles = "bg-dark/95 backdrop-blur-xl relative overflow-hidden";
+  const bgStyles = "bg-black/60 backdrop-blur-md relative overflow-hidden rounded-2xl";
 
   return (
     <div 
       className={cn(
         bgStyles,
-        borderStyles[borderColor],
+        borderStyles[borderColor as keyof typeof borderStyles],
         className
       )}
       {...props}
     >
       {/* Dithering / Dot pattern background */}
-      <div className="absolute inset-0 bg-dot-pattern opacity-20 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-30 pointer-events-none" />
+      <div className="absolute inset-0 bg-dot-pattern opacity-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-20 pointer-events-none" />
       
       {title && (
-        <div className="border-b-4 border-white/5 px-6 py-4 bg-black/40 relative z-20">
-          <h2 className="text-xl font-cinzel font-bold tracking-[0.2em] text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
+        <div className="border-b border-white/10 px-6 py-3 bg-black/40 relative z-20">
+          <h2 className="text-lg font-cinzel font-bold tracking-[0.3em] text-white drop-shadow-[0_0_10px_rgba(188,0,251,0.5)]">
             {title}
           </h2>
         </div>

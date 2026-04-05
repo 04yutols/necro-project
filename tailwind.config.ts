@@ -4,24 +4,24 @@ const designTokens = {
   colors: {
     dark: "#0a0b14",
     primary: {
-      DEFAULT: "#e08dff",
-      glow: "rgba(224,141,255,0.6)",
-      dim: "rgba(224,141,255,0.2)",
+      DEFAULT: "#BC00FB", // Amethyst / Neon Purple
+      glow: "rgba(188, 0, 251, 0.6)",
+      dim: "rgba(188, 0, 251, 0.2)",
     },
     secondary: {
-      DEFAULT: "#00ffab",
-      glow: "rgba(0,255,171,0.6)",
-      dim: "rgba(0,255,171,0.2)",
+      DEFAULT: "#00FFFF", // Cyan
+      glow: "rgba(0, 255, 255, 0.6)",
+      dim: "rgba(0, 255, 255, 0.2)",
     },
-    blood: {
-      DEFAULT: "#ff2e2e",
-      glow: "rgba(255,46,46,0.6)",
-      dim: "rgba(255,46,46,0.2)",
+    fuchsia: {
+      DEFAULT: "#FF00FF", // Neon Pink
+      glow: "rgba(255, 0, 255, 0.6)",
+      dim: "rgba(255, 0, 255, 0.2)",
     },
     necro: {
       DEFAULT: "#2a0035",
-      glow: "rgba(168,85,247,0.4)",
-      dim: "rgba(42,0,53,0.4)",
+      glow: "rgba(188, 0, 251, 0.4)",
+      dim: "rgba(42, 0, 53, 0.4)",
     },
     cursedGold: "#ffd700",
   },
