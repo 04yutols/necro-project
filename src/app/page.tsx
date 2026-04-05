@@ -103,18 +103,43 @@ export default function Home() {
 
   const leftSidebarContent = (
     <>
-      <div className="flex items-center gap-2 border-b border-primary/30 pb-2 mb-2 font-cinzel font-bold text-primary">
+      <div className="flex items-center gap-2 border-b border-primary/30 pb-2 mb-4 font-cinzel font-bold text-primary">
         <Activity size={16} /> PROFILE
       </div>
+      
+      <div className="flex gap-2 flex-col mb-6">
+        <motion.button 
+          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+          onClick={() => setActiveTab('HUB')} 
+          className={`w-full py-2 border-2 rounded-lg font-bold transition-all ${activeTab === 'HUB' ? 'border-primary bg-primary/20 text-white' : 'border-gray-700 text-gray-500 hover:border-primary/50 hover:text-primary'}`}
+        >
+          HUB
+        </motion.button>
+        <motion.button 
+          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+          onClick={() => setActiveTab('LAB')} 
+          className={`w-full py-2 border-2 rounded-lg font-bold transition-all ${activeTab === 'LAB' ? 'border-primary bg-primary/20 text-white' : 'border-gray-700 text-gray-500 hover:border-primary/50 hover:text-primary'}`}
+        >
+          LAB
+        </motion.button>
+        <motion.button 
+          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+          onClick={() => setActiveTab('MAP')} 
+          className={`w-full py-2 border-2 rounded-lg font-bold transition-all ${activeTab === 'MAP' ? 'border-primary bg-primary/20 text-white' : 'border-gray-700 text-gray-500 hover:border-primary/50 hover:text-primary'}`}
+        >
+          MAP
+        </motion.button>
+      </div>
+
       <div className="flex-1 flex flex-col justify-center items-center">
         <motion.div 
           animate={{ y: [0, -10, 0] }} 
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           className="w-full aspect-square border-4 border-primary/50 rounded-lg bg-black/60 shadow-[0_0_20px_rgba(224,141,255,0.3)] relative flex items-center justify-center overflow-hidden mb-4"
         >
-          {/* image_99510a.png reference: 2D SD Chibi Character */}
+          {/* SD Necromancer Chibi Character */}
           <img 
-            src="/image_99510a.png" 
+            src="/images/character/sd-necromancer.png" 
             alt="Hero Avatar" 
             className="w-[80%] h-auto object-contain [image-rendering:pixelated]"
             onError={(e) => {
@@ -135,32 +160,6 @@ export default function Home() {
           
           <CapsuleStatBar label="HP" value={player.stats.hp} max={100} color="blood" />
           <CapsuleStatBar label="MP" value={player.stats.mp} max={20} color="secondary" />
-        </div>
-      </div>
-
-      <div className="mt-auto">
-        <div className="flex gap-2 flex-col">
-          <motion.button 
-            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-            onClick={() => setActiveTab('HUB')} 
-            className={`w-full py-2 border-2 rounded-lg font-bold transition-all ${activeTab === 'HUB' ? 'border-primary bg-primary/20 text-white' : 'border-gray-700 text-gray-500 hover:border-primary/50 hover:text-primary'}`}
-          >
-            HUB
-          </motion.button>
-          <motion.button 
-            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-            onClick={() => setActiveTab('LAB')} 
-            className={`w-full py-2 border-2 rounded-lg font-bold transition-all ${activeTab === 'LAB' ? 'border-primary bg-primary/20 text-white' : 'border-gray-700 text-gray-500 hover:border-primary/50 hover:text-primary'}`}
-          >
-            LAB
-          </motion.button>
-          <motion.button 
-            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-            onClick={() => setActiveTab('MAP')} 
-            className={`w-full py-2 border-2 rounded-lg font-bold transition-all ${activeTab === 'MAP' ? 'border-primary bg-primary/20 text-white' : 'border-gray-700 text-gray-500 hover:border-primary/50 hover:text-primary'}`}
-          >
-            MAP
-          </motion.button>
         </div>
       </div>
     </>
@@ -193,22 +192,22 @@ export default function Home() {
   const mainMonitorContent = (
     <>
       {!isInBattle ? (
-        <div className="w-full h-full overflow-y-auto custom-scrollbar p-6">
+        <div className="flex-1 w-full h-full overflow-y-auto custom-scrollbar p-6">
           <AnimatePresence mode="wait">
             {activeTab === 'HUB' && (
-              <motion.div key="HUB" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
+              <motion.div key="HUB" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6 pb-24">
                 <EquipmentManager />
               </motion.div>
             )}
 
             {activeTab === 'LAB' && (
-              <motion.div key="LAB" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
+              <motion.div key="LAB" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6 pb-24">
                 <NecroLab />
               </motion.div>
             )}
 
             {activeTab === 'MAP' && (
-              <motion.div key="MAP" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
+              <motion.div key="MAP" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6 pb-24 h-full">
                 <AreaMap onStartStage={(stageId) => {
                   setActiveStageId(stageId);
                   setIsInBattle(true);
@@ -219,7 +218,7 @@ export default function Home() {
         </div>
       ) : (
         <motion.div 
-          className="w-full h-full flex flex-col relative"
+          className="flex-1 w-full h-full flex flex-col relative"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -235,6 +234,51 @@ export default function Home() {
           </div>
         </motion.div>
       )}
+
+      {/* Global Command Buttons (Always visible at the bottom of the central monitor) */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex gap-4">
+        <button 
+          disabled={!isInBattle}
+          onClick={() => {
+            if (isInBattle) {
+              const { setActionTrigger } = useGameStore.getState();
+              setActionTrigger({ type: 'PHYSICAL_ATTACK' });
+            }
+          }}
+          className={`puni-puni relative w-16 h-16 rounded-full border-4 border-secondary bg-black/80 flex flex-col items-center justify-center text-secondary hover:bg-secondary/20 hover:shadow-[0_0_20px_rgba(0,255,171,0.8)] transition-all group focus:outline-none shadow-lg
+            ${!isInBattle ? 'opacity-50 cursor-not-allowed grayscale border-gray-700 text-gray-600' : ''}
+          `}
+        >
+          <span className="text-[10px] font-bold font-space mt-1 uppercase">ATK</span>
+        </button>
+
+        {availableSkills.map((skill: any) => {
+          const isMpEnough = player && player.stats.mp >= skill.mpCost;
+          return (
+            <button 
+              key={skill.id}
+              disabled={isInBattle ? (false /* handled by battle canvas */) : true} // Out of battle, disabled for now or trigger action
+              onClick={() => {
+                if (isInBattle) {
+                  const { setActionTrigger } = useGameStore.getState();
+                  setActionTrigger({ type: 'MAGIC_SKILL', skillId: skill.id });
+                }
+              }}
+              className={`puni-puni relative w-16 h-16 rounded-full border-4 flex flex-col items-center justify-center transition-all group focus:outline-none shadow-lg
+                ${isMpEnough ? 'border-primary bg-black/80 text-primary hover:bg-primary/20 hover:shadow-[0_0_20px_rgba(224,141,255,0.8)]' : 'border-gray-700 bg-gray-900 text-gray-600 grayscale'}
+                ${!isInBattle ? 'opacity-50 cursor-not-allowed grayscale' : ''}
+              `}
+            >
+              <span className="text-[8px] font-bold font-space mt-1 uppercase truncate w-full px-1 text-center leading-none" title={skill.name}>
+                {skill.name}
+              </span>
+              <span className="absolute -top-1 -right-1 bg-black border border-primary text-primary text-[8px] px-1 py-0.5 rounded-full font-mono">
+                {skill.mpCost}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </>
   );
 
