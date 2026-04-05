@@ -79,16 +79,20 @@ export class GameManager {
       clearedStages: char.clearedStages
     };
 
-    const monsterList = monsterData.map((m: any) => ({
-      id: m.id,
-      name: m.name,
-      tribe: m.tribe as any,
-      cost: m.cost,
-      stats: {
-        hp: m.hp, mp: m.mp, atk: m.atk, def: m.def,
-        matk: m.matk, mdef: m.mdef, agi: m.agi, luck: m.luck, tec: m.tec
-      }
-    }));
+    const monsterList = monsterData.map((m: any) => {
+      const mMaster = this.masterData.getMonster(m.id);
+      return {
+        id: m.id,
+        name: m.name,
+        tribe: m.tribe as any,
+        cost: m.cost,
+        stats: {
+          hp: m.hp, mp: m.mp, atk: m.atk, def: m.def,
+          matk: m.matk, mdef: m.mdef, agi: m.agi, luck: m.luck, tec: m.tec
+        },
+        resistances: mMaster ? mMaster.resistances || {} : {}
+      };
+    });
 
     const engine = new BattleEngine(player, monsterList);
     return { engine, stageData };

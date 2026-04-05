@@ -50,6 +50,9 @@ interface GameState {
   // グローバルアクション用トリガー
   actionTrigger: { type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', skillId?: string } | null;
   setActionTrigger: (trigger: { type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', skillId?: string } | null) => void;
+
+  // 初期化用
+  initialize: () => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -62,6 +65,45 @@ export const useGameStore = create<GameState>((set) => ({
   equippingMonsterId: null,
   battleLogs: ['SYSTEM STANDBY...'],
   actionTrigger: null,
+
+  initialize: () => set({
+    player: {
+      id: '1',
+      name: 'アルド',
+      currentJobId: 'warrior',
+      category: 'PHYSICAL',
+      stats: { hp: 100, mp: 20, atk: 50, def: 30, matk: 10, mdef: 10, agi: 10, luck: 10, tec: 20 },
+      baseResistances: {},
+      passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveMatkBonus: 0, passiveMdefBonus: 0 },
+      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
+      jobs: [{ jobId: 'warrior', level: 1, exp: 0 }],
+      isAwakened: false,
+      clearedStages: [],
+    },
+    necroStatus: {
+      level: 1,
+      rank: 1,
+      maxCost: 10,
+      baseStatsBonus: 1.0,
+    },
+    inventoryMonsters: [
+      { id: 'm1', name: 'ゴブリン', tribe: 'HUMANOID', cost: 3, stats: { hp: 50, mp: 0, atk: 10, def: 5, matk: 0, mdef: 2, agi: 5, luck: 5, tec: 5 }, resistances: { FIRE: -20 } },
+      { id: 'm2', name: 'スケルトン', tribe: 'UNDEAD', cost: 4, stats: { hp: 40, mp: 0, atk: 12, def: 8, matk: 0, mdef: 2, agi: 5, luck: 0, tec: 8 }, resistances: { LIGHT: -50, DARK: 50 } },
+      { id: 'm3', name: 'ゾンビ', tribe: 'UNDEAD', cost: 4, stats: { hp: 80, mp: 0, atk: 8, def: 4, matk: 0, mdef: 0, agi: 2, luck: 2, tec: 2 }, resistances: { FIRE: -50, LIGHT: -20, DARK: 20 } },
+    ],
+    inventoryItems: [
+      { id: 'i1', name: 'Iron Sword', type: 'WEAPON', rarity: 'COMMON', stats: { atk: 10 } },
+      { id: 'i2', name: 'Leather Armor', type: 'BODY', rarity: 'COMMON', stats: { def: 5, mdef: 2 } },
+      { id: 'i3', name: 'Hero Soul Blade', type: 'WEAPON', rarity: 'UNIQUE', stats: { atk: 50, matk: 50, def: 10, mdef: 10 }, specialEffect: 'SOUL_RESONANCE' },
+    ],
+    soulShards: [
+      {
+        id: 'initial-shard-1',
+        originMonsterName: 'ゴブリン',
+        effect: { atkBonus: 2, matkBonus: 0 }
+      }
+    ]
+  }),
 
   setPlayer: (player) => set({ player }),
   setNecroStatus: (status) => set({ necroStatus: status }),
