@@ -34,22 +34,22 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
   const selectedStage = selectedStageId ? area1Stages.find(s => s.id === selectedStageId) : null;
 
   const positions = [
-    { x: 100, y: 350 },
-    { x: 300, y: 200 },
-    { x: 500, y: 250 },
-    { x: 700, y: 150 }
+    { x: '15%', y: '75%' },
+    { x: '40%', y: '45%' },
+    { x: '65%', y: '55%' },
+    { x: '85%', y: '30%' }
   ];
 
   return (
-    <div className="w-full h-full relative overflow-hidden bg-black/40 rounded-3xl border border-white/5">
+    <div className="w-full aspect-video relative overflow-hidden bg-black/40 rounded-3xl border border-white/5 shadow-inner">
       {/* SVG Connections Layer */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
         <path 
-          d="M 100 350 L 300 200 L 500 250 L 700 150" 
+          d="M 15 75 L 40 45 L 65 55 L 85 30" 
           fill="none" 
           stroke="rgba(0, 255, 255, 0.2)" 
-          strokeWidth="2" 
-          strokeDasharray="8 4"
+          strokeWidth="0.5" 
+          strokeDasharray="2 1"
         />
       </svg>
 
@@ -58,40 +58,41 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
         {area1Stages.map((stage, index) => {
           const unlocked = isUnlocked(stage.id);
           const cleared = player.clearedStages.includes(stage.id);
-          const isBoss = stage.isAreaBoss;
-          const pos = positions[index] || { x: (index + 1) * 150, y: 200 };
+          const pos = positions[index] || { x: `${(index + 1) * 20}%`, y: '50%' };
           
           return (
             <div 
               key={stage.id} 
-              className="absolute flex flex-col items-center gap-3 -translate-x-1/2 -translate-y-1/2 group"
+              className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 group cursor-pointer"
               style={{ left: pos.x, top: pos.y }}
+              onClick={() => unlocked && setSelectedStageId(stage.id)}
             >
-              <motion.button 
-                whileHover={unlocked ? { scale: 1.5 } : {}}
-                whileTap={unlocked ? { scale: 0.9 } : {}}
-                transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                onClick={() => unlocked && setSelectedStageId(stage.id)}
-                disabled={!unlocked}
-                className={`w-4 h-4 rounded-full transition-all duration-300 relative
-                  ${unlocked 
-                    ? cleared
-                      ? 'bg-secondary shadow-[0_0_15px_#00FFFF]'
-                      : 'bg-primary shadow-[0_0_15px_#BC00FB]'
-                    : 'bg-gray-800'
-                  }
-                `}
-              >
-                {unlocked && (
-                  <div className="absolute -inset-2 bg-inherit opacity-20 rounded-full animate-ping" />
+              {/* Larger Hit Area / Outer Glow */}
+              <div className="w-12 h-12 flex items-center justify-center relative">
+                <motion.div 
+                  whileHover={unlocked ? { scale: 1.2 } : {}}
+                  className={`w-4 h-4 rounded-full transition-all duration-300 relative z-10
+                    ${unlocked 
+                      ? cleared
+                        ? 'bg-secondary shadow-[0_0_20px_#00FFFF]'
+                        : 'bg-primary shadow-[0_0_20px_#BC00FB]'
+                      : 'bg-gray-800'
+                    }
+                  `}
+                />
+                {unlocked && !cleared && (
+                  <div className="absolute inset-0 bg-primary opacity-20 rounded-full animate-ping" />
                 )}
-              </motion.button>
+                {unlocked && cleared && (
+                  <div className="absolute inset-0 bg-secondary opacity-10 rounded-full animate-pulse" />
+                )}
+              </div>
               
-              <div className="text-center mt-2">
-                <div className={`text-[8px] font-bold tracking-widest uppercase mb-0.5 ${unlocked ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className="text-center mt-1 pointer-events-none">
+                <div className={`text-[8px] font-bold tracking-[0.2em] uppercase mb-0.5 ${unlocked ? 'text-gray-400' : 'text-gray-600'}`}>
                   {stage.id}
                 </div>
-                <div className={`text-[10px] font-black tracking-widest whitespace-nowrap ${unlocked ? 'text-white' : 'text-gray-700'}`}>
+                <div className={`text-[10px] font-black tracking-widest whitespace-nowrap drop-shadow-md ${unlocked ? 'text-white' : 'text-gray-700'}`}>
                   {unlocked ? stage.name : 'ENCRYPTED'}
                 </div>
               </div>

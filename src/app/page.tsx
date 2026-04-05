@@ -259,7 +259,8 @@ export default function Home() {
           whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
           onClick={() => {
             if (activeTab === 'MAP' && !isInBattle) {
-              // Trigger first stage or handle as "Auto Combat"
+              setActiveStageId('1-1');
+              setIsInBattle(true);
             }
           }}
           className="flex items-center gap-3 px-8 py-3 bg-secondary text-dark font-black text-[11px] tracking-[0.2em] rounded-full shadow-[0_0_20px_rgba(0,255,255,0.3)] hover:brightness-110 transition-all uppercase"
