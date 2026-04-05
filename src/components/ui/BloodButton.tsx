@@ -16,29 +16,26 @@ export function BloodButton({
   disabled = false,
   ...props
 }: BloodButtonProps) {
-  const baseStyles = "relative px-6 py-3 font-cinzel font-bold tracking-widest rounded-md overflow-hidden transition-colors focus:outline-none focus:ring-2 focus:ring-blood/50";
+  const baseStyles = "relative px-6 py-3 font-space font-bold tracking-widest rounded-xl overflow-hidden transition-all focus:outline-none focus:ring-4 focus:ring-primary/30 active:scale-90 border-b-4";
   
   const variants = {
-    primary: "bg-blood text-white border-2 border-red-500 shadow-[0_0_15px_rgba(136,8,8,0.6)] hover:bg-red-800",
-    secondary: "bg-dark/80 text-gray-300 border-2 border-gray-700 hover:border-blood hover:text-white",
-    ghost: "bg-transparent text-gray-400 hover:text-blood hover:bg-blood/10 border border-transparent hover:border-blood/50"
+    primary: "bg-blood text-white border-red-800 shadow-[0_0_20px_rgba(255,46,46,0.3)] hover:brightness-110",
+    secondary: "bg-secondary text-dark border-emerald-800 shadow-[0_0_20px_rgba(0,255,171,0.3)] hover:brightness-110",
+    ghost: "bg-black/40 text-gray-400 border-gray-800 hover:border-primary hover:text-primary"
   };
 
-  const disabledStyles = disabled ? "opacity-50 grayscale cursor-not-allowed pointer-events-none shadow-none" : "";
+  const disabledStyles = disabled ? "opacity-50 grayscale cursor-not-allowed pointer-events-none shadow-none border-b-0 translate-y-[4px]" : "";
 
   return (
     <motion.button
-      whileHover={!disabled ? { scale: 1.02 } : {}}
-      whileTap={!disabled ? { scale: 0.98 } : {}}
+      whileHover={!disabled ? { scale: 1.08, y: -2 } : {}}
+      whileTap={!disabled ? { scale: 0.92, y: 2 } : {}}
+      transition={{ type: "spring", stiffness: 500, damping: 15 }}
       className={cn(baseStyles, variants[variant], disabledStyles, className)}
       disabled={disabled}
       {...props}
     >
-      {/* 脈打つ発光エフェクト */}
-      {!disabled && variant === 'primary' && (
-        <span className="absolute inset-0 bg-gradient-to-t from-red-600/30 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-      )}
-      <span className="relative z-10 flex items-center justify-center gap-2">
+      <span className="relative z-10 flex items-center justify-center gap-2 drop-shadow-sm">
         {children}
       </span>
     </motion.button>

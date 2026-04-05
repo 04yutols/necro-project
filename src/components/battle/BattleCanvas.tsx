@@ -239,55 +239,71 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-dark">
       {/* ターゲット情報 */}
-      <div className="absolute top-4 left-4 z-20 bg-dark/80 backdrop-blur-md p-4 rounded-xl border-2 border-blood shadow-[0_0_20px_rgba(136,8,8,0.5)] min-w-[250px]">
-        <div className="text-[10px] text-gray-400 font-cinzel font-bold tracking-widest uppercase mb-1">Target Identified</div>
-        <div className="text-xl font-bold font-noto text-white">{target.name}</div>
-        <div className="text-sm font-bold text-blood font-mono mt-2">HP: {target.stats.hp}</div>
-        <div className="w-full bg-gray-900 h-2 rounded-full mt-1 border border-blood/30 overflow-hidden">
-          <div 
-            className="bg-red-500 h-full transition-all duration-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]" 
-            style={{ width: `${(target.stats.hp / 150) * 100}%` }}
-          />
+      <div className="absolute top-6 left-6 z-20 bg-black/90 backdrop-blur-xl p-6 rounded-3xl border-4 border-white/5 shadow-2xl min-w-[300px] overflow-hidden">
+        <div className="absolute inset-0 bg-dot-pattern opacity-10 pointer-events-none" />
+        <div className="relative z-10">
+          <div className="text-[10px] text-primary font-black font-space tracking-[0.3em] uppercase mb-1 opacity-80">Enemy Encountered</div>
+          <div className="text-2xl font-black font-space text-white tracking-wider">{target.name.toUpperCase()}</div>
+          <div className="text-sm font-black text-blood font-space mt-3 flex justify-between items-center bg-black/40 px-3 py-1.5 rounded-full border-2 border-white/5">
+            <span>HP STATUS</span>
+            <span>{target.stats.hp} / {target.stats.maxHp}</span>
+          </div>
+          <div className="w-full bg-black/60 h-4 rounded-full mt-3 border-2 border-white/5 overflow-hidden shadow-inner p-0.5">
+            <motion.div 
+              className="bg-blood h-full rounded-full shadow-[0_0_20px_#ff2e2e]" 
+              initial={{ width: '100%' }}
+              animate={{ width: `${(target.stats.hp / target.stats.maxHp) * 100}%` }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            />
+          </div>
         </div>
       </div>
 
       {/* 16:9 Canvas Container */}
-      <div className="relative w-full max-w-5xl aspect-video border-4 border-secondary/50 shadow-[0_0_30px_rgba(0,255,171,0.2)] rounded-2xl overflow-hidden bg-black hologram-scan">
+      <div className="relative w-[95%] max-w-6xl aspect-video border-4 border-white/5 shadow-2xl rounded-[2.5rem] overflow-hidden bg-black hologram-scan">
         <div ref={canvasRef} className="absolute inset-0 [&>canvas]:w-full [&>canvas]:h-full [&>canvas]:object-cover" />
       </div>
 
-      {/* 円形コマンドボタン（Stich デザイン） */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-6">
-        <button 
+      {/* 円形コマンドボタン（Pop デザイン） */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 flex gap-8">
+        <motion.button 
+          whileHover={!isProcessing ? { scale: 1.1, y: -8 } : {}}
+          whileTap={!isProcessing ? { scale: 0.9, y: 4 } : {}}
+          transition={{ type: "spring", stiffness: 500, damping: 15 }}
           disabled={isProcessing}
           onClick={() => handleAction('PHYSICAL_ATTACK')}
-          className="puni-puni relative w-20 h-20 rounded-full border-4 border-secondary bg-black/80 flex flex-col items-center justify-center text-secondary hover:bg-secondary/20 hover:shadow-[0_0_20px_rgba(0,255,171,0.8)] transition-all disabled:opacity-50 disabled:grayscale group focus:outline-none"
+          className="relative w-24 h-24 rounded-3xl border-4 border-emerald-800 bg-secondary flex flex-col items-center justify-center text-dark hover:shadow-[0_0_40px_#00ffab] transition-all disabled:opacity-30 disabled:grayscale group focus:outline-none shadow-2xl border-b-8 active:border-b-0 active:translate-y-2"
         >
-          <Sword size={24} className="group-hover:scale-110 transition-transform" />
-          <span className="text-[10px] font-bold font-space mt-1">ATTACK</span>
-        </button>
+          <Sword size={28} className="group-hover:scale-110 transition-transform mb-1" />
+          <span className="text-[10px] font-black font-space">ATTACK</span>
+        </motion.button>
         
         {availableSkills.map((skill: any) => {
           const isMpEnough = player && player.stats.mp >= skill.mpCost;
+          const canUse = !isProcessing && isMpEnough;
           return (
-            <button 
+            <motion.button 
               key={skill.id}
-              disabled={isProcessing || !isMpEnough}
+              whileHover={canUse ? { scale: 1.1, y: -8 } : {}}
+              whileTap={canUse ? { scale: 0.9, y: 4 } : {}}
+              transition={{ type: "spring", stiffness: 500, damping: 15 }}
+              disabled={!canUse}
               onClick={() => handleAction('MAGIC_SKILL', skill.id)}
-              className={`puni-puni relative w-20 h-20 rounded-full border-4 flex flex-col items-center justify-center transition-all group focus:outline-none
-                ${isMpEnough ? 'border-primary bg-black/80 text-primary hover:bg-primary/20 hover:shadow-[0_0_20px_rgba(224,141,255,0.8)]' : 'border-gray-700 bg-gray-900 text-gray-600 grayscale'}
+              className={`relative w-24 h-24 rounded-3xl border-4 flex flex-col items-center justify-center transition-all group focus:outline-none shadow-2xl border-b-8 active:border-b-0 active:translate-y-2
+                ${isMpEnough ? 'border-purple-800 bg-primary text-dark hover:shadow-[0_0_40px_#e08dff]' : 'border-gray-800 bg-gray-900 text-gray-600 grayscale'}
+                ${isProcessing ? 'opacity-30' : ''}
               `}
             >
-              <Sparkles size={24} className={isMpEnough ? "group-hover:scale-110 transition-transform" : ""} />
-              <span className="text-[10px] font-bold font-space mt-1 uppercase truncate w-full px-1 text-center leading-none leading-tight" title={skill.name}>
+              <Sparkles size={28} className={isMpEnough ? "group-hover:scale-110 transition-transform mb-1" : ""} />
+              <span className="text-[10px] font-black font-space uppercase truncate w-full px-2 text-center leading-none" title={skill.name}>
                 {skill.name}
               </span>
-              <span className="absolute -top-2 -right-2 bg-black border border-primary text-primary text-[8px] px-1.5 py-0.5 rounded-full font-mono">
+              <span className="absolute -top-4 -right-4 bg-black border-2 border-primary text-primary text-[10px] px-2.5 py-1 rounded-full font-black font-space shadow-xl">
                 {skill.mpCost}
               </span>
-            </button>
+            </motion.button>
           );
         })}
       </div>

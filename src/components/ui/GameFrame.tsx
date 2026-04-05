@@ -19,39 +19,35 @@ export function GameFrame({
   borderColor = 'blood', 
   ...props 
 }: GameFrameProps) {
-  const borderColors = {
-    blood: 'border-blood',
-    necro: 'border-necro',
-    gray: 'border-gray-800'
+  const borderStyles = {
+    blood: 'pixel-border-blood',
+    necro: 'pixel-border-primary border-purple-600',
+    gray: 'border-4 border-gray-800 rounded-2xl'
   };
 
-  const shadowColors = {
-    blood: 'shadow-[0_0_15px_rgba(136,8,8,0.3)]',
-    necro: 'shadow-[0_0_15px_rgba(168,85,247,0.2)]',
-    gray: 'shadow-[0_0_10px_rgba(0,0,0,0.5)]'
-  };
+  const bgStyles = "bg-dark/95 backdrop-blur-xl relative overflow-hidden";
 
   return (
     <div 
       className={cn(
-        "relative bg-dark/90 backdrop-blur-md rounded-lg border-2",
-        borderColors[borderColor],
-        shadowColors[borderColor],
+        bgStyles,
+        borderStyles[borderColor],
         className
       )}
       {...props}
     >
-      {/* 鉄のような質感を出すためのオーバーレイ（任意） */}
-      <div className="absolute inset-0 pointer-events-none rounded-lg bg-gradient-to-b from-white/5 to-transparent opacity-50" />
+      {/* Dithering / Dot pattern background */}
+      <div className="absolute inset-0 bg-dot-pattern opacity-20 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-30 pointer-events-none" />
       
       {title && (
-        <div className="border-b border-white/10 px-4 py-3 bg-black/40 rounded-t-md">
-          <h2 className="text-xl font-cinzel font-bold tracking-widest text-cursedGold drop-shadow-[0_0_5px_rgba(255,215,0,0.3)]">
+        <div className="border-b-4 border-white/5 px-6 py-4 bg-black/40 relative z-20">
+          <h2 className="text-xl font-cinzel font-bold tracking-[0.2em] text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
             {title}
           </h2>
         </div>
       )}
-      <div className="relative z-10 p-4">
+      <div className="relative z-10 p-6">
         {children}
       </div>
     </div>

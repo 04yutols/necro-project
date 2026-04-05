@@ -57,27 +57,32 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
             return (
               <div 
                 key={stage.id} 
-                className="absolute flex flex-col items-center gap-2 -translate-x-1/2 -translate-y-1/2"
+                className="absolute flex flex-col items-center gap-3 -translate-x-1/2 -translate-y-1/2 group"
                 style={pos}
               >
-                <button 
+                <motion.button 
+                  whileHover={unlocked ? { scale: 1.15, rotate: 5 } : {}}
+                  whileTap={unlocked ? { scale: 0.9, rotate: -5 } : {}}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
                   onClick={() => unlocked && setSelectedStageId(stage.id)}
                   disabled={!unlocked}
-                  className={`w-20 h-20 rounded-full border-4 flex items-center justify-center transition-all duration-300 shadow-lg puni-puni
+                  className={`w-24 h-24 rounded-3xl border-4 flex items-center justify-center transition-all duration-300 shadow-2xl border-b-8 active:border-b-0 active:translate-y-2
                     ${unlocked 
-                      ? isBoss ? 'border-blood bg-blood/20 text-blood hover:bg-blood/40 hover:shadow-[0_0_20px_rgba(136,8,8,0.8)]' : 'border-secondary bg-secondary/20 text-secondary hover:bg-secondary/40 hover:shadow-[0_0_20px_rgba(0,255,171,0.8)]'
-                      : 'border-gray-800 bg-black/80 text-gray-700 cursor-not-allowed'
+                      ? isBoss 
+                        ? 'border-red-800 bg-blood text-white hover:shadow-[0_0_30px_#ff2e2e]' 
+                        : 'border-emerald-800 bg-secondary text-dark hover:shadow-[0_0_30px_#00ffab]'
+                      : 'border-gray-800 bg-black/80 text-gray-700 cursor-not-allowed opacity-50'
                     }
                   `}
                 >
-                  {cleared ? <CheckCircle2 size={32} /> : isBoss ? <Skull size={32} /> : <MapIcon size={28} />}
-                </button>
-                <div className="text-center font-space bg-black/80 p-1 rounded backdrop-blur-md border border-white/10">
-                  <div className={`text-xs font-bold ${unlocked ? (isBoss ? 'text-blood' : 'text-secondary') : 'text-gray-600'}`}>
+                  {cleared ? <CheckCircle2 size={40} /> : isBoss ? <Skull size={40} /> : <MapIcon size={36} />}
+                </motion.button>
+                <div className="text-center font-space bg-black/90 p-2 rounded-xl border-2 border-white/5 backdrop-blur-md shadow-xl group-hover:border-primary/50 transition-colors">
+                  <div className={`text-[10px] font-black tracking-widest ${unlocked ? (isBoss ? 'text-blood' : 'text-secondary') : 'text-gray-600'}`}>
                     STAGE {stage.id.toUpperCase()}
                   </div>
-                  <div className={`text-sm font-bold ${unlocked ? 'text-white' : 'text-gray-700'}`}>
-                    {unlocked ? stage.name : 'LOCKED'}
+                  <div className={`text-sm font-black ${unlocked ? 'text-white' : 'text-gray-700'} uppercase`}>
+                    {unlocked ? stage.name : 'ENCRYPTED'}
                   </div>
                 </div>
               </div>
@@ -118,18 +123,22 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                 </div>
 
                 <div className="flex gap-4 pt-4">
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setSelectedStageId(null)}
-                    className="puni-puni flex-1 py-3 border-2 border-gray-700 hover:border-gray-500 hover:text-white transition-colors font-bold font-space rounded-lg"
+                    className="flex-1 py-3 border-4 border-white/5 bg-black/40 hover:border-white/10 transition-all font-black font-space rounded-2xl text-gray-400 border-b-8 active:border-b-0 active:translate-y-2"
                   >
                     CANCEL
-                  </button>
-                  <button 
+                  </motion.button>
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => onStartStage(selectedStage.id)}
-                    className="puni-puni flex-1 py-3 bg-secondary hover:bg-emerald-400 text-dark font-bold font-space rounded-lg shadow-[0_0_15px_rgba(0,255,171,0.5)] transition-all"
+                    className="flex-1 py-3 bg-secondary text-dark font-black font-space rounded-2xl shadow-[0_0_30px_#00ffab] transition-all border-4 border-emerald-800 border-b-8 active:border-b-0 active:translate-y-2"
                   >
                     DEPLOY
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </div>
