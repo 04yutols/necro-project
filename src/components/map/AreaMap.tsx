@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { Map as MapIcon, Skull, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import stagesData from '../../data/master/stages.json';
+import { motion } from 'framer-motion';
 
 interface AreaMapProps {
   onStartStage: (stageId: string) => void;

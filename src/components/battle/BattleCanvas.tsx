@@ -10,6 +10,7 @@ import ResultScreen from './ResultScreen';
 import { BloodButton } from '../ui/BloodButton';
 import { GameFrame } from '../ui/GameFrame';
 import { MasterDataService } from '../../services/MasterDataService';
+import { motion } from 'framer-motion';
 
 interface BattleCanvasProps {
   onEnd: () => void;
