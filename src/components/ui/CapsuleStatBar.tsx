@@ -12,26 +12,29 @@ export function CapsuleStatBar({ label, value, max, color }: CapsuleStatBarProps
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
   
   const bgColors = {
-    primary: 'bg-primary shadow-[0_0_10px_rgba(224,141,255,0.8)]',
-    secondary: 'bg-secondary shadow-[0_0_10px_rgba(0,255,171,0.8)]',
-    blood: 'bg-blood shadow-[0_0_10px_rgba(136,8,8,0.8)]'
+    primary: 'bg-primary shadow-[0_0_20px_rgba(224,141,255,0.6)]',
+    secondary: 'bg-secondary shadow-[0_0_20px_rgba(0,255,171,0.6)]',
+    blood: 'bg-blood shadow-[0_0_20px_rgba(255,46,46,0.6)]'
   };
 
   return (
-    <div className="w-full flex flex-col gap-1 my-2">
-      <div className="flex justify-between items-end font-bold text-[10px] uppercase tracking-widest text-gray-400">
+    <div className="w-full flex flex-col gap-1.5 my-3">
+      <div className="flex justify-between items-end font-bold text-[11px] uppercase tracking-[0.2em] text-gray-400 font-space">
         <span>{label}</span>
-        <span className="text-white">{value} / {max}</span>
+        <span className="text-white bg-black/40 px-2 py-0.5 rounded-full">{value} / {max}</span>
       </div>
-      <div className="relative w-full h-5 bg-black/80 rounded-capsule border border-gray-700 overflow-hidden shadow-inner flex items-center p-0.5">
+      <div className="relative w-full h-7 bg-black/60 rounded-capsule border-2 border-white/10 overflow-hidden shadow-inner flex items-center p-1 backdrop-blur-sm">
         <motion.div 
           className={`h-full rounded-capsule relative ${bgColors[color]}`}
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
-          transition={{ type: "spring", stiffness: 100, damping: 15 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
         >
-          {/* Liquid highlight */}
-          <div className="absolute top-0 left-0 right-0 h-1/2 bg-white/30 rounded-t-capsule" />
+          {/* Liquid highlight / Wave */}
+          <div className="absolute top-0 left-0 right-0 h-1/2 bg-white/20 rounded-t-capsule" />
+          
+          {/* Animated Wave Overlay */}
+          <div className="absolute top-0 right-0 bottom-0 w-24 bg-white/10 animate-wave pointer-events-none blur-sm" style={{ transformOrigin: 'right center' }} />
         </motion.div>
       </div>
     </div>

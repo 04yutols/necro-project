@@ -2,25 +2,25 @@ import type { Config } from "tailwindcss";
 
 const designTokens = {
   colors: {
-    dark: "#0a0a0a",
+    dark: "#0a0b14",
     primary: {
       DEFAULT: "#e08dff",
-      glow: "rgba(224,141,255,0.5)",
+      glow: "rgba(224,141,255,0.6)",
       dim: "rgba(224,141,255,0.2)",
     },
     secondary: {
       DEFAULT: "#00ffab",
-      glow: "rgba(0,255,171,0.5)",
+      glow: "rgba(0,255,171,0.6)",
       dim: "rgba(0,255,171,0.2)",
     },
     blood: {
-      DEFAULT: "#880808",
-      glow: "rgba(136,8,8,0.5)",
-      dim: "rgba(136,8,8,0.2)",
+      DEFAULT: "#ff2e2e",
+      glow: "rgba(255,46,46,0.6)",
+      dim: "rgba(255,46,46,0.2)",
     },
     necro: {
       DEFAULT: "#2a0035",
-      glow: "rgba(168,85,247,0.3)",
+      glow: "rgba(168,85,247,0.4)",
       dim: "rgba(42,0,53,0.4)",
     },
     cursedGold: "#ffd700",
@@ -37,6 +37,8 @@ const designTokens = {
     md: "0.5rem",
     lg: "0.75rem",
     xl: "1rem",
+    "2xl": "1.5rem",
+    "3xl": "2.5rem",
     capsule: "9999px",
   },
 };
@@ -59,8 +61,9 @@ const config: Config = {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'necro-gradient': 'linear-gradient(to bottom, #0a0a0a, #1a0a2a)',
-        'dither-pattern': 'url("data:image/svg+xml,%3Csvg width=\\"4\\" height=\\"4\\" viewBox=\\"0 0 4 4\\" fill=\\"none\\" xmlns=\\"http://www.w3.org/2000/svg\\"%3E%3Cpath d=\\"M0 0H2V2H0V0ZM2 2H4V4H2V2Z\\" fill=\\"rgba(255,255,255,0.05)\\"/%3E%3C/svg%3E")',
+        'necro-gradient': 'linear-gradient(to bottom, #0a0b14, #1a0a2a)',
+        'dither-pattern': 'url("data:image/svg+xml,%3Csvg width=\\"2\\" height=\\"2\\" viewBox=\\"0 0 2 2\\" fill=\\"none\\" xmlns=\\"http://www.w3.org/2000/svg\\"%3E%3Crect width=\\"1\\" height=\\"1\\" fill=\\"rgba(255,255,255,0.1)\\"/%3E%3Crect x=\\"1\\" y=\\"1\\" width=\\"1\\" height=\\"1\\" fill=\\"rgba(255,255,255,0.1)\\"/%3E%3C/svg%3E")',
+        'dot-pattern': 'url("data:image/svg+xml,%3Csvg width=\\"4\\" height=\\"4\\" viewBox=\\"0 0 4 4\\" fill=\\"none\\" xmlns=\\"http://www.w3.org/2000/svg\\"%3E%3Ccircle cx=\\"1\\" cy=\\"1\\" r=\\"0.5\\" fill=\\"rgba(255,255,255,0.08)\\"/%3E%3C/svg%3E")',
       },
     },
   },

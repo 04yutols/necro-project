@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: #0a0a0a;
+  --background: #0a0b14;
   --foreground: #ededed;
 }
 
@@ -21,6 +21,30 @@ body {
       linear-gradient(to right, rgba(224, 141, 255, 0.05) 1px, transparent 1px),
       linear-gradient(to bottom, rgba(224, 141, 255, 0.05) 1px, transparent 1px);
     background-size: 20px 20px;
+  }
+
+  .pixel-border-primary {
+    border-width: 4px;
+    border-style: solid;
+    border-color: #e08dff;
+    border-radius: 1.5rem;
+    box-shadow: 0 0 20px rgba(224, 141, 255, 0.4), inset 0 0 10px rgba(224, 141, 255, 0.2);
+  }
+
+  .pixel-border-secondary {
+    border-width: 4px;
+    border-style: solid;
+    border-color: #00ffab;
+    border-radius: 1.5rem;
+    box-shadow: 0 0 20px rgba(0, 255, 171, 0.4), inset 0 0 10px rgba(0, 255, 171, 0.2);
+  }
+
+  .pixel-border-blood {
+    border-width: 4px;
+    border-style: solid;
+    border-color: #ff2e2e;
+    border-radius: 1.5rem;
+    box-shadow: 0 0 20px rgba(255, 46, 46, 0.4), inset 0 0 10px rgba(255, 46, 46, 0.2);
   }
 
   .hologram-scan {
@@ -68,3 +92,14 @@ body {
   0% { transform: translateY(0%); }
   100% { transform: translateY(100%); }
 }
+
+@keyframes wave {
+  0% { transform: translateX(-50%) skewY(-2deg); }
+  50% { transform: translateX(-50%) skewY(2deg); }
+  100% { transform: translateX(-50%) skewY(-2deg); }
+}
+
+.animate-wave {
+  animation: wave 3s ease-in-out infinite;
+}
+
