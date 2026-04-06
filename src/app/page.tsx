@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
-import BattleCanvas from '../components/battle/BattleCanvas';
+
+const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas'), { ssr: false });
+
 import NecroLab from '../components/necro/NecroLab';
 import EquipmentManager from '../components/character/EquipmentManager';
 import AreaMap from '../components/map/AreaMap';
