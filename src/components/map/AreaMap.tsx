@@ -78,11 +78,13 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
             const cleared = player.clearedStages.includes(stage.id);
             const isBoss = (stage as any).isAreaBoss;
             const pos = positions[index] || { x: `${(index + 1) * 20}%`, y: '50%' };
-            
+
+            console.log(`Rendering Node ${stage.id}: Unlocked=${unlocked}, Cleared=${cleared}`);
+
             return (
               <div 
                 key={stage.id} 
-                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 group z-20"
+                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 group z-30"
                 style={{ left: pos.x, top: pos.y }}
               >
                 {/* Node Icon Button */}
@@ -90,9 +92,17 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   whileHover={unlocked ? { scale: 1.2, y: -5 } : {}}
                   whileTap={unlocked ? { scale: 0.9 } : {}}
                   transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                  onClick={() => unlocked && setSelectedStageId(stage.id)}
+                  onClick={() => {
+                    console.log("NODE CLICKED RAW:", stage.id);
+                    if (unlocked) {
+                      console.log("Setting selectedStageId to:", stage.id);
+                      setSelectedStageId(stage.id);
+                    } else {
+                      console.log("Node is LOCKED:", stage.id);
+                    }
+                  }}
                   disabled={!unlocked}
-                  className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center transition-all duration-300 relative shadow-2xl
+                  className={`w-14 h-14 rounded-2xl border-2 flex items-center justify-center transition-all duration-300 relative shadow-2xl pointer-events-auto
                     ${unlocked 
                       ? cleared
                         ? 'bg-secondary/20 border-secondary text-secondary shadow-[0_0_20px_rgba(0,255,255,0.4)]'
@@ -103,6 +113,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                     }
                   `}
                 >
+
                   {cleared ? <CheckCircle2 size={24} /> : isBoss ? <Skull size={24} /> : <MapIcon size={24} />}
                   
                   {unlocked && !cleared && (
