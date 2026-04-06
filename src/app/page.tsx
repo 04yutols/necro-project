@@ -193,6 +193,7 @@ export default function Home() {
               {activeTab === 'MAP' && (
                 <motion.div key="MAP" variants={tabVariants} initial="hidden" animate="visible" exit="exit" className="h-full">
                   <AreaMap onStartStage={(stageId) => {
+                    console.log("onStartStage triggered in Home for stage:", stageId);
                     setActiveStageId(stageId);
                     setIsInBattle(true);
                   }} />

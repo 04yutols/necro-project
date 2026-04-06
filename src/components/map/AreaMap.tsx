@@ -76,41 +76,45 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
           {area1Stages.map((stage, index) => {
             const unlocked = isUnlocked(stage.id);
             const cleared = player.clearedStages.includes(stage.id);
+            const isBoss = (stage as any).isAreaBoss;
             const pos = positions[index] || { x: `${(index + 1) * 20}%`, y: '50%' };
             
             return (
               <div 
                 key={stage.id} 
-                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 group cursor-pointer"
+                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 group z-20"
                 style={{ left: pos.x, top: pos.y }}
-                onClick={() => unlocked && setSelectedStageId(stage.id)}
               >
-                {/* Larger Hit Area / Outer Glow */}
-                <div className="w-12 h-12 flex items-center justify-center relative">
-                  <motion.div 
-                    whileHover={unlocked ? { scale: 1.2 } : {}}
-                    className={`w-4 h-4 rounded-full transition-all duration-300 relative z-10
-                      ${unlocked 
-                        ? cleared
-                          ? 'bg-secondary shadow-[0_0_20px_#00FFFF]'
-                          : 'bg-primary shadow-[0_0_20px_#BC00FB]'
-                        : 'bg-gray-800'
-                      }
-                    `}
-                  />
+                {/* Node Icon Button */}
+                <motion.button 
+                  whileHover={unlocked ? { scale: 1.2, y: -5 } : {}}
+                  whileTap={unlocked ? { scale: 0.9 } : {}}
+                  transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                  onClick={() => unlocked && setSelectedStageId(stage.id)}
+                  disabled={!unlocked}
+                  className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center transition-all duration-300 relative shadow-2xl
+                    ${unlocked 
+                      ? cleared
+                        ? 'bg-secondary/20 border-secondary text-secondary shadow-[0_0_20px_rgba(0,255,255,0.4)]'
+                        : isBoss
+                          ? 'bg-fuchsia/20 border-fuchsia text-fuchsia shadow-[0_0_20px_rgba(255,0,255,0.4)]'
+                          : 'bg-primary/20 border-primary text-primary shadow-[0_0_20px_rgba(188,0,251,0.4)]'
+                      : 'bg-gray-900 border-gray-800 text-gray-700'
+                    }
+                  `}
+                >
+                  {cleared ? <CheckCircle2 size={24} /> : isBoss ? <Skull size={24} /> : <MapIcon size={24} />}
+                  
                   {unlocked && !cleared && (
-                    <div className="absolute inset-0 bg-primary opacity-20 rounded-full animate-ping" />
+                    <div className="absolute -inset-1 border border-inherit rounded-2xl animate-pulse opacity-50" />
                   )}
-                  {unlocked && cleared && (
-                    <div className="absolute inset-0 bg-secondary opacity-10 rounded-full animate-pulse" />
-                  )}
-                </div>
+                </motion.button>
                 
-                <div className="text-center mt-1 pointer-events-none">
-                  <div className={`text-[8px] font-bold tracking-[0.2em] uppercase mb-0.5 ${unlocked ? 'text-gray-400' : 'text-gray-600'}`}>
+                <div className="text-center mt-3 pointer-events-none">
+                  <div className={`text-[9px] font-black tracking-[0.2em] uppercase mb-0.5 ${unlocked ? 'text-gray-400' : 'text-gray-600'}`}>
                     {stage.id}
                   </div>
-                  <div className={`text-[10px] font-black tracking-widest whitespace-nowrap drop-shadow-md ${unlocked ? 'text-white' : 'text-gray-700'}`}>
+                  <div className={`text-[11px] font-black tracking-widest whitespace-nowrap drop-shadow-[0_0_8px_rgba(0,0,0,0.8)] ${unlocked ? 'text-white' : 'text-gray-700'}`}>
                     {unlocked ? stage.name : 'ENCRYPTED'}
                   </div>
                 </div>
@@ -144,7 +148,10 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
 
                   <div className="w-full flex flex-col gap-3 mt-2">
                     <FuchsiaButton 
-                      onClick={() => onStartStage(selectedStage.id)}
+                      onClick={() => {
+                        console.log("Starting stage:", selectedStage.id);
+                        onStartStage(selectedStage.id);
+                      }}
                       className="w-full py-4 text-xs tracking-[0.3em]"
                     >
                       ENTER CRYPT
@@ -165,4 +172,3 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
     </div>
   );
 }
-
