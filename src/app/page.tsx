@@ -5,7 +5,10 @@ import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 
-const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas'), { ssr: false });
+const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').then((mod) => mod.default), { 
+  ssr: false,
+  loading: () => <div className="flex-1 flex items-center justify-center bg-black text-primary font-space animate-pulse">SYNCHRONIZING BATTLE ENGINE...</div>
+});
 
 import NecroLab from '../components/necro/NecroLab';
 import EquipmentManager from '../components/character/EquipmentManager';
