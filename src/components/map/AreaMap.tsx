@@ -32,6 +32,9 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
   };
 
   const selectedStage = selectedStageId ? area1Stages.find(s => s.id === selectedStageId) : null;
+  
+  console.log("Current selectedStageId:", selectedStageId);
+  console.log("Found selectedStage:", selectedStage?.name);
 
   const positions = [
     { x: '15%', y: '75%' },
@@ -78,9 +81,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
             const cleared = player.clearedStages.includes(stage.id);
             const isBoss = (stage as any).isAreaBoss;
             const pos = positions[index] || { x: `${(index + 1) * 20}%`, y: '50%' };
-
-            console.log(`Rendering Node ${stage.id}: Unlocked=${unlocked}, Cleared=${cleared}`);
-
+            
             return (
               <div 
                 key={stage.id} 
@@ -93,12 +94,9 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   whileTap={unlocked ? { scale: 0.9 } : {}}
                   transition={{ type: "spring", stiffness: 400, damping: 15 }}
                   onClick={() => {
-                    console.log("NODE CLICKED RAW:", stage.id);
+                    console.log("ICON CLICKED:", stage.id, "unlocked:", unlocked);
                     if (unlocked) {
-                      console.log("Setting selectedStageId to:", stage.id);
                       setSelectedStageId(stage.id);
-                    } else {
-                      console.log("Node is LOCKED:", stage.id);
                     }
                   }}
                   disabled={!unlocked}
@@ -113,7 +111,6 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                     }
                   `}
                 >
-
                   {cleared ? <CheckCircle2 size={24} /> : isBoss ? <Skull size={24} /> : <MapIcon size={24} />}
                   
                   {unlocked && !cleared && (
@@ -138,10 +135,11 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
         <AnimatePresence>
           {selectedStage && (
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+              key="stage-detail-popup"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
             >
               <div className="bg-[#0A0A0A] border border-white/10 w-full max-w-[340px] rounded-3xl shadow-2xl overflow-hidden relative">
                 <div className="absolute inset-0 focus-lines opacity-10 pointer-events-none" />
@@ -160,7 +158,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   <div className="w-full flex flex-col gap-3 mt-2">
                     <FuchsiaButton 
                       onClick={() => {
-                        console.log("Starting stage:", selectedStage.id);
+                        console.log("ENTER CRYPT button clicked for:", selectedStage.id);
                         onStartStage(selectedStage.id);
                       }}
                       className="w-full py-4 text-xs tracking-[0.3em]"
@@ -168,7 +166,10 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                       ENTER CRYPT
                     </FuchsiaButton>
                     <button 
-                      onClick={() => setSelectedStageId(null)}
+                      onClick={() => {
+                        console.log("Cancel clicked");
+                        setSelectedStageId(null);
+                      }}
                       className="w-full py-2 text-[10px] font-bold text-gray-500 hover:text-white transition-colors tracking-widest uppercase"
                     >
                       Cancel
