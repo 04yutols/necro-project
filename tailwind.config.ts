@@ -2,28 +2,30 @@ import type { Config } from "tailwindcss";
 
 const designTokens = {
   colors: {
-    dark: "#0a0b14",
+    dark: "#0B0E14",
+    background: "#0B0E14",
+    surface: "#10131A",
     primary: {
-      DEFAULT: "#BC00FB", // Amethyst / Neon Purple
-      glow: "rgba(188, 0, 251, 0.6)",
-      dim: "rgba(188, 0, 251, 0.2)",
+      DEFAULT: "#E08DFF", // Light Neon Purple
+      dim: "#BC00FB",
+      glow: "rgba(191, 0, 255, 0.6)",
     },
     secondary: {
-      DEFAULT: "#00FFFF", // Cyan
-      glow: "rgba(0, 255, 255, 0.6)",
-      dim: "rgba(0, 255, 255, 0.2)",
+      DEFAULT: "#00FFAB", // Neon Green/Cyan
+      dim: "#00EFA0",
+      glow: "rgba(0, 255, 171, 0.6)",
     },
-    fuchsia: {
-      DEFAULT: "#FF00FF", // Neon Pink
-      glow: "rgba(255, 0, 255, 0.6)",
-      dim: "rgba(255, 0, 255, 0.2)",
+    tertiary: {
+      DEFAULT: "#FF6B9B", // Neon Pink
+      dim: "#E30071",
+      glow: "rgba(255, 107, 155, 0.6)",
     },
     necro: {
-      DEFAULT: "#2a0035",
-      glow: "rgba(188, 0, 251, 0.4)",
-      dim: "rgba(42, 0, 53, 0.4)",
+      DEFAULT: "#BF00FF",
+      glow: "rgba(191, 0, 255, 0.4)",
     },
-    cursedGold: "#ffd700",
+    error: "#FF6E84",
+    cursedGold: "#FFD700",
   },
   spacing: {
     sm: "0.5rem",
@@ -35,11 +37,10 @@ const designTokens = {
   borderRadius: {
     sm: "0.25rem",
     md: "0.5rem",
-    lg: "0.75rem",
-    xl: "1rem",
-    "2xl": "1.5rem",
-    "3xl": "2.5rem",
-    capsule: "9999px",
+    lg: "1rem",
+    xl: "2rem",
+    "2xl": "3rem",
+    full: "9999px",
   },
 };
 
@@ -55,19 +56,32 @@ const config: Config = {
       spacing: designTokens.spacing,
       borderRadius: designTokens.borderRadius,
       fontFamily: {
+        headline: ["Space Grotesk", "sans-serif"],
+        body: ["Manrope", "sans-serif"],
+        label: ["Plus Jakarta Sans", "sans-serif"],
+        system: ["DotGothic16", "monospace"],
         cinzel: ['var(--font-cinzel)', 'serif'],
         noto: ['var(--font-noto-sans-jp)', 'sans-serif'],
         space: ['var(--font-space-grotesk)', 'sans-serif'],
       },
-      letterSpacing: {
-        'widest-plus': '0.3em',
-        'mega': '0.5em',
-      },
       backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'necro-gradient': 'linear-gradient(to bottom, #0a0b14, #1a0a2a)',
-        'dither-pattern': 'url("data:image/svg+xml,%3Csvg width=\\"2\\" height=\\"2\\" viewBox=\\"0 0 2 2\\" fill=\\"none\\" xmlns=\\"http://www.w3.org/2000/svg\\"%3E%3Crect width=\\"1\\" height=\\"1\\" fill=\\"rgba(255,255,255,0.1)\\"/%3E%3Crect x=\\"1\\" y=\\"1\\" width=\\"1\\" height=\\"1\\" fill=\\"rgba(255,255,255,0.1)\\"/%3E%3C/svg%3E")',
+        'liquid-fill': 'linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 20%, rgba(0, 255, 171, 0.5) 100%)',
+        'liquid-fill-tertiary': 'linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 20%, rgba(255, 107, 155, 0.5) 100%)',
         'dot-pattern': 'url("data:image/svg+xml,%3Csvg width=\\"4\\" height=\\"4\\" viewBox=\\"0 0 4 4\\" fill=\\"none\\" xmlns=\\"http://www.w3.org/2000/svg\\"%3E%3Ccircle cx=\\"1\\" cy=\\"1\\" r=\\"0.5\\" fill=\\"rgba(255,255,255,0.08)\\"/%3E%3C/svg%3E")',
+      },
+      animation: {
+        'glow-pulse': 'glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'hologram-scan': 'hologram-scan 4s linear infinite',
+      },
+      keyframes: {
+        'glow-pulse': {
+          '0%, 100%': { opacity: '1', filter: 'brightness(1)' },
+          '50%': { opacity: '0.8', filter: 'brightness(1.5)' },
+        },
+        'hologram-scan': {
+          '0%': { backgroundPosition: '0% 0%' },
+          '100%': { backgroundPosition: '0% 100%' },
+        },
       },
     },
   },

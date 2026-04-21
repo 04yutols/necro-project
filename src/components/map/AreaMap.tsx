@@ -40,30 +40,30 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
   const selectedStage = selectedStageId ? area1Stages.find(s => s.id === selectedStageId) : null;
 
   return (
-    <div className="w-full h-full flex flex-col gap-6">
+    <div className="w-full h-full flex flex-col gap-4 lg:gap-6 pb-20 lg:pb-0">
       {/* Map Header - Sector Info */}
       <div className="flex justify-between items-center px-2">
         <div className="space-y-1">
-          <h2 className="text-3xl font-black text-white tracking-[0.1em] uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-            ABYSSAL SECTOR 04
+          <h2 className="text-sm lg:text-3xl font-black text-white tracking-widest uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+            Abyssal Sector 04
           </h2>
-          <div className="flex items-center gap-3">
-            <div className="text-[10px] font-bold text-secondary tracking-[0.2em] uppercase opacity-80">
-              Map Synchronization: 94%
+          <div className="flex items-center gap-2 lg:gap-3 opacity-60">
+            <div className="text-[7px] lg:text-[10px] font-black text-secondary tracking-widest uppercase">
+              Map Sync: 94%
             </div>
-            <div className="h-1 w-24 bg-black/40 rounded-full overflow-hidden border border-white/5">
+            <div className="h-0.5 lg:h-1 w-12 lg:w-24 bg-black/40 rounded-full overflow-hidden border border-white/5">
               <div className="h-full bg-secondary shadow-[0_0_8px_#00FFFF]" style={{ width: '94%' }} />
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-secondary/30 bg-secondary/5 backdrop-blur-md">
-          <div className="w-2 h-2 rounded-full bg-secondary animate-pulse shadow-[0_0_8px_#00FFFF]" />
-          <span className="text-[10px] font-black text-secondary tracking-[0.2em] uppercase">System Online</span>
+        <div className="flex items-center gap-1.5 lg:gap-2 px-3 py-1 lg:px-4 lg:py-1.5 rounded-full border border-secondary/30 bg-secondary/5 backdrop-blur-md">
+          <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full bg-secondary animate-pulse shadow-[0_0_8px_#00FFFF]" />
+          <span className="text-[7px] lg:text-[10px] font-black text-secondary tracking-widest uppercase">Stable</span>
         </div>
       </div>
 
       {/* Main Map Area */}
-      <div className="flex-1 w-full relative overflow-hidden bg-black/60 rounded-[2.5rem] border border-white/10 shadow-2xl backdrop-blur-sm min-h-[450px]">
+      <div className="flex-1 w-full relative overflow-hidden bg-black/60 rounded-xl lg:rounded-[2.5rem] border border-white/10 shadow-2xl backdrop-blur-sm min-h-[300px] lg:min-h-[450px]">
         {/* SVG Connections Layer */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
           <motion.path 
@@ -92,48 +92,57 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                 className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 group z-20"
                 style={{ left: pos.x, top: pos.y }}
               >
-                {/* Node Button Container */}
                 <div className="relative">
                   {unlocked && !cleared && (
                     <motion.div 
                       animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
                       transition={{ duration: 2, repeat: Infinity }}
-                      className={`absolute inset-0 rounded-full blur-md ${isBoss ? 'bg-fuchsia' : 'bg-primary'}`}
+                      className={`absolute inset-0 rounded-full blur-md ${isBoss ? 'bg-tertiary' : 'bg-primary'}`}
                     />
                   )}
                   
                   <motion.button 
-                    whileHover={unlocked ? { scale: 1.2, y: -5 } : {}}
-                    whileTap={unlocked ? { scale: 0.9 } : {}}
+                    whileHover={unlocked ? { scale: 1.1, y: -2 } : {}}
+                    whileTap={unlocked ? { scale: 0.95 } : {}}
                     transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                    onClick={() => {
-                      console.log("STAGE CLICKED:", stage.id);
-                      if (unlocked) {
-                        setSelectedStageId(stage.id);
-                      }
-                    }}
+                    onClick={() => { if (unlocked) setSelectedStageId(stage.id); }}
                     disabled={!unlocked}
-                    className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center transition-all duration-300 relative shadow-2xl z-10
+                    className={`w-12 h-12 lg:w-16 lg:h-16 rounded-xl lg:rounded-2xl border-2 flex items-center justify-center transition-all duration-300 relative shadow-2xl z-10
                       ${unlocked 
                         ? cleared
-                          ? 'bg-secondary/20 border-secondary text-secondary shadow-[0_0_25px_rgba(0,255,255,0.5)]'
+                          ? 'bg-secondary/20 border-secondary text-secondary shadow-[0_0_15px_rgba(0,255,171,0.4)]'
                           : isBoss
-                            ? 'bg-fuchsia/20 border-fuchsia text-fuchsia shadow-[0_0_25px_rgba(255,0,255,0.5)]'
-                            : 'bg-primary/20 border-primary text-primary shadow-[0_0_25px_rgba(188,0,251,0.5)]'
+                            ? 'bg-tertiary/20 border-tertiary text-tertiary shadow-[0_0_15px_rgba(255,107,155,0.4)]'
+                            : 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(191,0,255,0.4)]'
                         : 'bg-gray-900/80 border-gray-800 text-gray-700 opacity-50'
                       }
                     `}
                   >
-                    {cleared ? <CheckCircle2 size={32} /> : isBoss ? <Skull size={32} /> : <MapIcon size={32} />}
+                    {cleared ? (
+                      <>
+                        <CheckCircle2 size={24} className="lg:hidden" />
+                        <CheckCircle2 size={32} className="hidden lg:block" />
+                      </>
+                    ) : isBoss ? (
+                      <>
+                        <Skull size={24} className="lg:hidden" />
+                        <Skull size={32} className="hidden lg:block" />
+                      </>
+                    ) : (
+                      <>
+                        <MapIcon size={24} className="lg:hidden" />
+                        <MapIcon size={32} className="hidden lg:block" />
+                      </>
+                    )}
                   </motion.button>
                 </div>
                 
-                <div className="text-center mt-4 pointer-events-none">
-                  <div className={`text-[10px] font-black tracking-[0.3em] uppercase mb-1 drop-shadow-lg ${unlocked ? 'text-gray-400' : 'text-gray-600'}`}>
+                <div className="text-center mt-2 lg:mt-4 pointer-events-none">
+                  <div className={`text-[6px] lg:text-[10px] font-black tracking-widest uppercase mb-0.5 drop-shadow-lg ${unlocked ? 'text-gray-400' : 'text-gray-600'}`}>
                     {stage.id}
                   </div>
-                  <div className={`text-xs font-black tracking-[0.1em] whitespace-nowrap drop-shadow-[0_0_10px_rgba(0,0,0,1)] ${unlocked ? 'text-white' : 'text-gray-700'} uppercase`}>
-                    {unlocked ? stage.name : 'ENCRYPTED DATA'}
+                  <div className={`text-[8px] lg:text-xs font-black tracking-widest whitespace-nowrap drop-shadow-[0_0_10px_rgba(0,0,0,1)] ${unlocked ? 'text-white' : 'text-gray-700'} uppercase`}>
+                    {unlocked ? stage.name : 'DATA ENCRYPTED'}
                   </div>
                 </div>
               </div>
@@ -155,39 +164,45 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
-                className="bg-[#050505] border border-white/10 w-full max-w-[360px] rounded-[2.5rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden relative"
+                className="bg-background/95 border border-white/10 w-[90%] max-w-[320px] lg:max-w-[360px] rounded-3xl lg:rounded-[2.5rem] shadow-2xl overflow-hidden relative backdrop-blur-xl"
               >
-                <div className="absolute inset-0 focus-lines opacity-10 pointer-events-none" />
-                <div className="absolute inset-0 honeycomb-grid opacity-5 pointer-events-none" />
+                <div className="absolute inset-0 dot-pattern opacity-10 pointer-events-none" />
                 
-                <div className="p-10 flex flex-col items-center gap-8 relative z-10">
-                  <div className={`w-20 h-20 rounded-3xl border-2 flex items-center justify-center shadow-inner
-                    ${selectedStage.isAreaBoss ? 'bg-fuchsia/10 border-fuchsia text-fuchsia shadow-[0_0_20px_rgba(255,0,255,0.2)]' : 'bg-primary/10 border-primary text-primary shadow-[0_0_20px_rgba(188,0,251,0.2)]'}`}>
-                    {selectedStage.isAreaBoss ? <Skull size={40} /> : <MapIcon size={40} />}
+                <div className="p-6 lg:p-10 flex flex-col items-center gap-6 lg:gap-8 relative z-10">
+                  <div className={`w-16 h-16 lg:w-20 lg:h-20 rounded-2xl lg:rounded-3xl border-2 flex items-center justify-center
+                    ${selectedStage.isAreaBoss ? 'bg-tertiary/10 border-tertiary text-tertiary shadow-[0_0_20px_rgba(255,107,155,0.2)]' : 'bg-primary/10 border-primary text-primary shadow-[0_0_20px_rgba(188,0,251,0.2)]'}`}>
+                    {selectedStage.isAreaBoss ? (
+                      <>
+                        <Skull size={32} className="lg:hidden" />
+                        <Skull size={40} className="hidden lg:block" />
+                      </>
+                    ) : (
+                      <>
+                        <MapIcon size={32} className="lg:hidden" />
+                        <MapIcon size={40} className="hidden lg:block" />
+                      </>
+                    )}
                   </div>
 
-                  <div className="text-center space-y-2">
-                    <h3 className="text-[10px] font-bold text-gray-500 tracking-[0.4em] uppercase">Mission Briefing</h3>
-                    <div className="text-xl font-black text-white tracking-[0.1em] uppercase leading-tight">{selectedStage.name}</div>
-                    <div className="flex items-center justify-center gap-2 text-secondary">
-                      <ShieldAlert size={12} />
-                      <span className="text-[10px] font-bold tracking-[0.2em] uppercase">Rec Lvl: 15</span>
+                  <div className="text-center space-y-1 lg:space-y-2">
+                    <h3 className="text-[8px] lg:text-[10px] font-black text-gray-500 tracking-widest uppercase">Mission Briefing</h3>
+                    <div className="text-lg lg:text-xl font-black text-white tracking-widest uppercase leading-tight">{selectedStage.name}</div>
+                    <div className="flex items-center justify-center gap-2 text-secondary opacity-80">
+                      <ShieldAlert size={10} />
+                      <span className="text-[8px] lg:text-[10px] font-black tracking-widest uppercase">Rec Lvl: 15</span>
                     </div>
                   </div>
 
-                  <div className="w-full flex flex-col gap-4">
+                  <div className="w-full flex flex-col gap-3 lg:gap-4">
                     <FuchsiaButton 
-                      onClick={() => {
-                        console.log("INITIATING SORTIE:", selectedStage.id);
-                        onStartStage(selectedStage.id);
-                      }}
-                      className="w-full py-5 text-xs tracking-[0.4em] rounded-full"
+                      onClick={() => onStartStage(selectedStage.id)}
+                      className="w-full py-4 lg:py-5 text-[10px] tracking-widest rounded-full uppercase"
                     >
-                      INITIATE SORTIE
+                      Initiate Sortie
                     </FuchsiaButton>
                     <button 
                       onClick={() => setSelectedStageId(null)}
-                      className="w-full py-2 text-[10px] font-bold text-gray-500 hover:text-white transition-colors tracking-[0.3em] uppercase"
+                      className="w-full py-1 text-[8px] font-black text-gray-500 hover:text-white transition-colors tracking-widest uppercase"
                     >
                       Abort Mission
                     </button>

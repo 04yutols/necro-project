@@ -139,15 +139,15 @@ export default function EquipmentManager() {
 
   return (
     <GameFrame 
-      title={<span className="flex items-center gap-2"><Sword size={18} /> EQUIPMENT</span>}
+      title={<span className="flex items-center gap-2"><Sword size={18} /> ARMORY</span>}
       className="w-full"
     >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* 左側：プレビューとステータス */}
-        <div className="space-y-6">
-          <div className="bg-black/50 border border-gray-800 rounded-md p-4 shadow-inner">
-            <h3 className="text-sm font-bold font-cinzel text-gray-400 mb-4 tracking-widest">STATUS PREVIEW</h3>
-            <div className="space-y-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
+        {/* PC: Left / Mobile: Bottom (Status Preview) */}
+        <div className="space-y-4 lg:space-y-6 order-2 lg:order-1">
+          <div className="bg-black/40 border border-white/5 rounded-xl p-4 shadow-inner">
+            <h3 className="text-[10px] lg:text-xs font-black font-headline text-gray-400 mb-4 tracking-widest uppercase opacity-60">Status Analysis</h3>
+            <div className="grid grid-cols-1 gap-1 lg:gap-2">
               {renderStatDiff('hp', 'HP')}
               {renderStatDiff('mp', 'MP')}
               {renderStatDiff('atk', 'ATK')}
@@ -161,23 +161,22 @@ export default function EquipmentManager() {
           </div>
 
           {previewItem && selectedSlot && (
-            <div className="bg-fuchsia/10 border border-fuchsia/50 rounded-md p-4 animate-in fade-in zoom-in duration-300">
-              <h3 className="text-fuchsia font-bold font-cinzel text-sm mb-3 flex items-center justify-between">
+            <div className="bg-primary/10 border border-primary/40 rounded-xl p-4 animate-in fade-in zoom-in duration-300">
+              <h3 className="text-primary font-black font-headline text-[10px] lg:text-sm mb-3 flex items-center justify-between uppercase">
                 <span>PREVIEW: {previewItem.name}</span>
-                <span className="text-[10px] bg-fuchsia text-white px-2 py-0.5 rounded">{previewItem.rarity}</span>
+                <span className="text-[8px] border border-primary/40 px-2 py-0.5 rounded">{previewItem.rarity}</span>
               </h3>
-              <div className="flex gap-4">
-                <FuchsiaButton
-                  variant="ghost"
+              <div className="flex gap-3">
+                <button
                   onClick={() => setPreviewItem(null)}
-                  className="flex-1 py-2 text-xs"
+                  className="flex-1 py-2 text-[10px] font-black border border-white/10 rounded-lg hover:bg-white/5 transition-all uppercase tracking-widest"
                 >
-                  CANCEL
-                </FuchsiaButton>
+                  ABORT
+                </button>
                 <FuchsiaButton
                   disabled={isProcessing}
                   onClick={handleEquip}
-                  className="flex-1 py-2 text-xs"
+                  className="flex-1 py-2 text-[10px] rounded-lg border-b-2"
                 >
                   EQUIP
                 </FuchsiaButton>
@@ -186,35 +185,35 @@ export default function EquipmentManager() {
           )}
         </div>
 
-        {/* 右側：8スロット装備枠 */}
-        <div className="space-y-6">
+        {/* PC: Right / Mobile: Top (Equipment Slots) */}
+        <div className="space-y-6 order-1 lg:order-2">
           <div>
-            <h3 className="text-sm font-bold font-cinzel text-gray-400 mb-4 tracking-widest">EQUIPMENT SLOTS</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <h3 className="text-[10px] lg:text-xs font-black font-headline text-gray-400 mb-4 tracking-widest uppercase opacity-60">Neural Interface</h3>
+            <div className="grid grid-cols-2 gap-3 lg:gap-4">
               {(Object.keys(SLOT_LABELS) as (keyof EquipmentSlots)[]).map(slot => {
                 const equippedItem = player.equipment[slot];
                 const isSelected = selectedSlot === slot;
 
                 return (
                   <div key={slot} className="relative group">
-                    <div className="text-[10px] text-gray-500 uppercase mb-1 font-bold">{SLOT_LABELS[slot]}</div>
+                    <div className="text-[8px] text-white/30 uppercase mb-1 font-black tracking-tighter">{SLOT_LABELS[slot]}</div>
                     <button
                       onClick={() => {
                         setSelectedSlot(slot);
                         setPreviewItem(null);
                       }}
-                      className={`w-full h-16 flex flex-col items-center justify-center border-2 rounded-md transition-all
-                        ${isSelected ? 'border-fuchsia bg-fuchsia/10 shadow-[0_0_10px_rgba(255,0,255,0.3)]' : 'border-gray-800 bg-black/40 hover:border-gray-600'}
+                      className={`w-full h-12 lg:h-16 flex flex-col items-center justify-center border-2 rounded-xl transition-all
+                        ${isSelected ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(188,0,251,0.2)]' : 'border-white/5 bg-black/20 hover:border-white/20'}
                       `}
                     >
                       {equippedItem ? (
                         <>
-                          <span className={`text-xs md:text-sm font-bold text-center px-1 ${equippedItem.rarity === 'UNIQUE' ? 'text-cursedGold drop-shadow-[0_0_5px_rgba(255,215,0,0.5)]' : 'text-white'}`}>
+                          <span className={`text-[10px] lg:text-xs font-black text-center px-1 uppercase truncate w-full ${equippedItem.rarity === 'UNIQUE' ? 'text-cursedGold' : 'text-white'}`}>
                             {equippedItem.name}
                           </span>
                         </>
                       ) : (
-                        <span className="text-gray-600 text-xs font-cinzel tracking-widest">EMPTY</span>
+                        <span className="text-white/10 font-black tracking-widest text-[8px] uppercase">EMPTY</span>
                       )}
                     </button>
                     {equippedItem && (
@@ -223,10 +222,10 @@ export default function EquipmentManager() {
                           e.stopPropagation();
                           handleUnequip(slot);
                         }}
-                        className="absolute top-5 right-1 text-gray-500 hover:text-fuchsia transition-colors bg-black rounded-full opacity-0 group-hover:opacity-100"
+                        className="absolute top-4 right-1 text-white/40 hover:text-error transition-colors bg-black border border-white/10 rounded-full p-1 lg:opacity-0 group-hover:opacity-100"
                         title="Unequip"
                       >
-                        <X size={14} />
+                        <X size={10} />
                       </button>
                     )}
                   </div>
@@ -237,28 +236,31 @@ export default function EquipmentManager() {
 
           {/* 選択中のスロットに対応するインベントリリスト */}
           {selectedSlot && (
-            <div className="border-t border-gray-800 pt-4 animate-in slide-in-from-bottom-4 duration-300">
-              <h4 className="text-sm text-gray-400 font-bold font-cinzel mb-3 flex items-center gap-2">
-                <Package size={16} /> INVENTORY ({SLOT_LABELS[selectedSlot]})
+            <div className="border-t border-white/5 pt-4 animate-in slide-in-from-bottom-4 duration-300">
+              <h4 className="text-[10px] lg:text-xs text-gray-400 font-black font-headline mb-3 flex items-center gap-2 uppercase opacity-60">
+                <Package size={14} /> Available Data ({SLOT_LABELS[selectedSlot]})
               </h4>
-              <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="grid grid-cols-1 gap-2 max-h-48 lg:max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                 {getAvailableItems(selectedSlot).length === 0 ? (
-                  <div className="text-center py-6 text-gray-600 text-xs italic bg-black/30 rounded-md border border-dashed border-gray-800">
-                    装備可能なアイテムを持っていません。
+                  <div className="text-center py-8 text-white/20 text-[10px] font-black font-headline uppercase border border-dashed border-white/5 rounded-xl bg-black/20">
+                    No compatible units found.
                   </div>
                 ) : (
                   getAvailableItems(selectedSlot).map(item => (
                     <button
                       key={item.id}
                       onClick={() => setPreviewItem(item)}
-                      className={`p-3 border rounded-md flex justify-between items-center transition-colors text-left
-                        ${previewItem?.id === item.id ? 'border-fuchsia bg-fuchsia/20' : 'border-gray-800 bg-black/60 hover:border-gray-600'}
+                      className={`p-3 border rounded-xl flex justify-between items-center transition-all text-left group
+                        ${previewItem?.id === item.id ? 'border-primary bg-primary/20 shadow-[0_0_15px_rgba(188,0,251,0.1)]' : 'border-white/5 bg-black/40 hover:border-white/20'}
                       `}
                     >
-                      <div className="font-bold text-sm text-white">{item.name}</div>
-                      <div className="text-[10px] text-gray-500 uppercase font-mono">
-                        {item.stats.atk ? `ATK+${item.stats.atk}` : ''} {item.stats.def ? `DEF+${item.stats.def}` : ''}
+                      <div className="flex-1 truncate">
+                        <div className="font-black text-[10px] lg:text-xs text-white uppercase group-hover:text-primary transition-colors">{item.name}</div>
+                        <div className="text-[8px] text-gray-500 font-mono mt-0.5">
+                          {item.stats.atk ? `A+${item.stats.atk}` : ''} {item.stats.def ? `D+${item.stats.def}` : ''}
+                        </div>
                       </div>
+                      <ArrowRight size={12} className={`transition-transform duration-300 ${previewItem?.id === item.id ? 'translate-x-0 opacity-100' : '-translate-x-4 opacity-0'}`} />
                     </button>
                   ))
                 )}
