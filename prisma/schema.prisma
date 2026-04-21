@@ -7,11 +7,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id              String   @id @default(uuid())
+  name            String
+  characters      Character[]
+  discoveredItems Item[]   @relation("Discoverer")
+}
+
 model Character {
   id              String   @id @default(uuid())
   name            String
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id])
   
-  // 9種の基礎ステータス (GDD-003)
+  // 9種の基礎ステータス
   hp              Int
   mp              Int
   atk             Int
@@ -22,17 +31,17 @@ model Character {
   luck            Int
   tec             Int
   
-  // 職業レベル到達時に獲得する永続パッシブの累積補正 (GDD-004)
+  // 職業レベル到達時に獲得する永続パッシブの累積補正
   passiveAtkBonus  Int      @default(0)
   passiveDefBonus  Int      @default(0)
   passiveMatkBonus Int      @default(0)
   passiveMdefBonus Int      @default(0)
   
-  // 職業システム (GDD-004)
+  // 職業システム
   jobs            UserJob[]
   currentJobId    String?
   
-  // 8枠装備スロット (GDD-007)
+  // 8枠装備スロット
   equipWeaponId   String?
   equipSubId      String?
   equipHeadId     String?
@@ -57,8 +66,11 @@ model Character {
   necroMaxCost    Int      @default(10)
   necroBaseStatsBonus Float @default(1.0)
   
-  // 進行管理 (GDD-002)
+  // 進行管理
   clearedStages   String[] @default([])
+
+  // 深淵の残滓 (ビルドアイテム)
+  abyssalResidues AbyssalResidue[]
 }
 
 model Job {
@@ -84,12 +96,23 @@ model Item {
   id              String   @id @default(uuid())
   name            String
   type            String   // WEAPON | HEAD | BODY ...
-  rarity          String   // COMMON | UNIQUE
+  rarity          String   // COMMON | UNIQUE | HIDDEN_UNIQUE
   atk             Int      @default(0)
   def             Int      @default(0)
   matk            Int      @default(0)
   mdef            Int      @default(0)
   specialEffect   String?
+  
+  // 第一発見者システム
+  isUnique        Boolean  @default(false)
+  discovererId    String?
+  discovererName  String?
+  discoverer      User?    @relation("Discoverer", fields: [discovererId], references: [id])
+  serialNo        Int?     // 全体での発見順
+  discoveredAt    DateTime?
+  
+  // ランダムオプション (JSONB)
+  subOptions      Json?    // Array of { type: string, value: number }
   
   equippedWeapon  Character[] @relation("Weapon")
   equippedSub     Character[] @relation("Sub")
@@ -99,6 +122,21 @@ model Item {
   equippedLegs    Character[] @relation("Legs")
   equippedAcc1    Character[] @relation("Acc1")
   equippedAcc2    Character[] @relation("Acc2")
+
+  residues        AbyssalResidue[]
+}
+
+model AbyssalResidue {
+  id              String   @id @default(uuid())
+  name            String
+  itemId          String
+  item            Item     @relation(fields: [itemId], references: [id])
+  characterId     String?
+  character       Character? @relation(fields: [characterId], references: [id])
+  
+  // ランダムなサブオプション (JSONB)
+  subOptions      Json     // Array of { type: string, value: number }
+  level           Int      @default(1)
 }
 
 model Monster {
@@ -118,6 +156,10 @@ model Monster {
   
   soulShardId     String?
   soulShard       SoulShard? @relation(fields: [soulShardId], references: [id])
+  
+  // 霊核 (魔改造要素)
+  spiritCoreId    String?
+  spiritCore      SpiritCore? @relation(fields: [spiritCoreId], references: [id])
 }
 
 model SoulShard {
@@ -128,3 +170,13 @@ model SoulShard {
   specialAbility  String?
   monsters        Monster[]
 }
+
+model SpiritCore {
+  id              String   @id @default(uuid())
+  name            String
+  element         String?
+  skillChangeId   String?
+  atkMultiplier   Float    @default(1.0)
+  monsters        Monster[]
+}
+

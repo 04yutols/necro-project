@@ -5,7 +5,9 @@ import {
   BattleLog, 
   BaseStats, 
   PassiveBonuses,
-  ClassCategory 
+  ClassCategory,
+  Resistances,
+  ElementType
 } from '../types/game';
 import { MasterDataService } from '../services/MasterDataService';
 

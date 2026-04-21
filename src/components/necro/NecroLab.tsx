@@ -6,7 +6,7 @@ import { MonsterData } from '../../types/game';
 import { soulStoneAction } from '../../app/actions';
 import { Ghost, Skull, Sparkles, AlertTriangle, Shield } from 'lucide-react';
 import { GameFrame } from '../ui/GameFrame';
-import { BloodButton } from '../ui/BloodButton';
+import { FuchsiaButton } from '../ui/FuchsiaButton';
 
 export default function NecroLab() {
   const { 
@@ -66,13 +66,13 @@ export default function NecroLab() {
     };
   };
 
-  if (!necroStatus) return <div className="text-blood text-center p-8 border-2 border-blood/20 rounded-xl bg-blood/5 font-bold uppercase tracking-widest animate-pulse font-cinzel">NOT QUALIFIED AS A NECROMANCER.</div>;
+  if (!necroStatus) return <div className="text-fuchsia text-center p-8 border-2 border-fuchsia/20 rounded-xl bg-fuchsia/5 font-bold uppercase tracking-widest animate-pulse font-cinzel">NOT QUALIFIED AS A NECROMANCER.</div>;
 
   return (
     <GameFrame title={<span className="flex items-center gap-2"><Skull size={18} /> NECRO-LAB</span>} borderColor="necro" className="w-full">
       {/* 通知ポップアップ */}
       {notification && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-blood border-2 border-red-500 text-white px-6 py-3 rounded-lg shadow-[0_0_20px_rgba(136,8,8,0.5)] animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-fuchsia border-2 border-fuchsia text-white px-6 py-3 rounded-lg shadow-[0_0_20px_rgba(255,0,255,0.5)] animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5" />
             <span className="font-bold font-noto">{notification}</span>
@@ -80,50 +80,46 @@ export default function NecroLab() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
         {/* パーティ編成セクション */}
         <section className="space-y-4">
-          <div className="flex justify-between items-end mb-4 border-b border-white/10 pb-2">
-            <h2 className="text-sm font-bold font-cinzel text-gray-400 tracking-widest flex items-center gap-2">
-              <Ghost className="w-4 h-4" /> CURRENT PARTY
+          <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-2">
+            <h2 className="text-[10px] lg:text-sm font-black font-headline text-gray-400 tracking-widest flex items-center gap-2">
+              <Ghost size={14} /> ACTIVE LEGION
             </h2>
-            <div className={`text-sm font-bold px-3 py-1 rounded transition-colors border ${isOverCost ? 'bg-blood/20 border-blood text-red-500 animate-pulse' : 'bg-necro/20 border-necro text-necro'}`}>
+            <div className={`text-[10px] lg:text-xs font-black px-3 py-1 rounded-full border transition-all ${isOverCost ? 'bg-error/20 border-error text-error animate-pulse' : 'bg-secondary/10 border-secondary/30 text-secondary'}`}>
               COST: {totalCost} / {necroStatus.maxCost}
-              {isOverCost && <AlertTriangle className="inline ml-2 w-4 h-4" />}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-3 lg:gap-4">
             {party.map((m, i) => (
               <button 
                 key={i} 
-                className={`aspect-[3/4] min-h-[160px] border-2 rounded-lg flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden relative group
-                  ${m ? 'border-necro bg-necro/10 hover:bg-necro/20 shadow-[inset_0_0_20px_rgba(168,85,247,0.1)]' : 'border-gray-700 border-dashed hover:border-necro/50 bg-black/40'}
+                className={`aspect-[3/4] border-2 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden relative group
+                  ${m ? 'border-primary/50 bg-primary/5 hover:bg-primary/10 shadow-[inset_0_0_20px_rgba(188,0,251,0.05)]' : 'border-white/5 border-dashed hover:border-primary/30 bg-black/20'}
                 `}
                 onClick={() => handleSlotClick(i, null)}
               >
                 {m ? (
                   <>
-                    <span className="absolute top-2 left-2 text-[10px] text-necro font-bold font-cinzel uppercase">SLOT {i + 1}</span>
-                    <div className="text-md font-bold text-white text-center px-2 mt-4 font-noto">{m.name}</div>
-                    <div className="text-xs mt-2 text-gray-400 font-mono">COST {m.cost}</div>
-                    <div className="text-[10px] mt-1 text-green-400 font-bold font-mono">ATK {getEffectiveStats(m).atk}</div>
-                    {m.equippedShardId && <Sparkles size={12} className="text-necro mt-2 animate-pulse" />}
+                    <div className="text-[8px] lg:text-[10px] font-black text-white text-center px-1 mb-1 truncate w-full uppercase">{m.name}</div>
+                    <div className="text-[7px] lg:text-[8px] text-gray-500 font-mono">C{m.cost} | A{getEffectiveStats(m).atk}</div>
+                    {m.equippedShardId && <Sparkles size={10} className="text-primary mt-1 animate-pulse" />}
                     
-                    {/* Hover to unequip layer */}
-                    <div className="absolute inset-0 bg-red-900/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="text-xs font-bold text-white font-cinzel">REMOVE</span>
+                    <div className="absolute inset-0 bg-error/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[8px] font-black text-white tracking-tighter">DISMISS</span>
                     </div>
                   </>
                 ) : (
-                  <span className="text-gray-600 font-bold uppercase tracking-widest text-[10px] font-cinzel">EMPTY</span>
+                  <span className="text-white/20 font-black tracking-widest text-[8px] uppercase">Slot {i+1}</span>
                 )}
               </button>
             ))}
           </div>
 
           {isOverCost && (
-            <div className="mt-6 p-3 bg-blood/10 border border-blood text-red-400 text-xs flex items-center gap-3 rounded animate-bounce font-noto">
+            <div className="mt-6 p-3 bg-fuchsia/10 border border-fuchsia text-fuchsia text-xs flex items-center gap-3 rounded animate-bounce font-noto">
               <AlertTriangle className="shrink-0 w-4 h-4" />
               <span>軍団の合計コストが最大値を超えています。このままでは出撃できません。</span>
             </div>
@@ -132,61 +128,45 @@ export default function NecroLab() {
 
         {/* モンスターリスト */}
         <section className="space-y-4">
-          <h2 className="text-sm font-bold font-cinzel text-gray-400 tracking-widest border-b border-white/10 pb-2 mb-4">INVENTORY MONSTERS</h2>
-          <div className="grid grid-cols-1 gap-3 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
+          <h2 className="text-[10px] lg:text-sm font-black font-headline text-gray-400 tracking-widest border-b border-white/5 pb-2 mb-4 uppercase">
+            Captured Spirits
+          </h2>
+          <div className="grid grid-cols-1 gap-2 overflow-y-auto max-h-[400px] lg:max-h-[600px] pr-2 custom-scrollbar">
             {inventoryMonsters.length === 0 && (
-              <div className="text-center py-8 text-gray-600 italic border border-dashed border-gray-800 rounded bg-black/30 font-noto text-sm">
-                ストックモンスターがいません。
+              <div className="text-center py-12 text-white/20 italic border border-dashed border-white/5 rounded-xl bg-black/20 font-headline text-[10px] tracking-widest uppercase">
+                Void is Empty
               </div>
             )}
             {inventoryMonsters.map((m) => {
               const stats = getEffectiveStats(m);
               return (
-                <div key={m.id} className="bg-black/60 border border-gray-800 p-3 rounded-md flex flex-col sm:flex-row justify-between sm:items-center gap-3 group hover:border-necro/50 transition-colors">
-                  <div>
-                    <div className="font-bold text-white flex items-center gap-2 font-noto text-sm">
+                <div key={m.id} className="bg-surface/40 border border-white/5 p-3 lg:p-4 rounded-xl flex justify-between items-center gap-4 hover:border-primary/30 transition-all group">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-black text-white flex items-center gap-2 text-[10px] lg:text-xs uppercase truncate">
                       {m.name} 
-                      <span className="text-[9px] text-necro px-1 border border-necro/30 uppercase font-cinzel tracking-wider">{m.tribe}</span>
-                      {m.equippedShardId && <Sparkles size={12} className="text-necro animate-pulse" />}
+                      <span className="text-[7px] text-primary/60 border border-primary/20 px-1 rounded tracking-tighter">{m.tribe}</span>
                     </div>
-                    <div className="text-[10px] text-gray-500 uppercase mt-1 font-mono">
-                      COST: {m.cost} | ATK: <span className={m.equippedShardId ? "text-green-400 font-bold" : ""}>{stats.atk}</span>
+                    <div className="text-[8px] text-gray-500 uppercase mt-1 font-mono">
+                      C: {m.cost} | ATK: <span className={m.equippedShardId ? "text-secondary font-black" : ""}>{stats.atk}</span>
                     </div>
                   </div>
-                  <div className="flex gap-2 self-end sm:self-auto">
+                  <div className="flex gap-2">
                     <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        setEquippingMonsterId(m.id);
-                      }}
-                      className="p-2 bg-gray-900 hover:bg-necro/20 border border-gray-700 hover:border-necro text-gray-500 hover:text-necro rounded transition-all cursor-pointer z-10 relative"
-                      title="欠片を装備"
+                      onClick={(e) => { e.stopPropagation(); setEquippingMonsterId(m.id); }}
+                      className="p-2 bg-black/40 hover:bg-primary/20 border border-white/5 hover:border-primary/50 text-gray-500 hover:text-primary rounded-lg transition-all"
                     >
                       <Shield size={14} />
                     </button>
-                    <button 
-                      disabled={isProcessing}
-                      onClick={() => handleSoulStone(m.id)}
-                      className="p-2 bg-gray-900 hover:bg-blood/20 border border-gray-700 hover:border-blood text-gray-500 hover:text-blood rounded transition-all tooltip relative z-10 disabled:opacity-50"
-                      title="魂石化"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                    </button>
-                    <BloodButton 
+                    <FuchsiaButton 
                       variant="ghost"
                       onClick={() => {
                         const emptyIndex = party.findIndex(p => p === null);
-                        if (emptyIndex !== -1) {
-                          handleSlotClick(emptyIndex, m);
-                        } else {
-                          showNotification('軍団の枠がいっぱいです。配置を解除してから再度試してください');
-                        }
+                        if (emptyIndex !== -1) handleSlotClick(emptyIndex, m);
                       }}
-                      className="px-3 py-1 text-[10px] border border-gray-700 h-auto"
+                      className="px-4 py-1 text-[8px] h-auto border-white/10"
                     >
                       DEPLOY
-                    </BloodButton>
+                    </FuchsiaButton>
                   </div>
                 </div>
               );

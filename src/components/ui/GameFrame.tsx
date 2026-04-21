@@ -6,52 +6,50 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-interface GameFrameProps extends React.HTMLAttributes<HTMLDivElement> {
+interface GameFrameProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
   children: React.ReactNode;
   title?: React.ReactNode;
-  borderColor?: 'blood' | 'necro' | 'gray';
+  borderColor?: 'fuchsia' | 'necro' | 'primary' | 'secondary' | 'gray';
 }
 
 export function GameFrame({ 
   children, 
   className, 
   title, 
-  borderColor = 'blood', 
+  borderColor = 'fuchsia', 
   ...props 
 }: GameFrameProps) {
-  const borderColors = {
-    blood: 'border-blood',
-    necro: 'border-necro',
-    gray: 'border-gray-800'
+  const borderStyles = {
+    fuchsia: 'border-fuchsia/30 hover:border-fuchsia/50',
+    necro: 'border-necro/30 hover:border-necro/50',
+    primary: 'border-primary/30 hover:border-primary/50',
+    secondary: 'border-secondary/30 hover:border-secondary/50',
+    gray: 'border-white/5 hover:border-white/10'
   };
 
-  const shadowColors = {
-    blood: 'shadow-[0_0_15px_rgba(136,8,8,0.3)]',
-    necro: 'shadow-[0_0_15px_rgba(168,85,247,0.2)]',
-    gray: 'shadow-[0_0_10px_rgba(0,0,0,0.5)]'
-  };
+  const bgStyles = "bg-surface/80 backdrop-blur-xl relative overflow-hidden rounded-lg lg:rounded-2xl border transition-colors duration-500";
 
   return (
     <div 
       className={cn(
-        "relative bg-dark/90 backdrop-blur-md rounded-lg border-2",
-        borderColors[borderColor],
-        shadowColors[borderColor],
+        bgStyles,
+        borderStyles[borderColor as keyof typeof borderStyles],
         className
       )}
       {...props}
     >
-      {/* 鉄のような質感を出すためのオーバーレイ（任意） */}
-      <div className="absolute inset-0 pointer-events-none rounded-lg bg-gradient-to-b from-white/5 to-transparent opacity-50" />
+      {/* Visual Overlays */}
+      <div className="absolute inset-0 dot-pattern opacity-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-10 pointer-events-none" />
       
       {title && (
-        <div className="border-b border-white/10 px-4 py-3 bg-black/40 rounded-t-md">
-          <h2 className="text-xl font-cinzel font-bold tracking-widest text-cursedGold drop-shadow-[0_0_5px_rgba(255,215,0,0.3)]">
+        <div className="border-b border-white/5 px-4 py-2 lg:px-6 lg:py-3 bg-black/20 relative z-20">
+          <h2 className="text-xs lg:text-lg font-headline font-black tracking-widest text-primary drop-shadow-[0_0_8px_rgba(191,0,255,0.4)] uppercase">
             {title}
           </h2>
         </div>
       )}
-      <div className="relative z-10 p-4">
+      <div className="relative z-10 p-4 lg:p-8">
         {children}
       </div>
     </div>

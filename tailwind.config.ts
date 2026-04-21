@@ -2,21 +2,32 @@ import type { Config } from "tailwindcss";
 
 const designTokens = {
   colors: {
-    dark: "#0a0a0a",
-    blood: {
-      DEFAULT: "#880808",
-      glow: "rgba(136,8,8,0.5)",
-      dim: "rgba(136,8,8,0.2)",
+    dark: "#0B0E14",
+    background: "#0B0E14",
+    surface: "#10131A",
+    primary: {
+      DEFAULT: "#E08DFF", // Light Neon Purple
+      dim: "#BC00FB",
+      glow: "rgba(191, 0, 255, 0.6)",
+    },
+    secondary: {
+      DEFAULT: "#00FFAB", // Neon Green/Cyan
+      dim: "#00EFA0",
+      glow: "rgba(0, 255, 171, 0.6)",
+    },
+    tertiary: {
+      DEFAULT: "#FF6B9B", // Neon Pink
+      dim: "#E30071",
+      glow: "rgba(255, 107, 155, 0.6)",
     },
     necro: {
-      DEFAULT: "#2a0035",
-      glow: "rgba(168,85,247,0.3)",
-      dim: "rgba(42,0,53,0.4)",
+      DEFAULT: "#BF00FF",
+      glow: "rgba(191, 0, 255, 0.4)",
     },
-    cursedGold: "#ffd700",
+    error: "#FF6E84",
+    cursedGold: "#FFD700",
   },
   spacing: {
-    // Strict spacing rules
     sm: "0.5rem",
     md: "1rem",
     lg: "1.5rem",
@@ -24,11 +35,12 @@ const designTokens = {
     "2xl": "3rem",
   },
   borderRadius: {
-    // Strict border radius rules
     sm: "0.25rem",
     md: "0.5rem",
-    lg: "0.75rem",
-    xl: "1rem",
+    lg: "1rem",
+    xl: "2rem",
+    "2xl": "3rem",
+    full: "9999px",
   },
 };
 
@@ -44,12 +56,32 @@ const config: Config = {
       spacing: designTokens.spacing,
       borderRadius: designTokens.borderRadius,
       fontFamily: {
+        headline: ["Space Grotesk", "sans-serif"],
+        body: ["Manrope", "sans-serif"],
+        label: ["Plus Jakarta Sans", "sans-serif"],
+        system: ["DotGothic16", "monospace"],
         cinzel: ['var(--font-cinzel)', 'serif'],
         noto: ['var(--font-noto-sans-jp)', 'sans-serif'],
+        space: ['var(--font-space-grotesk)', 'sans-serif'],
       },
       backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'necro-gradient': 'linear-gradient(to bottom, #0a0a0a, #2a0035)',
+        'liquid-fill': 'linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 20%, rgba(0, 255, 171, 0.5) 100%)',
+        'liquid-fill-tertiary': 'linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 20%, rgba(255, 107, 155, 0.5) 100%)',
+        'dot-pattern': 'url("data:image/svg+xml,%3Csvg width=\\"4\\" height=\\"4\\" viewBox=\\"0 0 4 4\\" fill=\\"none\\" xmlns=\\"http://www.w3.org/2000/svg\\"%3E%3Ccircle cx=\\"1\\" cy=\\"1\\" r=\\"0.5\\" fill=\\"rgba(255,255,255,0.08)\\"/%3E%3C/svg%3E")',
+      },
+      animation: {
+        'glow-pulse': 'glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'hologram-scan': 'hologram-scan 4s linear infinite',
+      },
+      keyframes: {
+        'glow-pulse': {
+          '0%, 100%': { opacity: '1', filter: 'brightness(1)' },
+          '50%': { opacity: '0.8', filter: 'brightness(1.5)' },
+        },
+        'hologram-scan': {
+          '0%': { backgroundPosition: '0% 0%' },
+          '100%': { backgroundPosition: '0% 100%' },
+        },
       },
     },
   },

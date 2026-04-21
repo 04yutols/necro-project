@@ -18,7 +18,7 @@ export class JobService {
    * トランザクションを用いて UserJob の生成・更新を行う。
    */
   public async changeJob(characterId: string, nextJobId: string): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: any) => {
       // マスターデータの存在確認
       const jobData = this.masterData.getJob(nextJobId);
       if (!jobData) throw new Error(`Job ${nextJobId} not found in master data`);
@@ -58,7 +58,7 @@ export class JobService {
    * Character モデルの passiveXxxBonus を確実に更新。
    */
   public async onLevelUp(characterId: string, jobId: string, newLevel: number): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: any) => {
       // UserJob のレベルを更新
       await tx.userJob.update({
         where: {
