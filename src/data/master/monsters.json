@@ -1,0 +1,37 @@
+{
+  "goblin": {
+    "name": "Goblin",
+    "tribe": "HUMANOID",
+    "cost": 1,
+    "stats": { "hp": 50, "mp": 0, "atk": 10, "def": 5, "matk": 0, "mdef": 5, "agi": 8, "luck": 5, "tec": 5 },
+    "resistances": { "FIRE": -20 }
+  },
+  "skeleton": {
+    "name": "Skeleton",
+    "tribe": "UNDEAD",
+    "cost": 1,
+    "stats": { "hp": 40, "mp": 0, "atk": 12, "def": 8, "matk": 0, "mdef": 2, "agi": 5, "luck": 0, "tec": 8 },
+    "resistances": { "LIGHT": -50, "DARK": 50 }
+  },
+  "zombie": {
+    "name": "Zombie",
+    "tribe": "UNDEAD",
+    "cost": 1,
+    "stats": { "hp": 80, "mp": 0, "atk": 8, "def": 4, "matk": 0, "mdef": 0, "agi": 2, "luck": 2, "tec": 2 },
+    "resistances": { "FIRE": -50, "LIGHT": -20, "DARK": 20 }
+  },
+  "imp": {
+    "name": "Imp",
+    "tribe": "DEMON",
+    "cost": 2,
+    "stats": { "hp": 60, "mp": 20, "atk": 15, "def": 10, "matk": 15, "mdef": 10, "agi": 12, "luck": 10, "tec": 10 },
+    "resistances": { "LIGHT": -30, "DARK": 50, "FIRE": 20 }
+  },
+  "boss_goblin": {
+    "name": "Goblin King",
+    "tribe": "HUMANOID",
+    "cost": 3,
+    "stats": { "hp": 300, "mp": 50, "atk": 40, "def": 30, "matk": 10, "mdef": 20, "agi": 10, "luck": 20, "tec": 15 },
+    "resistances": { "ICE": -30, "FIRE": 20 }
+  }
+}
