@@ -87,40 +87,46 @@ export function HomeHero() {
           <div className="relative z-10 flex flex-col gap-3" style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 900, fontSize: '12px', color: '#ccc', letterSpacing: '0.05em' }}>
             
             {/* Header info */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                <span style={{ fontSize: '20px', color: '#FFF', letterSpacing: '0.1em', lineHeight: 1 }}>{player.name}</span>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                  <span style={{ color: '#888' }}>現在の職業：</span>
-                  <span style={{ color: THEME.primary }}>{player.currentJobId.toUpperCase()}</span>
-                  <span style={{ color: '#FFF' }}>Lv. {currentJob.level}</span>
-                </div>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ width: '48px', height: '64px', backgroundColor: '#FFF', border: '2px solid #333', borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', flexShrink: 0 }}>
+                <img 
+                  src={`/images/avatar_${player.currentJobId}.png`} 
+                  onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${player.currentJobId}` }}
+                  alt="Job Pixel Art" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated', filter: 'contrast(1.1) brightness(1.1)' }} 
+                />
               </div>
               
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: '6px' }}>
-                <span style={{ color: '#888' }}>死霊術：</span>
-                <span style={{ color: THEME.tertiary }}>RANK {necroStatus?.rank || 1}</span>
-                <span style={{ color: '#FFF' }}>Lv. {necroLevel}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '200px' }}>
+                <span style={{ fontSize: '22px', color: '#FFF', letterSpacing: '0.1em', lineHeight: 1 }}>{player.name}</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr', gap: '4px', alignItems: 'baseline' }}>
+                  <span style={{ color: '#888' }}>現在の職業：</span>
+                  <div>
+                    <span style={{ color: THEME.primary, display: 'inline-block', width: '70px', letterSpacing: '0.05em' }}>{player.currentJobId.toUpperCase()}</span>
+                    <span style={{ color: '#FFF' }}>Lv. {currentJob.level}</span>
+                  </div>
+                  <span style={{ color: '#888' }}>死霊術：</span>
+                  <div>
+                    <span style={{ color: THEME.tertiary, display: 'inline-block', width: '70px', letterSpacing: '0.05em' }}>RANK {necroStatus?.rank || 1}</span>
+                    <span style={{ color: '#FFF' }}>Lv. {necroLevel}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* HP/MP */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <span style={{ color: '#888' }}>HP:</span>
-                <div>
-                  <span style={{ color: '#FF4D4D', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(255,77,77,0.3)' }}>{player.stats.hp}</span>
-                  <span style={{ color: '#555', fontSize: '14px', margin: '0 4px' }}>/</span>
-                  <span style={{ color: '#777', fontSize: '14px' }}>{player.stats.maxHp || 100}</span>
-                </div>
+            {/* HP/MP Box */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '16px', padding: '12px 16px', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '16px', border: '1px solid #222', marginTop: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                <span style={{ color: '#888', fontSize: '11px' }}>HP</span>
+                <span style={{ color: '#FF4D4D', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(255,77,77,0.3)', lineHeight: 1 }}>
+                  {player.stats.hp} <span style={{ color: '#555', fontSize: '14px' }}>/ {player.stats.maxHp || 100}</span>
+                </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <span style={{ color: '#888' }}>MP:</span>
-                <div>
-                  <span style={{ color: '#4A90E2', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(74,144,226,0.3)' }}>{player.stats.mp}</span>
-                  <span style={{ color: '#555', fontSize: '14px', margin: '0 4px' }}>/</span>
-                  <span style={{ color: '#777', fontSize: '14px' }}>{player.stats.maxMp || 20}</span>
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                <span style={{ color: '#888', fontSize: '11px' }}>MP</span>
+                <span style={{ color: '#4A90E2', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(74,144,226,0.3)', lineHeight: 1 }}>
+                  {player.stats.mp} <span style={{ color: '#555', fontSize: '14px' }}>/ {player.stats.maxMp || 20}</span>
+                </span>
               </div>
             </div>
 
