@@ -2,11 +2,9 @@
 
 import React from 'react';
 import { useGameStore } from '../../store/useGameStore';
-import { CapsuleStatBar } from '../ui/CapsuleStatBar';
 import { motion } from 'framer-motion';
 import { Map, Skull, Sword, Terminal, ChevronRight, Activity } from 'lucide-react';
 
-// Hardcoded theme colors to bypass Safari/Tailwind caching issues
 const THEME = {
   primary: '#BC00FB',
   primaryBg: 'rgba(188,0,251,0.15)',
@@ -22,10 +20,39 @@ const THEME = {
   grayBorder: 'rgba(75,85,99,1)'
 };
 
+const ExpBar = ({ percent, color }: { percent: number, color: string }) => {
+  const totalSegments = 20;
+  const filled = Math.floor((percent / 100) * totalSegments);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, minWidth: '100px' }}>
+      <span style={{ color: '#444', marginRight: '4px' }}>[</span>
+      {Array.from({ length: totalSegments }).map((_, i) => (
+        <div key={i} style={{ width: '4px', height: '12px', backgroundColor: i < filled ? color : '#2C2C2C', borderRadius: '1px' }} />
+      ))}
+      <span style={{ color: '#444', marginLeft: '4px' }}>]</span>
+    </div>
+  );
+};
+
 export function HomeHero() {
-  const { player, setCurrentTab } = useGameStore();
+  const { player, necroStatus, party, setCurrentTab } = useGameStore();
 
   if (!player) return null;
+
+  // Real or mock data processing
+  const currentJob = player.jobs.find(j => j.jobId === player.currentJobId) || { level: 1, exp: 0 };
+  const jobNextExp = currentJob.level * 1000;
+  const jobExpRemain = 450; // Requested mock value
+  const jobExpPercent = 80;
+
+  const necroLevel = necroStatus?.level || 1;
+  const necroNextExp = necroLevel * 2000;
+  const necroExpRemain = 2800; // Requested mock value
+  const necroExpPercent = 40;
+
+  const currentCost = party.reduce((sum, monster) => sum + (monster ? monster.cost : 0), 0);
+  const maxCost = necroStatus?.maxCost || 10;
+  const goldAmount = 50000; // Requested mock value
 
   const NAV_BUTTONS = [
     { id: 'MAP', label: '出撃・マップ', sub: 'WORLD EXPLORATION', icon: Map, color: THEME.primary, border: THEME.primaryBorder, bg: THEME.primaryBg, glow: '0 0 20px rgba(188,0,251,0.3)' },
@@ -37,133 +64,154 @@ export function HomeHero() {
   return (
     <div className="w-full h-full bg-[#050505] overflow-y-auto custom-scrollbar" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', padding: '64px 20px 32px 20px', maxWidth: '500px', margin: '0 auto', justifyContent: 'center' }}>
-        {/* Header Profile Section */}
+        
+        {/* Header Profile UI */}
         <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        style={{ 
-          marginBottom: '24px', position: 'relative', borderRadius: '24px', 
-          backgroundColor: '#0A0A0A', border: '1px solid #333', 
-          padding: '20px', boxShadow: '0 20px 40px rgba(0,0,0,0.8)' 
-        }}
-      >
-        <div className="relative z-10 flex flex-col gap-5">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ 
-              width: '90px', height: '90px', minWidth: '90px', minHeight: '90px',
-              backgroundColor: '#000', border: '3px solid #1A1A1A', 
-              borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-              overflow: 'hidden', position: 'relative', boxShadow: '0 0 30px rgba(0,0,0,0.8)'
-            }}>
-              <img 
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Necro&backgroundColor=050505&mood[]=sad" 
-                alt="Avatar"
-                style={{ width: '130%', height: 'auto', filter: 'grayscale(100%) contrast(140%)', transform: 'translateY(12px)' }}
-              />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '50%', background: 'linear-gradient(to top, rgba(0,0,0,1), transparent)' }} />
-              <div style={{ 
-                position: 'absolute', top: '4px', right: '4px', padding: '2px 6px', 
-                backgroundColor: 'rgba(188,0,251,0.2)', border: '1px solid rgba(188,0,251,0.5)', 
-                fontSize: '9px', fontWeight: 900, letterSpacing: '0.1em', color: THEME.primary, 
-                borderRadius: '4px', boxShadow: '0 0 10px rgba(188,0,251,0.5)' 
-              }}>
-                LV.99
-              </div>
-            </div>
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ 
+            marginBottom: '24px', position: 'relative', borderRadius: '24px', 
+            backgroundColor: '#0A0A0A', border: '1px solid #333', 
+            padding: '24px 20px', boxShadow: '0 20px 40px rgba(0,0,0,0.8)' 
+          }}
+        >
+          {/* Abstract Background for Profile */}
+          <div className="absolute inset-0 opacity-20 pointer-events-none">
+            <div className="absolute -top-1/2 -right-1/4 w-full h-full bg-primary blur-[100px] rounded-full mix-blend-screen" />
+            <div className="absolute -bottom-1/4 -left-1/4 w-3/4 h-3/4 bg-[#8B0000] blur-[80px] rounded-full mix-blend-screen" />
+          </div>
+
+          <div className="relative z-10 flex flex-col gap-3" style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 900, fontSize: '13px', color: '#ccc', letterSpacing: '0.08em' }}>
             
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '10px', fontWeight: 900, color: '#666', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '2px' }}>
-                Commander
+            {/* Name and Job row */}
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', color: '#FFF' }}>
+              <span style={{ fontSize: '18px', letterSpacing: '0.1em' }}>{player.name}</span>
+              <span style={{ marginLeft: '12px', color: '#888' }}>現在の職業：</span>
+              <span style={{ color: THEME.primary, letterSpacing: '0.1em' }}>{player.currentJobId.toUpperCase()}</span>
+              <span>Lv. {currentJob.level}</span>
+            </div>
+
+            {/* Necro Rank row */}
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <span style={{ color: '#888' }}>死霊術：</span>
+              <span style={{ color: THEME.tertiary, letterSpacing: '0.1em' }}>RANK {necroStatus?.rank || 1}</span>
+              <span style={{ color: '#FFF' }}>Lv. {necroLevel}</span>
+            </div>
+
+            {/* HP/MP */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginTop: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ color: '#888' }}>HP:</span>
+                <span style={{ color: '#FF4D4D', fontFamily: 'system-ui, sans-serif', fontSize: '18px', letterSpacing: '0', textShadow: '0 0 10px rgba(255,77,77,0.3)' }}>
+                  {player.stats.hp} <span style={{ color: '#555', fontSize: '14px' }}>/ {player.stats.maxHp || 100}</span>
+                </span>
               </div>
-              <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#FFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1em', marginBottom: '4px' }}>
-                {player.name || 'NECROMANCER'}
-              </h2>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: THEME.primary, letterSpacing: '0.3em', textTransform: 'uppercase', textShadow: '0 0 10px rgba(188,0,251,0.6)' }}>
-                {player.currentJobId}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ color: '#888' }}>MP:</span>
+                <span style={{ color: '#4A90E2', fontFamily: 'system-ui, sans-serif', fontSize: '18px', letterSpacing: '0', textShadow: '0 0 10px rgba(74,144,226,0.3)' }}>
+                  {player.stats.mp} <span style={{ color: '#555', fontSize: '14px' }}>/ {player.stats.maxMp || 20}</span>
+                </span>
               </div>
             </div>
+
+            {/* JOB EXP */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+               <span style={{ color: THEME.primary, minWidth: '85px' }}>JOB-EXP:</span>
+               <ExpBar percent={jobExpPercent} color={THEME.primary} />
+               <span style={{ color: '#666', whiteSpace: 'nowrap' }}>あと {jobExpRemain.toLocaleString()}</span>
+            </div>
+
+            {/* NECRO EXP */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+               <span style={{ color: THEME.tertiary, minWidth: '85px' }}>NECRO-EXP:</span>
+               <ExpBar percent={necroExpPercent} color={THEME.tertiary} />
+               <span style={{ color: '#666', whiteSpace: 'nowrap' }}>あと {necroExpRemain.toLocaleString()}</span>
+            </div>
+
+            {/* Gold & Cost Box */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '16px', border: '1px solid #222', marginTop: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ color: '#888' }}>所持金:</span>
+                <span style={{ color: '#FCD34D', fontSize: '16px', letterSpacing: '0.05em' }}>{goldAmount.toLocaleString()}G</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ color: '#888' }}>軍団コスト:</span>
+                <span style={{ color: '#FFF', fontSize: '16px' }}>{currentCost} <span style={{ color: '#555', fontSize: '13px' }}>/ {maxCost}</span></span>
+              </div>
+            </div>
+
+          </div>
+        </motion.div>
+
+        {/* Primary Actions Grid */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px' }}>
+            <Activity size={16} color={THEME.secondary} opacity={0.8} />
+            <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#888', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0 }}>
+              作戦司令室
+            </h3>
           </div>
           
-          <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '16px', borderRadius: '16px', border: '1px solid #1A1A1A', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ width: '100%', marginBottom: '12px' }}>
-              <CapsuleStatBar label="HP" value={player.stats.hp} max={player.stats.maxHp || 100} type="hp" />
-            </div>
-            <div style={{ width: '100%' }}>
-              <CapsuleStatBar label="MP" value={player.stats.mp} max={player.stats.maxMp || 20} type="mp" />
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+            {NAV_BUTTONS.map((btn, index) => {
+              const Icon = btn.icon;
+              return (
+                <motion.div
+                  role="button"
+                  key={btn.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1, type: "spring", stiffness: 300, damping: 25 }}
+                  onClick={() => setCurrentTab(btn.id as any)}
+                  style={{ 
+                    display: 'flex', alignItems: 'center', padding: '16px', borderRadius: '20px', 
+                    border: `1px solid ${btn.border}`, backgroundColor: btn.bg, 
+                    boxShadow: btn.glow, cursor: 'pointer', WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  <div style={{ 
+                    width: '56px', height: '56px', borderRadius: '14px', backgroundColor: 'rgba(0,0,0,0.6)', 
+                    border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                    flexShrink: 0, color: btn.color, boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)'
+                  }}>
+                    <Icon size={28} strokeWidth={2} />
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', marginLeft: '16px', flex: 1, textAlign: 'left' }}>
+                    <span style={{ fontSize: '17px', fontWeight: 900, color: '#FFF', letterSpacing: '0.1em', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                      {btn.label}
+                    </span>
+                    <span style={{ fontSize: '10px', fontWeight: 900, color: btn.color, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.9, marginTop: '4px' }}>
+                      {btn.sub}
+                    </span>
+                  </div>
+
+                  <div style={{ 
+                    width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.4)', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: btn.color 
+                  }}>
+                    <ChevronRight size={20} />
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
-      </motion.div>
-
-      {/* Primary Actions Grid */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px' }}>
-          <Activity size={16} color={THEME.secondary} opacity={0.8} />
-          <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#888', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0 }}>
-            作戦司令室
-          </h3>
-        </div>
         
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-          {NAV_BUTTONS.map((btn, index) => {
-            const Icon = btn.icon;
-            return (
-              <motion.div
-                role="button"
-                key={btn.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1, type: "spring", stiffness: 300, damping: 25 }}
-                onClick={() => setCurrentTab(btn.id as any)}
-                style={{ 
-                  display: 'flex', alignItems: 'center', padding: '16px', borderRadius: '20px', 
-                  border: `1px solid ${btn.border}`, backgroundColor: btn.bg, 
-                  boxShadow: btn.glow, cursor: 'pointer', WebkitTapHighlightColor: 'transparent'
-                }}
-              >
-                <div style={{ 
-                  width: '56px', height: '56px', borderRadius: '14px', backgroundColor: 'rgba(0,0,0,0.6)', 
-                  border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                  flexShrink: 0, color: btn.color, boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)'
-                }}>
-                  <Icon size={28} strokeWidth={2} />
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', marginLeft: '16px', flex: 1, textAlign: 'left' }}>
-                  <span style={{ fontSize: '17px', fontWeight: 900, color: '#FFF', letterSpacing: '0.1em', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-                    {btn.label}
-                  </span>
-                  <span style={{ fontSize: '10px', fontWeight: 900, color: btn.color, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.9, marginTop: '4px' }}>
-                    {btn.sub}
-                  </span>
-                </div>
-
-                <div style={{ 
-                  width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.4)', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: btn.color 
-                }}>
-                  <ChevronRight size={20} />
-                </div>
-              </motion.div>
-            );
-          })}
+        {/* Footer Info */}
+        <div style={{ marginTop: 'auto', paddingTop: '32px', paddingBottom: '16px', display: 'flex', justifyContent: 'center', opacity: 0.7 }}>
+          <div style={{ 
+            display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 24px', 
+            borderRadius: '999px', border: '1px solid #1A1A1A', backgroundColor: 'rgba(0,0,0,0.5)' 
+          }}>
+            <div style={{ width: '6px', height: '6px', backgroundColor: THEME.secondary, borderRadius: '50%', boxShadow: `0 0 8px ${THEME.secondary}` }} />
+            <span style={{ fontSize: '10px', fontWeight: 900, color: '#666', letterSpacing: '0.4em', textTransform: 'uppercase' }}>
+              SYSTEM ONLINE
+            </span>
+            <div style={{ width: '6px', height: '6px', backgroundColor: THEME.secondary, borderRadius: '50%', boxShadow: `0 0 8px ${THEME.secondary}` }} />
+          </div>
         </div>
-      </div>
-      
-      {/* Footer Info */}
-      <div style={{ marginTop: 'auto', paddingTop: '32px', paddingBottom: '16px', display: 'flex', justifyContent: 'center', opacity: 0.7 }}>
-        <div style={{ 
-          display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 24px', 
-          borderRadius: '999px', border: '1px solid #1A1A1A', backgroundColor: 'rgba(0,0,0,0.5)' 
-        }}>
-          <div style={{ width: '6px', height: '6px', backgroundColor: THEME.secondary, borderRadius: '50%', boxShadow: `0 0 8px ${THEME.secondary}` }} />
-          <span style={{ fontSize: '10px', fontWeight: 900, color: '#666', letterSpacing: '0.4em', textTransform: 'uppercase' }}>
-            SYSTEM ONLINE
-          </span>
-          <div style={{ width: '6px', height: '6px', backgroundColor: THEME.secondary, borderRadius: '50%', boxShadow: `0 0 8px ${THEME.secondary}` }} />
-        </div>
-      </div>
       </div>
     </div>
   );
