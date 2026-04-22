@@ -24,11 +24,13 @@ const ExpBar = ({ percent, color }: { percent: number, color: string }) => {
   const totalSegments = 20;
   const filled = Math.floor((percent / 100) * totalSegments);
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, minWidth: '100px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, minWidth: 0 }}>
       <span style={{ color: '#444', marginRight: '4px' }}>[</span>
-      {Array.from({ length: totalSegments }).map((_, i) => (
-        <div key={i} style={{ width: '4px', height: '12px', backgroundColor: i < filled ? color : '#2C2C2C', borderRadius: '1px' }} />
-      ))}
+      <div style={{ display: 'flex', flex: 1, justifyContent: 'space-between', gap: '2px' }}>
+        {Array.from({ length: totalSegments }).map((_, i) => (
+          <div key={i} style={{ flex: 1, height: '10px', backgroundColor: i < filled ? color : '#2C2C2C', borderRadius: '1px' }} />
+        ))}
+      </div>
       <span style={{ color: '#444', marginLeft: '4px' }}>]</span>
     </div>
   );
@@ -82,61 +84,68 @@ export function HomeHero() {
             <div className="absolute -bottom-1/4 -left-1/4 w-3/4 h-3/4 bg-[#8B0000] blur-[80px] rounded-full mix-blend-screen" />
           </div>
 
-          <div className="relative z-10 flex flex-col gap-3" style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 900, fontSize: '13px', color: '#ccc', letterSpacing: '0.08em' }}>
+          <div className="relative z-10 flex flex-col gap-3" style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 900, fontSize: '12px', color: '#ccc', letterSpacing: '0.05em' }}>
             
-            {/* Name and Job row */}
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', color: '#FFF' }}>
-              <span style={{ fontSize: '18px', letterSpacing: '0.1em' }}>{player.name}</span>
-              <span style={{ marginLeft: '12px', color: '#888' }}>現在の職業：</span>
-              <span style={{ color: THEME.primary, letterSpacing: '0.1em' }}>{player.currentJobId.toUpperCase()}</span>
-              <span>Lv. {currentJob.level}</span>
-            </div>
-
-            {/* Necro Rank row */}
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-              <span style={{ color: '#888' }}>死霊術：</span>
-              <span style={{ color: THEME.tertiary, letterSpacing: '0.1em' }}>RANK {necroStatus?.rank || 1}</span>
-              <span style={{ color: '#FFF' }}>Lv. {necroLevel}</span>
+            {/* Header info */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                <span style={{ fontSize: '20px', color: '#FFF', letterSpacing: '0.1em', lineHeight: 1 }}>{player.name}</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                  <span style={{ color: '#888' }}>現在の職業：</span>
+                  <span style={{ color: THEME.primary }}>{player.currentJobId.toUpperCase()}</span>
+                  <span style={{ color: '#FFF' }}>Lv. {currentJob.level}</span>
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: '6px' }}>
+                <span style={{ color: '#888' }}>死霊術：</span>
+                <span style={{ color: THEME.tertiary }}>RANK {necroStatus?.rank || 1}</span>
+                <span style={{ color: '#FFF' }}>Lv. {necroLevel}</span>
+              </div>
             </div>
 
             {/* HP/MP */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginTop: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                 <span style={{ color: '#888' }}>HP:</span>
-                <span style={{ color: '#FF4D4D', fontFamily: 'system-ui, sans-serif', fontSize: '18px', letterSpacing: '0', textShadow: '0 0 10px rgba(255,77,77,0.3)' }}>
-                  {player.stats.hp} <span style={{ color: '#555', fontSize: '14px' }}>/ {player.stats.maxHp || 100}</span>
-                </span>
+                <div>
+                  <span style={{ color: '#FF4D4D', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(255,77,77,0.3)' }}>{player.stats.hp}</span>
+                  <span style={{ color: '#555', fontSize: '14px', margin: '0 4px' }}>/</span>
+                  <span style={{ color: '#777', fontSize: '14px' }}>{player.stats.maxHp || 100}</span>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                 <span style={{ color: '#888' }}>MP:</span>
-                <span style={{ color: '#4A90E2', fontFamily: 'system-ui, sans-serif', fontSize: '18px', letterSpacing: '0', textShadow: '0 0 10px rgba(74,144,226,0.3)' }}>
-                  {player.stats.mp} <span style={{ color: '#555', fontSize: '14px' }}>/ {player.stats.maxMp || 20}</span>
-                </span>
+                <div>
+                  <span style={{ color: '#4A90E2', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(74,144,226,0.3)' }}>{player.stats.mp}</span>
+                  <span style={{ color: '#555', fontSize: '14px', margin: '0 4px' }}>/</span>
+                  <span style={{ color: '#777', fontSize: '14px' }}>{player.stats.maxMp || 20}</span>
+                </div>
               </div>
             </div>
 
-            {/* JOB EXP */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-               <span style={{ color: THEME.primary, minWidth: '85px' }}>JOB-EXP:</span>
-               <ExpBar percent={jobExpPercent} color={THEME.primary} />
-               <span style={{ color: '#666', whiteSpace: 'nowrap' }}>あと {jobExpRemain.toLocaleString()}</span>
-            </div>
-
-            {/* NECRO EXP */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-               <span style={{ color: THEME.tertiary, minWidth: '85px' }}>NECRO-EXP:</span>
-               <ExpBar percent={necroExpPercent} color={THEME.tertiary} />
-               <span style={{ color: '#666', whiteSpace: 'nowrap' }}>あと {necroExpRemain.toLocaleString()}</span>
+            {/* EXP Bars */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                 <span style={{ color: THEME.primary, width: '85px', flexShrink: 0, textAlign: 'right', paddingRight: '8px' }}>JOB-EXP:</span>
+                 <ExpBar percent={jobExpPercent} color={THEME.primary} />
+                 <span style={{ color: '#666', width: '85px', flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap' }}>あと {jobExpRemain.toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                 <span style={{ color: THEME.tertiary, width: '85px', flexShrink: 0, textAlign: 'right', paddingRight: '8px' }}>NECRO-EXP:</span>
+                 <ExpBar percent={necroExpPercent} color={THEME.tertiary} />
+                 <span style={{ color: '#666', width: '85px', flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap' }}>あと {necroExpRemain.toLocaleString()}</span>
+              </div>
             </div>
 
             {/* Gold & Cost Box */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '16px', border: '1px solid #222', marginTop: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ color: '#888' }}>所持金:</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '16px', padding: '12px 16px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '16px', border: '1px solid #222', marginTop: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                <span style={{ color: '#888', fontSize: '11px' }}>所持金</span>
                 <span style={{ color: '#FCD34D', fontSize: '16px', letterSpacing: '0.05em' }}>{goldAmount.toLocaleString()}G</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ color: '#888' }}>軍団コスト:</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                <span style={{ color: '#888', fontSize: '11px' }}>軍団コスト</span>
                 <span style={{ color: '#FFF', fontSize: '16px' }}>{currentCost} <span style={{ color: '#555', fontSize: '13px' }}>/ {maxCost}</span></span>
               </div>
             </div>
