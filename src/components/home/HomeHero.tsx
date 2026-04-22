@@ -88,12 +88,12 @@ export function HomeHero() {
             
             {/* Header info */}
             <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ width: '48px', height: '64px', backgroundColor: '#FFF', border: '2px solid #333', borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', flexShrink: 0 }}>
+              <div style={{ width: '64px', height: '64px', backgroundColor: '#FFF', border: '2px solid #333', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.5)', flexShrink: 0 }}>
                 <img 
                   src={`/images/avatar_${player.currentJobId}.png`} 
                   onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${player.currentJobId}` }}
                   alt="Job Pixel Art" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated', filter: 'contrast(1.1) brightness(1.1)' }} 
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated', filter: 'contrast(1.1) brightness(1.1)' }} 
                 />
               </div>
               
