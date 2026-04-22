@@ -35,9 +35,10 @@ export function HomeHero() {
   ] as const;
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#050505] overflow-y-auto custom-scrollbar pb-8 px-4 pt-4" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {/* Header Profile Section */}
-      <motion.div 
+    <div className="w-full h-full bg-[#050505] overflow-y-auto custom-scrollbar" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', padding: '64px 20px 32px 20px', maxWidth: '500px', margin: '0 auto', justifyContent: 'center' }}>
+        {/* Header Profile Section */}
+        <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
@@ -84,7 +85,7 @@ export function HomeHero() {
             </div>
           </div>
           
-          <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '16px', borderRadius: '16px', border: '1px solid #1A1A1A', display: 'flex', flexDirection: 'col', gap: '12px' }}>
+          <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '16px', borderRadius: '16px', border: '1px solid #1A1A1A', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ width: '100%', marginBottom: '12px' }}>
               <CapsuleStatBar label="HP" value={player.stats.hp} max={player.stats.maxHp || 100} type="hp" />
             </div>
@@ -114,7 +115,7 @@ export function HomeHero() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1, type: "spring", stiffness: 300, damping: 25 }}
-                onPointerDown={() => setCurrentTab(btn.id as any)}
+                onClick={() => setCurrentTab(btn.id as any)}
                 style={{ 
                   display: 'flex', alignItems: 'center', padding: '16px', borderRadius: '20px', 
                   border: `1px solid ${btn.border}`, backgroundColor: btn.bg, 
@@ -162,6 +163,7 @@ export function HomeHero() {
           </span>
           <div style={{ width: '6px', height: '6px', backgroundColor: THEME.secondary, borderRadius: '50%', boxShadow: `0 0 8px ${THEME.secondary}` }} />
         </div>
+      </div>
       </div>
     </div>
   );
