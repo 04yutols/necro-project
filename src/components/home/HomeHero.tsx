@@ -4,7 +4,23 @@ import React from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { CapsuleStatBar } from '../ui/CapsuleStatBar';
 import { motion } from 'framer-motion';
-import { Map, Skull, Sword, Terminal, ChevronRight } from 'lucide-react';
+import { Map, Skull, Sword, Terminal, ChevronRight, Activity } from 'lucide-react';
+
+// Hardcoded theme colors to bypass Safari/Tailwind caching issues
+const THEME = {
+  primary: '#BC00FB',
+  primaryBg: 'rgba(188,0,251,0.15)',
+  primaryBorder: 'rgba(188,0,251,0.5)',
+  secondary: '#00FFFF',
+  secondaryBg: 'rgba(0,255,255,0.15)',
+  secondaryBorder: 'rgba(0,255,255,0.5)',
+  tertiary: '#FF6B9B',
+  tertiaryBg: 'rgba(255,107,155,0.15)',
+  tertiaryBorder: 'rgba(255,107,155,0.5)',
+  gray: '#9CA3AF',
+  grayBg: 'rgba(55,65,81,0.5)',
+  grayBorder: 'rgba(75,85,99,1)'
+};
 
 export function HomeHero() {
   const { player, setCurrentTab } = useGameStore();
@@ -12,47 +28,67 @@ export function HomeHero() {
   if (!player) return null;
 
   const NAV_BUTTONS = [
-    { id: 'MAP', label: 'DEPLOY TO MAP', icon: Map, color: 'text-primary', border: 'border-primary/30', bg: 'bg-primary/10' },
-    { id: 'LAB', label: 'NECRO LAB', icon: Skull, color: 'text-tertiary', border: 'border-tertiary/30', bg: 'bg-tertiary/10' },
-    { id: 'EQUIP', label: 'ARMORY', icon: Sword, color: 'text-secondary', border: 'border-secondary/30', bg: 'bg-secondary/10' },
-    { id: 'LOGS', label: 'SYSTEM LOGS', icon: Terminal, color: 'text-gray-400', border: 'border-gray-700', bg: 'bg-gray-900/50' },
+    { id: 'MAP', label: '出撃・マップ', sub: 'WORLD EXPLORATION', icon: Map, color: THEME.primary, border: THEME.primaryBorder, bg: THEME.primaryBg, glow: '0 0 20px rgba(188,0,251,0.3)' },
+    { id: 'LAB', label: 'ネクロラボ', sub: 'NECROMANCY & UPGRADE', icon: Skull, color: THEME.tertiary, border: THEME.tertiaryBorder, bg: THEME.tertiaryBg, glow: '0 0 20px rgba(255,107,155,0.3)' },
+    { id: 'EQUIP', label: '装備・編成', sub: 'ARMORY & LEGION', icon: Sword, color: THEME.secondary, border: THEME.secondaryBorder, bg: THEME.secondaryBg, glow: '0 0 20px rgba(0,255,255,0.3)' },
+    { id: 'LOGS', label: '兵歴記録', sub: 'SYSTEM LOGS', icon: Terminal, color: THEME.gray, border: THEME.grayBorder, bg: THEME.grayBg, glow: '0 0 10px rgba(255,255,255,0.1)' },
   ] as const;
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#050505] overflow-y-auto custom-scrollbar pb-6 px-4 pt-4">
-      {/* Header Section */}
+    <div className="w-full h-full flex flex-col bg-[#050505] overflow-y-auto custom-scrollbar pb-8 px-4 pt-4" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {/* Header Profile Section */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-6 relative rounded-2xl overflow-hidden border border-[#2C2C2C] bg-[#0D0D0D] shadow-lg"
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        style={{ 
+          marginBottom: '24px', position: 'relative', borderRadius: '24px', 
+          backgroundColor: '#0A0A0A', border: '1px solid #333', 
+          padding: '20px', boxShadow: '0 20px 40px rgba(0,0,0,0.8)' 
+        }}
       >
-        {/* Abstract Background for Avatar area */}
-        <div className="absolute inset-0 opacity-20 pointer-events-none">
-          <div className="absolute -top-1/2 -right-1/2 w-full h-full bg-primary blur-[80px] rounded-full" />
-          <div className="absolute -bottom-1/2 -left-1/2 w-full h-full bg-secondary blur-[80px] rounded-full" />
-        </div>
-
-        <div className="p-5 relative z-10 flex items-center gap-4">
-          <div className="w-20 h-20 bg-black border-2 border-[#1A1A1A] rounded-xl flex items-center justify-center overflow-hidden shrink-0 relative">
-            <img 
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=Necro&backgroundColor=050505&mood[]=sad" 
-              alt="Avatar"
-              className="w-[120%] h-auto grayscale contrast-125 translate-y-2"
-            />
-            <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-black to-transparent" />
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-1.5 py-0.5 bg-[#1A1A1A] text-gray-300 text-[10px] font-black rounded-sm tracking-wider">LV.99</span>
-              <h2 className="text-base font-black text-white truncate uppercase tracking-widest">{player.name || 'NECROMANCER'}</h2>
-            </div>
-            <div className="text-xs font-bold text-primary tracking-widest uppercase mb-3 drop-shadow-[0_0_5px_rgba(188,0,251,0.5)]">
-              {player.currentJobId}
+        <div className="relative z-10 flex flex-col gap-5">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ 
+              width: '90px', height: '90px', minWidth: '90px', minHeight: '90px',
+              backgroundColor: '#000', border: '3px solid #1A1A1A', 
+              borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              overflow: 'hidden', position: 'relative', boxShadow: '0 0 30px rgba(0,0,0,0.8)'
+            }}>
+              <img 
+                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Necro&backgroundColor=050505&mood[]=sad" 
+                alt="Avatar"
+                style={{ width: '130%', height: 'auto', filter: 'grayscale(100%) contrast(140%)', transform: 'translateY(12px)' }}
+              />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '50%', background: 'linear-gradient(to top, rgba(0,0,0,1), transparent)' }} />
+              <div style={{ 
+                position: 'absolute', top: '4px', right: '4px', padding: '2px 6px', 
+                backgroundColor: 'rgba(188,0,251,0.2)', border: '1px solid rgba(188,0,251,0.5)', 
+                fontSize: '9px', fontWeight: 900, letterSpacing: '0.1em', color: THEME.primary, 
+                borderRadius: '4px', boxShadow: '0 0 10px rgba(188,0,251,0.5)' 
+              }}>
+                LV.99
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <CapsuleStatBar label="HP" value={player.stats.hp} max={player.stats.maxHp} type="hp" />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '10px', fontWeight: 900, color: '#666', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '2px' }}>
+                Commander
+              </div>
+              <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#FFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '0.1em', marginBottom: '4px' }}>
+                {player.name || 'NECROMANCER'}
+              </h2>
+              <div style={{ fontSize: '12px', fontWeight: 900, color: THEME.primary, letterSpacing: '0.3em', textTransform: 'uppercase', textShadow: '0 0 10px rgba(188,0,251,0.6)' }}>
+                {player.currentJobId}
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '16px', borderRadius: '16px', border: '1px solid #1A1A1A', display: 'flex', flexDirection: 'col', gap: '12px' }}>
+            <div style={{ width: '100%', marginBottom: '12px' }}>
+              <CapsuleStatBar label="HP" value={player.stats.hp} max={player.stats.maxHp || 100} type="hp" />
+            </div>
+            <div style={{ width: '100%' }}>
               <CapsuleStatBar label="MP" value={player.stats.mp} max={player.stats.maxMp || 20} type="mp" />
             </div>
           </div>
@@ -60,47 +96,71 @@ export function HomeHero() {
       </motion.div>
 
       {/* Primary Actions Grid */}
-      <div className="flex-1 flex flex-col gap-3">
-        <h3 className="text-xs font-black text-gray-500 tracking-[0.2em] uppercase px-1 mb-1">Command Hub</h3>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px' }}>
+          <Activity size={16} color={THEME.secondary} opacity={0.8} />
+          <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#888', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0 }}>
+            作戦司令室
+          </h3>
+        </div>
         
-        {NAV_BUTTONS.map((btn, index) => {
-          const Icon = btn.icon;
-          return (
-            <motion.button
-              key={btn.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
-              onClick={() => setCurrentTab(btn.id as any)}
-              className={`w-full flex items-center justify-between p-4 rounded-xl border ${btn.border} ${btn.bg} backdrop-blur-sm transition-all hover:brightness-125 active:scale-[0.98]`}
-            >
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-lg bg-black/50 border border-white/5 flex items-center justify-center ${btn.color} shadow-inner`}>
-                  <Icon size={24} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+          {NAV_BUTTONS.map((btn, index) => {
+            const Icon = btn.icon;
+            return (
+              <motion.div
+                role="button"
+                key={btn.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1, type: "spring", stiffness: 300, damping: 25 }}
+                onPointerDown={() => setCurrentTab(btn.id as any)}
+                style={{ 
+                  display: 'flex', alignItems: 'center', padding: '16px', borderRadius: '20px', 
+                  border: `1px solid ${btn.border}`, backgroundColor: btn.bg, 
+                  boxShadow: btn.glow, cursor: 'pointer', WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                <div style={{ 
+                  width: '56px', height: '56px', borderRadius: '14px', backgroundColor: 'rgba(0,0,0,0.6)', 
+                  border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                  flexShrink: 0, color: btn.color, boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)'
+                }}>
+                  <Icon size={28} strokeWidth={2} />
                 </div>
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-black text-white tracking-widest uppercase drop-shadow-md">
+                
+                <div style={{ display: 'flex', flexDirection: 'column', marginLeft: '16px', flex: 1, textAlign: 'left' }}>
+                  <span style={{ fontSize: '17px', fontWeight: 900, color: '#FFF', letterSpacing: '0.1em', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
                     {btn.label}
                   </span>
-                  <span className={`text-[10px] font-bold ${btn.color} tracking-widest uppercase opacity-80`}>
-                    Access System
+                  <span style={{ fontSize: '10px', fontWeight: 900, color: btn.color, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.9, marginTop: '4px' }}>
+                    {btn.sub}
                   </span>
                 </div>
-              </div>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-black/30 ${btn.color}`}>
-                <ChevronRight size={20} />
-              </div>
-            </motion.button>
-          );
-        })}
+
+                <div style={{ 
+                  width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.4)', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: btn.color 
+                }}>
+                  <ChevronRight size={20} />
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
       
       {/* Footer Info */}
-      <div className="mt-8 mb-4 flex justify-center">
-        <div className="flex items-center gap-3 px-4 py-2 rounded-full border border-[#1A1A1A] bg-black/40">
-          <div className="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse shadow-[0_0_8px_#00FFFF]" />
-          <span className="text-[9px] font-black text-gray-400 tracking-[0.3em] uppercase">SYSTEM ONLINE</span>
-          <div className="w-1.5 h-1.5 bg-secondary rounded-full animate-pulse shadow-[0_0_8px_#00FFFF]" />
+      <div style={{ marginTop: 'auto', paddingTop: '32px', paddingBottom: '16px', display: 'flex', justifyContent: 'center', opacity: 0.7 }}>
+        <div style={{ 
+          display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 24px', 
+          borderRadius: '999px', border: '1px solid #1A1A1A', backgroundColor: 'rgba(0,0,0,0.5)' 
+        }}>
+          <div style={{ width: '6px', height: '6px', backgroundColor: THEME.secondary, borderRadius: '50%', boxShadow: `0 0 8px ${THEME.secondary}` }} />
+          <span style={{ fontSize: '10px', fontWeight: 900, color: '#666', letterSpacing: '0.4em', textTransform: 'uppercase' }}>
+            SYSTEM ONLINE
+          </span>
+          <div style={{ width: '6px', height: '6px', backgroundColor: THEME.secondary, borderRadius: '50%', boxShadow: `0 0 8px ${THEME.secondary}` }} />
         </div>
       </div>
     </div>
