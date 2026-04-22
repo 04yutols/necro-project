@@ -9,47 +9,40 @@ export function cn(...inputs: ClassValue[]) {
 interface GameFrameProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
   children: React.ReactNode;
   title?: React.ReactNode;
-  borderColor?: 'fuchsia' | 'necro' | 'primary' | 'secondary' | 'gray';
+  borderColor?: 'iron' | 'gold' | 'blood' | 'gray';
 }
 
 export function GameFrame({ 
   children, 
   className, 
   title, 
-  borderColor = 'fuchsia', 
+  borderColor = 'iron', 
   ...props 
 }: GameFrameProps) {
   const borderStyles = {
-    fuchsia: 'border-fuchsia/30 hover:border-fuchsia/50',
-    necro: 'border-necro/30 hover:border-necro/50',
-    primary: 'border-primary/30 hover:border-primary/50',
-    secondary: 'border-secondary/30 hover:border-secondary/50',
-    gray: 'border-white/5 hover:border-white/10'
+    iron: 'border-[#2C2C2C]',
+    gold: 'border-[#8A6D1F]',
+    blood: 'border-[#4A0000]',
+    gray: 'border-[#1A1A1A]'
   };
-
-  const bgStyles = "bg-surface/80 backdrop-blur-xl relative overflow-hidden rounded-lg lg:rounded-2xl border transition-colors duration-500";
 
   return (
     <div 
       className={cn(
-        bgStyles,
+        "bg-[#0D0D0D] border relative overflow-hidden",
         borderStyles[borderColor as keyof typeof borderStyles],
         className
       )}
       {...props}
     >
-      {/* Visual Overlays */}
-      <div className="absolute inset-0 dot-pattern opacity-10 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-10 pointer-events-none" />
-      
       {title && (
-        <div className="border-b border-white/5 px-4 py-2 lg:px-6 lg:py-3 bg-black/20 relative z-20">
-          <h2 className="text-xs lg:text-lg font-headline font-black tracking-widest text-primary drop-shadow-[0_0_8px_rgba(191,0,255,0.4)] uppercase">
+        <div className="border-b border-inherit px-3 py-1.5 bg-[#151515] relative z-20">
+          <h2 className="text-[10px] font-bold tracking-[0.1em] text-primary uppercase">
             {title}
           </h2>
         </div>
       )}
-      <div className="relative z-10 p-4 lg:p-8">
+      <div className="relative z-10 p-2 lg:p-4">
         {children}
       </div>
     </div>

@@ -1,21 +1,29 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useGameStore } from '../../store/useGameStore';
-import { Map as MapIcon, Skull, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Map as MapIcon, Skull, ShieldAlert, Home, ChevronRight } from 'lucide-react';
 import stagesData from '../../data/master/stages.json';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FuchsiaButton } from '../ui/FuchsiaButton';
+import dynamic from 'next/dynamic';
+
+const MapCanvas = dynamic(() => import('./MapCanvas').then((mod) => mod.default), { 
+  ssr: false,
+  loading: () => <div className="flex-1 flex items-center justify-center w-full h-full bg-[#050505] text-primary text-[10px] animate-pulse uppercase tracking-widest">Loading Map Interface...</div>
+});
 
 interface AreaMapProps {
   onStartStage: (stageId: string) => void;
 }
 
 export default function AreaMap({ onStartStage }: AreaMapProps) {
-  const { player } = useGameStore();
+  const { player, setCurrentTab, party } = useGameStore();
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
-  if (!player) return null;
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const stages = useMemo(() => Object.entries(stagesData).map(([id, data]) => ({
     id,
@@ -23,192 +31,152 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
   })), []);
 
   const area1Stages = stages.filter(s => s.area === 1);
-
-  const isUnlocked = (stageId: string) => {
-    if (stageId === '1-1') return true;
-    if (stageId === '1-2') return player.clearedStages.includes('1-1');
-    if (stageId === 'boss-1') return player.clearedStages.includes('1-2');
-    return false;
-  };
-
-  const positions = [
-    { x: '15%', y: '70%' },
-    { x: '45%', y: '40%' },
-    { x: '80%', y: '25%' }
-  ];
-
   const selectedStage = selectedStageId ? area1Stages.find(s => s.id === selectedStageId) : null;
 
+  if (!isMounted || !player) return null;
+
   return (
-    <div className="w-full h-full flex flex-col gap-4 lg:gap-6 pb-20 lg:pb-0">
-      {/* Map Header - Sector Info */}
-      <div className="flex justify-between items-center px-2">
-        <div className="space-y-1">
-          <h2 className="text-sm lg:text-3xl font-black text-white tracking-widest uppercase drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-            Abyssal Sector 04
-          </h2>
-          <div className="flex items-center gap-2 lg:gap-3 opacity-60">
-            <div className="text-[7px] lg:text-[10px] font-black text-secondary tracking-widest uppercase">
-              Map Sync: 94%
+    <div className="w-full h-full flex flex-col relative bg-[#050505] overflow-hidden rounded-xl border border-[#1A1A1A]">
+      {/* Absolute Background Canvas (PixiJS) */}
+      <div className="absolute inset-0 z-0" style={{ width: '100%', height: '100%' }}>
+        <MapCanvas 
+          stages={stages}
+          clearedStages={player.clearedStages}
+          onSelectStage={setSelectedStageId}
+          selectedStageId={selectedStageId}
+        />
+      </div>
+
+      {/* Top Header UI */}
+      <div className="relative z-10 pt-4 px-4 pointer-events-none">
+        <div className="flex items-center mb-3 pointer-events-auto">
+          <button 
+            onClick={() => setCurrentTab('HOME')}
+            className="flex items-center gap-2 text-gray-400 hover:text-primary transition-colors text-[10px] font-black tracking-widest uppercase bg-black/60 border border-[#1A1A1A] px-3 py-1.5 rounded-md backdrop-blur-md shadow-md"
+          >
+            <Home size={14} />
+            <span>RETURN TO HUB</span>
+          </button>
+        </div>
+
+        <div className="flex justify-between items-start border border-[#2C2C2C] bg-black/60 p-4 rounded-xl shadow-lg backdrop-blur-md pointer-events-auto">
+          <div className="space-y-1.5">
+            <h2 className="text-sm font-black text-white tracking-widest uppercase">
+              Abyssal Sector 04
+            </h2>
+            <div className="flex items-center gap-2 opacity-80">
+              <div className="text-[9px] font-black text-secondary tracking-widest uppercase">
+                SYNC: 94%
+              </div>
+              <div className="h-1.5 w-20 bg-black/80 rounded-full overflow-hidden border border-[#1A1A1A]">
+                <div className="h-full bg-secondary shadow-[0_0_8px_#00FFFF]" style={{ width: '94%' }} />
+              </div>
             </div>
-            <div className="h-0.5 lg:h-1 w-12 lg:w-24 bg-black/40 rounded-full overflow-hidden border border-white/5">
-              <div className="h-full bg-secondary shadow-[0_0_8px_#00FFFF]" style={{ width: '94%' }} />
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2 px-2 py-0.5 rounded border border-[#2C2C2C] bg-[#0D0D0D]">
+              <span className="text-[8px] font-black text-gray-500 tracking-widest">GOLD</span>
+              <span className="text-[10px] font-black text-[#D4AF37] tracking-widest">4,200</span>
+            </div>
+            <div className="flex items-center gap-2 px-2 py-0.5 rounded border border-[#2C2C2C] bg-[#0D0D0D]">
+              <span className="text-[8px] font-black text-gray-500 tracking-widest">RYUGIN</span>
+              <span className="text-[10px] font-black text-primary tracking-widest">12</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 lg:gap-2 px-3 py-1 lg:px-4 lg:py-1.5 rounded-full border border-secondary/30 bg-secondary/5 backdrop-blur-md">
-          <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full bg-secondary animate-pulse shadow-[0_0_8px_#00FFFF]" />
-          <span className="text-[7px] lg:text-[10px] font-black text-secondary tracking-widest uppercase">Stable</span>
-        </div>
       </div>
 
-      {/* Main Map Area */}
-      <div className="flex-1 w-full relative overflow-hidden bg-black/60 rounded-xl lg:rounded-[2.5rem] border border-white/10 shadow-2xl backdrop-blur-sm min-h-[300px] lg:min-h-[450px]">
-        {/* SVG Connections Layer */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <motion.path 
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 2, ease: "easeInOut" }}
-            d="M 15 70 L 45 40 L 80 25" 
-            fill="none" 
-            stroke="rgba(0, 255, 255, 0.3)" 
-            strokeWidth="0.4" 
-            strokeDasharray="2 1"
-          />
-        </svg>
-
-        {/* Nodes Layer */}
-        <div className="absolute inset-0 z-10">
-          {area1Stages.map((stage, index) => {
-            const unlocked = isUnlocked(stage.id);
-            const cleared = player.clearedStages.includes(stage.id);
-            const isBoss = (stage as any).isAreaBoss;
-            const pos = positions[index] || { x: `${(index + 1) * 25}%`, y: '50%' };
-            
-            return (
-              <div 
-                key={stage.id} 
-                className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 group z-20"
-                style={{ left: pos.x, top: pos.y }}
-              >
-                <div className="relative">
-                  {unlocked && !cleared && (
-                    <motion.div 
-                      animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className={`absolute inset-0 rounded-full blur-md ${isBoss ? 'bg-tertiary' : 'bg-primary'}`}
-                    />
-                  )}
-                  
-                  <motion.button 
-                    whileHover={unlocked ? { scale: 1.1, y: -2 } : {}}
-                    whileTap={unlocked ? { scale: 0.95 } : {}}
-                    transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                    onClick={() => { if (unlocked) setSelectedStageId(stage.id); }}
-                    disabled={!unlocked}
-                    className={`w-12 h-12 lg:w-16 lg:h-16 rounded-xl lg:rounded-2xl border-2 flex items-center justify-center transition-all duration-300 relative shadow-2xl z-10
-                      ${unlocked 
-                        ? cleared
-                          ? 'bg-secondary/20 border-secondary text-secondary shadow-[0_0_15px_rgba(0,255,171,0.4)]'
-                          : isBoss
-                            ? 'bg-tertiary/20 border-tertiary text-tertiary shadow-[0_0_15px_rgba(255,107,155,0.4)]'
-                            : 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(191,0,255,0.4)]'
-                        : 'bg-gray-900/80 border-gray-800 text-gray-700 opacity-50'
-                      }
-                    `}
-                  >
-                    {cleared ? (
-                      <>
-                        <CheckCircle2 size={24} className="lg:hidden" />
-                        <CheckCircle2 size={32} className="hidden lg:block" />
-                      </>
-                    ) : isBoss ? (
-                      <>
-                        <Skull size={24} className="lg:hidden" />
-                        <Skull size={32} className="hidden lg:block" />
-                      </>
-                    ) : (
-                      <>
-                        <MapIcon size={24} className="lg:hidden" />
-                        <MapIcon size={32} className="hidden lg:block" />
-                      </>
-                    )}
-                  </motion.button>
-                </div>
-                
-                <div className="text-center mt-2 lg:mt-4 pointer-events-none">
-                  <div className={`text-[6px] lg:text-[10px] font-black tracking-widest uppercase mb-0.5 drop-shadow-lg ${unlocked ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {stage.id}
-                  </div>
-                  <div className={`text-[8px] lg:text-xs font-black tracking-widest whitespace-nowrap drop-shadow-[0_0_10px_rgba(0,0,0,1)] ${unlocked ? 'text-white' : 'text-gray-700'} uppercase`}>
-                    {unlocked ? stage.name : 'DATA ENCRYPTED'}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Stage Selection Popup */}
+      {/* Central Popup Panel */}
+      <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] transition-all" style={{ opacity: selectedStage ? 1 : 0 }}>
         <AnimatePresence>
           {selectedStage && (
             <motion.div 
-              key="stage-detail-popup"
-              initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-              animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
-              exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-              className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-sm bg-[#0D0D0D]/95 border border-[#3C3C3C] shadow-[0_0_50px_rgba(0,0,0,0.9)] pointer-events-auto rounded-2xl overflow-hidden backdrop-blur-xl"
             >
-              <motion.div 
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                className="bg-background/95 border border-white/10 w-[90%] max-w-[320px] lg:max-w-[360px] rounded-3xl lg:rounded-[2.5rem] shadow-2xl overflow-hidden relative backdrop-blur-xl"
-              >
-                <div className="absolute inset-0 dot-pattern opacity-10 pointer-events-none" />
-                
-                <div className="p-6 lg:p-10 flex flex-col items-center gap-6 lg:gap-8 relative z-10">
-                  <div className={`w-16 h-16 lg:w-20 lg:h-20 rounded-2xl lg:rounded-3xl border-2 flex items-center justify-center
-                    ${selectedStage.isAreaBoss ? 'bg-tertiary/10 border-tertiary text-tertiary shadow-[0_0_20px_rgba(255,107,155,0.2)]' : 'bg-primary/10 border-primary text-primary shadow-[0_0_20px_rgba(188,0,251,0.2)]'}`}>
-                    {selectedStage.isAreaBoss ? (
-                      <>
-                        <Skull size={32} className="lg:hidden" />
-                        <Skull size={40} className="hidden lg:block" />
-                      </>
-                    ) : (
-                      <>
-                        <MapIcon size={32} className="lg:hidden" />
-                        <MapIcon size={40} className="hidden lg:block" />
-                      </>
-                    )}
-                  </div>
+              <div className="p-5 flex flex-col gap-4 relative">
+                {/* Background Decor in Panel */}
+                <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-primary/10 to-transparent pointer-events-none" />
 
-                  <div className="text-center space-y-1 lg:space-y-2">
-                    <h3 className="text-[8px] lg:text-[10px] font-black text-gray-500 tracking-widest uppercase">Mission Briefing</h3>
-                    <div className="text-lg lg:text-xl font-black text-white tracking-widest uppercase leading-tight">{selectedStage.name}</div>
-                    <div className="flex items-center justify-center gap-2 text-secondary opacity-80">
-                      <ShieldAlert size={10} />
-                      <span className="text-[8px] lg:text-[10px] font-black tracking-widest uppercase">Rec Lvl: 15</span>
+                <div className="flex items-center justify-between relative z-10">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-14 h-14 rounded-xl border-2 flex items-center justify-center bg-black
+                      ${selectedStage.isAreaBoss ? 'border-tertiary text-tertiary shadow-[0_0_15px_rgba(255,107,155,0.3)]' : 'border-primary text-primary shadow-[0_0_15px_rgba(188,0,251,0.3)]'}`}>
+                      {selectedStage.isAreaBoss ? <Skull size={28} /> : <MapIcon size={28} />}
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-black text-gray-500 tracking-[0.2em] uppercase mb-1">
+                        STAGE {selectedStage.id}
+                      </div>
+                      <div className="text-lg font-black text-white tracking-widest uppercase leading-none drop-shadow-md">
+                        {selectedStage.name}
+                      </div>
                     </div>
                   </div>
-
-                  <div className="w-full flex flex-col gap-3 lg:gap-4">
-                    <FuchsiaButton 
-                      onClick={() => onStartStage(selectedStage.id)}
-                      className="w-full py-4 lg:py-5 text-[10px] tracking-widest rounded-full uppercase"
-                    >
-                      Initiate Sortie
-                    </FuchsiaButton>
-                    <button 
-                      onClick={() => setSelectedStageId(null)}
-                      className="w-full py-1 text-[8px] font-black text-gray-500 hover:text-white transition-colors tracking-widest uppercase"
-                    >
-                      Abort Mission
-                    </button>
+                  
+                  <div className="flex flex-col items-end gap-1 text-right">
+                    <div className="flex items-center gap-1 text-secondary opacity-80 bg-secondary/10 px-2 py-1 rounded border border-secondary/20">
+                      <ShieldAlert size={10} />
+                      <span className="text-[10px] font-black tracking-widest uppercase">REC. LV 15</span>
+                    </div>
+                    <span className="text-[9px] font-bold text-gray-600 tracking-widest">ENEMIES: UNDEAD</span>
                   </div>
                 </div>
-              </motion.div>
+
+                <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-[#2C2C2C] to-transparent my-1" />
+
+                {/* Party Status Section */}
+                <div className="flex flex-col gap-2 relative z-10">
+                  <span className="text-[8px] font-black text-gray-500 tracking-[0.2em] uppercase">Current Legion</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {party.map((member, idx) => (
+                      <div key={idx} className="bg-black/50 border border-[#1A1A1A] p-2 rounded-lg flex flex-col gap-1">
+                        <span className="text-[8px] font-black text-white truncate uppercase tracking-widest">
+                          {member ? member.name : 'EMPTY'}
+                        </span>
+                        {member ? (
+                          <div className="flex flex-col gap-0.5 mt-0.5">
+                            <div className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 bg-[#8B0000]" />
+                              <div className="flex-1 h-1 bg-[#1A1A1A] rounded-full overflow-hidden">
+                                <div className="h-full bg-[#8B0000]" style={{ width: `${(member.stats.hp / (member.stats as any).maxHp || 100) * 100}%` }} />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 bg-[#2B4A78]" />
+                              <div className="flex-1 h-1 bg-[#1A1A1A] rounded-full overflow-hidden">
+                                <div className="h-full bg-[#2B4A78]" style={{ width: `${(member.stats.mp / 20) * 100}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-3.5 flex items-center justify-center opacity-30 text-[7px] font-bold tracking-widest">--</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 mt-2 relative z-10">
+                  <button 
+                    onClick={() => setSelectedStageId(null)}
+                    className="px-6 py-4 text-[10px] font-black text-gray-400 hover:text-white transition-colors tracking-widest uppercase bg-[#1A1A1A] rounded-xl border border-[#2C2C2C]"
+                  >
+                    CANCEL
+                  </button>
+                  <button 
+                    onClick={() => onStartStage(selectedStage.id)}
+                    className="flex-1 flex justify-center items-center gap-2 py-4 text-[12px] font-black tracking-[0.2em] rounded-xl uppercase bg-primary text-white hover:bg-primary/80 transition-colors shadow-[0_0_20px_rgba(188,0,251,0.5)] border border-primary/50"
+                  >
+                    <span>INITIATE SORTIE</span>
+                    <ChevronRight size={16} className="animate-pulse" />
+                  </button>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

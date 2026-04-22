@@ -51,9 +51,9 @@ interface GameState {
   actionTrigger: { type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', skillId?: string } | null;
   setActionTrigger: (trigger: { type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', skillId?: string } | null) => void;
 
-  // 画面遷移管理（モバイル用）
-  currentTab: 'BATTLE' | 'ARMY' | 'GRIMOIRE' | 'LOGS';
-  setCurrentTab: (tab: 'BATTLE' | 'ARMY' | 'GRIMOIRE' | 'LOGS') => void;
+  // 画面遷移管理
+  currentTab: 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'LOGS';
+  setCurrentTab: (tab: 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'LOGS') => void;
 
   // 初期化用
   initialize: () => void;
@@ -69,7 +69,7 @@ export const useGameStore = create<GameState>((set) => ({
   equippingMonsterId: null,
   battleLogs: ['SYSTEM STANDBY...'],
   actionTrigger: null,
-  currentTab: 'BATTLE',
+  currentTab: 'HOME',
 
   setPlayer: (player) => set({ player }),
   setNecroStatus: (status) => set({ necroStatus: status }),

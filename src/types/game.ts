@@ -43,14 +43,29 @@ export interface SkillData {
   description: string;
 }
 
+export interface SubOption {
+  type: string;
+  value: number;
+}
+
 export interface ItemData {
   id: string;
   name: string;
   type: 'WEAPON' | 'SUB' | 'HEAD' | 'BODY' | 'ARMS' | 'LEGS' | 'ACC1' | 'ACC2';
-  rarity: 'COMMON' | 'UNIQUE';
+  rarity: 'COMMON' | 'UNIQUE' | 'HIDDEN_UNIQUE';
   stats: Partial<BaseStats>;
   resistances?: Resistances;
   specialEffect?: string;
+  
+  // 第一発見者システム (GDD-追加要件)
+  isUnique: boolean;
+  discovererId?: string;
+  discovererName?: string;
+  serialNo?: number;
+  discoveredAt?: string;
+  
+  // ランダムオプション
+  subOptions?: SubOption[];
 }
 
 export interface EquipmentSlots {
@@ -91,6 +106,22 @@ export interface SoulShardData {
   effect: SoulShardEffect;
 }
 
+export interface AbyssalResidueData {
+  id: string;
+  name: string;
+  itemId: string;
+  subOptions: SubOption[];
+  level: number;
+}
+
+export interface SpiritCoreData {
+  id: string;
+  name: string;
+  element?: ElementType;
+  skillChangeId?: string;
+  atkMultiplier: number;
+}
+
 export interface MonsterData {
   id: string;
   name: string;
@@ -99,6 +130,7 @@ export interface MonsterData {
   stats: BaseStats;
   resistances: Resistances;
   equippedShardId?: string;
+  spiritCore?: SpiritCoreData; // 霊核 (GDD-追加要件)
 }
 
 export interface NecroStatus {

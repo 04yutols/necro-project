@@ -1,28 +1,35 @@
 'use client';
 
 import React from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, Home } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 
 export function MobileHeader() {
-  const { player } = useGameStore();
+  const { player, currentTab, setCurrentTab } = useGameStore();
 
   return (
-    <header className="fixed top-0 w-full h-16 border-b border-[#BF00FF]/15 bg-[#0B0E14]/80 backdrop-blur-xl flex justify-between items-center px-6 z-50">
+    <header className="fixed top-0 w-full h-10 border-b border-[#2C2C2C] bg-[#0D0D0D] flex justify-between items-center px-4 z-50">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full border-2 border-secondary shadow-[0_0_10px_rgba(0,255,171,0.5)] overflow-hidden bg-black/40">
-          <img 
-            alt="Player Avatar"
-            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aldo&backgroundColor=0b0e14"
-            className="w-full h-full object-cover"
-          />
+        {currentTab !== 'HOME' && (
+          <button 
+            onClick={() => setCurrentTab('HOME')}
+            className="text-gray-400 hover:text-primary transition-colors flex items-center justify-center p-1 rounded-sm border border-[#1A1A1A] bg-[#050505]"
+            title="Return to Home"
+          >
+            <Home size={14} />
+          </button>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-secondary tracking-widest uppercase">
+            {player?.name || 'NECROMANCER'}
+          </span>
+          <span className="text-[8px] text-gray-600 border border-[#1A1A1A] px-1 rounded uppercase">
+            LV.99
+          </span>
         </div>
-        <h1 className="text-lg font-black text-primary drop-shadow-[0_0_8px_rgba(191,0,255,0.6)] font-headline tracking-wider uppercase">
-          {player?.name || 'NECROMANCER'}
-        </h1>
       </div>
-      <button className="text-white/60 hover:text-primary transition-colors">
-        <Settings size={24} />
+      <button className="text-gray-600 hover:text-secondary transition-colors">
+        <Settings size={14} />
       </button>
     </header>
   );

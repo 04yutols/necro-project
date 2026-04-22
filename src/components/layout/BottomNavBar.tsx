@@ -1,14 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Swords, Ghost, BookOpen, Terminal } from 'lucide-react';
+import { Home, Map, Sword, Skull, Terminal, Swords } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
-import { motion } from 'framer-motion';
 
 const TABS = [
+  { id: 'HOME', label: 'HOME', icon: Home },
+  { id: 'MAP', label: 'MAP', icon: Map },
   { id: 'BATTLE', label: 'BATTLE', icon: Swords },
-  { id: 'ARMY', label: 'ARMY', icon: Ghost },
-  { id: 'GRIMOIRE', label: 'SKILLS', icon: BookOpen },
+  { id: 'EQUIP', label: 'ARMORY', icon: Sword },
+  { id: 'LAB', label: 'LAB', icon: Skull },
   { id: 'LOGS', label: 'LOGS', icon: Terminal },
 ] as const;
 
@@ -16,7 +17,7 @@ export function BottomNavBar() {
   const { currentTab, setCurrentTab } = useGameStore();
 
   return (
-    <nav className="fixed bottom-0 w-full h-20 bg-[#0B0E14]/90 backdrop-blur-md rounded-t-[2rem] border-t border-[#00FFFF]/20 flex justify-around items-center px-4 z-50 shadow-[0_-10px_30px_rgba(0,255,171,0.1)]">
+    <nav className="fixed bottom-0 w-full h-14 bg-[#0D0D0D] border-t border-[#2C2C2C] flex justify-around items-center px-1 z-50">
       {TABS.map((tab) => {
         const isActive = currentTab === tab.id;
         const Icon = tab.icon;
@@ -25,22 +26,15 @@ export function BottomNavBar() {
           <button
             key={tab.id}
             onClick={() => setCurrentTab(tab.id as any)}
-            className="relative flex flex-col items-center justify-center transition-all duration-300"
+            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors relative
+              ${isActive ? 'bg-[#1A1A1A] text-secondary' : 'text-gray-600 hover:text-gray-400'}
+            `}
           >
             {isActive && (
-              <motion.div
-                layoutId="nav-glow"
-                className="absolute inset-0 bg-[#00FFAB]/10 rounded-full px-8 py-4 -z-10 shadow-[0_0_15px_rgba(0,255,171,0.3)]"
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-              />
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-secondary" />
             )}
-            <Icon 
-              size={24} 
-              className={`transition-colors duration-300 ${isActive ? 'text-secondary' : 'text-gray-500'}`} 
-            />
-            <span 
-              className={`text-[10px] font-bold font-label mt-1 tracking-widest transition-colors duration-300 ${isActive ? 'text-secondary' : 'text-gray-500'}`}
-            >
+            <Icon size={16} />
+            <span className="text-[7px] font-bold mt-1 tracking-wider uppercase font-mono">
               {tab.label}
             </span>
           </button>

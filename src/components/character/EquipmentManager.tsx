@@ -4,13 +4,12 @@ import { useState, useMemo } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { ItemData, EquipmentSlots, BaseStats } from '../../types/game';
 import { equipItemAction, unequipItemAction } from '../../app/actions';
-import { Shield, Sword, X, ArrowRight, Package } from 'lucide-react';
+import { Shield, Sword, X, ArrowRight, Package, Home } from 'lucide-react';
 
 import { GameFrame } from '../ui/GameFrame';
-import { FuchsiaButton } from '../ui/FuchsiaButton';
 
 const SLOT_LABELS: Record<keyof EquipmentSlots, string> = {
-  weapon: 'WEAPON',
+  weapon: 'WEAP',
   sub: 'SUB',
   head: 'HEAD',
   body: 'BODY',
@@ -21,27 +20,23 @@ const SLOT_LABELS: Record<keyof EquipmentSlots, string> = {
 };
 
 export default function EquipmentManager() {
-  const { player, inventoryItems, equipItem, unequipItem } = useGameStore();
+  const { player, inventoryItems, equipItem, unequipItem, setCurrentTab } = useGameStore();
   const [selectedSlot, setSelectedSlot] = useState<keyof EquipmentSlots | null>(null);
   const [previewItem, setPreviewItem] = useState<ItemData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // ステータス計算
   const calculateTotalStats = (equipment: EquipmentSlots): BaseStats => {
     if (!player) return {} as BaseStats;
     const base = { ...player.stats };
     const passives = player.passives;
     
     const total: BaseStats = {
-      hp: base.hp,
-      mp: base.mp,
+      hp: base.hp, mp: base.mp,
       atk: base.atk + passives.passiveAtkBonus,
       def: base.def + passives.passiveDefBonus,
       matk: base.matk + passives.passiveMatkBonus,
       mdef: base.mdef + passives.passiveMdefBonus,
-      agi: base.agi,
-      luck: base.luck,
-      tec: base.tec,
+      agi: base.agi, luck: base.luck, tec: base.tec,
     };
 
     Object.values(equipment).forEach(item => {
@@ -87,9 +82,7 @@ export default function EquipmentManager() {
       const result = await unequipItemAction(player.id, slot);
       if (result.success) {
         unequipItem(slot);
-        if (selectedSlot === slot) {
-          setPreviewItem(null);
-        }
+        if (selectedSlot === slot) setPreviewItem(null);
       }
     } catch (e) {
       console.error(e);
@@ -98,32 +91,20 @@ export default function EquipmentManager() {
     }
   };
 
-  const renderStatDiff = (statKey: keyof BaseStats, label: string) => {
+  const renderStatRow = (statKey: keyof BaseStats, label: string) => {
     const currentVal = currentStats[statKey];
-    if (!previewStats) {
-      return (
-        <div className="flex justify-between items-center py-1 border-b border-white/5">
-          <span className="text-gray-500 uppercase text-xs">{label}</span>
-          <span className="font-bold text-white">{currentVal}</span>
-        </div>
-      );
-    }
+    const previewVal = previewStats ? previewStats[statKey] : null;
+    const diff = previewVal !== null ? previewVal - currentVal : 0;
 
-    const previewVal = previewStats[statKey];
-    const diff = previewVal - currentVal;
-    
     return (
-      <div className="flex justify-between items-center py-1 border-b border-white/5">
-        <span className="text-gray-500 uppercase text-xs">{label}</span>
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-white">{currentVal}</span>
-          {diff !== 0 && (
-            <>
-              <ArrowRight size={14} className={diff > 0 ? "text-green-500" : "text-fuchsia"} />
-              <span className={`font-bold ${diff > 0 ? "text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]" : "text-fuchsia"}`}>
-                {previewVal}
-              </span>
-            </>
+      <div className="flex justify-between items-center text-[10px] py-0.5 border-b border-[#1A1A1A]">
+        <span className="text-gray-500 font-bold">{label}</span>
+        <div className="flex items-center gap-1">
+          <span className="text-primary">{currentVal}</span>
+          {previewVal !== null && diff !== 0 && (
+            <span className={diff > 0 ? "text-green-500" : "text-red-500"}>
+              → {previewVal}
+            </span>
           )}
         </div>
       </div>
@@ -138,137 +119,121 @@ export default function EquipmentManager() {
   if (!player) return null;
 
   return (
-    <GameFrame 
-      title={<span className="flex items-center gap-2"><Sword size={18} /> ARMORY</span>}
-      className="w-full"
-    >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
-        {/* PC: Left / Mobile: Bottom (Status Preview) */}
-        <div className="space-y-4 lg:space-y-6 order-2 lg:order-1">
-          <div className="bg-black/40 border border-white/5 rounded-xl p-4 shadow-inner">
-            <h3 className="text-[10px] lg:text-xs font-black font-headline text-gray-400 mb-4 tracking-widest uppercase opacity-60">Status Analysis</h3>
-            <div className="grid grid-cols-1 gap-1 lg:gap-2">
-              {renderStatDiff('hp', 'HP')}
-              {renderStatDiff('mp', 'MP')}
-              {renderStatDiff('atk', 'ATK')}
-              {renderStatDiff('def', 'DEF')}
-              {renderStatDiff('matk', 'MATK')}
-              {renderStatDiff('mdef', 'MDEF')}
-              {renderStatDiff('agi', 'AGI')}
-              {renderStatDiff('luck', 'LUCK')}
-              {renderStatDiff('tec', 'TEC')}
-            </div>
-          </div>
+    <div className="flex flex-col gap-2 h-full pt-2 px-2 pb-6">
+      {/* Back to Home Button */}
+      <div className="flex items-center">
+        <button 
+          onClick={() => setCurrentTab('HOME')}
+          className="flex items-center gap-2 text-gray-400 hover:text-secondary transition-colors text-[10px] font-black tracking-widest uppercase mb-1 bg-black/40 border border-[#1A1A1A] px-3 py-1.5 rounded-md backdrop-blur-sm shadow-md"
+        >
+          <Home size={14} />
+          <span>RETURN TO HUB</span>
+        </button>
+      </div>
 
-          {previewItem && selectedSlot && (
-            <div className="bg-primary/10 border border-primary/40 rounded-xl p-4 animate-in fade-in zoom-in duration-300">
-              <h3 className="text-primary font-black font-headline text-[10px] lg:text-sm mb-3 flex items-center justify-between uppercase">
-                <span>PREVIEW: {previewItem.name}</span>
-                <span className="text-[8px] border border-primary/40 px-2 py-0.5 rounded">{previewItem.rarity}</span>
-              </h3>
-              <div className="flex gap-3">
+      {/* Upper Grid: Slots and Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+        {/* Status Preview */}
+        <GameFrame title="STATUS" borderColor="iron">
+          <div className="grid grid-cols-2 gap-x-4">
+            {renderStatRow('atk', 'ATK')}
+            {renderStatRow('def', 'DEF')}
+            {renderStatRow('matk', 'MATK')}
+            {renderStatRow('mdef', 'MDEF')}
+            {renderStatRow('agi', 'AGI')}
+            {renderStatRow('luck', 'LUCK')}
+            {renderStatRow('tec', 'TEC')}
+          </div>
+        </GameFrame>
+
+        {/* Equipment Slots */}
+        <GameFrame title="EQUIPMENT" borderColor="iron">
+          <div className="grid grid-cols-4 gap-1">
+            {(Object.keys(SLOT_LABELS) as (keyof EquipmentSlots)[]).map(slot => {
+              const equippedItem = player.equipment[slot];
+              const isSelected = selectedSlot === slot;
+
+              return (
                 <button
-                  onClick={() => setPreviewItem(null)}
-                  className="flex-1 py-2 text-[10px] font-black border border-white/10 rounded-lg hover:bg-white/5 transition-all uppercase tracking-widest"
+                  key={slot}
+                  onClick={() => { setSelectedSlot(slot); setPreviewItem(null); }}
+                  className={`relative h-10 border flex flex-col items-center justify-center p-0.5 text-[8px] transition-colors
+                    ${isSelected ? 'border-secondary bg-secondary/5' : 'border-[#2C2C2C] bg-[#050505] hover:bg-[#121212]'}
+                  `}
                 >
-                  ABORT
+                  <span className="text-gray-600 font-bold uppercase">{SLOT_LABELS[slot]}</span>
+                  <span className={`font-bold truncate w-full text-center ${equippedItem?.rarity === 'UNIQUE' ? 'text-cursedGold' : 'text-primary'}`}>
+                    {equippedItem ? equippedItem.name : '----'}
+                  </span>
                 </button>
-                <FuchsiaButton
-                  disabled={isProcessing}
-                  onClick={handleEquip}
-                  className="flex-1 py-2 text-[10px] rounded-lg border-b-2"
-                >
-                  EQUIP
-                </FuchsiaButton>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* PC: Right / Mobile: Top (Equipment Slots) */}
-        <div className="space-y-6 order-1 lg:order-2">
-          <div>
-            <h3 className="text-[10px] lg:text-xs font-black font-headline text-gray-400 mb-4 tracking-widest uppercase opacity-60">Neural Interface</h3>
-            <div className="grid grid-cols-2 gap-3 lg:gap-4">
-              {(Object.keys(SLOT_LABELS) as (keyof EquipmentSlots)[]).map(slot => {
-                const equippedItem = player.equipment[slot];
-                const isSelected = selectedSlot === slot;
-
-                return (
-                  <div key={slot} className="relative group">
-                    <div className="text-[8px] text-white/30 uppercase mb-1 font-black tracking-tighter">{SLOT_LABELS[slot]}</div>
-                    <button
-                      onClick={() => {
-                        setSelectedSlot(slot);
-                        setPreviewItem(null);
-                      }}
-                      className={`w-full h-12 lg:h-16 flex flex-col items-center justify-center border-2 rounded-xl transition-all
-                        ${isSelected ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(188,0,251,0.2)]' : 'border-white/5 bg-black/20 hover:border-white/20'}
-                      `}
-                    >
-                      {equippedItem ? (
-                        <>
-                          <span className={`text-[10px] lg:text-xs font-black text-center px-1 uppercase truncate w-full ${equippedItem.rarity === 'UNIQUE' ? 'text-cursedGold' : 'text-white'}`}>
-                            {equippedItem.name}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-white/10 font-black tracking-widest text-[8px] uppercase">EMPTY</span>
-                      )}
-                    </button>
-                    {equippedItem && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUnequip(slot);
-                        }}
-                        className="absolute top-4 right-1 text-white/40 hover:text-error transition-colors bg-black border border-white/10 rounded-full p-1 lg:opacity-0 group-hover:opacity-100"
-                        title="Unequip"
-                      >
-                        <X size={10} />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+              );
+            })}
           </div>
+        </GameFrame>
+      </div>
 
-          {/* 選択中のスロットに対応するインベントリリスト */}
-          {selectedSlot && (
-            <div className="border-t border-white/5 pt-4 animate-in slide-in-from-bottom-4 duration-300">
-              <h4 className="text-[10px] lg:text-xs text-gray-400 font-black font-headline mb-3 flex items-center gap-2 uppercase opacity-60">
-                <Package size={14} /> Available Data ({SLOT_LABELS[selectedSlot]})
-              </h4>
-              <div className="grid grid-cols-1 gap-2 max-h-48 lg:max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                {getAvailableItems(selectedSlot).length === 0 ? (
-                  <div className="text-center py-8 text-white/20 text-[10px] font-black font-headline uppercase border border-dashed border-white/5 rounded-xl bg-black/20">
-                    No compatible units found.
-                  </div>
-                ) : (
-                  getAvailableItems(selectedSlot).map(item => (
+      {/* Item Selection / Inventory */}
+      {selectedSlot && (
+        <GameFrame title={`SELECT ${SLOT_LABELS[selectedSlot]}`} borderColor="iron" className="flex-1">
+          <div className="flex flex-col gap-1 h-full min-h-[200px]">
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+              {getAvailableItems(selectedSlot).length === 0 ? (
+                <div className="text-center py-4 text-gray-700 text-[10px] italic">No items found.</div>
+              ) : (
+                <div className="flex flex-col gap-0.5">
+                  {getAvailableItems(selectedSlot).map(item => (
                     <button
                       key={item.id}
                       onClick={() => setPreviewItem(item)}
-                      className={`p-3 border rounded-xl flex justify-between items-center transition-all text-left group
-                        ${previewItem?.id === item.id ? 'border-primary bg-primary/20 shadow-[0_0_15px_rgba(188,0,251,0.1)]' : 'border-white/5 bg-black/40 hover:border-white/20'}
+                      className={`flex justify-between items-center px-2 py-1 text-[10px] border transition-colors
+                        ${previewItem?.id === item.id ? 'border-secondary bg-secondary/5' : 'border-transparent bg-[#0D0D0D] hover:bg-[#151515]'}
                       `}
                     >
-                      <div className="flex-1 truncate">
-                        <div className="font-black text-[10px] lg:text-xs text-white uppercase group-hover:text-primary transition-colors">{item.name}</div>
-                        <div className="text-[8px] text-gray-500 font-mono mt-0.5">
-                          {item.stats.atk ? `A+${item.stats.atk}` : ''} {item.stats.def ? `D+${item.stats.def}` : ''}
-                        </div>
+                      <span className={item.rarity === 'UNIQUE' ? 'text-cursedGold' : 'text-primary'}>{item.name}</span>
+                      <div className="flex gap-2 font-mono text-[8px] text-gray-500">
+                        {item.stats.atk ? `A+${item.stats.atk}` : ''}
+                        {item.stats.def ? `D+${item.stats.def}` : ''}
+                        {item.stats.agi ? `S+${item.stats.agi}` : ''}
                       </div>
-                      <ArrowRight size={12} className={`transition-transform duration-300 ${previewItem?.id === item.id ? 'translate-x-0 opacity-100' : '-translate-x-4 opacity-0'}`} />
                     </button>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
-    </GameFrame>
+
+            {/* Action Bar */}
+            {previewItem && (
+              <div className="border-t border-[#2C2C2C] pt-2 mt-1 flex gap-2">
+                <button
+                  onClick={() => setPreviewItem(null)}
+                  className="flex-1 py-1 text-[10px] font-bold border border-[#2C2C2C] hover:bg-red-900/10 hover:text-red-500 transition-colors uppercase"
+                >
+                  CANCEL
+                </button>
+                <button
+                  disabled={isProcessing}
+                  onClick={handleEquip}
+                  className="flex-1 py-1 text-[10px] font-bold bg-[#8A6D1F]/20 text-secondary border border-[#8A6D1F] hover:bg-[#8A6D1F]/40 transition-colors uppercase"
+                >
+                  EQUIP
+                </button>
+              </div>
+            )}
+
+            {!previewItem && player.equipment[selectedSlot] && (
+              <div className="border-t border-[#2C2C2C] pt-2 mt-1 flex gap-2">
+                <button
+                  disabled={isProcessing}
+                  onClick={() => handleUnequip(selectedSlot)}
+                  className="flex-1 py-1 text-[10px] font-bold border border-[#4A0000] text-red-500 bg-[#4A0000]/10 hover:bg-[#4A0000]/20 transition-colors uppercase"
+                >
+                  UNEQUIP
+                </button>
+              </div>
+            )}
+          </div>
+        </GameFrame>
+      )}
+    </div>
   );
 }
