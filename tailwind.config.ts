@@ -2,21 +2,34 @@ import type { Config } from "tailwindcss";
 
 const designTokens = {
   colors: {
-    dark: "#050505",
-    background: "#050505",
-    surface: "#121212",
+    dark: "#050508",
+    background: "#050508",
+    surface: "#0A0612",
+    // Gothic-Morphism Void Purple System
+    void: {
+      DEFAULT: "#8B00FF",
+      bright: "#BC00FB",
+      dim: "#4A007A",
+      glow: "rgba(139, 0, 255, 0.35)",
+      neon: "rgba(188, 0, 251, 0.8)",
+    },
+    // Obsidian glass
+    obsidian: {
+      DEFAULT: "rgba(8, 4, 18, 0.75)",
+      border: "rgba(60, 20, 100, 0.6)",
+    },
     primary: {
-      DEFAULT: "#A5A9B4", // Steel / Silver
+      DEFAULT: "#A5A9B4",
       dim: "#4A4D55",
       glow: "rgba(165, 169, 180, 0.2)",
     },
     secondary: {
-      DEFAULT: "#D4AF37", // Antique Gold
+      DEFAULT: "#D4AF37",
       dim: "#8A6D1F",
       glow: "rgba(212, 175, 55, 0.2)",
     },
     tertiary: {
-      DEFAULT: "#8B0000", // Blood Red
+      DEFAULT: "#8B0000",
       dim: "#4A0000",
       glow: "rgba(139, 0, 0, 0.2)",
     },

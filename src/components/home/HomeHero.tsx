@@ -119,13 +119,13 @@ export function HomeHero() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
                 <span style={{ color: '#888', fontSize: '11px' }}>HP</span>
                 <span style={{ color: '#FF4D4D', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(255,77,77,0.3)', lineHeight: 1 }}>
-                  {player.stats.hp} <span style={{ color: '#555', fontSize: '14px' }}>/ {player.stats.maxHp || 100}</span>
+                  {player.stats.hp} <span style={{ color: '#555', fontSize: '14px' }}>/ {(player.stats as any).maxHp ?? 100}</span>
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
                 <span style={{ color: '#888', fontSize: '11px' }}>MP</span>
                 <span style={{ color: '#4A90E2', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(74,144,226,0.3)', lineHeight: 1 }}>
-                  {player.stats.mp} <span style={{ color: '#555', fontSize: '14px' }}>/ {player.stats.maxMp || 20}</span>
+                  {player.stats.mp} <span style={{ color: '#555', fontSize: '14px' }}>/ {(player.stats as any).maxMp ?? 20}</span>
                 </span>
               </div>
             </div>

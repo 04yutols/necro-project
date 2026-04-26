@@ -37,35 +37,8 @@ export default function Home() {
 
   if (!player) return <div className="p-8 text-center bg-[#050505] min-h-screen font-serif text-gray-500">Loading...</div>;
 
-  // タブに応じたメインコンテンツのレンダリング
+  // タブに応じたメインコンテンツのレンダリング (除外: BattleCanvas)
   const renderMainContent = () => {
-    if (isInBattle) {
-      return (
-        <motion.div 
-          key="battle-active"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="w-full h-full flex flex-col relative"
-        >
-          <div className="flex-1 bg-black overflow-hidden border border-[#1A1A1A] relative">
-            <BattleCanvas onEnd={() => {
-              setIsInBattle(false);
-              if (activeStageId) addClearedStage(activeStageId);
-              setCurrentTab('MAP'); // 勝利後はマップへ戻る
-            }} />
-            <button 
-              onClick={() => {
-                setIsInBattle(false);
-                setCurrentTab('MAP');
-              }}
-              className="absolute top-2 right-2 z-50 px-3 py-1 bg-black/60 backdrop-blur-md border border-red-900 text-red-500 text-[10px] font-bold tracking-widest uppercase hover:bg-red-900/20 transition-colors"
-            >
-              RETREAT
-            </button>
-          </div>
-        </motion.div>
-      );
-    }
-
     switch (currentTab) {
       case 'HOME':
         return <HomeHero key="home" />;
@@ -131,18 +104,34 @@ export default function Home() {
   const emptySidebar = <div className="hidden" />;
 
   return (
-    <div className="h-screen bg-[#050505] selection:bg-secondary/30 overflow-hidden">
-      <ResponsiveFrame
-        leftSidebar={emptySidebar}
-        mainMonitor={
-          <div className="w-full h-full relative">
-            <AnimatePresence mode="wait">
-              {renderMainContent()}
-            </AnimatePresence>
-          </div>
-        }
-        rightSidebar={emptySidebar}
-      />
+    <div className="h-[100dvh] w-full bg-[#050505] selection:bg-secondary/30 overflow-hidden">
+      <AnimatePresence mode="wait">
+        {isInBattle ? (
+            <motion.div 
+              key="battle-active"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[9999] w-full h-full flex flex-col bg-black overflow-hidden"
+            >
+              <BattleCanvas onEnd={() => {
+                setIsInBattle(false);
+                if (activeStageId) addClearedStage(activeStageId);
+                setCurrentTab('MAP'); // 勝利後はマップへ戻る
+              }} />
+            </motion.div>
+        ) : (
+          <ResponsiveFrame
+            leftSidebar={emptySidebar}
+            mainMonitor={
+              <div className="w-full h-full relative">
+                <AnimatePresence mode="wait">
+                  {renderMainContent()}
+                </AnimatePresence>
+              </div>
+            }
+            rightSidebar={emptySidebar}
+          />
+        )}
+      </AnimatePresence>
       
       {equippingMonster && (
         <ShardEquipModal 
