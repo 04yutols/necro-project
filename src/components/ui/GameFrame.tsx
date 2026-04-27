@@ -9,45 +9,40 @@ export function cn(...inputs: ClassValue[]) {
 interface GameFrameProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
   children: React.ReactNode;
   title?: React.ReactNode;
-  borderColor?: 'blood' | 'necro' | 'gray';
+  borderColor?: 'iron' | 'gold' | 'blood' | 'gray';
 }
 
 export function GameFrame({ 
   children, 
   className, 
   title, 
-  borderColor = 'blood', 
+  borderColor = 'iron', 
   ...props 
 }: GameFrameProps) {
   const borderStyles = {
-    blood: 'pixel-border-blood',
-    necro: 'pixel-border-primary border-purple-600',
-    gray: 'border-4 border-gray-800 rounded-2xl'
+    iron: 'border-[#2C2C2C]',
+    gold: 'border-[#8A6D1F]',
+    blood: 'border-[#4A0000]',
+    gray: 'border-[#1A1A1A]'
   };
-
-  const bgStyles = "bg-dark/95 backdrop-blur-xl relative overflow-hidden";
 
   return (
     <div 
       className={cn(
-        bgStyles,
-        borderStyles[borderColor],
+        "bg-[#0D0D0D] border relative overflow-hidden",
+        borderStyles[borderColor as keyof typeof borderStyles],
         className
       )}
       {...props}
     >
-      {/* Dithering / Dot pattern background */}
-      <div className="absolute inset-0 bg-dot-pattern opacity-20 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-30 pointer-events-none" />
-      
       {title && (
-        <div className="border-b-4 border-white/5 px-6 py-4 bg-black/40 relative z-20">
-          <h2 className="text-xl font-cinzel font-bold tracking-[0.2em] text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
+        <div className="border-b border-inherit px-3 py-1.5 bg-[#151515] relative z-20">
+          <h2 className="text-[10px] font-bold tracking-[0.1em] text-primary uppercase">
             {title}
           </h2>
         </div>
       )}
-      <div className="relative z-10 p-6">
+      <div className="relative z-10 p-2 lg:p-4">
         {children}
       </div>
     </div>

@@ -92,14 +92,14 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
 
           {/* プレビュー領域 */}
           {selectedShard && (
-            <div className="bg-blood/10 p-4 rounded border border-blood/30 animate-in fade-in slide-in-from-top-2 duration-300">
-              <h3 className="text-xs font-bold mb-3 text-blood uppercase tracking-widest text-center">Status Preview</h3>
+            <div className="bg-fuchsia/10 p-4 rounded border border-fuchsia/30 animate-in fade-in slide-in-from-top-2 duration-300">
+              <h3 className="text-xs font-bold mb-3 text-fuchsia uppercase tracking-widest text-center">Status Preview</h3>
               <div className="flex justify-around items-center">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-white">{currentAtk}</div>
                   <div className="text-[10px] text-gray-500 uppercase mt-1">Current</div>
                 </div>
-                <ArrowRight className="text-blood animate-pulse" />
+                <ArrowRight className="text-fuchsia animate-pulse" />
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]">
                     {monster.stats.atk + selectedShard.effect.atkBonus}

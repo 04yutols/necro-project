@@ -4,13 +4,12 @@ import { useState, useMemo } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { ItemData, EquipmentSlots, BaseStats } from '../../types/game';
 import { equipItemAction, unequipItemAction } from '../../app/actions';
-import { Shield, Sword, X, ArrowRight, Package } from 'lucide-react';
+import { Shield, Sword, X, ArrowRight, Package, Home } from 'lucide-react';
 
 import { GameFrame } from '../ui/GameFrame';
-import { BloodButton } from '../ui/BloodButton';
 
 const SLOT_LABELS: Record<keyof EquipmentSlots, string> = {
-  weapon: 'WEAPON',
+  weapon: 'WEAP',
   sub: 'SUB',
   head: 'HEAD',
   body: 'BODY',
@@ -21,27 +20,23 @@ const SLOT_LABELS: Record<keyof EquipmentSlots, string> = {
 };
 
 export default function EquipmentManager() {
-  const { player, inventoryItems, equipItem, unequipItem } = useGameStore();
+  const { player, inventoryItems, equipItem, unequipItem, setCurrentTab } = useGameStore();
   const [selectedSlot, setSelectedSlot] = useState<keyof EquipmentSlots | null>(null);
   const [previewItem, setPreviewItem] = useState<ItemData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // ステータス計算
   const calculateTotalStats = (equipment: EquipmentSlots): BaseStats => {
     if (!player) return {} as BaseStats;
     const base = { ...player.stats };
     const passives = player.passives;
     
     const total: BaseStats = {
-      hp: base.hp,
-      mp: base.mp,
+      hp: base.hp, mp: base.mp,
       atk: base.atk + passives.passiveAtkBonus,
       def: base.def + passives.passiveDefBonus,
       matk: base.matk + passives.passiveMatkBonus,
       mdef: base.mdef + passives.passiveMdefBonus,
-      agi: base.agi,
-      luck: base.luck,
-      tec: base.tec,
+      agi: base.agi, luck: base.luck, tec: base.tec,
     };
 
     Object.values(equipment).forEach(item => {
@@ -87,9 +82,7 @@ export default function EquipmentManager() {
       const result = await unequipItemAction(player.id, slot);
       if (result.success) {
         unequipItem(slot);
-        if (selectedSlot === slot) {
-          setPreviewItem(null);
-        }
+        if (selectedSlot === slot) setPreviewItem(null);
       }
     } catch (e) {
       console.error(e);
@@ -98,32 +91,20 @@ export default function EquipmentManager() {
     }
   };
 
-  const renderStatDiff = (statKey: keyof BaseStats, label: string) => {
+  const renderStatRow = (statKey: keyof BaseStats, label: string) => {
     const currentVal = currentStats[statKey];
-    if (!previewStats) {
-      return (
-        <div className="flex justify-between items-center py-1 border-b border-white/5">
-          <span className="text-gray-500 uppercase text-xs">{label}</span>
-          <span className="font-bold text-white">{currentVal}</span>
-        </div>
-      );
-    }
+    const previewVal = previewStats ? previewStats[statKey] : null;
+    const diff = previewVal !== null ? previewVal - currentVal : 0;
 
-    const previewVal = previewStats[statKey];
-    const diff = previewVal - currentVal;
-    
     return (
-      <div className="flex justify-between items-center py-1 border-b border-white/5">
-        <span className="text-gray-500 uppercase text-xs">{label}</span>
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-white">{currentVal}</span>
-          {diff !== 0 && (
-            <>
-              <ArrowRight size={14} className={diff > 0 ? "text-green-500" : "text-blood"} />
-              <span className={`font-bold ${diff > 0 ? "text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]" : "text-blood"}`}>
-                {previewVal}
-              </span>
-            </>
+      <div className="flex justify-between items-center text-[10px] py-0.5 border-b border-[#1A1A1A]">
+        <span className="text-gray-500 font-bold">{label}</span>
+        <div className="flex items-center gap-1">
+          <span className="text-primary">{currentVal}</span>
+          {previewVal !== null && diff !== 0 && (
+            <span className={diff > 0 ? "text-green-500" : "text-red-500"}>
+              → {previewVal}
+            </span>
           )}
         </div>
       </div>
@@ -138,135 +119,121 @@ export default function EquipmentManager() {
   if (!player) return null;
 
   return (
-    <GameFrame 
-      title={<span className="flex items-center gap-2"><Sword size={18} /> EQUIPMENT</span>}
-      className="w-full"
-    >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* 左側：プレビューとステータス */}
-        <div className="space-y-6">
-          <div className="bg-black/50 border border-gray-800 rounded-md p-4 shadow-inner">
-            <h3 className="text-sm font-bold font-cinzel text-gray-400 mb-4 tracking-widest">STATUS PREVIEW</h3>
-            <div className="space-y-2">
-              {renderStatDiff('hp', 'HP')}
-              {renderStatDiff('mp', 'MP')}
-              {renderStatDiff('atk', 'ATK')}
-              {renderStatDiff('def', 'DEF')}
-              {renderStatDiff('matk', 'MATK')}
-              {renderStatDiff('mdef', 'MDEF')}
-              {renderStatDiff('agi', 'AGI')}
-              {renderStatDiff('luck', 'LUCK')}
-              {renderStatDiff('tec', 'TEC')}
-            </div>
+    <div className="flex flex-col gap-2 h-full pt-2 px-2 pb-6">
+      {/* Back to Home Button */}
+      <div className="flex items-center">
+        <button 
+          onClick={() => setCurrentTab('HOME')}
+          className="flex items-center gap-2 text-gray-400 hover:text-secondary transition-colors text-[10px] font-black tracking-widest uppercase mb-1 bg-black/40 border border-[#1A1A1A] px-3 py-1.5 rounded-md backdrop-blur-sm shadow-md"
+        >
+          <Home size={14} />
+          <span>RETURN TO HUB</span>
+        </button>
+      </div>
+
+      {/* Upper Grid: Slots and Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+        {/* Status Preview */}
+        <GameFrame title="STATUS" borderColor="iron">
+          <div className="grid grid-cols-2 gap-x-4">
+            {renderStatRow('atk', 'ATK')}
+            {renderStatRow('def', 'DEF')}
+            {renderStatRow('matk', 'MATK')}
+            {renderStatRow('mdef', 'MDEF')}
+            {renderStatRow('agi', 'AGI')}
+            {renderStatRow('luck', 'LUCK')}
+            {renderStatRow('tec', 'TEC')}
           </div>
+        </GameFrame>
 
-          {previewItem && selectedSlot && (
-            <div className="bg-blood/10 border border-blood/50 rounded-md p-4 animate-in fade-in zoom-in duration-300">
-              <h3 className="text-blood font-bold font-cinzel text-sm mb-3 flex items-center justify-between">
-                <span>PREVIEW: {previewItem.name}</span>
-                <span className="text-[10px] bg-blood text-white px-2 py-0.5 rounded">{previewItem.rarity}</span>
-              </h3>
-              <div className="flex gap-4">
-                <BloodButton
-                  variant="ghost"
-                  onClick={() => setPreviewItem(null)}
-                  className="flex-1 py-2 text-xs"
+        {/* Equipment Slots */}
+        <GameFrame title="EQUIPMENT" borderColor="iron">
+          <div className="grid grid-cols-4 gap-1">
+            {(Object.keys(SLOT_LABELS) as (keyof EquipmentSlots)[]).map(slot => {
+              const equippedItem = player.equipment[slot];
+              const isSelected = selectedSlot === slot;
+
+              return (
+                <button
+                  key={slot}
+                  onClick={() => { setSelectedSlot(slot); setPreviewItem(null); }}
+                  className={`relative h-10 border flex flex-col items-center justify-center p-0.5 text-[8px] transition-colors
+                    ${isSelected ? 'border-secondary bg-secondary/5' : 'border-[#2C2C2C] bg-[#050505] hover:bg-[#121212]'}
+                  `}
                 >
-                  CANCEL
-                </BloodButton>
-                <BloodButton
-                  disabled={isProcessing}
-                  onClick={handleEquip}
-                  className="flex-1 py-2 text-xs"
-                >
-                  EQUIP
-                </BloodButton>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 右側：8スロット装備枠 */}
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-sm font-bold font-cinzel text-gray-400 mb-4 tracking-widest">EQUIPMENT SLOTS</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {(Object.keys(SLOT_LABELS) as (keyof EquipmentSlots)[]).map(slot => {
-                const equippedItem = player.equipment[slot];
-                const isSelected = selectedSlot === slot;
-
-                return (
-                  <div key={slot} className="relative group">
-                    <div className="text-[10px] text-gray-500 uppercase mb-1 font-bold">{SLOT_LABELS[slot]}</div>
-                    <button
-                      onClick={() => {
-                        setSelectedSlot(slot);
-                        setPreviewItem(null);
-                      }}
-                      className={`w-full h-16 flex flex-col items-center justify-center border-2 rounded-md transition-all
-                        ${isSelected ? 'border-blood bg-blood/10 shadow-[0_0_10px_rgba(136,8,8,0.3)]' : 'border-gray-800 bg-black/40 hover:border-gray-600'}
-                      `}
-                    >
-                      {equippedItem ? (
-                        <>
-                          <span className={`text-xs md:text-sm font-bold text-center px-1 ${equippedItem.rarity === 'UNIQUE' ? 'text-cursedGold drop-shadow-[0_0_5px_rgba(255,215,0,0.5)]' : 'text-white'}`}>
-                            {equippedItem.name}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-gray-600 text-xs font-cinzel tracking-widest">EMPTY</span>
-                      )}
-                    </button>
-                    {equippedItem && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUnequip(slot);
-                        }}
-                        className="absolute top-5 right-1 text-gray-500 hover:text-red-500 transition-colors bg-black rounded-full opacity-0 group-hover:opacity-100"
-                        title="Unequip"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  <span className="text-gray-600 font-bold uppercase">{SLOT_LABELS[slot]}</span>
+                  <span className={`font-bold truncate w-full text-center ${equippedItem?.rarity === 'UNIQUE' ? 'text-cursedGold' : 'text-primary'}`}>
+                    {equippedItem ? equippedItem.name : '----'}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+        </GameFrame>
+      </div>
 
-          {/* 選択中のスロットに対応するインベントリリスト */}
-          {selectedSlot && (
-            <div className="border-t border-gray-800 pt-4 animate-in slide-in-from-bottom-4 duration-300">
-              <h4 className="text-sm text-gray-400 font-bold font-cinzel mb-3 flex items-center gap-2">
-                <Package size={16} /> INVENTORY ({SLOT_LABELS[selectedSlot]})
-              </h4>
-              <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                {getAvailableItems(selectedSlot).length === 0 ? (
-                  <div className="text-center py-6 text-gray-600 text-xs italic bg-black/30 rounded-md border border-dashed border-gray-800">
-                    装備可能なアイテムを持っていません。
-                  </div>
-                ) : (
-                  getAvailableItems(selectedSlot).map(item => (
+      {/* Item Selection / Inventory */}
+      {selectedSlot && (
+        <GameFrame title={`SELECT ${SLOT_LABELS[selectedSlot]}`} borderColor="iron" className="flex-1">
+          <div className="flex flex-col gap-1 h-full min-h-[200px]">
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+              {getAvailableItems(selectedSlot).length === 0 ? (
+                <div className="text-center py-4 text-gray-700 text-[10px] italic">No items found.</div>
+              ) : (
+                <div className="flex flex-col gap-0.5">
+                  {getAvailableItems(selectedSlot).map(item => (
                     <button
                       key={item.id}
                       onClick={() => setPreviewItem(item)}
-                      className={`p-3 border rounded-md flex justify-between items-center transition-colors text-left
-                        ${previewItem?.id === item.id ? 'border-blood bg-blood/20' : 'border-gray-800 bg-black/60 hover:border-gray-600'}
+                      className={`flex justify-between items-center px-2 py-1 text-[10px] border transition-colors
+                        ${previewItem?.id === item.id ? 'border-secondary bg-secondary/5' : 'border-transparent bg-[#0D0D0D] hover:bg-[#151515]'}
                       `}
                     >
-                      <div className="font-bold text-sm text-white">{item.name}</div>
-                      <div className="text-[10px] text-gray-500 uppercase font-mono">
-                        {item.stats.atk ? `ATK+${item.stats.atk}` : ''} {item.stats.def ? `DEF+${item.stats.def}` : ''}
+                      <span className={item.rarity === 'UNIQUE' ? 'text-cursedGold' : 'text-primary'}>{item.name}</span>
+                      <div className="flex gap-2 font-mono text-[8px] text-gray-500">
+                        {item.stats.atk ? `A+${item.stats.atk}` : ''}
+                        {item.stats.def ? `D+${item.stats.def}` : ''}
+                        {item.stats.agi ? `S+${item.stats.agi}` : ''}
                       </div>
                     </button>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
-    </GameFrame>
+
+            {/* Action Bar */}
+            {previewItem && (
+              <div className="border-t border-[#2C2C2C] pt-2 mt-1 flex gap-2">
+                <button
+                  onClick={() => setPreviewItem(null)}
+                  className="flex-1 py-1 text-[10px] font-bold border border-[#2C2C2C] hover:bg-red-900/10 hover:text-red-500 transition-colors uppercase"
+                >
+                  CANCEL
+                </button>
+                <button
+                  disabled={isProcessing}
+                  onClick={handleEquip}
+                  className="flex-1 py-1 text-[10px] font-bold bg-[#8A6D1F]/20 text-secondary border border-[#8A6D1F] hover:bg-[#8A6D1F]/40 transition-colors uppercase"
+                >
+                  EQUIP
+                </button>
+              </div>
+            )}
+
+            {!previewItem && player.equipment[selectedSlot] && (
+              <div className="border-t border-[#2C2C2C] pt-2 mt-1 flex gap-2">
+                <button
+                  disabled={isProcessing}
+                  onClick={() => handleUnequip(selectedSlot)}
+                  className="flex-1 py-1 text-[10px] font-bold border border-[#4A0000] text-red-500 bg-[#4A0000]/10 hover:bg-[#4A0000]/20 transition-colors uppercase"
+                >
+                  UNEQUIP
+                </button>
+              </div>
+            )}
+          </div>
+        </GameFrame>
+      )}
+    </div>
   );
 }

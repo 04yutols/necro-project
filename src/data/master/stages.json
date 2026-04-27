@@ -11,7 +11,8 @@
         { "itemId": "iron_sword", "rate": 0.05 },
         { "monsterId": "goblin", "rate": 0.1 }
       ]
-    }
+    },
+    "position": { "x": -150, "y": 150 }
   },
   "1-2": {
     "name": "Beginner's Plain - Deep",
@@ -25,7 +26,8 @@
         { "itemId": "leather_armor", "rate": 0.05 },
         { "monsterId": "skeleton", "rate": 0.1 }
       ]
-    }
+    },
+    "position": { "x": 0, "y": 0 }
   },
   "boss-1": {
     "name": "Goblin's Fortress",
@@ -40,6 +42,7 @@
         { "monsterId": "boss_goblin", "rate": 0.05 }
       ]
     },
-    "isAreaBoss": true
+    "isAreaBoss": true,
+    "position": { "x": 180, "y": -180 }
   }
 }
