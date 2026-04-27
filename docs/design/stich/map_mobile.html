@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Necromance Research Lab</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    rel="stylesheet" />
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container": "#161a21",
+            "on-tertiary-fixed": "#380017",
+            "on-tertiary": "#47001f",
+            "secondary-dim": "#00efa0",
+            "surface-container-highest": "#22262f",
+            "background": "#0b0e14",
+            "error": "#ff6e84",
+            "outline": "#73757d",
+            "tertiary": "#ff6b9b",
+            "primary": "#e08dff",
+            "surface-container-high": "#1c2028",
+            "tertiary-fixed-dim": "#ff75a0",
+            "on-error": "#490013",
+            "secondary": "#00ffab",
+            "outline-variant": "#45484f",
+            "primary-dim": "#bc00fb",
+            "surface-container-low": "#10131a",
+            "on-secondary": "#005c3b",
+            "on-secondary-container": "#e1ffea",
+            "on-tertiary-fixed-variant": "#760037",
+            "on-primary-fixed": "#000000",
+            "tertiary-dim": "#e30071",
+            "error-dim": "#d73357",
+            "tertiary-container": "#ff067f",
+            "surface-tint": "#e08dff",
+            "primary-fixed-dim": "#d160ff",
+            "error-container": "#a70138",
+            "tertiary-fixed": "#ff8eae",
+            "surface-dim": "#0b0e14",
+            "surface": "#0b0e14",
+            "inverse-surface": "#f9f9ff",
+            "on-primary": "#4f006c",
+            "on-background": "#ecedf6",
+            "inverse-primary": "#9a00cf",
+            "on-secondary-fixed": "#00472d",
+            "on-primary-fixed-variant": "#4c0068",
+            "inverse-on-surface": "#52555c",
+            "primary-container": "#d978ff",
+            "on-surface-variant": "#a9abb3",
+            "surface-bright": "#282c36",
+            "on-primary-container": "#3d0055",
+            "on-secondary-fixed-variant": "#006742",
+            "primary-fixed": "#d978ff",
+            "secondary-fixed-dim": "#00efa0",
+            "surface-variant": "#22262f",
+            "surface-container-lowest": "#000000",
+            "on-tertiary-container": "#000000",
+            "on-surface": "#ecedf6",
+            "secondary-container": "#006c46",
+            "secondary-fixed": "#00ffab",
+            "on-error-container": "#ffb2b9"
+          },
+          "borderRadius": {
+            "DEFAULT": "1rem",
+            "lg": "2rem",
+            "xl": "3rem",
+            "full": "9999px"
+          },
+          "fontFamily": {
+            "headline": ["Space Grotesk"],
+            "body": ["Manrope"],
+            "label": ["Plus Jakarta Sans"]
+          }
+        },
+      },
+    }
+  </script>
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+
+    .digital-dot {
+      font-family: 'Space Grotesk', monospace;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .neon-glow-primary {
+      box-shadow: 0 0 15px rgba(191, 0, 255, 0.4);
+    }
+
+    .neon-glow-secondary {
+      box-shadow: 0 0 15px rgba(0, 255, 171, 0.4);
+    }
+
+    .glass-panel {
+      background: rgba(28, 32, 40, 0.8);
+      backdrop-filter: blur(20px);
+    }
+
+    .active-squish:active {
+      transform: scale(0.95);
+    }
+  </style>
+  <style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+
+<body class="bg-surface text-on-background font-body select-none">
+  <!-- TopAppBar Section -->
+  <header class="fixed top-0 w-full z-50 bg-[#0B0E14] dark:bg-[#0B0E14]">
+    <div class="flex justify-between items-center px-6 py-4 w-full">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full border-2 border-secondary neon-glow-secondary overflow-hidden">
+          <img alt="User"
+            data-alt="Cyberpunk character portrait with neon cyan circular frame and 10px outer blur, high detail digital art style"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2KHbByOdh7q2BLP0Sy9RX1wdc0U4w9p3aTx-MoTb_vLvk3mjOxdKW_wtfSnh1WWo135TzWC3fEpF-yN5h5-b6V0dGNuSzVmOYTNf2nryH-1VT3DqtT4Zd0YvCSA70qCgz3CtSBXaD-7U9BhVcwbyWdQ2zPzw-D48IcWmCoCE2DBoiXSjjwsgXG1lFd_xBnjWiJdjCYpBYWHDsusEgAenjjkUOKIE6G1Z4pwT1d0JXesqpfIoeDkzUgrGP_5uVXAVR8g37oITi5f6f" />
+        </div>
+        <h1
+          class="text-xl font-headline font-bold text-[#ECEDF6] drop-shadow-[0_0_8px_rgba(191,0,255,0.6)] tracking-wider uppercase">
+          LAB_TERMINAL</h1>
+      </div>
+      <button
+        class="material-symbols-outlined text-purple-500 hover:scale-105 transition-all duration-300 active:scale-95">settings</button>
+    </div>
+    <div class="bg-gradient-to-b from-[#BC00FB]/10 to-transparent h-1"></div>
+  </header>
+  <main class="pt-24 pb-32 px-6 flex flex-col items-center min-h-screen relative overflow-hidden">
+    <!-- Background Ambience -->
+    <div
+      class="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary-dim/10 rounded-full blur-[120px] pointer-events-none">
+    </div>
+    <!-- Maintenance Pod Section -->
+    <section class="relative w-full flex justify-center py-12">
+      <!-- Equipment Slots (Asymmetric Circular Arrangement) -->
+      <div class="absolute inset-0 z-10 pointer-events-none">
+        <!-- SVG Connecting Lines -->
+        <svg class="w-full h-full opacity-30" viewbox="0 0 400 400">
+          <circle cx="200" cy="200" fill="none" r="130" stroke="url(#lineGradient)" stroke-dasharray="4 4"
+            stroke-width="1"></circle>
+          <defs>
+            <lineargradient id="lineGradient" x1="0%" x2="100%" y1="0%" y2="100%">
+              <stop offset="0%" style="stop-color:#BC00FB;stop-opacity:1"></stop>
+              <stop offset="100%" style="stop-color:#00FFAB;stop-opacity:1"></stop>
+            </lineargradient>
+          </defs>
+        </svg>
+      </div>
+      <!-- Center Pod -->
+      <div
+        class="relative z-20 w-64 h-64 rounded-full border-4 border-primary-dim/30 flex items-center justify-center neon-glow-primary bg-surface-container-low overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-tr from-primary-dim/20 to-secondary/20 animate-pulse"></div>
+        <div class="w-48 h-48 rounded-full border border-secondary/20 relative flex items-center justify-center">
+          <img alt="Character" class="z-10 drop-shadow-[0_0_15px_rgba(224,141,255,0.6)]"
+            data-alt="A stylized 2-head-high pixel art player character floating in neon fuchsia and cyan glowing liquid inside a glass circular pod"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgvI5shPo9Z8deP5Ec9n4Ud8ewCdw58mGK61vusocJr9XftHVZ9_VFLG6S-geeOC2A3BEjZ9_Edp7jXfgHDgntFlmD7-fGFwNGzo8HODCz6BprYam5zhP2_a0nRwuE0inKWBW_FAx6ScNG7IF9b9_GUU3JBVMnG3oN-ycpykOcvTiu0CzMuiVdECCLTxsS-RDgI4wX-w8W0d142oaxugH3qQJFlIq2Qd56oZkef9k13E6kwiZQlZyspEC5g5W8VqQYWsVyUKVHpu1J" />
+          <div class="absolute bottom-0 w-full h-1/3 bg-secondary/10 backdrop-blur-sm"></div>
+        </div>
+      </div>
+      <!-- Floating Equipment Slots (Absolute positioning for mobile grid/circle) -->
+      <div class="absolute inset-0 z-30">
+        <!-- Slot 1 -->
+        <div
+          class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 w-12 h-12 bg-surface-container-highest rounded-full border-2 border-primary neon-glow-primary flex items-center justify-center active:scale-90 transition-transform">
+          <span class="material-symbols-outlined text-primary text-xl" data-icon="skull">skull</span>
+        </div>
+        <!-- Slot 2 -->
+        <div
+          class="absolute top-1/4 right-0 -translate-x-4 w-12 h-12 bg-surface-container-highest rounded-full border-2 border-secondary neon-glow-secondary flex items-center justify-center active:scale-90 transition-transform">
+          <span class="material-symbols-outlined text-secondary text-xl" data-icon="bolt">bolt</span>
+        </div>
+        <!-- Slot 3 -->
+        <div
+          class="absolute bottom-1/4 right-0 -translate-x-4 w-12 h-12 bg-surface-container-highest rounded-full border-2 border-tertiary neon-glow-secondary flex items-center justify-center active:scale-90 transition-transform"
+          style="box-shadow: 0 0 15px rgba(255, 107, 155, 0.4);">
+          <span class="material-symbols-outlined text-tertiary text-xl" data-icon="shield">shield</span>
+        </div>
+        <!-- Slot 4 -->
+        <div
+          class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-4 w-12 h-12 bg-surface-container-highest rounded-full border-2 border-primary neon-glow-primary flex items-center justify-center active:scale-90 transition-transform">
+          <span class="material-symbols-outlined text-primary text-xl" data-icon="auto_fix">auto_fix</span>
+        </div>
+        <!-- Slot 5 -->
+        <div
+          class="absolute bottom-1/4 left-0 translate-x-4 w-12 h-12 bg-surface-container-highest rounded-full border-2 border-secondary neon-glow-secondary flex items-center justify-center active:scale-90 transition-transform">
+          <span class="material-symbols-outlined text-secondary text-xl" data-icon="diamond">diamond</span>
+        </div>
+        <!-- Slot 6 -->
+        <div
+          class="absolute top-1/4 left-0 translate-x-4 w-12 h-12 bg-surface-container-highest rounded-full border-2 border-primary-dim neon-glow-primary flex items-center justify-center active:scale-90 transition-transform">
+          <span class="material-symbols-outlined text-primary-dim text-xl" data-icon="mystery_house">mystery</span>
+        </div>
+        <!-- Slot 7 -->
+        <div
+          class="absolute top-12 left-1/4 w-10 h-10 bg-surface-container-low/80 rounded-full border border-outline-variant/30 flex items-center justify-center">
+          <span class="material-symbols-outlined text-outline text-lg" data-icon="add">add</span>
+        </div>
+        <!-- Slot 8 -->
+        <div
+          class="absolute top-12 right-1/4 w-10 h-10 bg-surface-container-low/80 rounded-full border border-outline-variant/30 flex items-center justify-center">
+          <span class="material-symbols-outlined text-outline text-lg" data-icon="add">add</span>
+        </div>
+      </div>
+    </section>
+    <!-- Status Panel -->
+    <section class="w-full mt-8 glass-panel rounded-lg p-6 flex flex-col gap-4 border border-outline-variant/10">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="font-headline text-on-surface tracking-widest text-sm uppercase opacity-70">Laboratory Metrics</h2>
+        <span class="digital-dot text-secondary text-xs">Syncing... 98%</span>
+      </div>
+      <div class="grid grid-cols-2 gap-6">
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between items-end">
+            <span class="text-[10px] font-label text-outline uppercase tracking-tighter">Attack (ATK)</span>
+            <span class="digital-dot text-tertiary text-lg font-bold">142</span>
+          </div>
+          <div class="h-1.5 w-full bg-surface-container-low rounded-full overflow-hidden">
+            <div class="h-full bg-tertiary w-[65%] rounded-full shadow-[0_0_8px_#ff6b9b]"></div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between items-end">
+            <span class="text-[10px] font-label text-outline uppercase tracking-tighter">Defense (DEF)</span>
+            <span class="digital-dot text-secondary text-lg font-bold">88</span>
+          </div>
+          <div class="h-1.5 w-full bg-surface-container-low rounded-full overflow-hidden">
+            <div class="h-full bg-secondary w-[40%] rounded-full shadow-[0_0_8px_#00ffab]"></div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between items-end">
+            <span class="text-[10px] font-label text-outline uppercase tracking-tighter">Intelligence (INT)</span>
+            <span class="digital-dot text-primary text-lg font-bold">210</span>
+          </div>
+          <div class="h-1.5 w-full bg-surface-container-low rounded-full overflow-hidden">
+            <div class="h-full bg-primary w-[85%] rounded-full shadow-[0_0_8px_#e08dff]"></div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between items-end">
+            <span class="text-[10px] font-label text-outline uppercase tracking-tighter">Speed (SPD)</span>
+            <span class="digital-dot text-secondary-dim text-lg font-bold">115</span>
+          </div>
+          <div class="h-1.5 w-full bg-surface-container-low rounded-full overflow-hidden">
+            <div class="h-full bg-secondary-dim w-[55%] rounded-full shadow-[0_0_8px_#00efa0]"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- Action Button -->
+    <section class="w-full mt-10">
+      <button
+        class="w-full py-5 rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-headline font-extrabold text-lg tracking-widest uppercase active-squish transition-transform duration-200 shadow-[0_10px_30px_rgba(191,0,255,0.3)]">
+        INITIATE EVOLUTION
+      </button>
+      <p class="text-center mt-4 text-[10px] font-label text-outline uppercase tracking-widest opacity-50">Requires 500
+        Essence &amp; 1 Soul Gem</p>
+    </section>
+  </main>
+  <!-- BottomNavBar Section -->
+  <nav
+    class="fixed bottom-0 w-full z-50 rounded-t-[2rem] bg-[#1C2028]/80 backdrop-blur-xl border-t border-[#45484F]/15 shadow-[0_-10px_30px_rgba(191,0,255,0.1)]">
+    <div class="flex justify-around items-center h-20 px-4 pb-safe">
+      <!-- Active Item: inventory_2 (closest match to Lab Research/Equipment) -->
+      <a class="flex items-center justify-center text-[#73757D] p-4 hover:text-[#00FFAB] transition-colors duration-200 active:scale-90"
+        href="#">
+        <span class="material-symbols-outlined" data-icon="public">public</span>
+      </a>
+      <a class="flex items-center justify-center bg-gradient-to-br from-[#E08DFF] to-[#D978FF] text-[#0B0E14] rounded-full p-4 shadow-[0_0_15px_rgba(224,141,255,0.5)] transform -translate-y-2 scale-110 active:scale-90 transition-transform cubic-bezier(0.34,1.56,0.64,1)"
+        href="#">
+        <span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+      </a>
+      <a class="flex items-center justify-center text-[#73757D] p-4 hover:text-[#00FFAB] transition-colors duration-200 active:scale-90"
+        href="#">
+        <span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+      </a>
+      <a class="flex items-center justify-center text-[#73757D] p-4 hover:text-[#00FFAB] transition-colors duration-200 active:scale-90"
+        href="#">
+        <span class="material-symbols-outlined" data-icon="local_mall">local_mall</span>
+      </a>
+    </div>
+  </nav>
+</body>
+
+</html>

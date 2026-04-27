@@ -1,202 +1,144 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
-import BattleCanvas from '../components/battle/BattleCanvas';
-import NecroLab from '../components/necro/NecroLab';
-import { Skull, Map, Shield, Activity } from 'lucide-react';
 
-import ShardEquipModal from '../components/necro/ShardEquipModal';
+const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').then((mod) => mod.default), { 
+  ssr: false,
+  loading: () => <div className="flex-1 flex items-center justify-center bg-[#050505] text-primary font-mono animate-pulse text-[10px] tracking-widest uppercase">Initializing...</div>
+});
+
+import NecroLab from '../components/necro/NecroLab';
 import EquipmentManager from '../components/character/EquipmentManager';
 import AreaMap from '../components/map/AreaMap';
+import ShardEquipModal from '../components/necro/ShardEquipModal';
+import { HomeHero } from '../components/home/HomeHero';
+import { ResponsiveFrame } from '../components/layout/ResponsiveFrame';
+import { NecroLog } from '../components/ui/NecroLog';
+import { Home as HomeIcon } from 'lucide-react';
 
 export default function Home() {
-  const { player, setPlayer, setNecroStatus, setInventoryMonsters, setInventoryItems, party, equippingMonsterId, inventoryMonsters: allMonsters, setEquippingMonsterId, addClearedStage } = useGameStore();
-  const [isInBattle, setIsInBattle] = useState(false);
-  const [activeTab, setActiveTab] = useState<'HUB' | 'LAB' | 'MAP'>('HUB');
-  const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  const { 
+    player, party, equippingMonsterId, inventoryMonsters, 
+    setEquippingMonsterId, addClearedStage, battleLogs, initialize, 
+    currentTab, setCurrentTab
+  } = useGameStore();
 
-  const equippingMonster = equippingMonsterId ? allMonsters.find(m => m.id === equippingMonsterId) : null;
+  const [isInBattle, setIsInBattle] = useState(false);
+  const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  
+  const equippingMonster = equippingMonsterId ? inventoryMonsters.find(m => m.id === equippingMonsterId) : null;
 
   useEffect(() => {
-    // モックデータの初期化
-    if (!player) {
-      setPlayer({
-        id: '1',
-        name: 'アルド',
-        currentJobId: 'warrior',
-        category: 'PHYSICAL',
-        stats: { hp: 100, mp: 20, atk: 50, def: 30, matk: 10, mdef: 10, agi: 10, luck: 10, tec: 20 },
-        baseResistances: {},
-        passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveMatkBonus: 0, passiveMdefBonus: 0 },
-        equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
-        jobs: [{ jobId: 'warrior', level: 1, exp: 0 }],
-        isAwakened: false,
-        clearedStages: [],
-      });
+    if (!player) initialize();
+  }, [player, initialize]);
 
+  if (!player) return <div className="p-8 text-center bg-[#050505] min-h-screen font-serif text-gray-500">Loading...</div>;
 
-      setNecroStatus({
-        level: 1,
-        rank: 1,
-        maxCost: 10,
-        baseStatsBonus: 1.0,
-      });
-
-      setInventoryMonsters([
-        { id: 'm1', name: 'ゴブリン', tribe: 'HUMANOID', cost: 3, stats: { hp: 50, mp: 0, atk: 10, def: 5, matk: 0, mdef: 2, agi: 5, luck: 5, tec: 5 }, resistances: { FIRE: -20 } },
-        { id: 'm2', name: 'スケルトン', tribe: 'UNDEAD', cost: 4, stats: { hp: 40, mp: 0, atk: 12, def: 8, matk: 0, mdef: 2, agi: 5, luck: 0, tec: 8 }, resistances: { LIGHT: -50, DARK: 50 } },
-        { id: 'm3', name: 'ゾンビ', tribe: 'UNDEAD', cost: 4, stats: { hp: 80, mp: 0, atk: 8, def: 4, matk: 0, mdef: 0, agi: 2, luck: 2, tec: 2 }, resistances: { FIRE: -50, LIGHT: -20, DARK: 20 } },
-      ]);
-      
-      setInventoryItems([
-        { id: 'i1', name: 'Iron Sword', type: 'WEAPON', rarity: 'COMMON', stats: { atk: 10 } },
-        { id: 'i2', name: 'Leather Armor', type: 'BODY', rarity: 'COMMON', stats: { def: 5, mdef: 2 } },
-        { id: 'i3', name: 'Hero Soul Blade', type: 'WEAPON', rarity: 'UNIQUE', stats: { atk: 50, matk: 50, def: 10, mdef: 10 }, specialEffect: 'SOUL_RESONANCE' },
-      ]);
-
-      // 初期状態で欠片を一つ持たせる
-      const { addSoulShard } = useGameStore.getState();
-      addSoulShard({
-        id: 'initial-shard-1',
-        originMonsterName: 'ゴブリン',
-        effect: { atkBonus: 2, matkBonus: 0 }
-      });
+  // タブに応じたメインコンテンツのレンダリング (除外: BattleCanvas)
+  const renderMainContent = () => {
+    switch (currentTab) {
+      case 'HOME':
+        return <HomeHero key="home" />;
+      case 'MAP':
+        return (
+          <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
+            <AreaMap onStartStage={(stageId) => {
+              setActiveStageId(stageId);
+              setIsInBattle(true);
+              setCurrentTab('BATTLE');
+            }} />
+          </motion.div>
+        );
+      case 'BATTLE':
+        return (
+          <motion.div key="no-battle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col items-center justify-center bg-[#050505] text-[#A5A9B4]">
+            <div className="text-center">
+              <p className="mb-4 font-mono text-sm tracking-widest uppercase">No Active Battle</p>
+              <button 
+                onClick={() => setCurrentTab('MAP')}
+                className="px-6 py-2 bg-[#1A1A1A] border border-[#2C2C2C] text-secondary hover:bg-[#2C2C2C] transition-colors font-bold tracking-widest text-xs uppercase"
+              >
+                Deploy to Map
+              </button>
+            </div>
+          </motion.div>
+        );
+      case 'EQUIP':
+        return (
+          <motion.div key="equip" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
+            <EquipmentManager />
+          </motion.div>
+        );
+      case 'LAB':
+        return (
+          <motion.div key="lab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
+            <NecroLab />
+          </motion.div>
+        );
+      case 'LOGS':
+        return (
+          <motion.div key="logs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col p-2 pt-4">
+            <div className="flex items-center mb-3">
+              <button 
+                onClick={() => setCurrentTab('HOME')}
+                className="flex items-center gap-2 text-gray-400 hover:text-primary transition-colors text-[10px] font-black tracking-widest uppercase bg-black/40 border border-[#1A1A1A] px-3 py-1.5 rounded-md backdrop-blur-sm shadow-md"
+              >
+                <HomeIcon size={14} />
+                <span>RETURN TO HUB</span>
+              </button>
+            </div>
+            <div className="flex-1 border border-[#1A1A1A] bg-[#0D0D0D] overflow-hidden">
+              <NecroLog logs={battleLogs} />
+            </div>
+          </motion.div>
+        );
+      default:
+        return <HomeHero key="home" />;
     }
-  }, [player, setPlayer, setNecroStatus, setInventoryMonsters, setInventoryItems]);
+  };
 
-  if (!player) return <div className="p-8 text-center bg-dark min-h-screen">Loading Hero Data...</div>;
+  // サイドバー用のダミー（ResponsiveFrame用だが、今回はメインモニタに全て集約）
+  const emptySidebar = <div className="hidden" />;
 
   return (
-    <main className="min-h-screen bg-dark text-white font-mono flex flex-col">
-      {/* ナビゲーションバー */}
-      <nav className="bg-black/80 border-b border-blood/30 p-4 sticky top-0 z-10 backdrop-blur-md">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold text-blood tracking-tighter uppercase">Necromance Brave</h1>
-          <div className="flex gap-6">
-            <button onClick={() => setActiveTab('HUB')} className={`flex items-center gap-2 ${activeTab === 'HUB' ? 'text-blood' : 'text-gray-500 hover:text-white'}`}>
-              <Shield size={18} /> 拠点
-            </button>
-            <button onClick={() => setActiveTab('LAB')} className={`flex items-center gap-2 ${activeTab === 'LAB' ? 'text-blood' : 'text-gray-500 hover:text-white'}`}>
-              <Skull size={18} /> 研究所
-            </button>
-            <button onClick={() => setActiveTab('MAP')} className={`flex items-center gap-2 ${activeTab === 'MAP' ? 'text-blood' : 'text-gray-500 hover:text-white'}`}>
-              <Map size={18} /> 出撃
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="flex-1 p-4 overflow-y-auto">
-        {!isInBattle ? (
-          <div className="max-w-4xl mx-auto py-4">
-            {activeTab === 'HUB' && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-500">
-                <section className="border-2 border-blood/50 p-6 bg-necro/10 rounded-lg shadow-lg">
-                  <h2 className="text-xl font-bold border-l-4 border-blood pl-3 mb-6 uppercase flex items-center gap-2">
-                    <Activity size={20} className="text-blood" /> ステータス
-                  </h2>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-end">
-                      <span className="text-gray-400">NAME:</span>
-                      <span className="text-2xl font-bold text-white">{player.name}</span>
-                    </div>
-                    <div className="flex justify-between items-end border-b border-gray-800 pb-2">
-                      <span className="text-gray-400">JOB:</span>
-                      <span className="text-blood font-bold">{player.currentJobId.toUpperCase()}</span>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>HP</span>
-                        <span>{player.stats.hp} / 100</span>
-                      </div>
-                      <div className="w-full bg-gray-900 h-3 rounded-full overflow-hidden border border-gray-800">
-                        <div className="bg-red-600 h-full transition-all duration-1000" style={{ width: `${(player.stats.hp / 100) * 100}%` }}></div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>MP</span>
-                        <span>{player.stats.mp} / 20</span>
-                      </div>
-                      <div className="w-full bg-gray-900 h-3 rounded-full overflow-hidden border border-gray-800">
-                        <div className="bg-blue-600 h-full transition-all duration-1000" style={{ width: `${(player.stats.mp / 20) * 100}%` }}></div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="border-2 border-blood/50 p-6 bg-black/40 rounded-lg shadow-lg">
-                  <h2 className="text-xl font-bold border-l-4 border-blood pl-3 mb-6 uppercase flex items-center gap-2">
-                    <Skull size={20} className="text-blood" /> 現在の軍団
-                  </h2>
-                  <div className="grid grid-cols-1 gap-3">
-                    {party.map((m, i) => (
-                      <div key={i} className={`p-3 border ${m ? 'border-necro bg-necro/10' : 'border-dashed border-gray-800 bg-black/20'} rounded flex items-center justify-between`}>
-                        {m ? (
-                          <>
-                            <div>
-                              <div className="font-bold">{m.name}</div>
-                              <div className="text-[10px] text-gray-500 uppercase tracking-tighter">{m.tribe}</div>
-                            </div>
-                            <div className="text-necro font-bold">COST {m.cost}</div>
-                          </>
-                        ) : (
-                          <div className="text-gray-700 italic text-sm">空きスロット</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </div>
-              <div className="mt-6 animate-in fade-in duration-500 delay-150">
-                <EquipmentManager />
-              </div>
-            </>
-          )}
-
-          {activeTab === 'LAB' && (
-              <div className="duration-300">
-                <NecroLab />
-              </div>
-            )}
-
-            {activeTab === 'MAP' && (
-              <div className="duration-300">
-                <AreaMap onStartStage={(stageId) => {
-                  setActiveStageId(stageId);
-                  setIsInBattle(true);
-                }} />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="relative pt-8 animate-in zoom-in-95 duration-500">
-            <BattleCanvas onEnd={() => {
-              setIsInBattle(false);
-              if (activeStageId) {
-                addClearedStage(activeStageId);
-              }
-            }} />
-            <button
-              onClick={() => setIsInBattle(false)}
-              className="fixed top-20 right-8 px-6 py-2 bg-blood hover:bg-red-700 border border-red-500 font-bold text-sm transition-all shadow-lg rounded"
+    <div className="h-[100dvh] w-full bg-[#050505] selection:bg-secondary/30 overflow-hidden">
+      <AnimatePresence mode="wait">
+        {isInBattle ? (
+            <motion.div 
+              key="battle-active"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[9999] w-full h-full flex flex-col bg-black overflow-hidden"
             >
-              撤退
-            </button>
-          </div>
+              <BattleCanvas onEnd={() => {
+                setIsInBattle(false);
+                if (activeStageId) addClearedStage(activeStageId);
+                setCurrentTab('MAP'); // 勝利後はマップへ戻る
+              }} />
+            </motion.div>
+        ) : (
+          <ResponsiveFrame
+            leftSidebar={emptySidebar}
+            mainMonitor={
+              <div className="w-full h-full relative">
+                <AnimatePresence mode="wait">
+                  {renderMainContent()}
+                </AnimatePresence>
+              </div>
+            }
+            rightSidebar={emptySidebar}
+          />
         )}
-      </div>
-
+      </AnimatePresence>
+      
       {equippingMonster && (
         <ShardEquipModal 
           monster={equippingMonster} 
           onClose={() => setEquippingMonsterId(null)} 
         />
       )}
-    </main>
+    </div>
   );
 }

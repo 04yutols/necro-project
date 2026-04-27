@@ -22,7 +22,7 @@ export class NecroService {
    * 魂石化 (Soul Stoning): モンスターを魂の欠片に変換し DB に保存する
    */
   public async createSoulShard(monsterId: string): Promise<SoulShardData> {
-    return await this.prisma.$transaction(async (tx) => {
+    return await this.prisma.$transaction(async (tx: any) => {
       const monster = await tx.monster.findUnique({
         where: { id: monsterId },
       });
@@ -65,7 +65,7 @@ export class NecroService {
    * Character モデルの necroXxx フィールドを更新する。
    */
   public async performRankUp(characterId: string, isTrialCompleted: boolean): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: any) => {
       const character = await tx.character.findUnique({
         where: { id: characterId },
       });
@@ -92,7 +92,7 @@ export class NecroService {
    * 魂の欠片 (SoulShard) をモンスターに装備する
    */
   public async equipSoulShard(monsterId: string, shardId: string): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: any) => {
       const monster = await tx.monster.findUnique({ where: { id: monsterId } });
       const shard = await tx.soulShard.findUnique({ where: { id: shardId } });
 
