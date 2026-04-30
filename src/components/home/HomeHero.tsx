@@ -3,7 +3,7 @@
 import React from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { motion } from 'framer-motion';
-import { Map, Skull, Sword, Terminal, ChevronRight, Activity } from 'lucide-react';
+import { Map, Skull, Sword, Terminal, ChevronRight, Activity, Swords } from 'lucide-react';
 
 const THEME = {
   primary: '#BC00FB',
@@ -161,6 +161,47 @@ export function HomeHero() {
 
         {/* Primary Actions Grid */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* FORMATION hero button */}
+          <motion.div
+            role="button"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+            onClick={() => setCurrentTab('EQUIP')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '14px',
+              height: 76, padding: '0 20px', borderRadius: '20px',
+              background: 'linear-gradient(135deg, rgba(140,0,230,0.35), rgba(180,0,80,0.22))',
+              border: '1px solid rgba(204,34,255,0.6)',
+              boxShadow: '0 0 28px rgba(188,0,251,0.35), inset 0 0 30px rgba(0,0,0,0.4)',
+              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+              position: 'relative', overflow: 'hidden',
+            }}
+          >
+            <div style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              background: 'linear-gradient(90deg, transparent, rgba(188,0,251,0.1), transparent)',
+              backgroundSize: '200% 100%',
+              animation: 'shimmer 2.5s infinite',
+            }}/>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              background: 'rgba(140,0,230,0.3)', border: '1px solid rgba(204,34,255,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E080FF',
+            }}>
+              <Swords size={22} strokeWidth={2} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#F4EEFF', letterSpacing: '0.08em', fontFamily: "'Cinzel Decorative', serif", textShadow: '0 0 14px rgba(204,34,255,0.6)' }}>
+                軍団編成
+              </div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: 'rgba(204,80,255,0.75)', letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 2 }}>
+                ARMY FORMATION
+              </div>
+            </div>
+            <ChevronRight size={20} style={{ color: 'rgba(204,80,255,0.7)', flexShrink: 0 }} />
+          </motion.div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px' }}>
             <Activity size={16} color={THEME.secondary} opacity={0.8} />
             <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#888', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0 }}>
@@ -179,52 +220,80 @@ export function HomeHero() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1, type: "spring", stiffness: 300, damping: 25 }}
                   onClick={() => setCurrentTab(btn.id as any)}
-                  style={{ 
-                    display: 'flex', alignItems: 'center', padding: '16px', borderRadius: '20px', 
-                    border: `1px solid ${btn.border}`, backgroundColor: btn.bg, 
-                    boxShadow: btn.glow, cursor: 'pointer', WebkitTapHighlightColor: 'transparent'
+                  style={{
+                    display: 'flex', alignItems: 'center', padding: '16px 16px', borderRadius: '16px',
+                    border: `1px solid ${btn.border}`, background: btn.bg,
+                    boxShadow: `0 2px 20px ${btn.color}18, inset 0 1px 0 rgba(255,255,255,0.06)`,
+                    cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                    position: 'relative', overflow: 'hidden',
                   }}
                 >
-                  <div style={{ 
-                    width: '56px', height: '56px', borderRadius: '14px', backgroundColor: 'rgba(0,0,0,0.6)', 
-                    border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                    flexShrink: 0, color: btn.color, boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)'
+                  {/* Shimmer overlay */}
+                  <div style={{
+                    position: 'absolute', inset: 0, borderRadius: '16px',
+                    background: `linear-gradient(90deg, transparent, ${btn.color}0f, transparent)`,
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmer 3s infinite',
+                    pointerEvents: 'none',
+                  }}/>
+                  <div style={{
+                    width: '48px', height: '48px', borderRadius: '14px', backgroundColor: 'rgba(0,0,0,0.5)',
+                    border: `1px solid ${btn.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, color: btn.color, boxShadow: `0 0 12px ${btn.color}30`,
                   }}>
-                    <Icon size={28} strokeWidth={2} />
+                    <Icon size={22} strokeWidth={2} />
                   </div>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', marginLeft: '16px', flex: 1, textAlign: 'left' }}>
-                    <span style={{ fontSize: '17px', fontWeight: 900, color: '#FFF', letterSpacing: '0.1em', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', marginLeft: '14px', flex: 1, textAlign: 'left' }}>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '16px', fontWeight: 700, color: '#f0ebff', letterSpacing: '0.02em' }}>
                       {btn.label}
                     </span>
-                    <span style={{ fontSize: '10px', fontWeight: 900, color: btn.color, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.9, marginTop: '4px' }}>
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '9px', fontWeight: 600, color: btn.color + '90', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '3px' }}>
                       {btn.sub}
                     </span>
                   </div>
 
-                  <div style={{ 
-                    width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.4)', 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: btn.color 
-                  }}>
-                    <ChevronRight size={20} />
-                  </div>
+                  <div style={{
+                    width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                    background: `${btn.color}18`, border: `1px solid ${btn.color}40`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: btn.color, fontSize: '11px', fontWeight: 700,
+                  }}>›</div>
                 </motion.div>
               );
             })}
           </div>
         </div>
         
-        {/* Footer Info */}
-        <div style={{ marginTop: 'auto', paddingTop: '32px', paddingBottom: '16px', display: 'flex', justifyContent: 'center', opacity: 0.7 }}>
-          <div style={{ 
-            display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 24px', 
-            borderRadius: '999px', border: '1px solid #1A1A1A', backgroundColor: 'rgba(0,0,0,0.5)' 
+        {/* Footer: N logo + クイック出撃 */}
+        <div style={{ marginTop: 'auto', paddingTop: '16px', paddingBottom: '16px', display: 'flex', alignItems: 'center', animation: 'fadeSlideUp 0.5s ease-out 0.5s both' }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #1a0a2e, #0d0520)',
+            border: '2px solid #8A2BE260',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            animation: 'nGlow 3s ease-in-out infinite',
+            boxShadow: '0 0 10px #8A2BE260',
+            flexShrink: 0,
           }}>
-            <div style={{ width: '6px', height: '6px', backgroundColor: THEME.secondary, borderRadius: '50%', boxShadow: `0 0 8px ${THEME.secondary}` }} />
-            <span style={{ fontSize: '10px', fontWeight: 900, color: '#666', letterSpacing: '0.4em', textTransform: 'uppercase' }}>
-              SYSTEM ONLINE
-            </span>
-            <div style={{ width: '6px', height: '6px', backgroundColor: THEME.secondary, borderRadius: '50%', boxShadow: `0 0 8px ${THEME.secondary}` }} />
+            <span style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: '16px', fontWeight: 700, color: '#c084fc' }}>N</span>
+          </div>
+          <div style={{ flex: 1 }} />
+          <div
+            role="button"
+            onClick={() => setCurrentTab('MAP')}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, rgba(138,43,226,0.25), rgba(88,28,135,0.15))',
+              border: '1px solid rgba(138,43,226,0.45)',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: '0 0 12px rgba(138,43,226,0.2)',
+            }}
+          >
+            <span style={{ fontSize: 12 }}>⚡</span>
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', fontWeight: 600, color: '#c084fc', letterSpacing: '0.06em' }}>クイック出撃</span>
           </div>
         </div>
       </div>

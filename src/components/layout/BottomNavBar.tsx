@@ -8,7 +8,7 @@ const TABS = [
   { id: 'HOME', label: 'HOME', icon: Home },
   { id: 'MAP', label: 'MAP', icon: Map },
   { id: 'BATTLE', label: 'BATTLE', icon: Swords },
-  { id: 'EQUIP', label: 'ARMORY', icon: Sword },
+  { id: 'EQUIP', label: 'LEGION', icon: Sword },
   { id: 'LAB', label: 'LAB', icon: Skull },
   { id: 'LOGS', label: 'LOGS', icon: Terminal },
 ] as const;

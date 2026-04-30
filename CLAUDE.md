@@ -1,90 +1,87 @@
-1. Project Overview
-Name: Necromance Brave (ネクロマンスブレイブ)
+# CLAUDE.md
 
-Genre: High-End Hack and Slash RPG
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Target Platform: Smartphone (Vertical UI)
+## Project Overview
 
-Core Concept: 勇者の力と魔王の力を併せ持つ少年が、死霊術（ネクロマンス）を駆使して深淵を蹂躙するダークファンタジー。
+**Necromance Brave (ネクロマンスブレイブ)** — a dark-fantasy mobile-first hack-and-slash RPG. The protagonist wields both hero and demon-lord powers via necromancy. Core game loop: Hub preparation → Map stage select → WAVE-based turn battle → Result screen (with "purple pillar" rare drop VFX).
 
-Inspiration: - System: Knight & Dragon (Speed/Simplicity)
+Design aesthetic: **Gothic-Morphism** — obsidian dark glass, aged parchment, bone frames, and Void Purple (#8A2BE2) as the accent color. Targeting "Star Rail / Genshin" production quality.
 
-Strategy/VFX: Honkai: Star Rail (Turn-based strategy, Soul Fracture, Interruption)
+## Commands
 
-World/Atmosphere: Genshin Impact (Immersive UI, Lore-rich visuals)
+```bash
+# Development
+npm run dev          # Next.js dev server on 0.0.0.0:3000
 
-2. Tech Stack
-Frontend: Next.js (App Router), Tailwind CSS
+# Build
+npm run build        # Production build
 
-Graphics: PixiJS (Combat VFX, Map interaction, Residue rendering)
+# Unit tests (Jest, .test.ts files under src/)
+npm test             # Run all Jest tests
+npm test -- --testPathPattern="BattleEngine"  # Single test file
 
-State Management: React Context or Zustand (Global State for Party/Inventory)
+# E2E tests (Playwright, tests/ directory)
+npx playwright test                          # All E2E tests
+npx playwright test tests/necro-lab.spec.ts  # Single spec
+npx playwright test --headed                 # Headed mode
+```
 
-Database: PostgreSQL (via Prisma or Supabase)
+Playwright expects the dev server at `http://localhost:3080` by default (override with `PLAYWRIGHT_TEST_BASE_URL`).
 
-Animations: Framer Motion + PixiJS Tweens
+## Architecture
 
-3. UI/UX Principles (Gothic-Morphism)
-Visuals: - Base: Obsidian (Dark glass), Aged Parchment, Bone frames.
+### Separation of concerns
 
-Key Color: Void Purple (#8A2BE2) - Use for magic, glows, and high-rarity highlights.
+Game logic is strictly separated from UI components:
 
-UX Strategy:
+- **`src/types/game.ts`** — canonical TypeScript types for all game entities (CharacterData, MonsterData, BattleState, etc.). All GDD references are annotated here.
+- **`src/logic/BattleEngine.ts`** — pure class for turn-based combat simulation. Accepts `CharacterData` + `MonsterData[]`, returns `BattleLog[]`. No React/Zustand dependency. Called from `BattleCanvas.tsx` to drive animation.
+- **`src/logic/GameManager.ts`** — orchestrates the full game loop (startStage, processStageResult, soulStone). Uses Prisma directly; server-side only.
+- **`src/services/MasterDataService.ts`** — singleton that loads JSON master data files from `src/data/master/` (jobs, monsters, items, stages, skills). Used by both `BattleEngine` and `GameManager`.
+- **`src/services/`** — `JobService`, `NecroService`, `RewardService` each own one domain; called by `GameManager`.
+- **`src/store/useGameStore.ts`** — Zustand store holding all runtime client state: `player`, `party` (3 slots), `inventoryMonsters`, `soulShards`, `inventoryItems`, `currentTab`, `battleLogs`, `actionTrigger`. `initialize()` seeds mock data for local dev (no DB required).
 
-Tab-Based Navigation: Separate "Equip" and "Enhance" screens to ensure high visibility and large assets.
+### Routing / navigation
 
-Tactile Feedback: Trigger Haptic API/Vibration on critical hits, enhancement success, and Demonization.
+The app is a single-page app (`src/app/page.tsx`). Navigation is managed entirely by `currentTab` in Zustand (`HOME | BATTLE | MAP | EQUIP | LAB | LOGS`). `BattleCanvas` is loaded via `next/dynamic` with `ssr: false` (PixiJS is browser-only).
 
-Simplicity: Use direct verbs for actions: 「装備 (Equip)」「強化 (Enhance)」「攻撃 (Attack)」「術 (Skill)」「魔神化 (Demonization)」。
+### Component layout
 
-4. Feature Specifications
-A. Battle System (High-End Turn-Based)
-Layout: 3-tier vertical (Timeline-top / Viewport-middle / Commands-bottom).
+```
+src/components/
+  battle/      BattleCanvas.tsx (PixiJS), ResultScreen.tsx, AppraisalCertificate.tsx
+  character/   EquipmentManager.tsx
+  home/        HomeHero.tsx
+  layout/      ResponsiveFrame.tsx (wraps left/main/right), BottomNavBar, DashboardFrame, MobileHeader
+  map/         AreaMap.tsx, MapCanvas.tsx (PixiJS)
+  necro/       NecroLab.tsx, ShardEquipModal.tsx, MonsterViewer.tsx, SoulSlotRing.tsx, useNecroLabPixi.ts, useGothicSound.ts
+  ui/          Reusable primitives (ArmySlot, CapsuleStatBar, GameFrame, NecroLog, GrimoireLog, FuchsiaButton)
+```
 
-View: 2.5D Quarter-view using PixiJS.
+All screens must fit `h-[100dvh]` without scrolling or overlapping critical info.
 
-Soul Fracture: Enemies have a "Toughness" bar. Breaking it causes a "Fracture" state (Stun + Dmg Amp).
+### Damage formula (BattleEngine)
 
-Demonization: An "Ultimate" state that can interrupt the turn order when the Soul Gauge is MAX.
+```
+baseDamage = stat² / (stat + counterStat)          // ATK vs DEF, or MATK vs MDEF
+finalDamage = baseDamage × powerMultiplier × elementMultiplier × (1 + TEC/100)
+critMultiplier = 1.5 + TEC/200  (applied when LUCK% roll succeeds)
+elementMultiplier = 1 - (resistance / 100)          // resistance < 0 → weakness
+```
 
-Commands: 4-way Ring Menu (Attack, Skill, Demonization, Item).
+### Stats system
 
-B. Necro-Lab: Residue of the Abyss (深淵の残滓)
-System: Residue management using a 2-tab system.
+9 base stats: `hp, mp, atk, def, matk, mdef, agi, luck, tec`. Physical jobs have low max MP / low skill cost; Magical jobs have high max MP / high skill cost. Passive bonuses accumulated via job level milestones persist across job changes and are stored in `passiveAtkBonus` etc. on the Character model.
 
-Equip Tab: - Display 3 equipment slots prominently.
+### Database (Prisma + PostgreSQL)
 
-Show high-detail 3D/Animated visual of the selected Residue.
+Schema is at `prisma/schema.prisma`. Key models: `Character` (9 stats + 8 equipment slots + passives + necro fields), `UserJob` (per-job level/exp), `Monster` (with optional `SoulShard` and `SpiritCore`), `Item` (with `isUnique`, `discovererId`, `serialNo` for the first-discoverer system), `AbyssalResidue`. Run `npx prisma generate` after schema changes.
 
-Inventory grid with large icons.
+## Coding Rules
 
-Enhance Tab:
-
-Focus on Stat growth preview (Before -> After).
-
-Material selection with "Auto-select" feature.
-
-Visual: PixiJS "Soul Chain" effect during infusion.
-
-C. Map System
-Background: Clean, hand-drawn ancient codex style (No pre-rendered text).
-
-Interactive Layer: PixiJS layer for stage nodes (1-1, 1-2), lock icons, and magic fog effects.
-
-Sortie Popup: Simple overview (Cost/Units) with a sub-panel for "Intel" (Enemy/Drops).
-
-5. Coding Rules
-Performance: Maintain 60fps in PixiJS layers. Use Virtual Scrolling for large inventories.
-
-Responsiveness: All UIs must fit h-[100dvh] without overlapping critical info.
-
-Scalability: Keep game logic (damage calcs, state changes) separate from UI components.
-
-YOLO Mode: Be proactive in suggesting stylish VFX or UX improvements that align with "Star Rail / Genshin" quality.
-
-6. Current Goals
-Implement the Tab-Based Residue Management System (Equip/Enhance).
-
-Integrate the 3-Slot Residue Logic into the Battle Engine.
-
-Polish the Demonization Transition VFX.
+- Keep PixiJS at 60fps — avoid heavy JS in the render loop; prefer pre-computed values.
+- Party always has exactly 3 slots (`(MonsterData | null)[]`); validate cost against `NecroStatus.maxCost` before deploying.
+- GDD references (e.g., `GDD-003`, `GDD-005`) in comments refer to `docs/requirements.md` sections.
+- All UI text for actions uses direct Japanese verbs: 装備, 強化, 攻撃, 術, 魔神化.
+- `MasterDataService` is a singleton — always use `MasterDataService.getInstance()`.

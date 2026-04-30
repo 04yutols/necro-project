@@ -1,793 +1,935 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import * as PIXI from 'pixi.js';
-import { useGameStore } from '../../store/useGameStore';
-import { BattleEngine } from '../../logic/BattleEngine';
-import { MonsterData } from '../../types/game';
-import {
-  Sword, Ghost, Skull, ShieldAlert, Sparkles,
-  ChevronRight, FastForward, Settings, Crosshair, RotateCw
-} from 'lucide-react';
-import ResultScreen from './ResultScreen';
-import { MasterDataService } from '../../services/MasterDataService';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GrimoireLog } from '../ui/GrimoireLog';
+import { useGameStore } from '../../store/useGameStore';
+import ResultScreen from './ResultScreen';
 
 interface BattleCanvasProps {
   onEnd: () => void;
 }
 
-/* ─── PixiJS Ripple helper ─── */
-function spawnRipple(app: PIXI.Application, x: number, y: number, color: number = 0x8B00FF) {
-  const g = new PIXI.Graphics();
-  app.stage.addChild(g);
-  let radius = 0;
-  let alpha = 0.7;
-  // Store callback ref so we can remove it
-  const onTick = () => {
-    radius += 8;
-    alpha -= 0.045;
-    g.clear();
-    if (alpha <= 0) {
-      app.ticker.remove(onTick);
-      app.stage.removeChild(g);
-      return;
-    }
-    g.circle(x, y, radius).stroke({ color, alpha, width: 2.5 });
-  };
-  app.ticker.add(onTick);
+// ── ENEMY STATE ───────────────────────────────────────────────────────────────
+interface EnemyState {
+  id: number; name: string; nameEn: string;
+  hp: number; maxHp: number; atk: number; color: string;
+  pos: 'left' | 'center' | 'right'; size: number;
+  targeted: boolean; hit?: boolean;
+}
+const INIT_ENEMIES: EnemyState[] = [
+  { id: 0, name: '霊体騎士', nameEn: 'WRAITH KNIGHT', hp: 340, maxHp: 340, atk: 85,  color: '#06b6d4', pos: 'left',   size: 0.78, targeted: false },
+  { id: 1, name: '骨巨人',   nameEn: 'BONE GIANT',    hp: 580, maxHp: 580, atk: 120, color: '#8A2BE2', pos: 'center', size: 1.0,  targeted: true  },
+  { id: 2, name: '死骨竜',   nameEn: 'UNDEAD WYRM',   hp: 420, maxHp: 420, atk: 100, color: '#ef4444', pos: 'right',  size: 0.88, targeted: false },
+];
+
+// ── SKILLS / ITEMS ─────────────────────────────────────────────────────────────
+const SKILLS = [
+  { id: 0, name: '骸骨波',   mp: 15, power: 180, icon: '💥', aoe: true  },
+  { id: 1, name: '死の抱擁', mp: 20, power: 250, icon: '💀', aoe: false },
+  { id: 2, name: '冥土送り', mp: 30, power: 320, icon: '🌀', aoe: false },
+  { id: 3, name: '怨霊召喚', mp: 25, power: 200, icon: '👻', aoe: true  },
+];
+const DEMON_SKILLS = [
+  { id: 10, name: '魔神爪',   cost: 'HP-50',  power: 420, icon: '⚡', aoe: false, demonOnly: true },
+  { id: 11, name: '黒焔爆発', cost: '全消費', power: 680, icon: '🔥', aoe: true,  demonOnly: true },
+  { id: 12, name: '魂喰い',   cost: 'HP-80',  power: 360, icon: '🌑', aoe: false, demonOnly: true },
+];
+const ITEMS = [
+  { id: 0, name: '冥界薬',   desc: 'HP+200 回復', count: 3, icon: '🧪', effect: 'heal',   value: 200 },
+  { id: 1, name: 'エーテル', desc: 'MP全回復',     count: 2, icon: '💎', effect: 'mpHeal', value: 100 },
+];
+
+// ── SVG ENEMIES ───────────────────────────────────────────────────────────────
+function WraithKnightSVG({ hit, targeted, color }: { hit?: boolean; targeted: boolean; color: string }) {
+  return (
+    <svg viewBox="0 0 80 130" fill="none" style={{
+      width: '100%', height: '100%',
+      animation: hit ? 'enemyHit 0.5s ease-out' : 'breathe 3.5s ease-in-out infinite',
+      filter: targeted ? `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 18px ${color}90)` : `drop-shadow(0 0 3px ${color}50)`,
+      transition: 'filter 0.3s ease',
+    }}>
+      <defs><radialGradient id="wkGlow" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor={color} stopOpacity="0.3"/><stop offset="100%" stopColor={color} stopOpacity="0"/></radialGradient></defs>
+      <ellipse cx="45" cy="115" rx="28" ry="6" fill={color} opacity="0.2"/>
+      <ellipse cx="45" cy="60" rx="35" ry="55" fill="url(#wkGlow)"/>
+      <path d="M22 55 Q15 85 18 115 L72 115 Q75 85 68 55 Z" fill="#0a0420" opacity="0.9"/>
+      <path d="M22 52 Q10 45 12 60 Q14 72 24 68 L32 58Z" fill="#150828" stroke={color} strokeWidth="0.7" strokeOpacity="0.6"/>
+      <path d="M68 52 Q80 45 78 60 Q76 72 66 68 L58 58Z" fill="#150828" stroke={color} strokeWidth="0.7" strokeOpacity="0.6"/>
+      <path d="M30 52 Q45 46 60 52 L58 88 Q45 94 32 88Z" fill="#100520" stroke={color} strokeWidth="0.8" strokeOpacity="0.5"/>
+      <circle cx="45" cy="68" r="10" fill="none" stroke={color} strokeWidth="0.8" strokeOpacity="0.7"/>
+      <path d="M45 59 L47 65 L45 77 L43 65Z" fill={color} opacity="0.8"/>
+      <path d="M36 68 L42 66 L54 68 L42 70Z" fill={color} opacity="0.8"/>
+      <path d="M30 58 Q15 70 12 90 L22 92 Q28 74 36 64Z" fill="#0d0520" opacity="0.7"/>
+      <path d="M60 58 Q75 70 78 90 L68 92 Q62 74 54 64Z" fill="#0d0520" opacity="0.7"/>
+      <rect x="6" y="30" width="3" height="75" rx="1.5" fill="#1a0a2e"/>
+      <rect x="7" y="30" width="1.5" height="75" rx="0.5" fill={color} opacity="0.6"/>
+      <path d="M9 32 Q22 25 26 38 Q22 42 9 42Z" fill={color} opacity="0.8"/>
+      <ellipse cx="40" cy="126" rx="24" ry="5" fill={color} opacity="0.25"/>
+      <polygon points="8,54 4,42 14,52" fill={color} opacity="0.9"/>
+      <polygon points="72,54 76,42 66,52" fill={color} opacity="0.9"/>
+      <rect x="34" y="48" width="12" height="14" rx="3" fill="#0d0420"/>
+      <ellipse cx="40" cy="36" rx="20" ry="18" fill="#ddd6c8"/>
+      <path d="M20 30 Q20 14 40 12 Q60 14 60 30 L57 40 Q48 34 40 34 Q32 34 23 40Z" fill="#160830" stroke={color} strokeWidth="1.2" strokeOpacity="0.9"/>
+      <polygon points="28,22 24,8 32,20" fill={color} opacity="0.95"/>
+      <polygon points="40,18 40,4 44,18" fill={color} opacity="0.95"/>
+      <polygon points="52,22 56,8 48,20" fill={color} opacity="0.95"/>
+      <ellipse cx="27" cy="38" rx="6" ry="5" fill="#ddd6c8"/>
+      <ellipse cx="53" cy="38" rx="6" ry="5" fill="#ddd6c8"/>
+      <ellipse cx="33" cy="34" rx="7" ry="7" fill="#050210"/>
+      <ellipse cx="47" cy="34" rx="7" ry="7" fill="#050210"/>
+      <ellipse cx="33" cy="34" rx="5" ry="5" fill={color} opacity="0.95"/>
+      <ellipse cx="47" cy="34" rx="5" ry="5" fill={color} opacity="0.95"/>
+      <ellipse cx="33" cy="34" rx="2.5" ry="2.5" fill="#fff"/>
+      <ellipse cx="47" cy="34" rx="2.5" ry="2.5" fill="#fff"/>
+      <ellipse cx="33" cy="34" rx="7" ry="7" fill="none" stroke={color} strokeWidth="1.5" strokeOpacity="0.8"/>
+      <ellipse cx="47" cy="34" rx="7" ry="7" fill="none" stroke={color} strokeWidth="1.5" strokeOpacity="0.8"/>
+      <path d="M37 42 L40 47 L43 42Z" fill="#050210"/>
+      <path d="M26 50 Q40 60 54 50 L54 54 Q40 64 26 54Z" fill="#c8c0b0"/>
+      {[30,35,40,45,50].map((x,i) => <polygon key={i} points={`${x},53 ${x-2.5},60 ${x+2.5},60`} fill="#ddd6c8"/>)}
+    </svg>
+  );
 }
 
-/* ─── Sin-wave HP Bar ─── */
-interface SinBarProps {
-  percent: number;    // 0-100
-  isHP: boolean;
-  width?: number;
-  height?: number;
+function BoneGiantSVG({ hit, targeted, color }: { hit?: boolean; targeted: boolean; color: string }) {
+  return (
+    <svg viewBox="0 0 120 150" fill="none" style={{
+      width: '100%', height: '100%',
+      animation: hit ? 'enemyHit 0.5s ease-out' : 'breathe 4s ease-in-out infinite',
+      filter: targeted ? `drop-shadow(0 0 10px ${color}) drop-shadow(0 0 22px ${color}60)` : 'none',
+      transition: 'filter 0.3s ease',
+    }}>
+      <defs><radialGradient id="bgGlow" cx="50%" cy="60%" r="50%"><stop offset="0%" stopColor={color} stopOpacity="0.25"/><stop offset="100%" stopColor={color} stopOpacity="0"/></radialGradient></defs>
+      <ellipse cx="60" cy="145" rx="40" ry="8" fill={color} opacity="0.2"/>
+      <ellipse cx="60" cy="75" rx="55" ry="72" fill="url(#bgGlow)"/>
+      <path d="M42 112 Q36 130 38 145 L52 145 Q52 130 54 112Z" fill="#c8bfb0"/>
+      <path d="M78 112 Q72 130 68 145 L82 145 Q84 130 84 112Z" fill="#c8bfb0"/>
+      <ellipse cx="45" cy="125" rx="9" ry="7" fill="#e0d8c8" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>
+      <ellipse cx="75" cy="125" rx="9" ry="7" fill="#e0d8c8" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>
+      <path d="M32 65 Q32 110 36 115 L84 115 Q88 110 88 65 Q88 50 60 46 Q32 50 32 65Z" fill="#d4ccbc"/>
+      <path d="M32 65 Q32 110 36 115 L84 115 Q88 110 88 65 Q88 50 60 46 Q32 50 32 65Z" fill={color} fillOpacity="0.08"/>
+      {[0,1,2,3].map(i => (
+        <g key={i}>
+          <path d={`M46 ${68+i*10} Q40 ${73+i*10} 42 ${78+i*10} L46 ${76+i*10}`} stroke={color} strokeWidth="1.2" strokeOpacity="0.5" fill="none"/>
+          <path d={`M74 ${68+i*10} Q80 ${73+i*10} 78 ${78+i*10} L74 ${76+i*10}`} stroke={color} strokeWidth="1.2" strokeOpacity="0.5" fill="none"/>
+          <line x1="46" y1={68+i*10} x2="74" y2={68+i*10} stroke={color} strokeWidth="0.8" strokeOpacity="0.3"/>
+        </g>
+      ))}
+      {[0,1,2,3,4,5].map(i => <ellipse key={i} cx="60" cy={65+i*9} rx="4" ry="3.5" fill="#bfb8a8" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>)}
+      <ellipse cx="30" cy="62" rx="14" ry="12" fill="#d4ccbc" stroke={color} strokeWidth="0.6" strokeOpacity="0.4"/>
+      <ellipse cx="90" cy="62" rx="14" ry="12" fill="#d4ccbc" stroke={color} strokeWidth="0.6" strokeOpacity="0.4"/>
+      <path d="M16 62 Q4 90 8 118 L18 118 Q20 92 30 66Z" fill="#c8bfb0"/>
+      <path d="M104 62 Q116 90 112 118 L102 118 Q100 92 90 66Z" fill="#c8bfb0"/>
+      <ellipse cx="13" cy="122" rx="9" ry="7" fill="#bfb8a8" stroke={color} strokeWidth="0.8" strokeOpacity="0.5"/>
+      <ellipse cx="107" cy="122" rx="9" ry="7" fill="#bfb8a8" stroke={color} strokeWidth="0.8" strokeOpacity="0.5"/>
+      <rect x="52" y="36" width="16" height="14" rx="4" fill="#bfb8a8"/>
+      <ellipse cx="60" cy="22" rx="26" ry="24" fill="#e8e0d0"/>
+      <path d="M58 4 L56 14 L60 18 L62 28" stroke={color} strokeWidth="0.8" strokeOpacity="0.6" fill="none"/>
+      <path d="M38 16 L50 20" stroke="#4a3a3a" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M82 16 L70 20" stroke="#4a3a3a" strokeWidth="2" strokeLinecap="round"/>
+      <ellipse cx="48" cy="23" rx="8" ry="7" fill="#03020a"/>
+      <ellipse cx="72" cy="23" rx="8" ry="7" fill="#03020a"/>
+      <ellipse cx="48" cy="23" rx="5" ry="4.5" fill={color} opacity="0.9"/>
+      <ellipse cx="72" cy="23" rx="5" ry="4.5" fill={color} opacity="0.9"/>
+      <ellipse cx="48" cy="23" rx="2.5" ry="2.5" fill="#fff" opacity="0.95"/>
+      <ellipse cx="72" cy="23" rx="2.5" ry="2.5" fill="#fff" opacity="0.95"/>
+      <path d="M57 30 L60 36 L63 30Z" fill="#03020a"/>
+      <path d="M38 40 Q60 52 82 40" stroke="#d0c8b8" strokeWidth="2" fill="none"/>
+      {[42,50,58,66,74].map((x,i) => <path key={i} d={`M${x} 42 L${x} 49`} stroke="#e8e0d0" strokeWidth="2.2" strokeLinecap="round"/>)}
+      <path d="M38 6 Q28 -8 34 -14 Q42 -2 46 8Z" fill="#8a8278" opacity="0.9"/>
+      <path d="M82 6 Q92 -8 86 -14 Q78 -2 74 8Z" fill="#8a8278" opacity="0.9"/>
+    </svg>
+  );
 }
-function SinBar({ percent, isHP, width = 56, height = 8 }: SinBarProps) {
-  const cls = isHP ? 'sin-bar-hp' : 'sin-bar';
-  const fill = Math.max(0, Math.min(100, percent));
+
+function BoneDragonSVG({ hit, targeted, color }: { hit?: boolean; targeted: boolean; color: string }) {
+  return (
+    <svg viewBox="0 0 140 110" fill="none" style={{
+      width: '100%', height: '100%',
+      animation: hit ? 'enemyHit 0.5s ease-out' : 'breathe 3s ease-in-out infinite 0.8s',
+      filter: targeted ? `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 20px ${color}60)` : `drop-shadow(0 0 3px ${color}50)`,
+      transition: 'filter 0.3s ease',
+    }}>
+      <ellipse cx="80" cy="108" rx="42" ry="5" fill={color} opacity="0.2"/>
+      <path d="M118 80 Q132 65 136 50 Q138 36 130 30 Q122 26 118 38 Q114 52 108 66Z" fill="#c8bfb0"/>
+      <path d="M130 30 L138 22 L128 28Z" fill="#bfb8a8"/>
+      <path d="M38 70 Q60 60 90 62 Q112 64 128 72 Q130 80 126 86 Q108 88 88 86 Q62 84 42 80Z" fill="#d4ccbc"/>
+      <path d="M38 70 Q60 60 90 62 Q112 64 128 72 Q130 80 126 86 Q108 88 88 86 Q62 84 42 80Z" fill={color} fillOpacity="0.07"/>
+      {[[50,63],[62,60],[74,60],[86,61],[98,64],[110,68],[120,73]].map(([x,y],i) => (
+        <polygon key={i} points={`${x},${y} ${x-3},${y-8} ${x+3},${y-8}`} fill="#bfb8a8" stroke={color} strokeWidth="0.5" strokeOpacity="0.5"/>
+      ))}
+      <path d="M72 65 Q40 35 12 8 Q38 28 65 58Z" fill="#100420" stroke={color} strokeWidth="1" strokeOpacity="0.7"/>
+      <path d="M80 62 Q68 25 72 4 Q88 24 90 58Z" fill="#150530" stroke={color} strokeWidth="0.9" strokeOpacity="0.6"/>
+      <path d="M72 64 Q44 38 16 12" stroke={color} strokeWidth="0.8" strokeOpacity="0.6" fill="none"/>
+      <path d="M75 62 Q66 36 70 10" stroke={color} strokeWidth="0.6" strokeOpacity="0.4" fill="none"/>
+      <path d="M40 72 Q28 62 18 50 Q14 42 18 36 Q24 30 32 36 Q40 42 46 60 L42 78Z" fill="#c8bfb0"/>
+      <polygon points="24,48 20,40 28,40" fill="#bfb8a8"/>
+      <polygon points="30,42 27,34 34,34" fill="#bfb8a8"/>
+      <path d="M8 36 Q6 28 10 22 Q16 16 24 20 Q30 24 34 32 Q32 40 24 44 Q14 46 8 36Z" fill="#d4ccbc"/>
+      <path d="M8 32 Q0 28 -4 26 Q0 24 6 28Z" fill="#c8bfb0"/>
+      <path d="M8 38 Q2 44 -2 48 Q4 50 10 44Z" fill="#bfb8a8"/>
+      {[[-2,28],[2,26],[6,27]].map(([x,y],i) => <polygon key={i} points={`${x},${y} ${x-2},${y+7} ${x+2},${y+7}`} fill="#e8e0d0"/>)}
+      {[[0,44],[4,46]].map(([x,y],i) => <polygon key={i} points={`${x},${y} ${x-2},${y-6} ${x+2},${y-6}`} fill="#ddd6c8"/>)}
+      <path d="M16 20 Q12 8 16 2 Q22 8 22 20Z" fill="#8a8278"/>
+      <path d="M22 19 Q22 8 28 4 Q32 10 28 20Z" fill="#8a8278"/>
+      <ellipse cx="22" cy="30" rx="5" ry="5" fill="#050210"/>
+      <ellipse cx="22" cy="30" rx="3.5" ry="3.5" fill={color} opacity="0.95"/>
+      <ellipse cx="23" cy="29" rx="1.5" ry="1.5" fill="#fff"/>
+      <circle cx="22" cy="30" r="5" fill="none" stroke={color} strokeWidth="1.3" strokeOpacity="0.9"/>
+      <path d="M-4 30 Q-14 26 -18 22" stroke={color} strokeWidth="4" strokeOpacity="0.8" fill="none" strokeLinecap="round"/>
+      <path d="M-4 34 Q-16 34 -20 32" stroke={color} strokeWidth="2.5" strokeOpacity="0.55" fill="none" strokeLinecap="round"/>
+      <path d="M-2 38 Q-12 42 -14 46" stroke={color} strokeWidth="1.5" strokeOpacity="0.3" fill="none" strokeLinecap="round"/>
+      <path d="M52 84 Q48 94 44 102 L52 102 Q54 94 60 88Z" fill="#c8bfb0"/>
+      <path d="M78 86 Q76 96 74 102 L82 102 Q82 94 86 90Z" fill="#c8bfb0"/>
+      {[42,46,50].map((x,i) => <polygon key={i} points={`${x},102 ${x-2},110 ${x+2},110`} fill="#bfb8a8"/>)}
+      {[72,76,80].map((x,i) => <polygon key={i} points={`${x},102 ${x-2},110 ${x+2},110`} fill="#bfb8a8"/>)}
+    </svg>
+  );
+}
+
+// ── DAMAGE FLOAT ──────────────────────────────────────────────────────────────
+interface FloatDmg { id: number; x: string; y: string; value: number; crit?: boolean; heal?: boolean; color?: string }
+let floatId = 0;
+
+function DamageFloat({ floats }: { floats: FloatDmg[] }) {
+  return (
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 30 }}>
+      {floats.map(f => (
+        <div key={f.id} style={{
+          position: 'absolute', left: f.x, top: f.y,
+          fontFamily: "'Cinzel', serif",
+          fontSize: f.crit ? 26 : 20, fontWeight: 900,
+          color: f.color || (f.heal ? '#4ade80' : '#fff'),
+          textShadow: `0 0 10px ${f.color || '#fff'}, 0 2px 4px rgba(0,0,0,0.8)`,
+          animation: 'floatDmg 1.1s ease-out forwards',
+          whiteSpace: 'nowrap', letterSpacing: f.crit ? '0.05em' : '0.02em',
+          pointerEvents: 'none',
+        }}>
+          {f.heal ? '+' : ''}{f.value}
+          {f.crit && <span style={{ fontSize: 12, marginLeft: 4, color: '#fbbf24' }}>CRIT</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── TURN ORDER STRIP ──────────────────────────────────────────────────────────
+function TurnOrderStrip() {
+  const items = [
+    { id: 'p0', name: '骸骨騎士', icon: '💀', color: '#8A2BE2', isPlayer: true },
+    { id: 'p1', name: '腐乱兵',   icon: '🧟', color: '#22c55e', isPlayer: true },
+    { id: 'e1', name: '骨巨人',   icon: '💀', color: '#8A2BE2', isPlayer: false },
+    { id: 'p2', name: 'リッチ',   icon: '🧙', color: '#06b6d4', isPlayer: true },
+    { id: 'e0', name: '霊体騎士', icon: '⚔',  color: '#06b6d4', isPlayer: false },
+    { id: 'e2', name: '死骨竜',   icon: '🐉', color: '#ef4444', isPlayer: false },
+  ];
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '4px 14px', overflowX: 'auto' }}>
+      {items.map((item, i) => (
+        <div key={item.id} style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+          animation: `turnChipIn 0.3s ease-out ${i * 0.04}s both`, flexShrink: 0,
+        }}>
+          <div style={{
+            width: i === 0 ? 38 : 28, height: i === 0 ? 38 : 28, borderRadius: '50%',
+            background: item.isPlayer ? `radial-gradient(circle, ${item.color}30, #0a0515)` : 'rgba(200,50,50,0.12)',
+            border: `${i === 0 ? 2.5 : 1.5}px solid ${i === 0 ? item.color : (item.isPlayer ? item.color + '80' : '#ef444460')}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: i === 0 ? 18 : 13,
+            boxShadow: i === 0 ? `0 0 12px ${item.color}80` : 'none',
+            transition: 'all 0.3s ease',
+          }}>{item.icon}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 7, color: i === 0 ? item.color : '#4a3a5a', letterSpacing: '0.04em' }}>
+            {i === 0 ? '▶' : ''}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── BATTLE ARENA ──────────────────────────────────────────────────────────────
+const POSITIONS: Record<string, React.CSSProperties> = {
+  left:   { left: '6%',  width: '30%', alignSelf: 'flex-end', paddingBottom: 12 },
+  center: { left: '32%', width: '38%', alignSelf: 'flex-end', paddingBottom: 4  },
+  right:  { left: '64%', width: '32%', alignSelf: 'flex-end', paddingBottom: 16 },
+};
+
+function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShake }: {
+  enemies: EnemyState[];
+  onTargetEnemy: (id: number) => void;
+  demonized: boolean;
+  flashColor: string | null;
+  screenShake: boolean;
+}) {
+  return (
+    <div style={{
+      position: 'relative', flex: 1,
+      background: demonized
+        ? 'linear-gradient(180deg, #1a0208 0%, #0d0108 100%)'
+        : 'linear-gradient(180deg, #0d0420 0%, #07021a 100%)',
+      overflow: 'hidden',
+      animation: screenShake ? 'shake 0.4s ease-out' : 'none',
+      transition: 'background 0.8s ease',
+    }}>
+      {/* SVG terrain background */}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 393 260" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <radialGradient id="arenaGlow" cx="50%" cy="100%" r="60%">
+            <stop offset="0%" stopColor={demonized ? '#3a0810' : '#1a0838'} stopOpacity="0.9"/>
+            <stop offset="100%" stopColor={demonized ? '#0d0208' : '#05021a'} stopOpacity="1"/>
+          </radialGradient>
+        </defs>
+        <rect width="393" height="260" fill="url(#arenaGlow)"/>
+        <path d="M0 200 Q100 185 200 195 Q300 205 393 190 L393 260 L0 260Z" fill="#0a0520" opacity="0.8"/>
+        <path d="M0 210 Q100 198 200 205 Q300 212 393 200 L393 260 L0 260Z" fill="#07031a" opacity="0.9"/>
+        <path d="M80 212 Q120 208 160 210 Q200 212 240 208 Q280 205 320 210"
+          stroke={demonized ? '#dc2626' : '#8A2BE2'} strokeWidth="1" strokeOpacity="0.3" fill="none"/>
+        {[[30,180],[90,160],[150,175],[230,155],[300,165],[360,172]].map(([x,y],i) => (
+          <polygon key={i} points={`${x},${y} ${x-35},210 ${x+35},210`} fill="#0d0520" opacity={0.6+i*0.05}/>
+        ))}
+        {[...Array(20)].map((_,i) => (
+          <circle key={i} cx={(i*47+13)%393} cy={(i*31+5)%120} r={0.8+((i*7)%10)/8} fill="#fff" opacity={0.2+((i*3)%8)/20}/>
+        ))}
+        {demonized && (
+          <ellipse cx="196" cy="260" rx="180" ry="60" fill="#dc2626" opacity="0.08"/>
+        )}
+        {[...Array(10)].map((_,i) => (
+          <circle key={i} cx={30+i*38} cy={205+Math.sin(i)*5} r={1.5} fill={demonized ? '#dc2626' : '#8A2BE2'} opacity="0.5"/>
+        ))}
+      </svg>
+
+      {/* Demonize overlay */}
+      {demonized && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse at center bottom, rgba(220,38,38,0.12), transparent 70%)',
+          pointerEvents: 'none',
+        }}/>
+      )}
+
+      {/* Flash overlay */}
+      {flashColor && (
+        <div style={{
+          position: 'absolute', inset: 0, background: flashColor,
+          animation: 'screenFlash 0.5s ease-out forwards', pointerEvents: 'none', zIndex: 25,
+        }}/>
+      )}
+
+      {/* Enemy sprites */}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end' }}>
+        {enemies.filter(e => e.hp > 0).map(enemy => (
+          <div key={enemy.id} onClick={() => onTargetEnemy(enemy.id)}
+            style={{
+              position: 'absolute', ...POSITIONS[enemy.pos],
+              cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4,
+              transform: `scale(${enemy.size})`, transformOrigin: 'bottom center',
+            }}>
+            {/* HP bar */}
+            <div style={{ width: '100%', height: 5, background: 'rgba(0,0,0,0.5)', borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)', marginBottom: 4 }}>
+              <div style={{
+                width: `${(enemy.hp / enemy.maxHp) * 100}%`, height: '100%',
+                background: enemy.hp / enemy.maxHp > 0.5
+                  ? 'linear-gradient(90deg,#22c55e,#4ade80)'
+                  : enemy.hp / enemy.maxHp > 0.25
+                  ? 'linear-gradient(90deg,#f59e0b,#fbbf24)'
+                  : 'linear-gradient(90deg,#ef4444,#f87171)',
+                borderRadius: 3, boxShadow: '0 0 6px rgba(255,255,255,0.3)', transition: 'width 0.5s ease',
+              }}/>
+            </div>
+            {/* Enemy name */}
+            <div style={{
+              textAlign: 'center', fontFamily: "'Cinzel', serif", fontSize: 8.5, fontWeight: 600,
+              color: enemy.targeted ? enemy.color : '#6b5f7a',
+              letterSpacing: '0.06em',
+              textShadow: enemy.targeted ? `0 0 8px ${enemy.color}` : 'none',
+              transition: 'color 0.2s',
+            }}>{enemy.name}</div>
+            {/* Target marker */}
+            {enemy.targeted && (
+              <div style={{ position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)', fontSize: 14, animation: 'breathe 1s ease-in-out infinite' }}>▼</div>
+            )}
+            {/* SVG sprite */}
+            <div style={{ width: '100%', aspectRatio: '1/1.15' }}>
+              {enemy.id === 0 && <WraithKnightSVG hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
+              {enemy.id === 1 && <BoneGiantSVG    hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
+              {enemy.id === 2 && <BoneDragonSVG   hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── BATTLE LOG ────────────────────────────────────────────────────────────────
+function BattleLog({ lines }: { lines: string[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [lines]);
+  return (
+    <div ref={ref} style={{
+      padding: '6px 14px', height: 58,
+      background: 'linear-gradient(180deg,rgba(3,1,12,0.6),rgba(5,2,16,0.85))',
+      borderTop: '1px solid rgba(255,255,255,0.05)',
+      overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 2,
+    }}>
+      {lines.slice(-3).map((line, i) => (
+        <div key={i} style={{
+          fontFamily: "'Inter', sans-serif", fontSize: 10, lineHeight: 1.4,
+          color: i === lines.slice(-3).length - 1 ? '#e2d8f0' : '#6b5f7a',
+          animation: i === lines.slice(-3).length - 1 ? 'logFade 0.3s ease-out' : 'none',
+        }}>{line}</div>
+      ))}
+    </div>
+  );
+}
+
+// ── PARTY STATUS BAR ──────────────────────────────────────────────────────────
+interface BattlePartyMember {
+  id: string; name: string; icon: string;
+  hp: number; maxHp: number; mp: number; maxMp: number;
+  color: string; active: boolean;
+}
+
+function PartyStatusBar({ party, demonized }: { party: BattlePartyMember[]; demonized: boolean }) {
+  return (
+    <div style={{
+      padding: '6px 12px', display: 'flex', flexDirection: 'column', gap: 4,
+      background: 'rgba(5,2,14,0.85)', borderTop: '1px solid rgba(255,255,255,0.06)',
+    }}>
+      {party.map(member => (
+        <div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: member.hp <= 0 ? 0.35 : 1 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+            background: member.active ? `radial-gradient(circle, ${member.color}30, #0a0515)` : 'rgba(255,255,255,0.04)',
+            border: `${member.active ? 2 : 1}px solid ${member.active ? member.color : member.color + '40'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
+            boxShadow: member.active ? `0 0 10px ${member.color}60` : 'none',
+          }}>{member.icon}</div>
+          <div style={{ width: 52, flexShrink: 0, fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600, color: member.active ? '#f0ebff' : '#6b5f7a' }}>
+            {member.name}
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#6b5f7a' }}>HP</div>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: '#f87171' }}>
+                {member.hp}<span style={{ color: '#4a3a5a', fontSize: 8 }}>/{member.maxHp}</span>
+              </div>
+            </div>
+            <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{
+                width: `${(member.hp / member.maxHp) * 100}%`, height: '100%',
+                background: member.hp / member.maxHp > 0.5 ? 'linear-gradient(90deg,#dc2626,#f87171)'
+                  : member.hp / member.maxHp > 0.25 ? '#f59e0b' : '#dc2626',
+                borderRadius: 2, transition: 'width 0.4s ease',
+              }}/>
+            </div>
+          </div>
+          <div style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#6b5f7a' }}>MP</div>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: '#60a5fa' }}>{member.mp}</div>
+            </div>
+            <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{
+                width: `${(member.mp / member.maxMp) * 100}%`, height: '100%',
+                background: 'linear-gradient(90deg,#1d4ed8,#60a5fa)',
+                borderRadius: 2, transition: 'width 0.4s ease',
+              }}/>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── SOUL GAUGE ────────────────────────────────────────────────────────────────
+function SoulGauge({ value, demonized }: { value: number; demonized: boolean }) {
+  const pct = Math.min(100, Math.max(0, value));
+  const full = pct >= 100;
+  return (
+    <div style={{
+      padding: '5px 14px', display: 'flex', alignItems: 'center', gap: 10,
+      background: demonized ? 'rgba(30,4,4,0.9)' : 'rgba(4,2,14,0.9)',
+      borderTop: '1px solid rgba(255,255,255,0.05)',
+      transition: 'background 0.6s ease',
+    }}>
+      <div style={{
+        fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
+        color: demonized ? '#dc2626' : '#8A2BE2', letterSpacing: '0.1em', flexShrink: 0,
+        textShadow: full ? `0 0 8px ${demonized ? '#dc2626' : '#8A2BE2'}` : 'none',
+      }}>☠ SOUL</div>
+      <div style={{
+        flex: 1, height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden',
+        border: `1px solid ${full ? (demonized ? '#dc262660' : '#8A2BE260') : 'rgba(255,255,255,0.08)'}`,
+        boxShadow: full ? `0 0 12px ${demonized ? '#dc262680' : '#8A2BE280'}` : 'none',
+      }}>
+        <div style={{
+          width: `${pct}%`, height: '100%', borderRadius: 4,
+          background: demonized
+            ? 'linear-gradient(90deg,#7f1d1d,#dc2626,#ef4444)'
+            : 'linear-gradient(90deg,#4a0e8a,#8A2BE2,#c084fc,#8A2BE2)',
+          backgroundSize: '200% 100%',
+          animation: full ? 'soulFill 1.5s linear infinite' : 'none',
+          boxShadow: full ? '0 0 10px #8A2BE2' : 'none',
+          transition: 'width 0.6s ease',
+        }}/>
+      </div>
+      <div style={{
+        fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
+        color: full ? (demonized ? '#dc2626' : '#c084fc') : '#4a3a5a', flexShrink: 0,
+      }}>{full ? (demonized ? '解放中' : 'MAX') : `${Math.round(pct)}%`}</div>
+    </div>
+  );
+}
+
+// ── COMMAND BUTTON ─────────────────────────────────────────────────────────────
+function CommandButton({ label, sublabel, icon, enabled, color, onClick, glow, demonized }: {
+  label: string; sublabel?: string; icon: string; enabled: boolean;
+  color: string; onClick: () => void; glow?: boolean; demonized?: boolean;
+}) {
+  const [pressed, setPressed] = useState(false);
   return (
     <div
-      className="relative overflow-hidden rounded-[3px]"
-      style={{ width, height, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(139,0,255,0.25)' }}
-    >
-      <div
-        className={`absolute inset-y-0 left-0 rounded-[3px] bar-shimmer ${cls}`}
-        style={{ width: `${fill}%`, transition: 'width 0.35s ease' }}
-      />
-      {/* Wave shimmer thin overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `linear-gradient(90deg, transparent ${fill - 8}%, rgba(255,255,255,0.12) ${fill}%, transparent ${fill + 4}%)`,
-          transition: 'background 0.35s ease',
-        }}
-      />
-    </div>
-  );
-}
-
-/* ─── Floating Damage Number ─── */
-interface DmgNumber { id: number; value: number; isCrit: boolean; x: number }
-function DamageNumber({ value, isCrit }: { value: number; isCrit: boolean }) {
-  return (
-    <motion.div
-      initial={{ opacity: 1, y: 0, scale: isCrit ? 0.5 : 0.8 }}
-      animate={{
-        opacity: 0,
-        y: -52,
-        scale: isCrit ? 1.6 : 1.1,
-      }}
-      transition={{ duration: isCrit ? 0.7 : 0.6, ease: 'easeOut' }}
-      className={`absolute pointer-events-none select-none font-cinzel ${isCrit ? 'anim-crit' : ''}`}
+      onClick={() => { if (!enabled) return; setPressed(true); setTimeout(() => setPressed(false), 150); onClick(); }}
       style={{
-        fontFamily: "'Cinzel Decorative', serif",
-        fontSize: isCrit ? '22px' : '16px',
-        fontWeight: 900,
-        color: isCrit ? '#FF00FF' : '#FF5555',
-        textShadow: isCrit
-          ? '0 0 14px rgba(255,0,255,0.9), 0 0 30px rgba(139,0,255,0.7)'
-          : '0 0 8px rgba(255,50,50,0.6)',
-        top: '20%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 40,
-        whiteSpace: 'nowrap',
-        letterSpacing: '0.05em',
-      }}
-    >
-      {isCrit ? `⚡${value}!!` : `-${value}`}
-    </motion.div>
-  );
-}
-
-/* ─── Timeline Orb ─── */
-interface TimelineOrbProps { label: string; isPlayer: boolean; isFirst: boolean }
-function TimelineOrb({ label, isPlayer, isFirst }: TimelineOrbProps) {
-  return (
-    <div className="flex items-center gap-1 shrink-0">
-      <div
-        className={`px-2.5 py-0.5 flex items-center justify-center rounded-lg text-[9px] font-black tracking-wider min-w-[30px] transition-all ${
-          isFirst ? 'scale-110' : 'scale-100'
-        }`}
-        style={
-          isPlayer
-            ? {
-                background: 'linear-gradient(135deg, rgba(139,0,255,0.35), rgba(80,0,180,0.2))',
-                border: `1px solid ${isFirst ? 'rgba(188,0,251,0.9)' : 'rgba(188,0,251,0.45)'}`,
-                color: '#E0B0FF',
-                boxShadow: isFirst
-                  ? '0 0 12px rgba(188,0,251,0.6), inset 0 0 8px rgba(0,0,0,0.4)'
-                  : '0 0 5px rgba(188,0,251,0.2)',
-              }
-            : {
-                background: 'linear-gradient(135deg, rgba(139,0,0,0.3), rgba(80,0,0,0.2))',
-                border: `1px solid ${isFirst ? 'rgba(255,50,50,0.9)' : 'rgba(139,0,0,0.5)'}`,
-                color: '#FF8888',
-                boxShadow: isFirst ? '0 0 10px rgba(255,50,50,0.5)' : 'none',
-              }
-        }
-      >
-        {label}
-      </div>
-      <ChevronRight size={9} style={{ color: 'rgba(139,0,255,0.35)' }} className="shrink-0" />
+        flex: 1, padding: '10px 6px',
+        background: !enabled ? `${color}12`
+          : pressed ? `${color}35`
+          : demonized ? `linear-gradient(135deg,${color}28,${color}12)`
+          : `linear-gradient(135deg,${color}22,${color}0e)`,
+        border: `1px solid ${enabled ? (glow ? color : color + '60') : color + '35'}`,
+        borderRadius: 14, cursor: enabled ? 'pointer' : 'default',
+        opacity: enabled ? 1 : 0.55,
+        transform: pressed ? 'scale(0.95)' : 'scale(1)',
+        transition: 'all 0.15s ease',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+        boxShadow: glow && enabled ? `0 0 16px ${color}50, inset 0 0 10px ${color}18` : 'none',
+        animation: enabled && glow ? 'demonPulse 1.5s ease-in-out infinite' : 'none',
+        position: 'relative', overflow: 'hidden',
+      }}>
+      {enabled && glow && (
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: 14,
+          background: `linear-gradient(90deg,transparent,${color}18,transparent)`,
+          backgroundSize: '200% 100%', animation: 'shimmer 1.8s infinite',
+        }}/>
+      )}
+      <div style={{ fontSize: 20 }}>{icon}</div>
+      <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, fontWeight: 700, color: enabled ? '#f0ebff' : `${color}70`, letterSpacing: '0.04em', lineHeight: 1 }}>{label}</div>
+      {sublabel && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: enabled ? color + '90' : `${color}45`, letterSpacing: '0.08em' }}>{sublabel}</div>}
     </div>
   );
 }
 
-/* ─── Main Component ─── */
+// ── SKILL BUTTON ──────────────────────────────────────────────────────────────
+function SkillButton({ skill, mp, onClick, demonized }: {
+  skill: typeof SKILLS[0] | typeof DEMON_SKILLS[0]; mp: number;
+  onClick: (skill: typeof SKILLS[0] | typeof DEMON_SKILLS[0]) => void;
+  demonized: boolean;
+}) {
+  const canUse = demonized ? true : (('mp' in skill) ? mp >= skill.mp : true);
+  return (
+    <div onClick={() => canUse && onClick(skill)} style={{
+      padding: '10px 8px',
+      background: canUse ? 'linear-gradient(135deg,rgba(138,43,226,0.2),rgba(138,43,226,0.08))' : 'rgba(255,255,255,0.03)',
+      border: `1px solid ${canUse ? '#8A2BE260' : 'rgba(255,255,255,0.06)'}`,
+      borderRadius: 12, cursor: canUse ? 'pointer' : 'default',
+      opacity: canUse ? 1 : 0.35,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+      animation: 'skillReveal 0.25s ease-out both', flex: 1,
+    }}>
+      <div style={{ fontSize: 22 }}>{skill.icon}</div>
+      <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700, color: canUse ? '#f0ebff' : '#4a3a5a', textAlign: 'center', lineHeight: 1.2 }}>{skill.name}</div>
+      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: canUse ? '#60a5fa' : '#2a1a3a', display: 'flex', alignItems: 'center', gap: 2 }}>
+        {demonized ? <span style={{ color: '#ef4444' }}>{'cost' in skill ? skill.cost : ''}</span> : `MP ${'mp' in skill ? skill.mp : 0}`}
+      </div>
+    </div>
+  );
+}
+
+// ── SYSTEM BAR ────────────────────────────────────────────────────────────────
+function SystemBar({ auto, speed, onAuto, onSpeed, onEscape, canEscape }: {
+  auto: boolean; speed: number;
+  onAuto: () => void; onSpeed: () => void;
+  onEscape: () => void; canEscape: boolean;
+}) {
+  return (
+    <div style={{
+      padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center',
+      background: 'rgba(3,1,12,0.9)', borderTop: '1px solid rgba(255,255,255,0.04)',
+    }}>
+      <div onClick={onAuto} style={{
+        padding: '5px 10px', borderRadius: 8,
+        background: auto ? 'rgba(138,43,226,0.3)' : 'rgba(255,255,255,0.05)',
+        border: `1px solid ${auto ? '#8A2BE280' : 'rgba(255,255,255,0.08)'}`,
+        fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
+        color: auto ? '#c084fc' : '#6b5f7a',
+        cursor: 'pointer', letterSpacing: '0.06em',
+        boxShadow: auto ? '0 0 10px rgba(138,43,226,0.3)' : 'none',
+        transition: 'all 0.2s ease',
+      }}>AUTO {auto ? 'ON' : 'OFF'}</div>
+      <div onClick={onSpeed} style={{
+        padding: '5px 10px', borderRadius: 8,
+        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+        fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
+        color: '#8b7da8', cursor: 'pointer', letterSpacing: '0.06em',
+        transition: 'all 0.2s ease',
+      }}>×{speed}</div>
+      <div style={{ flex: 1 }}/>
+      <div onClick={canEscape ? onEscape : undefined} style={{
+        padding: '5px 12px', borderRadius: 8,
+        background: canEscape ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${canEscape ? '#ef444440' : 'rgba(255,255,255,0.05)'}`,
+        fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
+        color: canEscape ? '#f87171' : '#2a1a3a',
+        cursor: canEscape ? 'pointer' : 'default',
+        opacity: canEscape ? 1 : 0.4, letterSpacing: '0.06em',
+      }}>逃走</div>
+    </div>
+  );
+}
+
+// ── MAIN BATTLE CANVAS ────────────────────────────────────────────────────────
 export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef    = useRef<HTMLDivElement>(null);
-  const { player, party, updateMP, updateHP, actionTrigger, setActionTrigger, battleLogs, addBattleLog } = useGameStore();
-  const appRef       = useRef<PIXI.Application | null>(null);
-  const engineRef    = useRef<BattleEngine | null>(null);
-  const mountedRef   = useRef(true);
-  const masterData   = MasterDataService.getInstance();
+  const { player, party } = useGameStore();
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  type CommandState = 'IDLE' | 'SKILL_SELECT';
-  const [commandState, setCommandState] = useState<CommandState>('IDLE');
+  const [enemies, setEnemies] = useState<EnemyState[]>(INIT_ENEMIES.map(e => ({ ...e })));
+  const [soul, setSoul] = useState(45);
+  const [phase, setPhase] = useState<'playerTurn' | 'skillMenu' | 'itemMenu' | 'animating' | 'enemyTurn'>('playerTurn');
+  const [demonized, setDemonized] = useState(false);
   const [demonTurns, setDemonTurns] = useState(0);
-  const isDemonMode = demonTurns > 0;
-
-  const [dmgNumbers, setDmgNumbers] = useState<DmgNumber[]>([]);
-  const dmgIdRef = useRef(0);
+  const [auto, setAuto] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [log, setLog] = useState(['戦闘開始！骸骨山脈の番人たちが立ちはだかる。', '骸骨騎士のターン。コマンドを選択しろ。']);
+  const [floats, setFloats] = useState<FloatDmg[]>([]);
+  const [flashColor, setFlashColor] = useState<string | null>(null);
+  const [screenShake, setScreenShake] = useState(false);
 
   const [showResult, setShowResult] = useState(false);
-  const [battleResult, setBattleResult] = useState<{
-    isVictory: boolean; expGained: number; itemsGained: string[]; monstersGained: string[];
-  } | null>(null);
+  const [battleResult, setBattleResult] = useState<{ isVictory: boolean; expGained: number; itemsGained: string[]; monstersGained: string[] } | null>(null);
 
-  const [enemies, setEnemies] = useState<(MonsterData & { stats: { maxHp: number } })[]>([
+  // Build battle party from store
+  const battleParty: BattlePartyMember[] = [
     {
-      id: 'target_1', name: 'ゴブリン', tribe: 'UNDEAD', cost: 4,
-      stats: { hp: 120, maxHp: 120, mp: 0, atk: 15, def: 5, matk: 0, mdef: 2, agi: 8, luck: 0, tec: 5 },
-      resistances: { LIGHT: -50, DARK: 50 },
+      id: 'player', name: player?.name ?? '骸骨騎士', icon: '💀',
+      hp: player?.stats?.hp ?? 820, maxHp: (player?.stats as any)?.maxHp ?? 820,
+      mp: player?.stats?.mp ?? 60,  maxMp: (player?.stats as any)?.maxMp ?? 80,
+      color: '#8A2BE2', active: true,
     },
-    {
-      id: 'target_2', name: 'ゾンビ', tribe: 'UNDEAD', cost: 5,
-      stats: { hp: 180, maxHp: 180, mp: 0, atk: 20, def: 10, matk: 0, mdef: 0, agi: 2, luck: 0, tec: 3 },
-      resistances: { LIGHT: -50, DARK: 50 },
-    },
-  ]);
+    ...party.slice(0, 2).map((m, i): BattlePartyMember => m ? {
+      id: m.id, name: m.name, icon: m.tribe === 'UNDEAD' ? '🧟' : '👻',
+      hp: m.stats?.hp ?? 580, maxHp: (m.stats as any)?.maxHp ?? m.stats?.hp ?? 580,
+      mp: m.stats?.mp ?? 40,  maxMp: (m.stats as any)?.maxMp ?? 60,
+      color: ['#22c55e','#06b6d4'][i], active: false,
+    } : {
+      id: `slot_${i}`, name: `使役魔${i+1}`, icon: '💀',
+      hp: 0, maxHp: 100, mp: 0, maxMp: 100, color: '#4a3a5a', active: false,
+    }),
+  ];
 
-  const target = enemies.find(e => e.stats.hp > 0) || enemies[0];
-  const timeline = ['自', '敵A', '自', '自', '敵B'];
+  const speedMs = 900 / speed;
+  const currentMp = battleParty[0]?.mp ?? 0;
+  const soulFull = soul >= 100;
 
-  const currentJob = player?.jobs.find(j => j.jobId === player?.currentJobId);
-  const availableSkills = currentJob && player
-    ? (masterData.getJob(player.currentJobId)?.skills || [])
-        .filter((s: any) => s.level <= currentJob.level)
-        .map((s: any) => masterData.getSkill(s.skillId))
-        .filter(Boolean)
-    : [];
+  const addLog = useCallback((line: string) => setLog(prev => [...prev, line]), []);
 
-  const battleSkills = useMemo(() => {
-    if (isDemonMode) {
-      return [
-        { id: 'demon_rend',  name: '魔神裂断',   description: '破滅的ダメージ', mpCost: 0, power: 400 },
-        { id: 'demon_roar',  name: '終末の咆哮',  description: '全体ダメージ',   mpCost: 0, power: 250 },
-        { id: 'demon_drain', name: 'ソウルドレイン', description: 'HP吸収',       mpCost: 0, power: 150 },
-      ];
-    }
-    return availableSkills;
-  }, [availableSkills, isDemonMode]);
+  function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
+    const id = ++floatId;
+    setFloats(prev => [...prev, { id, x, y, value, ...opts }]);
+    setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), 1200);
+  }
 
-  const performTactileFeedback = () => {
-    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(20);
-  };
+  function doEnemyHit(eid: number) {
+    setEnemies(prev => prev.map(e => e.id === eid ? { ...e, hit: true } : e));
+    setTimeout(() => setEnemies(prev => prev.map(e => ({ ...e, hit: false }))), 500);
+  }
 
-  /* ── PixiJS resize ── */
-  const resize = useCallback(() => {
-    if (!appRef.current || !containerRef.current) return;
-    const { clientWidth, clientHeight } = containerRef.current;
-    let w = clientWidth, h = clientWidth * (9 / 16);
-    if (h > clientHeight) { h = clientHeight; w = clientHeight * (16 / 9); }
-    appRef.current.renderer.resize(w, h);
-    appRef.current.stage.scale.set(w / 800);
-  }, []);
+  function damageEnemy(targetId: number, dmg: number, opts: { color?: string } = {}) {
+    const isCrit = Math.random() < 0.2;
+    const finalDmg = isCrit ? Math.round(dmg * 1.5) : dmg;
+    doEnemyHit(targetId);
+    const positions: Record<number, { x: string; y: string }> = { 0: { x: '12%', y: '18%' }, 1: { x: '36%', y: '12%' }, 2: { x: '62%', y: '16%' } };
+    const pos = positions[targetId] || { x: '40%', y: '15%' };
+    spawnFloat(pos.x, pos.y, finalDmg, { crit: isCrit, color: opts.color || '#fff' });
+    setEnemies(prev => prev.map(e => e.id === targetId ? { ...e, hp: Math.max(0, e.hp - finalDmg) } : e));
+    return finalDmg;
+  }
 
-  /* ── PixiJS init ── */
-  useEffect(() => {
-    mountedRef.current = true;
-    if (!canvasRef.current || !player) return;
-    const initPixi = async () => {
-      const app = new PIXI.Application();
-      try {
-        await app.init({
-          width: 800, height: 450,
-          backgroundAlpha: 0,
-          antialias: true,
-          resolution: window.devicePixelRatio || 1,
-          autoDensity: true,
-        });
-        if (!mountedRef.current) { app.destroy(true, { children: true }); return; }
-        appRef.current = app;
-        canvasRef.current?.appendChild(app.canvas);
-        engineRef.current = new BattleEngine(player, party);
+  function getTargetId() {
+    const t = enemies.find(e => e.targeted && e.hp > 0);
+    return t ? t.id : (enemies.find(e => e.hp > 0)?.id ?? 0);
+  }
 
-        // Void nebula BG
-        const bg = new PIXI.Graphics();
-        bg.rect(0, 0, 800, 450).fill({ color: 0x060310 });
-        app.stage.addChild(bg);
-
-        // Floating particle system
-        const particles: { g: PIXI.Graphics; vx: number; vy: number; alpha: number; r: number }[] = [];
-        for (let i = 0; i < 35; i++) {
-          const g = new PIXI.Graphics();
-          const r = Math.random() * 1.5 + 0.5;
-          g.circle(0, 0, r).fill({ color: 0x8B00FF, alpha: Math.random() * 0.6 + 0.2 });
-          g.x = Math.random() * 800;
-          g.y = Math.random() * 450;
-          app.stage.addChild(g);
-          particles.push({ g, vx: (Math.random() - 0.5) * 0.3, vy: -Math.random() * 0.4 - 0.1, alpha: g.alpha, r });
-        }
-
-        app.ticker.add(() => {
-          particles.forEach(p => {
-            p.g.x += p.vx;
-            p.g.y += p.vy;
-            if (p.g.y < -5) p.g.y = 455;
-            if (p.g.x < -5) p.g.x = 805;
-            if (p.g.x > 805) p.g.x = -5;
-          });
-        });
-
-        resize();
-        window.addEventListener('resize', resize);
-      } catch (e) { console.error('PixiJS init error:', e); }
-    };
-    initPixi();
-    return () => {
-      mountedRef.current = false;
-      window.removeEventListener('resize', resize);
-      if (appRef.current) { appRef.current.destroy(true, { children: true }); appRef.current = null; }
-    };
-  }, [player, party, resize]);
-
-  /* ── Action trigger ── */
-  useEffect(() => {
-    if (actionTrigger && !isProcessing) {
-      handleAction(actionTrigger.type, actionTrigger.skillId);
-      setActionTrigger(null);
-    }
-  }, [actionTrigger, isProcessing, setActionTrigger]);
-
-  /* ── Spawn ripple at canvas center ── */
-  const triggerRipple = useCallback((isCrit = false) => {
-    if (!appRef.current) return;
-    const cx = 400, cy = 225;
-    const color = isCrit ? 0xFF00FF : (isDemonMode ? 0xFF0000 : 0x8B00FF);
-    spawnRipple(appRef.current, cx, cy, color);
-    if (isCrit) {
-      setTimeout(() => spawnRipple(appRef.current!, cx, cy, 0xBC00FB), 120);
-      setTimeout(() => spawnRipple(appRef.current!, cx, cy, 0x8B00FF), 240);
-    }
-  }, [isDemonMode]);
-
-  /* ── Handle action ── */
-  const handleAction = async (type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', skillId?: string) => {
-    if (isProcessing || !engineRef.current || !appRef.current || !mountedRef.current) return;
-    setIsProcessing(true);
-
-    const logs = engineRef.current.simulateAction(type, target, skillId);
-    for (const log of logs) {
-      if (!mountedRef.current) break;
-      const isCrit = Math.random() < 0.25;
-
-      let logStr = `${log.actorName}の`;
-      if (log.action === 'PHYSICAL_ATTACK') logStr += isDemonMode ? '殲滅斬！' : '通常攻撃！';
-      if (log.action === 'MAGIC_SKILL')    logStr += isDemonMode ? '魔神技発動！' : 'スキル発動！';
-      if (log.action === 'MONSTER_ATTACK') logStr += '追撃！';
-      addBattleLog(logStr);
-
-      if (log.damage && log.targetName === target.name) {
-        triggerRipple(isCrit);
-        // spawn floating damage number
-        const id = ++dmgIdRef.current;
-        setDmgNumbers(prev => [...prev, { id, value: log.damage!, isCrit, x: 50 }]);
-        setTimeout(() => setDmgNumbers(prev => prev.filter(d => d.id !== id)), 900);
-
-        setEnemies(prev => prev.map(e => {
-          if (e.id === target.id) return { ...e, stats: { ...e.stats, hp: Math.max(0, e.stats.hp - (log.damage || 0)) } };
-          return e;
-        }));
-        addBattleLog(`${target.name}に ${isCrit ? '⚡' : ''}${log.damage}${isCrit ? '!!(CRITICAL)' : ''} のダメージ！`);
-
-        if (target.stats.hp - (log.damage || 0) <= 0) {
-          addBattleLog(`${target.name}を撃破！魂石を1個抽出した…`);
-        }
+  function endPlayerTurn() {
+    if (demonized) {
+      const newTurns = demonTurns - 1;
+      if (newTurns <= 0) {
+        setDemonized(false);
+        setDemonTurns(0);
+        addLog('魔神化が解除された。通常形態に戻る。');
+      } else {
+        setDemonTurns(newTurns);
       }
-
-      if (log.playerMP !== undefined) updateMP(log.playerMP);
-      if (log.playerHP !== undefined) updateHP(log.playerHP);
-      await new Promise(r => setTimeout(r, 450));
     }
+    setSoul(prev => Math.min(100, prev + (demonized ? -20 : 10)));
+    setTimeout(() => runEnemyTurn(), speedMs * 0.4);
+  }
 
-    const aliveEnemies = enemies.filter(e => e.id !== target.id || e.stats.hp - (logs[0]?.damage || 0) > 0);
-    if (mountedRef.current && aliveEnemies.length === 0) {
-      setBattleResult({ isVictory: true, expGained: 150, itemsGained: ['錆びたショートソード'], monstersGained: ['コウモリ'] });
-      setTimeout(() => { if (mountedRef.current) setShowResult(true); }, 800);
+  function runEnemyTurn() {
+    setPhase('enemyTurn');
+    const alive = enemies.filter(e => e.hp > 0);
+    if (alive.length === 0) {
+      setBattleResult({ isVictory: true, expGained: 800, itemsGained: ['骨の欠片'], monstersGained: [] });
+      setShowResult(true);
+      return;
     }
-    setIsProcessing(false);
-  };
+    let delay = 0;
+    alive.forEach((enemy) => {
+      delay += speedMs * 0.55;
+      setTimeout(() => {
+        const dmg = Math.round(enemy.atk * (0.8 + Math.random() * 0.4));
+        spawnFloat('42%', '58%', dmg, { color: '#f87171' });
+        addLog(`${enemy.name}の攻撃！ 骸骨騎士に ${dmg}ダメージ！`);
+        setFlashColor('rgba(239,68,68,0.25)');
+        setTimeout(() => setFlashColor(null), 300);
+        setScreenShake(true);
+        setTimeout(() => setScreenShake(false), 450);
+      }, delay);
+    });
+    setTimeout(() => {
+      setPhase('playerTurn');
+      addLog('骸骨騎士のターン。コマンドを選択しろ。');
+    }, delay + speedMs * 0.4);
+  }
 
-  /* ── Button tap handler (triggers ripple + action) ── */
-  const onBtnTap = useCallback((e: React.MouseEvent, action: () => void) => {
-    performTactileFeedback();
-    // Ripple at pointer position within canvas
-    if (appRef.current && canvasRef.current) {
-      const rect = canvasRef.current.getBoundingClientRect();
-      const scaleX = 800 / rect.width;
-      const scaleY = 450 / rect.height;
-      const x = (e.clientX - rect.left) * scaleX;
-      const y = (e.clientY - rect.top)  * scaleY;
-      spawnRipple(appRef.current, x, y, isDemonMode ? 0xFF0000 : 0x8B00FF);
+  function handleAttack() {
+    if (phase !== 'playerTurn') return;
+    setPhase('animating');
+    const tid = getTargetId();
+    const enemy = enemies.find(e => e.id === tid);
+    const dmg = demonized ? Math.round(1500 * (0.9 + Math.random() * 0.2)) : Math.round(1500 * (0.75 + Math.random() * 0.25));
+    addLog(demonized ? `殲滅！ ${enemy?.name}に圧倒的攻撃！` : `骸骨騎士の攻撃！ ${enemy?.name}を狙う！`);
+    setTimeout(() => {
+      damageEnemy(tid, dmg, { color: demonized ? '#dc2626' : '#f0ebff' });
+      if (demonized) { setFlashColor('rgba(220,38,38,0.3)'); setTimeout(() => setFlashColor(null), 350); }
+      setTimeout(() => {
+        addLog(`${enemy?.name}に ${dmg}ダメージ！`);
+        setPhase('playerTurn');
+        endPlayerTurn();
+      }, speedMs * 0.4);
+    }, speedMs * 0.3);
+  }
+
+  function handleSkill(skill: typeof SKILLS[0] | typeof DEMON_SKILLS[0]) {
+    setPhase('animating');
+    const targets = (skill as any).aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
+    addLog(`${demonized ? '魔神技' : '術'}発動！ ${skill.name}！`);
+    setFlashColor('rgba(138,43,226,0.3)');
+    setTimeout(() => setFlashColor(null), 400);
+    setTimeout(() => {
+      targets.forEach((tid, i) => {
+        setTimeout(() => {
+          const dmg = Math.round(skill.power * (0.85 + Math.random() * 0.3));
+          damageEnemy(tid, dmg, { color: '#c084fc' });
+          addLog(`${enemies.find(e => e.id === tid)?.name}に ${dmg}ダメージ！`);
+        }, i * 200);
+      });
+      setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, targets.length * 200 + speedMs * 0.3);
+    }, speedMs * 0.4);
+  }
+
+  function handleItem(item: typeof ITEMS[0]) {
+    setPhase('animating');
+    if (item.effect === 'heal') {
+      spawnFloat('42%', '52%', item.value, { heal: true, color: '#4ade80' });
+      addLog(`冥界薬を使用！ HP+${item.value}回復！`);
+    } else {
+      addLog(`エーテルを使用！ MPが全回復！`);
     }
-    action();
-  }, [isDemonMode]);
+    setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, speedMs * 0.5);
+  }
 
-  if (showResult && battleResult) return <ResultScreen {...battleResult} onFinish={onEnd} />;
-  if (!player) return null;
+  function handleDemonize() {
+    if (!soulFull) return;
+    setDemonized(true); setDemonTurns(3); setSoul(100);
+    setFlashColor('rgba(180,0,0,0.5)');
+    setTimeout(() => setFlashColor(null), 800);
+    addLog('☠ 魔神化発動！闇の力が解放される！');
+    addLog('全コマンドが魔神専用に切り替わった。3ターン継続。');
+    setPhase('playerTurn');
+  }
 
-  // Precompute derived values (maxHp/maxMp not in BaseStats type, use cast fallback)
-  const playerMaxHp = (player.stats as any).maxHp ?? 100;
-  const playerMaxMp = (player.stats as any).maxMp ?? 20;
-  const playerHpPct = (player.stats.hp / playerMaxHp) * 100;
-  const playerMpPct = (player.stats.mp / playerMaxMp) * 100;
+  function handleTargetEnemy(eid: number) {
+    if (enemies.find(e => e.id === eid)?.hp === 0) return;
+    setEnemies(prev => prev.map(e => ({ ...e, targeted: e.id === eid })));
+  }
 
-  /* ───────────────────────────────
-     RENDER
-  ─────────────────────────────── */
+  // Auto battle
+  useEffect(() => {
+    if (!auto || phase !== 'playerTurn') return;
+    const t = setTimeout(() => handleAttack(), speedMs * 0.4);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, phase]);
+
+  const mainSkills = demonized ? DEMON_SKILLS : SKILLS;
+
+  if (showResult && battleResult) {
+    return (
+      <ResultScreen
+        isVictory={battleResult.isVictory}
+        expGained={battleResult.expGained}
+        itemsGained={battleResult.itemsGained}
+        monstersGained={battleResult.monstersGained}
+        onFinish={onEnd}
+      />
+    );
+  }
+
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full flex flex-col relative overflow-hidden"
-      style={{ background: 'linear-gradient(180deg, #060310 0%, #0A0420 50%, #04020E 100%)' }}
-    >
-      {/* PixiJS Backdrop (particles + ripples) */}
-      <div className="absolute inset-0 z-0 opacity-60">
-        <div ref={canvasRef} className="w-full h-full" />
+    <div style={{
+      width: '100%', height: '100%',
+      display: 'flex', flexDirection: 'column',
+      background: '#06050f', position: 'relative', overflow: 'hidden',
+      fontFamily: "'Inter', sans-serif",
+    }} data-demon={demonized ? 'true' : 'false'}>
+
+      {/* ── TOP HUD ── */}
+      <div style={{
+        padding: '54px 12px 0',
+        background: 'linear-gradient(180deg,rgba(3,1,12,0.92),rgba(3,1,12,0.6) 70%,transparent)',
+        zIndex: 10,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: "'Inter', sans-serif", fontSize: 10, color: '#8b7da8' }}>
+            <span style={{ fontSize: 13 }}>‹</span>
+            <span>マップ</span>
+          </div>
+          <div style={{
+            fontFamily: "'Cinzel', serif", fontSize: 11, fontWeight: 700,
+            color: demonized ? '#ef4444' : '#8A2BE2',
+            letterSpacing: '0.12em',
+            textShadow: demonized ? '0 0 12px #dc2626' : '0 0 8px #8A2BE2',
+            transition: 'all 0.5s ease',
+          }}>{demonized ? '☠ 魔神化中' : '骸骨山脈'}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: phase === 'playerTurn' ? '#22c55e' : phase === 'enemyTurn' ? '#ef4444' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 5, height: 5, borderRadius: '50%', background: phase === 'playerTurn' ? '#22c55e' : phase === 'enemyTurn' ? '#ef4444' : '#f59e0b' }}/>
+            {phase === 'playerTurn' ? '自ターン' : phase === 'enemyTurn' ? '敵ターン' : '行動中'}
+          </div>
+        </div>
+        <TurnOrderStrip/>
       </div>
 
-      {/* Void corner ornaments */}
-      <div className="absolute top-0 left-0 w-20 h-20 pointer-events-none z-10"
-        style={{ background: 'radial-gradient(circle at 0% 0%, rgba(139,0,255,0.25) 0%, transparent 70%)' }} />
-      <div className="absolute top-0 right-0 w-20 h-20 pointer-events-none z-10"
-        style={{ background: 'radial-gradient(circle at 100% 0%, rgba(139,0,255,0.15) 0%, transparent 70%)' }} />
+      {/* ── BATTLE ARENA ── */}
+      <BattleArena
+        enemies={enemies}
+        onTargetEnemy={handleTargetEnemy}
+        demonized={demonized}
+        flashColor={flashColor}
+        screenShake={screenShake}
+      />
 
-      {/* ─────────────────────────────────────────
-          MAIN UI OVERLAY
-      ───────────────────────────────────────── */}
-      <div className="relative z-10 flex flex-col h-full w-full max-w-md mx-auto pointer-events-none">
+      {/* Damage floats overlay */}
+      <DamageFloat floats={floats}/>
 
-        {/* ══════════════════════════════════
-            TIER 1: BATTLEFIELD (35%)
-        ══════════════════════════════════ */}
-        <div className="h-[35%] w-full flex flex-col pointer-events-auto relative">
+      {/* ── BATTLE LOG ── */}
+      <BattleLog lines={log}/>
 
-          {/* ── Timeline ── */}
-          <div
-            className="h-10 w-full flex items-center shrink-0 px-2 gap-0.5 z-20 gothic-panel"
-            style={{ borderBottom: '1px solid rgba(139,0,255,0.3)', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: 0 }}
-          >
-            <span className="text-[8px] font-black tracking-[0.2em] text-[rgba(139,0,255,0.6)] shrink-0 pr-2">
-              ⚡ACT
-            </span>
-            <div className="flex flex-1 items-center overflow-x-auto custom-scrollbar gap-0.5">
-              {timeline.map((act, i) => (
-                <TimelineOrb key={i} label={act} isPlayer={act === '自'} isFirst={i === 0} />
+      {/* ── PARTY STATUS ── */}
+      <PartyStatusBar party={battleParty} demonized={demonized}/>
+
+      {/* ── SOUL GAUGE ── */}
+      <SoulGauge value={soul} demonized={demonized}/>
+
+      {/* ── COMMAND PANEL ── */}
+      <div style={{
+        padding: '8px 12px',
+        background: demonized
+          ? 'linear-gradient(180deg,rgba(15,2,2,0.97),rgba(8,1,1,0.99))'
+          : 'linear-gradient(180deg,rgba(4,1,14,0.97),rgba(3,1,10,0.99))',
+        borderTop: `1px solid ${demonized ? '#dc262630' : 'rgba(255,255,255,0.07)'}`,
+        transition: 'background 0.6s ease', zIndex: 10,
+      }}>
+        {phase === 'skillMenu' ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600, color: demonized ? '#ef4444' : '#8A2BE2', letterSpacing: '0.1em' }}>
+                {demonized ? '魔神技選択' : '術・スキル選択'}
+              </div>
+              <div onClick={() => setPhase('playerTurn')} style={{
+                padding: '3px 10px', borderRadius: 6,
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer',
+              }}>← 戻る</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {mainSkills.map(skill => (
+                <SkillButton key={skill.id} skill={skill} mp={currentMp}
+                  onClick={(sk) => { setPhase('playerTurn'); handleSkill(sk); }}
+                  demonized={demonized}/>
               ))}
             </div>
-            {isDemonMode && (
-              <div
-                className="shrink-0 flex items-center gap-1 text-[8px] font-black tracking-widest anim-demon px-2 py-0.5 rounded-md"
-                style={{ background: 'rgba(139,0,0,0.35)', border: '1px solid rgba(255,0,0,0.7)', color: '#FF6B6B' }}
-              >
-                ⚡{demonTurns}T
-              </div>
-            )}
-          </div>
-
-          {/* ── Battlefield ── */}
-          <div
-            className="flex-1 flex flex-col justify-evenly items-center relative overflow-hidden px-3 py-1"
-            style={{ background: 'linear-gradient(180deg, rgba(6,3,16,0.85) 0%, rgba(10,4,26,0.9) 100%)' }}
-          >
-            {/* Enemy Row */}
-            <div className="flex justify-center gap-8 w-full shrink-0">
-              {enemies.map((enemy, idx) => {
-                const hpPct = Math.max(0, Math.min(100, (enemy.stats.hp / enemy.stats.maxHp) * 100));
-                const alive = enemy.stats.hp > 0;
-                return (
-                  <div
-                    key={idx}
-                    className={`flex flex-col items-center gap-1 transition-all duration-500 ${!alive ? 'opacity-20 grayscale' : ''}`}
-                  >
-                    <span className="text-[9px] font-black tracking-wider" style={{ color: '#FF6B6B', textShadow: '0 0 8px rgba(255,50,50,0.5)' }}>
-                      {enemy.name}
-                    </span>
-                    {/* Enemy sprite */}
-                    <div
-                      className={`relative w-14 h-14 rounded-2xl flex items-center justify-center text-3xl overflow-hidden`}
-                      style={{
-                        background: 'radial-gradient(circle at 40% 30%, rgba(80,0,0,0.5), rgba(0,0,0,0.8))',
-                        border: `1px solid ${isDemonMode ? 'rgba(255,0,0,0.5)' : 'rgba(139,0,0,0.4)'}`,
-                        boxShadow: '0 6px 20px rgba(0,0,0,0.7), inset 0 0 15px rgba(0,0,0,0.5)',
-                      }}
-                    >
-                      {/* Floating damage numbers */}
-                      <AnimatePresence>
-                        {dmgNumbers.map(d => idx === 0 && <DamageNumber key={d.id} value={d.value} isCrit={d.isCrit} />)}
-                      </AnimatePresence>
-                      <span style={{ filter: alive ? 'drop-shadow(0 0 6px rgba(255,50,50,0.5))' : 'none' }}>
-                        {idx === 0 ? '🧟' : '👻'}
-                      </span>
-                      {/* Scan line effect */}
-                      <div className="absolute inset-0 pointer-events-none"
-                        style={{ background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,0,0,0.03) 4px)', mixBlendMode: 'overlay' }} />
-                    </div>
-                    {/* HP Bar */}
-                    <div className="flex flex-col items-center gap-0.5">
-                      <SinBar percent={hpPct} isHP={true} width={56} height={6} />
-                      <span className="text-[7px] font-black" style={{ color: 'rgba(255,80,80,0.6)' }}>
-                        {enemy.stats.hp}/{enemy.stats.maxHp}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Player Legion Row */}
-            <div className="flex justify-center gap-5 w-full shrink-0">
-              {[0, 1, 2].map(idx => {
-                const member = party[idx] || { name: `使役魔${idx + 1}`, isMock: true };
-                const isMock = (member as any).isMock;
-                return (
-                  <div key={idx} className="flex flex-col items-center gap-1">
-                    {/* Magic circle under feet */}
-                    <div className="relative">
-                      {!isMock && (
-                        <div
-                          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-3 rounded-full anim-spin-slow pointer-events-none"
-                          style={{
-                            background: 'radial-gradient(ellipse, rgba(139,0,255,0.35) 0%, transparent 70%)',
-                            filter: 'blur(2px)',
-                          }}
-                        />
-                      )}
-                      <div
-                        className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl relative overflow-hidden"
-                        style={{
-                          background: isMock
-                            ? 'rgba(0,0,0,0.4)'
-                            : 'radial-gradient(circle at 40% 30%, rgba(60,0,120,0.6), rgba(0,0,0,0.8))',
-                          border: `1px solid ${isMock ? 'rgba(60,60,80,0.4)' : 'rgba(139,0,255,0.45)'}`,
-                          boxShadow: isMock
-                            ? 'none'
-                            : '0 4px 14px rgba(0,0,0,0.6), 0 0 10px rgba(139,0,255,0.2)',
-                        }}
-                      >
-                        {!isMock ? '🧟' : <span className="opacity-30 text-base">💀</span>}
-                      </div>
-                    </div>
-                    <span className="text-[7px] font-black tracking-wider" style={{ color: isMock ? '#333' : '#9988BB' }}>
-                      {member.name}
-                    </span>
-                    <SinBar percent={isMock ? 0 : 75} isHP={true} width={44} height={4} />
-                  </div>
-                );
-              })}
+            <div style={{ marginTop: 8, padding: '6px 10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', lineHeight: 1.5 }}>
+              スキルを選択してください。長押しで詳細確認。
             </div>
           </div>
-        </div>
-
-        {/* ══════════════════════════════════
-            TIER 2: GRIMOIRE LOG (15%)
-        ══════════════════════════════════ */}
-        <div
-          className="h-[15%] w-full relative pointer-events-auto flex flex-col gothic-panel"
-          style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none' }}
-        >
-          {/* Log header */}
-          <div
-            className="px-3 py-[3px] flex justify-between items-center shrink-0"
-            style={{ borderBottom: '1px solid rgba(139,0,255,0.2)' }}
-          >
-            <span className="text-[7px] font-black tracking-[0.25em] uppercase" style={{ color: 'rgba(139,0,255,0.55)', fontFamily: 'monospace' }}>
-              📜 魔導書ログ
-            </span>
-            <div className="flex items-center gap-3">
-              {/* HP/MP compact display with sin bars */}
-              <div className="flex flex-col items-end gap-[2px]">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[7px] font-black" style={{ color: '#FF5555' }}>HP</span>
-                  <SinBar percent={playerHpPct} isHP={true} width={40} height={4} />
-                  <span className="text-[7px] font-bold" style={{ color: 'rgba(255,85,85,0.6)', fontFamily: 'monospace' }}>
-                    {player.stats.hp}
-                  </span>
+        ) : phase === 'itemMenu' ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600, color: '#f59e0b', letterSpacing: '0.1em' }}>道具選択</div>
+              <div onClick={() => setPhase('playerTurn')} style={{ padding: '3px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer' }}>← 戻る</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {ITEMS.map(item => (
+                <div key={item.id} onClick={() => { setPhase('playerTurn'); handleItem(item); }} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 12px', background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 10, cursor: 'pointer', animation: 'skillReveal 0.2s ease-out',
+                }}>
+                  <div style={{ fontSize: 18 }}>{item.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: '#f0ebff' }}>{item.name}</div>
+                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8' }}>{item.desc}</div>
+                  </div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#6b5f7a' }}>×{item.count}</div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[7px] font-black" style={{ color: '#6699FF' }}>MP</span>
-                  <SinBar percent={playerMpPct} isHP={false} width={40} height={4} />
-                  <span className="text-[7px] font-bold" style={{ color: 'rgba(100,150,255,0.6)', fontFamily: 'monospace' }}>
-                    {player.stats.mp}
-                  </span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
-          {/* Grimoire entries */}
-          <div className="flex-1 overflow-hidden relative z-10">
-            <GrimoireLog logs={battleLogs} />
+        ) : (
+          <div style={{ display: 'flex', gap: 8, animation: 'commandReveal 0.3s ease-out' }}>
+            <CommandButton
+              icon={demonized ? '💥' : '⚔'} label={demonized ? '殲滅' : '攻撃'}
+              sublabel={demonized ? 'ANNIHILATE' : 'ATTACK'}
+              enabled={phase === 'playerTurn'} color={demonized ? '#dc2626' : '#8A2BE2'}
+              demonized={demonized} onClick={handleAttack}/>
+            <CommandButton
+              icon={demonized ? '🔥' : '🔮'} label={demonized ? '魔神技' : '術'}
+              sublabel={demonized ? 'DEMON ARTS' : 'SKILL'}
+              enabled={phase === 'playerTurn'} color={demonized ? '#dc2626' : '#8A2BE2'}
+              demonized={demonized} onClick={() => setPhase('skillMenu')}/>
+            <CommandButton
+              icon="🧪" label="道具" sublabel="ITEM"
+              enabled={phase === 'playerTurn'} color="#f59e0b"
+              onClick={() => setPhase('itemMenu')}/>
+            <CommandButton
+              icon="☠" label={demonized ? `残${demonTurns}T` : '魔神化'}
+              sublabel={demonized ? 'DEMONIZED' : soulFull ? 'DEMONIZE' : `SOUL ${Math.round(soul)}%`}
+              enabled={soulFull && !demonized} color="#dc2626"
+              glow={soulFull && !demonized} demonized={demonized}
+              onClick={handleDemonize}/>
           </div>
-        </div>
-
-        {/* ══════════════════════════════════
-            TIER 3: COMMAND CONSOLE (50%)
-        ══════════════════════════════════ */}
-        <div
-          className={`h-[50%] w-full pointer-events-auto flex flex-col relative transition-colors duration-500`}
-          style={{
-            background: isDemonMode
-              ? 'linear-gradient(180deg, #120005 0%, #1E0008 100%)'
-              : 'linear-gradient(180deg, #070315 0%, #0C0520 100%)',
-          }}
-        >
-          {/* Demon Mode Vignette */}
-          <AnimatePresence>
-            {isDemonMode && (
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="absolute inset-0 pointer-events-none z-0"
-              >
-                <div className="absolute inset-0"
-                  style={{ background: 'radial-gradient(ellipse at 50% 110%, rgba(200,0,0,0.35) 0%, transparent 70%)' }} />
-                {/* Crimson lightning border */}
-                <div className="absolute inset-0" style={{ border: '1px solid rgba(255,0,0,0.3)', boxShadow: 'inset 0 0 40px rgba(200,0,0,0.2)' }} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* ── RING MENU ── */}
-          <div className="relative flex-1 flex items-center justify-center z-10 w-full px-4">
-            <AnimatePresence mode="wait">
-              {commandState !== 'SKILL_SELECT' && (
-                <motion.div
-                  key="idle-ring"
-                  initial={{ scale: 0.75, opacity: 0, rotateY: -15 }}
-                  animate={{ scale: 1, opacity: 1, rotateY: 0 }}
-                  exit={{ scale: 1.4, opacity: 0, filter: 'blur(10px)', rotateY: 15 }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 24 }}
-                  style={{ perspective: '600px' }}
-                  className="grid grid-cols-3 grid-rows-3 gap-2 w-[220px] h-[220px] place-items-center"
-                >
-                  {/* Demon Mode button (top) */}
-                  <div />
-                  <button
-                    onClick={e => onBtnTap(e, () => {
-                      if (isDemonMode) return;
-                      setDemonTurns(3);
-                      addBattleLog('<<魔神化>> 深淵の力が解き放たれた！');
-                    })}
-                    disabled={isProcessing || isDemonMode}
-                    className="flex flex-col items-center justify-center gap-1 void-btn w-[68px] h-[68px] relative"
-                    style={isDemonMode
-                      ? { background: 'rgba(120,0,0,0.5)', border: '1px solid rgba(255,0,0,0.7)', boxShadow: '0 0 20px rgba(255,0,0,0.5)', borderRadius: 16 }
-                      : { background: 'linear-gradient(135deg, rgba(80,0,0,0.6), rgba(30,0,0,0.8))', border: '1px solid rgba(200,0,80,0.55)', borderRadius: 16, boxShadow: '0 0 12px rgba(180,0,60,0.3), inset 0 0 20px rgba(0,0,0,0.5)' }
-                    }
-                  >
-                    <Skull size={18} style={{ color: isDemonMode ? '#FF4444' : '#FF6B9B' }} strokeWidth={2.5} />
-                    <span className="text-[9px] font-black leading-none" style={{ color: isDemonMode ? '#FF4444' : '#FF6B9B', fontFamily: 'monospace' }}>
-                      {isDemonMode ? `解放${demonTurns}T` : '魔神化'}
-                    </span>
-                    {!isDemonMode && (
-                      <div className="absolute inset-0 rounded-2xl pointer-events-none"
-                        style={{ background: 'radial-gradient(circle at 35% 25%, rgba(255,80,120,0.12), transparent 60%)' }} />
-                    )}
-                  </button>
-                  <div />
-
-                  {/* Row 2: 道具 (center orb) 術 */}
-                  <button
-                    disabled={true}
-                    className="flex flex-col items-center justify-center gap-1 w-[68px] h-[68px] opacity-40 cursor-not-allowed"
-                    style={{ background: 'rgba(20,15,35,0.6)', border: '1px solid rgba(80,60,100,0.4)', borderRadius: 16 }}
-                  >
-                    <ShieldAlert size={16} style={{ color: '#6B7280' }} strokeWidth={2} />
-                    <span className="text-[9px] font-black" style={{ color: '#6B7280', fontFamily: 'monospace' }}>道具</span>
-                  </button>
-
-                  {/* Center Orb */}
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ${isDemonMode ? 'anim-demon' : 'anim-void-pulse'}`}
-                    style={{
-                      background: isDemonMode
-                        ? 'radial-gradient(circle, rgba(180,0,0,0.7), rgba(80,0,0,0.4))'
-                        : 'radial-gradient(circle, rgba(139,0,255,0.5), rgba(60,0,150,0.3))',
-                      border: `1px solid ${isDemonMode ? 'rgba(255,0,0,0.6)' : 'rgba(188,0,251,0.5)'}`,
-                    }}
-                  >
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{
-                        background: isDemonMode
-                          ? 'radial-gradient(circle, #FF3333, #990000)'
-                          : 'radial-gradient(circle, #D580FF, #8B00FF)',
-                        boxShadow: isDemonMode ? '0 0 10px rgba(255,0,0,0.8)' : '0 0 10px rgba(188,0,251,0.8)',
-                      }}
-                    />
-                  </div>
-
-                  <button
-                    onClick={e => onBtnTap(e, () => setCommandState('SKILL_SELECT'))}
-                    disabled={isProcessing || battleSkills.length === 0}
-                    className="flex flex-col items-center justify-center gap-1 void-btn w-[68px] h-[68px] relative"
-                    style={isDemonMode
-                      ? { background: 'linear-gradient(135deg, rgba(100,0,0,0.6), rgba(40,0,0,0.8))', border: '1px solid rgba(255,0,0,0.55)', borderRadius: 16, boxShadow: '0 0 14px rgba(255,0,0,0.3)' }
-                      : { background: 'linear-gradient(135deg, rgba(60,0,130,0.6), rgba(20,0,60,0.8))', border: '1px solid rgba(188,0,251,0.55)', borderRadius: 16, boxShadow: '0 0 14px rgba(139,0,255,0.35)' }
-                    }
-                  >
-                    <Sparkles size={18} style={{ color: isDemonMode ? '#FF6B6B' : '#D580FF' }} strokeWidth={2.5} />
-                    <span className="text-[9px] font-black leading-none" style={{ color: isDemonMode ? '#FF6B6B' : '#D580FF', fontFamily: 'monospace' }}>
-                      {isDemonMode ? '魔神技' : '術'}
-                    </span>
-                  </button>
-
-                  {/* Row 3: Attack */}
-                  <div />
-                  <button
-                    onClick={e => onBtnTap(e, () => handleAction('PHYSICAL_ATTACK'))}
-                    disabled={isProcessing}
-                    className="flex flex-col items-center justify-center gap-1 void-btn w-[68px] h-[68px] relative"
-                    style={isDemonMode
-                      ? { background: 'linear-gradient(135deg, rgba(120,0,0,0.65), rgba(50,0,0,0.85))', border: '1px solid rgba(255,30,30,0.6)', borderRadius: 16, boxShadow: '0 0 18px rgba(255,0,0,0.4)' }
-                      : { background: 'linear-gradient(135deg, rgba(0,40,80,0.65), rgba(0,15,40,0.85))', border: '1px solid rgba(0,200,255,0.45)', borderRadius: 16, boxShadow: '0 0 14px rgba(0,200,255,0.25)' }
-                    }
-                  >
-                    <Sword size={18} style={{ color: isDemonMode ? '#FF5555' : '#00DDFF' }} strokeWidth={2.5} />
-                    <span className="text-[9px] font-black leading-none" style={{ color: isDemonMode ? '#FF5555' : '#00DDFF', fontFamily: 'monospace' }}>
-                      {isDemonMode ? '殲滅' : '攻撃'}
-                    </span>
-                    {isProcessing && (
-                      <div className="absolute inset-0 rounded-2xl flex items-center justify-center"
-                        style={{ background: 'rgba(0,0,0,0.6)' }}>
-                        <div className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin"
-                          style={{ borderColor: isDemonMode ? '#FF5555' : '#00DDFF', borderTopColor: 'transparent' }} />
-                      </div>
-                    )}
-                  </button>
-                  <div />
-                </motion.div>
-              )}
-
-              {/* ── SKILL SELECT ARC ── */}
-              {commandState === 'SKILL_SELECT' && (
-                <motion.div
-                  key="skill-ring"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
-                >
-                  <div className="absolute inset-0 backdrop-blur-md pointer-events-none"
-                    style={{ background: 'rgba(4,2,14,0.75)' }} />
-
-                  {/* Cancel */}
-                  <motion.button
-                    initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                    onClick={e => onBtnTap(e, () => setCommandState('IDLE'))}
-                    className="absolute z-20 w-12 h-12 rounded-2xl flex flex-col items-center justify-center pointer-events-auto active:scale-90 transition-transform"
-                    style={{ background: 'rgba(20,10,40,0.8)', border: '1px solid rgba(80,60,100,0.6)', boxShadow: '0 0 10px rgba(0,0,0,0.6)' }}
-                  >
-                    <span className="text-[9px] font-black" style={{ color: '#9888BB', fontFamily: 'monospace' }}>戻る</span>
-                  </motion.button>
-
-                  {/* Arc skills */}
-                  {battleSkills.map((skill: any, idx: number) => {
-                    const total = battleSkills.length;
-                    const totalArc = Math.min(160, total * 52);
-                    const angleStep = total > 1 ? totalArc / (total - 1) : 0;
-                    const startAngle = 270 - totalArc / 2;
-                    const angleDeg = startAngle + angleStep * idx;
-                    const angleRad = (angleDeg * Math.PI) / 180;
-                    const radius = 88;
-                    const x = Math.cos(angleRad) * radius;
-                    const y = Math.sin(angleRad) * radius;
-                    return (
-                      <motion.button
-                        key={skill.id}
-                        initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
-                        animate={{ opacity: 1, x, y, scale: 1 }}
-                        exit={{ opacity: 0, x: 0, y: 0, scale: 0 }}
-                        transition={{ type: 'spring', stiffness: 240, damping: 20, delay: idx * 0.045 }}
-                        onClick={e => onBtnTap(e, () => { handleAction('MAGIC_SKILL', skill.id); setCommandState('IDLE'); })}
-                        className="absolute z-20 w-[64px] h-[64px] rounded-2xl flex flex-col items-center justify-center gap-0.5 pointer-events-auto active:scale-90 transition-transform"
-                        style={isDemonMode
-                          ? { background: 'linear-gradient(135deg, rgba(110,0,0,0.7), rgba(50,0,0,0.9))', border: '1px solid rgba(255,0,0,0.55)', boxShadow: '0 0 18px rgba(255,0,0,0.45)' }
-                          : { background: 'linear-gradient(135deg, rgba(60,0,130,0.7), rgba(20,0,60,0.9))', border: '1px solid rgba(188,0,251,0.55)', boxShadow: '0 0 16px rgba(139,0,255,0.45)' }
-                        }
-                      >
-                        <Sparkles size={13} style={{ color: isDemonMode ? '#FF6B6B' : '#D580FF' }} />
-                        <span className="text-[8px] font-black truncate max-w-[54px] px-0.5 text-center leading-tight"
-                          style={{ color: '#FFF', fontFamily: 'monospace' }}>
-                          {skill.name}
-                        </span>
-                        <span className="text-[7px] font-bold" style={{ color: 'rgba(139,0,255,0.7)' }}>
-                          MP{skill.mpCost}
-                        </span>
-                      </motion.button>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* ── UTILITY FOOTER ── */}
-          <div
-            className="w-full grid grid-cols-4 gap-1.5 relative z-10 shrink-0 px-2"
-            style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}
-          >
-            {[
-              { label: 'AUTO', icon: <RotateCw size={10} /> },
-              { label: 'SPEEDx2', icon: <FastForward size={10} /> },
-              { label: 'TARGET', icon: <Crosshair size={10} /> },
-            ].map(({ label, icon }) => (
-              <button
-                key={label}
-                className="flex items-center justify-center gap-1 h-8 rounded-lg transition-all active:scale-95"
-                style={{
-                  background: 'rgba(10,5,20,0.7)',
-                  border: '1px solid rgba(139,0,255,0.22)',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
-                }}
-              >
-                <span style={{ color: 'rgba(139,0,255,0.5)' }}>{icon}</span>
-                <span className="text-[7px] font-black tracking-[0.12em]" style={{ color: 'rgba(139,0,255,0.55)', fontFamily: 'monospace' }}>
-                  {label}
-                </span>
-              </button>
-            ))}
-            <button
-              onClick={() => setBattleResult({ isVictory: false, expGained: 0, itemsGained: [], monstersGained: [] })}
-              className="flex items-center justify-center h-8 rounded-lg transition-all active:scale-95"
-              style={{
-                background: 'rgba(10,5,20,0.7)',
-                border: '1px solid rgba(139,0,255,0.22)',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
-              }}
-            >
-              <span className="text-[7px] font-black tracking-[0.12em]" style={{ color: 'rgba(139,0,255,0.55)', fontFamily: 'monospace' }}>MENU</span>
-            </button>
-          </div>
-        </div>
+        )}
       </div>
+
+      {/* ── SYSTEM BAR ── */}
+      <SystemBar
+        auto={auto} speed={speed}
+        onAuto={() => setAuto(a => !a)}
+        onSpeed={() => setSpeed(s => s >= 3 ? 1 : s + 1)}
+        onEscape={() => { addLog('逃走した。'); onEnd(); }}
+        canEscape={true}/>
     </div>
   );
 }

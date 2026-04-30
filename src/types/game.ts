@@ -110,8 +110,20 @@ export interface AbyssalResidueData {
   id: string;
   name: string;
   itemId: string;
+  rarity: 'COMMON' | 'RARE' | 'EPIC';
+  mainStat: { type: string; value: number };
   subOptions: SubOption[];
   level: number;
+  exp: number;
+  maxExp: number;
+}
+
+export interface ResidueMatData {
+  id: string;
+  name: string;
+  quantity: number;
+  expValue: number;
+  rarity: 'COMMON' | 'RARE' | 'EPIC';
 }
 
 export interface SpiritCoreData {

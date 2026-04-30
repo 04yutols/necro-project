@@ -11,6 +11,7 @@ const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').t
 });
 
 import NecroLab from '../components/necro/NecroLab';
+import LegionHub from '../components/legion/LegionHub';
 import EquipmentManager from '../components/character/EquipmentManager';
 import AreaMap from '../components/map/AreaMap';
 import ShardEquipModal from '../components/necro/ShardEquipModal';
@@ -69,7 +70,7 @@ export default function Home() {
       case 'EQUIP':
         return (
           <motion.div key="equip" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-            <EquipmentManager />
+            <LegionHub />
           </motion.div>
         );
       case 'LAB':

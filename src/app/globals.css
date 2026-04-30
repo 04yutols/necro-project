@@ -11,13 +11,13 @@
    ═══════════════════════════════════════════ */
 
 :root {
-  --background: #050508;
-  --foreground: #C8C8D8;
+  --background: #090615;
+  --foreground: #DDD8F0;
 
   /* Gothic-Morphism Glass Tokens */
-  --glass-bg: rgba(8, 4, 18, 0.75);
-  --glass-border: rgba(139, 0, 255, 0.35);
-  --glass-glow: 0 0 0 1px rgba(139, 0, 255, 0.35), 0 0 20px rgba(139, 0, 255, 0.15), inset 0 0 40px rgba(0,0,0,0.6);
+  --glass-bg: rgba(16, 9, 36, 0.88);
+  --glass-border: rgba(160, 60, 255, 0.4);
+  --glass-glow: 0 0 0 1px rgba(160, 60, 255, 0.38), 0 0 24px rgba(139, 0, 255, 0.18), inset 0 0 40px rgba(0,0,0,0.5);
   --glass-blur: blur(14px);
 
   /* Void Purple Neon */
@@ -59,7 +59,7 @@ body::after {
   content: "";
   position: fixed;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,10,0.6) 100%);
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,10,0.4) 100%);
   pointer-events: none;
   z-index: 9998;
 }
@@ -172,6 +172,47 @@ body::after {
   to   { transform: rotate(360deg); }
 }
 
+/* Character breathe */
+@keyframes breathe {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50%       { transform: translateY(-6px) scale(1.012); }
+}
+
+/* Floating orb drift */
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.7; }
+  33%       { transform: translateY(-14px) rotate(120deg); opacity: 1; }
+  66%       { transform: translateY(8px) rotate(240deg); opacity: 0.5; }
+}
+
+/* Holographic scan line */
+@keyframes scanLine {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  10%  { opacity: 0.3; }
+  90%  { opacity: 0.3; }
+  100% { transform: translateY(200%); opacity: 0; }
+}
+
+/* Slot reveal scale-in */
+@keyframes slotReveal {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Demon feather fall */
+@keyframes feather-fall {
+  0%   { transform: translateY(-10%) rotate(-12deg); opacity: 0; }
+  20%  { opacity: 0.7; }
+  80%  { opacity: 0.5; }
+  100% { transform: translateY(110%) rotate(8deg); opacity: 0; }
+}
+
+/* Demon flame flicker */
+@keyframes flame-flicker {
+  0%,100% { transform: scaleY(1) translateY(0); opacity: 0.6; }
+  50%     { transform: scaleY(1.3) translateY(-6px); opacity: 1; }
+}
+
 /* Hologram scan line */
 @keyframes holo-scan {
   0%   { background-position: 0 -100%; }
@@ -182,6 +223,70 @@ body::after {
 @keyframes glow-pulse {
   0%, 100% { opacity: 1; filter: brightness(1); }
   50%       { opacity: 0.8; filter: brightness(1.5); }
+}
+
+/* ── Battle Screen Keyframes ── */
+@keyframes floatDmg {
+  0%   { transform: translateY(0) scale(1);   opacity: 1; }
+  60%  { transform: translateY(-48px) scale(1.1); opacity: 1; }
+  100% { transform: translateY(-72px) scale(0.8); opacity: 0; }
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+@keyframes enemyHit {
+  0%,100% { filter: brightness(1); }
+  30% { filter: brightness(3) saturate(0); }
+  60% { filter: brightness(1.5); }
+}
+@keyframes demonPulse {
+  0%,100% { box-shadow: 0 0 18px #dc262680, inset 0 0 14px #dc262630; }
+  50% { box-shadow: 0 0 36px #dc2626cc, inset 0 0 28px #dc262660; }
+}
+@keyframes soulFill {
+  from { background-position: 200% center; }
+  to   { background-position: 0% center; }
+}
+@keyframes commandReveal {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes logFade {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes skillReveal {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes turnChipIn {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes screenFlash {
+  0%   { opacity: 0; }
+  15%  { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulseBar {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+@keyframes nGlow {
+  0%, 100% { box-shadow: 0 0 10px #8A2BE260, 0 0 20px #8A2BE230; }
+  50% { box-shadow: 0 0 20px #8A2BE2aa, 0 0 36px #8A2BE260; }
 }
 
 /* ═══════════════════════════════════════════
@@ -248,6 +353,15 @@ body::after {
 .pixel-grid {
   background-image: linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px);
   background-size: 100% 2px;
+}
+
+/* Demon Mode CSS var override */
+[data-demon="true"] {
+  --glass-border: rgba(220, 30, 30, 0.5);
+  --glass-glow: 0 0 0 1px rgba(220,30,30,0.38), 0 0 24px rgba(180,0,0,0.22), inset 0 0 40px rgba(0,0,0,0.5);
+  --void-purple: #CC2222;
+  --void-purple-glow: 0 0 8px rgba(200,0,0,0.8), 0 0 20px rgba(160,0,0,0.4);
+  --void-purple-text-glow: 0 0 10px rgba(200,0,0,0.9), 0 0 30px rgba(160,0,0,0.5);
 }
 
 /* Iron/gold borders retained */
