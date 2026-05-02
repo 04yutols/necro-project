@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>統合詳細ハブ — ネクロマンスブレイブ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: #06050f; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  
+  @keyframes breathe {
+    0%, 100% { transform: translateY(0px) scale(1); }
+    50% { transform: translateY(-6px) scale(1.012); }
+  }
+  @keyframes voidPulse {
+    0%, 100% { opacity: 0.6; filter: blur(12px); }
+    50% { opacity: 1; filter: blur(6px); }
+  }
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: 0 0 12px #8A2BE280, 0 0 24px #8A2BE240, inset 0 0 12px #8A2BE220; }
+    50% { box-shadow: 0 0 20px #8A2BE2bb, 0 0 40px #8A2BE260, inset 0 0 20px #8A2BE240; }
+  }
+  @keyframes orbFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.7; }
+    33% { transform: translateY(-14px) rotate(120deg); opacity: 1; }
+    66% { transform: translateY(8px) rotate(240deg); opacity: 0.5; }
+  }
+  @keyframes scanLine {
+    0% { transform: translateY(-100%); opacity: 0; }
+    10% { opacity: 0.3; }
+    90% { opacity: 0.3; }
+    100% { transform: translateY(200%); opacity: 0; }
+  }
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slotReveal {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes runeRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes energyFlow {
+    0% { stroke-dashoffset: 200; opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { stroke-dashoffset: 0; opacity: 0.4; }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes eyeGlow {
+    0%, 100% { filter: drop-shadow(0 0 4px #8A2BE2) drop-shadow(0 0 8px #c084fc); }
+    50% { filter: drop-shadow(0 0 10px #a855f7) drop-shadow(0 0 20px #8A2BE2); }
+  }
+  @keyframes particleRise {
+    0% { transform: translateY(0) translateX(0) scale(1); opacity: 0.8; }
+    100% { transform: translateY(-60px) translateX(var(--dx, 10px)) scale(0); opacity: 0; }
+  }
+  @keyframes voidRingPulse {
+    0%, 100% { r: 38; opacity: 0.15; stroke-width: 1; }
+    50% { r: 44; opacity: 0.35; stroke-width: 0.5; }
+  }
+  @keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<canvas id="bgCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── TWEAK DEFAULTS ──────────────────────────────────────────────────────────
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentColor": "#8A2BE2",
+  "character": "lich",
+  "showRunes": true,
+  "glowIntensity": "high"
+}/*EDITMODE-END*/;
+
+// ── DATA ────────────────────────────────────────────────────────────────────
+const CHARACTERS = {
+  skeleton: {
+    name: "骸骨騎士", nameEn: "GRAVEMOURNE", title: "闇の守護者",
+    class: "死霊騎士", rank: "SSR",
+    atk: 1500, def: 800, spd: 120, hp: 8200,
+    element: "闇", level: 72, maxLevel: 80,
+    color: "#8A2BE2", accentColor: "#c084fc",
+  },
+  zombie: {
+    name: "腐乱兵", nameEn: "ROTCRAWLER", title: "朽ちた戦士",
+    class: "屍兵", rank: "SR",
+    atk: 980, def: 620, spd: 85, hp: 5800,
+    element: "毒", level: 55, maxLevel: 70,
+    color: "#22c55e", accentColor: "#86efac",
+  },
+  lich: {
+    name: "リッチ", nameEn: "SOULREND", title: "不死の魔術師",
+    class: "死霊魔術師", rank: "SSR",
+    atk: 1850, def: 400, spd: 145, hp: 4200,
+    element: "冥", level: 80, maxLevel: 80,
+    color: "#06b6d4", accentColor: "#67e8f9",
+  }
+};
+
+const EQUIPMENT_SLOTS_LEFT = [
+  { id: "weapon", icon: "⚔", label: "武器", sublabel: "Sword", level: 40, rarity: "SR", filled: true },
+  { id: "armor",  icon: "🛡", label: "鎧",   sublabel: "Chestplate", level: 35, rarity: "R", filled: true },
+  { id: "ring",   icon: "💍", label: "装飾品", sublabel: "—", level: null, rarity: null, filled: false },
+];
+const VOID_SLOTS_RIGHT = [
+  { id: "void1", icon: "🌑", label: "虚空 I",   sublabel: "空", filled: false },
+  { id: "void2", icon: "🌑", label: "虚空 II",  sublabel: "空", filled: false },
+  { id: "void3", icon: "🌑", label: "虚空 III", sublabel: "空", filled: false },
+];
+
+// ── PARTICLE CANVAS ─────────────────────────────────────────────────────────
+function initParticles(color) {
+  const canvas = document.getElementById("bgCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const c = color || "#8A2BE2";
+  const particles = Array.from({ length: 80 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 3 + 0.5,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: -(Math.random() * 0.5 + 0.1),
+    alpha: Math.random() * 0.6 + 0.1,
+    life: Math.random(),
+    speed: Math.random() * 0.004 + 0.001,
+  }));
+
+  const bokeh = Array.from({ length: 18 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 60 + 20,
+    alpha: Math.random() * 0.08 + 0.02,
+    vx: (Math.random() - 0.5) * 0.08,
+    vy: (Math.random() - 0.5) * 0.08,
+  }));
+
+  let af;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Background gradient
+    const grad = ctx.createRadialGradient(
+      canvas.width * 0.5, canvas.height * 0.4, 0,
+      canvas.width * 0.5, canvas.height * 0.4, canvas.height * 0.7
+    );
+    grad.addColorStop(0, "#12082a");
+    grad.addColorStop(0.5, "#0a0515");
+    grad.addColorStop(1, "#03020a");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Bokeh
+    bokeh.forEach(b => {
+      b.x += b.vx; b.y += b.vy;
+      if (b.x < -b.r) b.x = canvas.width + b.r;
+      if (b.x > canvas.width + b.r) b.x = -b.r;
+      if (b.y < -b.r) b.y = canvas.height + b.r;
+      if (b.y > canvas.height + b.r) b.y = -b.r;
+      const bg = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+      bg.addColorStop(0, c + "40");
+      bg.addColorStop(1, "transparent");
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fillStyle = bg;
+      ctx.globalAlpha = b.alpha;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    // Particles
+    particles.forEach(p => {
+      p.life += p.speed;
+      if (p.life > 1) { p.life = 0; p.x = Math.random() * canvas.width; p.y = canvas.height + 10; p.alpha = Math.random() * 0.6 + 0.1; }
+      p.x += p.vx;
+      p.y += p.vy;
+      const a = p.alpha * Math.sin(p.life * Math.PI);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = c;
+      ctx.globalAlpha = a;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    af = requestAnimationFrame(draw);
+  }
+  if (window._bgAF) cancelAnimationFrame(window._bgAF);
+  draw();
+  window._bgAF = af;
+}
+
+// ── SVG CHARACTERS ───────────────────────────────────────────────────────────
+function SkeletonKnightSVG({ color }) {
+  return (
+    <svg viewBox="0 0 200 340" fill="none" xmlns="http://www.w3.org/2000/svg"
+      style={{ width: "100%", height: "100%", animation: "breathe 3.2s ease-in-out infinite", transformOrigin: "center bottom" }}>
+      <defs>
+        <radialGradient id="skGlow" cx="50%" cy="60%" r="50%">
+          <stop offset="0%" stopColor={color} stopOpacity="0.6"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0"/>
+        </radialGradient>
+        <radialGradient id="eyeGradL" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffffff"/>
+          <stop offset="40%" stopColor={color}/>
+          <stop offset="100%" stopColor="#3b0764"/>
+        </radialGradient>
+        <filter id="glowFx">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+        </filter>
+        <filter id="softGlow">
+          <feGaussianBlur stdDeviation="2"/>
+        </filter>
+        <linearGradient id="armorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#2a2a3e"/>
+          <stop offset="50%" stopColor="#1a1a2e"/>
+          <stop offset="100%" stopColor="#0f0f1f"/>
+        </linearGradient>
+        <linearGradient id="capeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#1a0a2e"/>
+          <stop offset="100%" stopColor="#05020f"/>
+        </linearGradient>
+        <linearGradient id="swordGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#9ca3af"/>
+          <stop offset="50%" stopColor={color} stopOpacity="0.8"/>
+          <stop offset="100%" stopColor="#4b5563"/>
+        </linearGradient>
+      </defs>
+
+      {/* Aura glow beneath */}
+      <ellipse cx="100" cy="320" rx="55" ry="12" fill={color} opacity="0.25" filter="url(#softGlow)"/>
+      <ellipse cx="100" cy="60" rx="60" ry="80" fill="url(#skGlow)" opacity="0.5"/>
+
+      {/* Cape */}
+      <path d="M55 120 Q30 200 25 320 L175 320 Q170 200 145 120 Z" fill="url(#capeGrad)" opacity="0.9"/>
+      <path d="M55 120 Q40 220 38 320 L55 320 Q52 220 65 120Z" fill={color} opacity="0.08"/>
+      <path d="M145 120 Q160 220 162 320 L145 320 Q148 220 135 120Z" fill={color} opacity="0.08"/>
+      {/* Cape trim */}
+      <path d="M55 120 Q30 200 25 320" stroke={color} strokeWidth="0.8" strokeOpacity="0.4" fill="none"/>
+      <path d="M145 120 Q170 200 175 320" stroke={color} strokeWidth="0.8" strokeOpacity="0.4" fill="none"/>
+
+      {/* Shoulder plates */}
+      <path d="M40 125 Q20 115 22 135 Q24 152 45 150 L60 140Z" fill="url(#armorGrad)" stroke={color} strokeWidth="0.8" strokeOpacity="0.7"/>
+      <path d="M160 125 Q180 115 178 135 Q176 152 155 150 L140 140Z" fill="url(#armorGrad)" stroke={color} strokeWidth="0.8" strokeOpacity="0.7"/>
+      {/* Shoulder spikes */}
+      <path d="M25 120 L20 105 L32 115Z" fill="#c084fc" opacity="0.8"/>
+      <path d="M175 120 L180 105 L168 115Z" fill="#c084fc" opacity="0.8"/>
+
+      {/* Torso — chest armor */}
+      <rect x="62" y="118" width="76" height="90" rx="6" fill="url(#armorGrad)"/>
+      <path d="M62 118 Q100 110 138 118 L138 208 Q100 215 62 208Z" fill="url(#armorGrad)" stroke={color} strokeWidth="1" strokeOpacity="0.6"/>
+      {/* Chest rune */}
+      <circle cx="100" cy="155" r="16" fill="none" stroke={color} strokeWidth="1.2" strokeOpacity="0.8"/>
+      <circle cx="100" cy="155" r="10" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="0.6" strokeOpacity="0.6"/>
+      <path d="M100 140 L104 150 L100 170 L96 150Z" fill={color} opacity="0.9"/>
+      <path d="M85 155 L95 151 L115 155 L95 159Z" fill={color} opacity="0.9"/>
+      {/* Chest engravings */}
+      <path d="M70 135 Q80 130 90 135" stroke={color} strokeWidth="0.6" strokeOpacity="0.5" fill="none"/>
+      <path d="M110 135 Q120 130 130 135" stroke={color} strokeWidth="0.6" strokeOpacity="0.5" fill="none"/>
+      <path d="M68 145 L72 145" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>
+      <path d="M128 145 L132 145" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>
+
+      {/* Arms */}
+      <path d="M62 130 Q45 155 42 190 Q48 195 58 190 Q62 160 68 140Z" fill="url(#armorGrad)" stroke={color} strokeWidth="0.6" strokeOpacity="0.4"/>
+      <path d="M138 130 Q155 155 158 190 Q152 195 142 190 Q138 160 132 140Z" fill="url(#armorGrad)" stroke={color} strokeWidth="0.6" strokeOpacity="0.4"/>
+
+      {/* Gauntlets */}
+      <path d="M40 188 Q32 200 34 215 Q42 220 56 215 Q60 202 58 190Z" fill="#1e1e30" stroke={color} strokeWidth="0.8" strokeOpacity="0.6"/>
+      <path d="M142 188 Q150 200 166 215 Q158 220 144 215 Q140 202 142 190Z" fill="#1e1e30" stroke={color} strokeWidth="0.8" strokeOpacity="0.6"/>
+
+      {/* Sword (right side, held) */}
+      <rect x="158" y="180" width="6" height="100" rx="2" fill="url(#swordGrad)"/>
+      <rect x="148" y="180" width="26" height="6" rx="2" fill="#6b7280"/>
+      <path d="M161 120 L159 180 L163 180Z" fill="url(#swordGrad)"/>
+      {/* Sword glow */}
+      <rect x="159" y="125" width="4" height="120" rx="1" fill={color} opacity="0.4" filter="url(#softGlow)"/>
+
+      {/* Belt + waist */}
+      <rect x="62" y="205" width="76" height="14" rx="3" fill="#1a1a2e" stroke={color} strokeWidth="0.8" strokeOpacity="0.5"/>
+      <rect x="96" y="207" width="8" height="10" rx="2" fill={color} opacity="0.7"/>
+
+      {/* Legs */}
+      <path d="M65 218 Q60 265 62 310 L80 310 Q80 265 80 218Z" fill="url(#armorGrad)" stroke={color} strokeWidth="0.6" strokeOpacity="0.3"/>
+      <path d="M120 218 Q120 265 120 310 L138 310 Q140 265 135 218Z" fill="url(#armorGrad)" stroke={color} strokeWidth="0.6" strokeOpacity="0.3"/>
+      {/* Knee plates */}
+      <ellipse cx="71" cy="265" rx="10" ry="8" fill="#1e1e30" stroke={color} strokeWidth="0.8" strokeOpacity="0.6"/>
+      <ellipse cx="129" cy="265" rx="10" ry="8" fill="#1e1e30" stroke={color} strokeWidth="0.8" strokeOpacity="0.6"/>
+      {/* Boots */}
+      <path d="M60 308 Q55 320 50 326 L82 326 L82 308Z" fill="#111122" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>
+      <path d="M120 308 L120 326 L152 326 Q147 320 142 308Z" fill="#111122" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>
+
+      {/* Neck */}
+      <rect x="88" y="95" width="24" height="28" rx="4" fill="#1a1a2e" stroke={color} strokeWidth="0.5" strokeOpacity="0.3"/>
+
+      {/* HEAD */}
+      {/* Skull base */}
+      <ellipse cx="100" cy="72" rx="28" ry="30" fill="#e8e0d8"/>
+      {/* Dark shading on skull */}
+      <ellipse cx="100" cy="72" rx="28" ry="30" fill="url(#armorGrad)" opacity="0.5"/>
+      {/* Cheekbones */}
+      <ellipse cx="79" cy="80" rx="8" ry="5" fill="#c4b8a8" opacity="0.6"/>
+      <ellipse cx="121" cy="80" rx="8" ry="5" fill="#c4b8a8" opacity="0.6"/>
+
+      {/* Helmet */}
+      <path d="M72 60 Q72 32 100 30 Q128 32 128 60 L125 75 Q112 68 100 68 Q88 68 75 75Z" fill="url(#armorGrad)" stroke={color} strokeWidth="1" strokeOpacity="0.7"/>
+      {/* Helmet crown */}
+      <path d="M86 34 L88 20 L92 35Z" fill={color} opacity="0.9"/>
+      <path d="M100 31 L100 15 L103 31Z" fill={color} opacity="0.9"/>
+      <path d="M114 34 L112 20 L108 35Z" fill={color} opacity="0.9"/>
+      {/* Helmet glow trim */}
+      <path d="M72 60 Q72 32 100 30 Q128 32 128 60" stroke={color} strokeWidth="1.5" strokeOpacity="0.8" fill="none"/>
+
+      {/* Eye sockets */}
+      <ellipse cx="88" cy="70" rx="10" ry="8" fill="#0a0515"/>
+      <ellipse cx="112" cy="70" rx="10" ry="8" fill="#0a0515"/>
+      {/* Eye glow */}
+      <ellipse cx="88" cy="70" rx="7" ry="5.5" fill="url(#eyeGradL)" style={{animation: "eyeGlow 2s ease-in-out infinite"}}/>
+      <ellipse cx="112" cy="70" rx="7" ry="5.5" fill="url(#eyeGradL)" style={{animation: "eyeGlow 2s ease-in-out infinite 0.3s"}}/>
+      {/* Eye pupils */}
+      <ellipse cx="88" cy="70" rx="3.5" ry="3" fill="#ffffff" opacity="0.95"/>
+      <ellipse cx="112" cy="70" rx="3.5" ry="3" fill="#ffffff" opacity="0.95"/>
+      {/* Eye glow outer */}
+      <ellipse cx="88" cy="70" rx="9" ry="7" fill="none" stroke={color} strokeWidth="1.5" strokeOpacity="0.9" style={{animation: "eyeGlow 2s ease-in-out infinite"}}/>
+      <ellipse cx="112" cy="70" rx="9" ry="7" fill="none" stroke={color} strokeWidth="1.5" strokeOpacity="0.9" style={{animation: "eyeGlow 2s ease-in-out infinite 0.3s"}}/>
+
+      {/* Nose cavity */}
+      <path d="M96 82 L100 88 L104 82 Q100 78 96 82Z" fill="#0a0515"/>
+      {/* Jawline / teeth */}
+      <path d="M78 92 Q100 106 122 92" stroke="#d1c7b8" strokeWidth="2" fill="none"/>
+      <path d="M88 95 L88 102" stroke="#e8e0d8" strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M94 97 L94 104" stroke="#e8e0d8" strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M100 98 L100 105" stroke="#e8e0d8" strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M106 97 L106 104" stroke="#e8e0d8" strokeWidth="2.5" strokeLinecap="round"/>
+      <path d="M112 95 L112 102" stroke="#e8e0d8" strokeWidth="2.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function ZombieSVG({ color }) {
+  return (
+    <svg viewBox="0 0 200 340" fill="none" xmlns="http://www.w3.org/2000/svg"
+      style={{ width: "100%", height: "100%", animation: "breathe 4s ease-in-out infinite", transformOrigin: "center bottom" }}>
+      <defs>
+        <radialGradient id="zGlow" cx="50%" cy="60%" r="50%">
+          <stop offset="0%" stopColor={color} stopOpacity="0.4"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="100" cy="320" rx="50" ry="10" fill={color} opacity="0.2" filter="url(#softGlow)"/>
+      {/* Body */}
+      <path d="M60 140 Q40 220 45 310 L155 310 Q160 220 140 140Z" fill="#1a2e1a"/>
+      {/* Tattered armor */}
+      <path d="M65 145 Q100 135 135 145 L130 210 Q100 220 70 210Z" fill="#0f1f0f" stroke={color} strokeWidth="0.8" strokeOpacity="0.5"/>
+      {/* Shoulders — asymmetric */}
+      <ellipse cx="55" cy="140" rx="18" ry="14" fill="#1a2e1a" stroke={color} strokeWidth="0.6" strokeOpacity="0.4"/>
+      <ellipse cx="145" cy="138" rx="14" ry="12" fill="#1a2e1a" stroke={color} strokeWidth="0.6" strokeOpacity="0.4"/>
+      {/* Arms */}
+      <path d="M55 145 Q30 180 28 220 L44 222 Q50 185 62 155Z" fill="#1a2e1a"/>
+      <path d="M145 140 Q168 175 172 210 L156 212 Q150 178 138 152Z" fill="#1a2e1a"/>
+      {/* Claws */}
+      <path d="M28 218 Q18 228 15 240 L24 240 Q28 230 34 222Z" fill="#0d1a0d"/>
+      <path d="M34 220 Q26 232 25 244 L33 244 Q34 234 40 224Z" fill="#0d1a0d"/>
+      {/* Legs */}
+      <path d="M75 210 Q68 265 70 310 L92 310 Q90 265 88 210Z" fill="#1a2e1a"/>
+      <path d="M125 210 Q112 265 108 310 L130 310 Q132 265 132 210Z" fill="#1a2e1a"/>
+      {/* Head */}
+      <ellipse cx="100" cy="100" rx="30" ry="32" fill="#2a4a1e"/>
+      {/* Rotten texture */}
+      <ellipse cx="85" cy="95" rx="6" ry="8" fill="#1a3010" opacity="0.7"/>
+      <ellipse cx="115" cy="90" rx="5" ry="7" fill="#1a3010" opacity="0.7"/>
+      {/* Eyes */}
+      <ellipse cx="89" cy="96" rx="8" ry="7" fill="#050f05"/>
+      <ellipse cx="111" cy="96" rx="8" ry="7" fill="#050f05"/>
+      <ellipse cx="89" cy="96" rx="5" ry="4.5" fill={color} opacity="0.8"/>
+      <ellipse cx="111" cy="96" rx="5" ry="4.5" fill={color} opacity="0.8"/>
+      <ellipse cx="89" cy="96" rx="2.5" ry="2.5" fill="#fff" opacity="0.9"/>
+      <ellipse cx="111" cy="96" rx="2.5" ry="2.5" fill="#fff" opacity="0.9"/>
+      {/* Mouth */}
+      <path d="M84 114 Q100 124 116 114" stroke="#0a1a0a" strokeWidth="2" fill="none"/>
+      <path d="M88 115 L89 122" stroke="#0a1a0a" strokeWidth="2"/>
+      <path d="M96 117 L96 124" stroke="#0a1a0a" strokeWidth="2"/>
+      <path d="M104 117 L104 124" stroke="#0a1a0a" strokeWidth="2"/>
+      <path d="M112 115 L111 122" stroke="#0a1a0a" strokeWidth="2"/>
+      {/* Wounds / markings */}
+      <path d="M75 88 L80 95" stroke={color} strokeWidth="1.5" strokeOpacity="0.6"/>
+      <path d="M120 92 L125 98" stroke={color} strokeWidth="1.5" strokeOpacity="0.6"/>
+    </svg>
+  );
+}
+
+function LichSVG({ color }) {
+  return (
+    <svg viewBox="0 0 200 340" fill="none" xmlns="http://www.w3.org/2000/svg"
+      style={{ width: "100%", height: "100%", animation: "breathe 2.8s ease-in-out infinite", transformOrigin: "center bottom" }}>
+      <defs>
+        <radialGradient id="lichGlow" cx="50%" cy="40%" r="55%">
+          <stop offset="0%" stopColor={color} stopOpacity="0.5"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="100" cy="60" rx="70" ry="90" fill="url(#lichGlow)"/>
+      <ellipse cx="100" cy="320" rx="45" ry="8" fill={color} opacity="0.25"/>
+      {/* Robes */}
+      <path d="M55 130 Q25 230 20 330 L180 330 Q175 230 145 130Z" fill="#060614"/>
+      <path d="M55 130 Q35 230 32 330 L55 330 Q50 230 68 130Z" fill={color} opacity="0.05"/>
+      <path d="M145 130 Q165 230 168 330 L145 330 Q150 230 132 130Z" fill={color} opacity="0.05"/>
+      {/* Robe trim */}
+      <path d="M55 130 Q25 230 20 330" stroke={color} strokeWidth="1.2" strokeOpacity="0.6" fill="none"/>
+      <path d="M145 130 Q175 230 180 330" stroke={color} strokeWidth="1.2" strokeOpacity="0.6" fill="none"/>
+      {/* Rune patterns on robes */}
+      {[160, 200, 245, 290].map((y,i) => (
+        <g key={i} opacity="0.25">
+          <path d={`M${40+i*2} ${y} L${55+i*2} ${y}`} stroke={color} strokeWidth="0.8"/>
+          <path d={`M${145-i*2} ${y} L${160-i*2} ${y}`} stroke={color} strokeWidth="0.8"/>
+        </g>
+      ))}
+      {/* Staff */}
+      <rect x="28" y="100" width="5" height="220" rx="2" fill="#1a0a2e"/>
+      <rect x="29" y="100" width="3" height="220" rx="1" fill={color} opacity="0.5"/>
+      {/* Staff orb */}
+      <circle cx="30" cy="92" r="16" fill="#0a0520" stroke={color} strokeWidth="1.5" strokeOpacity="0.8"/>
+      <circle cx="30" cy="92" r="10" fill={color} opacity="0.3"/>
+      <circle cx="30" cy="92" r="5" fill={color} opacity="0.9" style={{animation: "eyeGlow 1.5s ease-in-out infinite"}}/>
+      {/* Shoulders */}
+      <path d="M50 128 Q30 118 28 138 Q28 155 50 152 L65 142Z" fill="#0a0518" stroke={color} strokeWidth="1" strokeOpacity="0.6"/>
+      <path d="M150 128 Q170 118 172 138 Q172 155 150 152 L135 142Z" fill="#0a0518" stroke={color} strokeWidth="1" strokeOpacity="0.6"/>
+      {/* Pauldron spikes */}
+      <path d="M32 120 L26 104 L38 116Z" fill={color} opacity="0.9"/>
+      <path d="M168 120 L174 104 L162 116Z" fill={color} opacity="0.9"/>
+      {/* Body */}
+      <path d="M62 128 Q100 120 138 128 L135 210 Q100 218 65 210Z" fill="#080518" stroke={color} strokeWidth="1" strokeOpacity="0.4"/>
+      {/* Chest sigil */}
+      <circle cx="100" cy="162" r="20" fill="none" stroke={color} strokeWidth="1" strokeOpacity="0.7" style={{animation: "runeRotate 8s linear infinite"}}/>
+      <polygon points="100,145 113,170 87,170" fill="none" stroke={color} strokeWidth="0.8" strokeOpacity="0.8"/>
+      <polygon points="100,179 87,154 113,154" fill="none" stroke={color} strokeWidth="0.8" strokeOpacity="0.8"/>
+      <circle cx="100" cy="162" r="4" fill={color} opacity="0.8"/>
+      {/* Neck */}
+      <rect x="88" y="100" width="24" height="30" rx="3" fill="#080512"/>
+      {/* Head/Skull */}
+      <ellipse cx="100" cy="82" rx="26" ry="28" fill="#d4ccbc"/>
+      <ellipse cx="100" cy="82" rx="26" ry="28" fill="url(#armorGrad)" opacity="0.4"/>
+      {/* Crown */}
+      <path d="M74 68 L74 50 L84 64 L100 48 L116 64 L126 50 L126 68Z" fill="#1a0a2e" stroke={color} strokeWidth="1.2" strokeOpacity="0.9"/>
+      <circle cx="84" cy="58" r="3.5" fill={color} opacity="0.9"/>
+      <circle cx="100" cy="50" r="4.5" fill={color} opacity="0.9"/>
+      <circle cx="116" cy="58" r="3.5" fill={color} opacity="0.9"/>
+      {/* Eye sockets */}
+      <ellipse cx="89" cy="80" rx="9" ry="8" fill="#03020a"/>
+      <ellipse cx="111" cy="80" rx="9" ry="8" fill="#03020a"/>
+      <ellipse cx="89" cy="80" rx="6" ry="5" fill={color} opacity="0.9" style={{animation: "eyeGlow 1.8s ease-in-out infinite"}}/>
+      <ellipse cx="111" cy="80" rx="6" ry="5" fill={color} opacity="0.9" style={{animation: "eyeGlow 1.8s ease-in-out infinite 0.2s"}}/>
+      <ellipse cx="89" cy="80" rx="2.5" ry="2.5" fill="#fff" opacity="0.95"/>
+      <ellipse cx="111" cy="80" rx="2.5" ry="2.5" fill="#fff" opacity="0.95"/>
+      {/* Nose cavity */}
+      <path d="M97 90 L100 96 L103 90Z" fill="#03020a"/>
+      {/* Jaw */}
+      <path d="M80 100 Q100 112 120 100" stroke="#bdb0a0" strokeWidth="2" fill="none"/>
+      <path d="M88 102 L88 110" stroke="#d4ccbc" strokeWidth="2"/>
+      <path d="M96 104 L96 112" stroke="#d4ccbc" strokeWidth="2"/>
+      <path d="M104 104 L104 112" stroke="#d4ccbc" strokeWidth="2"/>
+      <path d="M112 102 L112 110" stroke="#d4ccbc" strokeWidth="2"/>
+    </svg>
+  );
+}
+
+// ── HEX SLOT COMPONENT ───────────────────────────────────────────────────────
+function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }) {
+  const isSelected = selected === slot.id;
+  const style = {
+    animation: `slotReveal 0.4s ease-out ${delay}s both`,
+  };
+  return (
+    <div onClick={() => onSelect(slot.id === selected ? null : slot.id)} style={{
+      ...style,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      padding: "8px 10px",
+      background: isSelected
+        ? `linear-gradient(135deg, ${color}25, ${color}15)`
+        : slot.filled
+        ? "linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))"
+        : "linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))",
+      border: `1px solid ${isSelected ? color : slot.filled ? color + "55" : color + "30"}`,
+      borderRadius: "10px",
+      boxShadow: isSelected
+        ? `0 0 16px ${color}60, inset 0 0 10px ${color}20`
+        : slot.filled
+        ? `0 0 8px ${color}30`
+        : "none",
+      transition: "all 0.25s ease",
+      backdropFilter: "blur(8px)",
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      {/* Shimmer overlay */}
+      {isSelected && <div style={{
+        position: "absolute", inset: 0,
+        background: `linear-gradient(90deg, transparent, ${color}20, transparent)`,
+        backgroundSize: "200% 100%",
+        animation: "shimmer 1.5s infinite",
+        pointerEvents: "none",
+      }}/>}
+      {/* Icon box */}
+      <div style={{
+        width: 34, height: 34, flexShrink: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: slot.filled ? `${color}18` : "rgba(255,255,255,0.04)",
+        border: `1px solid ${slot.filled ? color + "60" : color + "20"}`,
+        borderRadius: "8px",
+        fontSize: 16,
+        position: "relative",
+      }}>
+        {slot.filled ? slot.icon : <span style={{ color: color + "50", fontSize: 14 }}>＋</span>}
+        {slot.filled && isVoid && <div style={{
+          position: "absolute", inset: 0, borderRadius: "8px",
+          background: `radial-gradient(circle, ${color}30, transparent)`,
+          animation: "voidPulse 2s ease-in-out infinite",
+        }}/>}
+      </div>
+      {/* Label */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600,
+          color: slot.filled ? "#e2d8f0" : "#6b5f7a",
+          letterSpacing: "0.08em",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}>{slot.label}</div>
+        <div style={{
+          fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 400,
+          color: slot.filled ? "#9b7fc0" : "#4a3a5a",
+          marginTop: 1,
+        }}>{slot.sublabel}</div>
+      </div>
+      {/* Level badge */}
+      {slot.filled && slot.level && (
+        <div style={{
+          fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 600,
+          color: color, background: `${color}18`,
+          padding: "2px 5px", borderRadius: "4px",
+          border: `1px solid ${color}40`,
+          flexShrink: 0,
+        }}>Lv.{slot.level}</div>
+      )}
+      {isVoid && !slot.filled && (
+        <div style={{
+          width: 22, height: 22, flexShrink: 0,
+          borderRadius: "50%", border: `1px dashed ${color}40`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: `${color}30` }}/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── STAT ITEM ────────────────────────────────────────────────────────────────
+function StatItem({ label, value, labelJa, color, delay = 0 }) {
+  return (
+    <div style={{ animation: `fadeSlideUp 0.5s ease-out ${delay}s both`, textAlign: "center", flex: 1 }}>
+      <div style={{
+        fontFamily: "'Cinzel', serif", fontSize: 22, fontWeight: 700,
+        color: "#f5f0ff",
+        textShadow: `0 0 20px ${color}80`,
+        lineHeight: 1,
+      }}>{value.toLocaleString()}</div>
+      <div style={{
+        fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 400,
+        color: "#8b7da8", marginTop: 4, letterSpacing: "0.12em",
+        textTransform: "uppercase",
+      }}>{label}</div>
+      <div style={{
+        fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 400,
+        color: color + "70", marginTop: 1,
+      }}>{labelJa}</div>
+    </div>
+  );
+}
+
+// ── CHARACTER THUMB ──────────────────────────────────────────────────────────
+function CharThumb({ charKey, char, active, onSelect }) {
+  return (
+    <div onClick={() => onSelect(charKey)} style={{
+      display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+      cursor: "pointer",
+    }}>
+      <div style={{
+        width: active ? 48 : 40, height: active ? 48 : 40,
+        borderRadius: "50%",
+        background: active ? `radial-gradient(circle, ${char.color}30, #0a0515)` : "#0a0515",
+        border: `2px solid ${active ? char.color : char.color + "40"}`,
+        boxShadow: active ? `0 0 16px ${char.color}80, 0 0 32px ${char.color}40` : "none",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        transition: "all 0.3s ease",
+        overflow: "hidden",
+        fontSize: 20,
+        position: "relative",
+      }}>
+        {charKey === "skeleton" && "💀"}
+        {charKey === "zombie" && "🧟"}
+        {charKey === "lich" && "🧙"}
+        {active && <div style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          background: `radial-gradient(circle, ${char.color}20, transparent)`,
+          animation: "glowPulse 2s ease-in-out infinite",
+        }}/>}
+      </div>
+      <div style={{
+        fontFamily: "'Inter', sans-serif", fontSize: 8,
+        color: active ? char.color : "#4a3a5a",
+        letterSpacing: "0.06em", transition: "color 0.3s ease",
+      }}>{char.rank}</div>
+    </div>
+  );
+}
+
+// ── FLOATING ORBS ─────────────────────────────────────────────────────────────
+function FloatingOrbs({ color }) {
+  const orbs = [
+    { size: 6, top: "20%", left: "8%", delay: "0s", dur: "3.5s" },
+    { size: 4, top: "35%", right: "6%", delay: "1.2s", dur: "4s" },
+    { size: 8, top: "55%", left: "5%", delay: "0.6s", dur: "5s" },
+    { size: 5, top: "70%", right: "8%", delay: "2s", dur: "3s" },
+    { size: 3, top: "15%", right: "15%", delay: "1.8s", dur: "4.5s" },
+  ];
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+      {orbs.map((o, i) => (
+        <div key={i} style={{
+          position: "absolute",
+          top: o.top, left: o.left, right: o.right,
+          width: o.size, height: o.size, borderRadius: "50%",
+          background: color,
+          boxShadow: `0 0 ${o.size * 3}px ${color}`,
+          animation: `orbFloat ${o.dur} ease-in-out infinite`,
+          animationDelay: o.delay,
+        }}/>
+      ))}
+    </div>
+  );
+}
+
+// ── MAIN APP ─────────────────────────────────────────────────────────────────
+function LegionHub() {
+  const [activeChar, setActiveChar] = useState("skeleton");
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [tweaks, setTweakState] = useState(TWEAK_DEFAULTS);
+  const [showTweaks, setShowTweaks] = useState(false);
+  const [demonizing, setDemonizing] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  const char = CHARACTERS[activeChar];
+  const color = char.color;
+  const accent = char.accentColor;
+
+  useEffect(() => {
+    setTimeout(() => setMounted(true), 100);
+    initParticles(color);
+  }, []);
+
+  useEffect(() => { initParticles(color); }, [color]);
+
+  // Tweaks protocol
+  useEffect(() => {
+    window.addEventListener("message", (e) => {
+      if (e.data?.type === "__activate_edit_mode") setShowTweaks(true);
+      if (e.data?.type === "__deactivate_edit_mode") setShowTweaks(false);
+    });
+    window.parent.postMessage({ type: "__edit_mode_available" }, "*");
+  }, []);
+
+  function setTweak(key, val) {
+    setTweakState(prev => {
+      const next = typeof key === "object" ? { ...prev, ...key } : { ...prev, [key]: val };
+      window.parent.postMessage({ type: "__edit_mode_set_keys", edits: next }, "*");
+      return next;
+    });
+  }
+
+  function handleDemonize() {
+    setDemonizing(true);
+    setTimeout(() => setDemonizing(false), 2000);
+  }
+
+  function handleCharSwitch(key) {
+    setActiveChar(key);
+    setSelectedSlot(null);
+  }
+
+  return (
+    <div style={{
+      width: "100%", height: "100%",
+      background: "transparent",
+      position: "relative",
+      overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
+      fontFamily: "'Inter', sans-serif",
+    }}>
+      {/* Demonize flash overlay */}
+      {demonizing && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 50,
+          background: `radial-gradient(circle at center, ${color}60, transparent 70%)`,
+          animation: "fadeIn 0.1s ease-out, fadeIn 0.3s ease-out 1.7s reverse both",
+          pointerEvents: "none",
+        }}/>
+      )}
+
+      {/* Floating orbs */}
+      <FloatingOrbs color={color}/>
+
+      {/* Scan line */}
+      <div style={{
+        position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 1,
+      }}>
+        <div style={{
+          position: "absolute", width: "100%", height: "2px",
+          background: `linear-gradient(90deg, transparent, ${color}40, transparent)`,
+          animation: "scanLine 6s ease-in-out infinite 2s",
+        }}/>
+      </div>
+
+      {/* ── HEADER ── */}
+      <div style={{
+        padding: "62px 14px 6px",
+        display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+        animation: mounted ? "fadeSlideUp 0.4s ease-out" : "none",
+        zIndex: 2, gap: 8,
+      }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{
+            fontFamily: "'Cinzel Decorative', serif", fontSize: 9,
+            color: color, letterSpacing: "0.18em", textTransform: "uppercase",
+            textShadow: `0 0 10px ${color}`,
+          }}>統合詳細ハブ</div>
+          <div style={{
+            fontFamily: "'Cinzel', serif", fontSize: 16, fontWeight: 700,
+            color: "#f5f0ff", letterSpacing: "0.04em", lineHeight: 1.1,
+            textShadow: `0 0 20px ${color}60`,
+            whiteSpace: "nowrap",
+          }}>{char.nameEn}</div>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6, marginTop: 2,
+            flexWrap: "nowrap",
+          }}>
+            <div style={{
+              fontFamily: "'Cinzel', serif", fontSize: 9, color: accent,
+              border: `1px solid ${accent}50`, padding: "1px 6px", borderRadius: "3px",
+              background: `${accent}10`, flexShrink: 0,
+            }}>{char.rank}</div>
+            <div style={{
+              fontFamily: "'Inter', sans-serif", fontSize: 9, color: "#8b7da8",
+              whiteSpace: "nowrap",
+            }}>{char.class} · {char.element}</div>
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: "#6b5f7a" }}>LEVEL</div>
+          <div style={{
+            fontFamily: "'Cinzel', serif", fontSize: 24, fontWeight: 700,
+            color: color, lineHeight: 1,
+            textShadow: `0 0 16px ${color}`,
+          }}>{char.level}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: "#4a3a5a" }}>/ {char.maxLevel}</div>
+          {/* XP bar */}
+          <div style={{
+            width: 50, height: 3, background: "#1a1228",
+            borderRadius: 2, marginTop: 4, marginLeft: "auto",
+          }}>
+            <div style={{
+              width: `${(char.level / char.maxLevel) * 100}%`,
+              height: "100%", borderRadius: 2,
+              background: `linear-gradient(90deg, ${color}, ${accent})`,
+              boxShadow: `0 0 6px ${color}`,
+            }}/>
+          </div>
+        </div>
+      </div>
+
+      {/* ── MIDDLE: CHARACTER + SLOTS ── */}
+      <div style={{
+        flex: 1, position: "relative", display: "flex",
+        alignItems: "center", justifyContent: "center",
+        padding: "0 0 4px",
+        zIndex: 2,
+      }}>
+        {/* LEFT SLOTS */}
+        <div style={{
+          position: "absolute", left: 8, top: "50%",
+          transform: "translateY(-50%)",
+          width: 112,
+          display: "flex", flexDirection: "column", gap: 7,
+          animation: "slideInLeft 0.5s ease-out 0.2s both",
+        }}>
+          {EQUIPMENT_SLOTS_LEFT.map((slot, i) => (
+            <HexSlot key={slot.id} slot={slot} selected={selectedSlot}
+              onSelect={setSelectedSlot} color={color} delay={0.2 + i * 0.08}/>
+          ))}
+          {/* Equip button */}
+          <div onClick={() => setSelectedSlot(null)} style={{
+            marginTop: 4, padding: "7px 10px",
+            background: selectedSlot
+              ? `linear-gradient(135deg, ${color}30, ${color}15)`
+              : "rgba(255,255,255,0.04)",
+            border: `1px solid ${selectedSlot ? color : color + "25"}`,
+            borderRadius: "8px",
+            textAlign: "center",
+            cursor: "pointer",
+            fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600,
+            color: selectedSlot ? color : "#4a3a5a",
+            letterSpacing: "0.08em",
+            boxShadow: selectedSlot ? `0 0 10px ${color}40` : "none",
+            transition: "all 0.25s ease",
+          }}>装備</div>
+        </div>
+
+        {/* CHARACTER ART */}
+        <div style={{
+          width: 160, height: 255,
+          position: "relative", flexShrink: 0,
+          marginTop: -10,
+        }}>
+          {/* Void ring glow behind character */}
+          <div style={{
+            position: "absolute", bottom: 0, left: "50%",
+            transform: "translateX(-50%)",
+            width: 110, height: 30,
+            background: `radial-gradient(ellipse, ${color}50, transparent 70%)`,
+            animation: "voidPulse 2s ease-in-out infinite",
+            pointerEvents: "none",
+          }}/>
+          {/* Character portrait frame */}
+          <div style={{
+            width: "100%", height: "100%",
+            position: "relative",
+            filter: demonizing ? `drop-shadow(0 0 20px ${color}) drop-shadow(0 0 40px ${color})` : `drop-shadow(0 0 8px ${color}60)`,
+            transition: "filter 0.3s ease",
+          }}>
+            {activeChar === "skeleton" && <SkeletonKnightSVG color={color}/>}
+            {activeChar === "zombie" && <ZombieSVG color={color}/>}
+            {activeChar === "lich" && <LichSVG color={color}/>}
+          </div>
+          {/* Level ring */}
+          <svg style={{ position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)", opacity: 0.6 }}
+            width="90" height="30" viewBox="0 0 90 30">
+            <ellipse cx="45" cy="15" rx="42" ry="10" fill="none"
+              stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.5"
+              style={{ animation: "runeRotate 12s linear infinite", transformOrigin: "45px 15px" }}/>
+          </svg>
+        </div>
+
+        {/* RIGHT SLOTS (void) */}
+        <div style={{
+          position: "absolute", right: 8, top: "50%",
+          transform: "translateY(-50%)",
+          width: 112,
+          display: "flex", flexDirection: "column", gap: 7,
+          animation: "slideInRight 0.5s ease-out 0.2s both",
+        }}>
+          {VOID_SLOTS_RIGHT.map((slot, i) => (
+            <HexSlot key={slot.id} slot={slot} selected={selectedSlot}
+              onSelect={setSelectedSlot} color={color} delay={0.2 + i * 0.08} isVoid/>
+          ))}
+          {/* Demonize button */}
+          <div onClick={handleDemonize} style={{
+            marginTop: 4, padding: "7px 10px",
+            background: `linear-gradient(135deg, ${color}25, ${color}10)`,
+            border: `1px solid ${color}50`,
+            borderRadius: "8px",
+            textAlign: "center",
+            cursor: "pointer",
+            fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600,
+            color: color,
+            letterSpacing: "0.08em",
+            boxShadow: `0 0 12px ${color}30`,
+            animation: "glowPulse 2.5s ease-in-out infinite",
+            position: "relative", overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute", inset: 0,
+              background: `linear-gradient(90deg, transparent, ${color}15, transparent)`,
+              backgroundSize: "200% 100%",
+              animation: "shimmer 2s infinite",
+              pointerEvents: "none",
+            }}/>
+            強化
+          </div>
+        </div>
+      </div>
+
+      {/* ── STATS PANEL ── */}
+      <div style={{
+        margin: "0 12px 8px",
+        padding: "12px 8px",
+        background: "linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))",
+        border: `1px solid ${color}30`,
+        borderRadius: "14px",
+        backdropFilter: "blur(10px)",
+        boxShadow: `0 0 20px ${color}15, inset 0 1px 0 rgba(255,255,255,0.06)`,
+        animation: "fadeSlideUp 0.5s ease-out 0.4s both",
+        zIndex: 2,
+        position: "relative",
+      }}>
+        {/* Panel top edge glow */}
+        <div style={{
+          position: "absolute", top: 0, left: "20%", right: "20%", height: 1,
+          background: `linear-gradient(90deg, transparent, ${color}60, transparent)`,
+          borderRadius: "50%",
+        }}/>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+          <div style={{
+            flex: 1, height: 1,
+            background: `linear-gradient(90deg, ${color}30, ${color}10)`,
+          }}/>
+          <div style={{
+            fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600,
+            color: color + "90", letterSpacing: "0.2em",
+            padding: "0 10px",
+          }}>STATUS</div>
+          <div style={{
+            flex: 1, height: 1,
+            background: `linear-gradient(270deg, ${color}30, ${color}10)`,
+          }}/>
+        </div>
+        <div style={{ display: "flex", gap: 4 }}>
+          <StatItem label="ATK" labelJa="攻撃力" value={char.atk} color={color} delay={0.45}/>
+          <div style={{ width: 1, background: `${color}20`, alignSelf: "stretch" }}/>
+          <StatItem label="DEF" labelJa="防御力" value={char.def} color={color} delay={0.5}/>
+          <div style={{ width: 1, background: `${color}20`, alignSelf: "stretch" }}/>
+          <StatItem label="SPD" labelJa="速度" value={char.spd} color={color} delay={0.55}/>
+          <div style={{ width: 1, background: `${color}20`, alignSelf: "stretch" }}/>
+          <StatItem label="HP" labelJa="体力" value={char.hp} color={color} delay={0.6}/>
+        </div>
+      </div>
+
+      {/* ── BOTTOM NAV ── */}
+      <div style={{
+        padding: "8px 12px 46px",
+        background: "linear-gradient(0deg, rgba(5,2,15,0.98), transparent)",
+        zIndex: 2,
+        animation: "fadeSlideUp 0.5s ease-out 0.5s both",
+      }}>
+        {/* Character switcher */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 0,
+          background: "rgba(255,255,255,0.03)",
+          border: `1px solid ${color}20`,
+          borderRadius: "16px",
+          padding: "10px 14px",
+          backdropFilter: "blur(8px)",
+        }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 18 }}>
+            {Object.entries(CHARACTERS).map(([key, c]) => (
+              <CharThumb key={key} charKey={key} char={c} active={activeChar === key} onSelect={handleCharSwitch}/>
+            ))}
+          </div>
+          {/* Formation button */}
+          <div style={{
+            padding: "8px 12px",
+            background: `linear-gradient(135deg, ${color}30, ${color}15)`,
+            border: `1px solid ${color}60`,
+            borderRadius: "10px",
+            cursor: "pointer",
+            boxShadow: `0 0 12px ${color}30`,
+            transition: "all 0.2s ease",
+            flexShrink: 0,
+          }}>
+            <div style={{
+              fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 700,
+              color: color, letterSpacing: "0.05em", textAlign: "center",
+            }}>編成</div>
+            <div style={{
+              fontFamily: "'Inter', sans-serif", fontSize: 7,
+              color: accent + "80", textAlign: "center", marginTop: 1,
+            }}>Formation</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── TWEAKS PANEL ── */}
+      {showTweaks && (
+        <TweaksPanel onClose={() => {
+          setShowTweaks(false);
+          window.parent.postMessage({ type: "__edit_mode_dismissed" }, "*");
+        }}>
+          <TweakSection title="Character">
+            <TweakRadio id="character" label="Active Unit"
+              options={[{value:"skeleton",label:"骸骨"},{value:"zombie",label:"屍兵"},{value:"lich",label:"リッチ"}]}
+              value={tweaks.character}
+              onChange={v => { setTweak("character", v); setActiveChar(v); }}/>
+          </TweakSection>
+          <TweakSection title="VFX">
+            <TweakRadio id="glow" label="Glow Intensity"
+              options={[{value:"low",label:"Low"},{value:"high",label:"High"}]}
+              value={tweaks.glowIntensity}
+              onChange={v => setTweak("glowIntensity", v)}/>
+            <TweakToggle id="runes" label="Show Runes" value={tweaks.showRunes}
+              onChange={v => setTweak("showRunes", v)}/>
+          </TweakSection>
+        </TweaksPanel>
+      )}
+    </div>
+  );
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(
+  <IOSDevice dark={true} width={393} height={852}>
+    <LegionHub/>
+  </IOSDevice>
+);
+</script>
+</body>
+</html>

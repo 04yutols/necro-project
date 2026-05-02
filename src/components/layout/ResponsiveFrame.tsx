@@ -12,20 +12,25 @@ interface ResponsiveFrameProps {
 
 export function ResponsiveFrame({ leftSidebar, mainMonitor, rightSidebar }: ResponsiveFrameProps) {
   return (
-    <div className="w-full h-screen bg-[#050505] text-[#A5A9B4] font-body overflow-hidden flex flex-col relative selection:bg-secondary/30">
+    <div className="w-full h-[100dvh] bg-[#050505] text-[#A5A9B4] font-body overflow-hidden relative selection:bg-secondary/30">
       <div className="fixed inset-0 pixel-grid opacity-20 pointer-events-none z-0" />
-      
+
       <MobileHeader />
 
-      <main className="flex-1 mt-10 mb-14 p-1 flex flex-col gap-1 overflow-y-auto custom-scrollbar relative z-10">
-        <div className="flex flex-col gap-1 h-full">
-          {mainMonitor}
-        </div>
+      {/* absolute配置で高さを明示的に確定させる — flex-1+h-fullの連鎖を避ける */}
+      <main style={{
+        position: 'absolute',
+        top: '40px',
+        bottom: '56px',
+        left: 0,
+        right: 0,
+        overflow: 'hidden',
+        zIndex: 10,
+      }}>
+        {mainMonitor}
       </main>
 
-      <div className="z-50">
-        <BottomNavBar />
-      </div>
+      <BottomNavBar />
     </div>
   );
 }

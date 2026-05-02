@@ -42,10 +42,14 @@ export default function Home() {
   const renderMainContent = () => {
     switch (currentTab) {
       case 'HOME':
-        return <HomeHero key="home" />;
+        return (
+          <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+            <HomeHero />
+          </motion.div>
+        );
       case 'MAP':
         return (
-          <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
+          <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
             <AreaMap onStartStage={(stageId) => {
               setActiveStageId(stageId);
               setIsInBattle(true);
@@ -55,10 +59,10 @@ export default function Home() {
         );
       case 'BATTLE':
         return (
-          <motion.div key="no-battle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col items-center justify-center bg-[#050505] text-[#A5A9B4]">
+          <motion.div key="no-battle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col items-center justify-center bg-[#050505] text-[#A5A9B4]">
             <div className="text-center">
               <p className="mb-4 font-mono text-sm tracking-widest uppercase">No Active Battle</p>
-              <button 
+              <button
                 onClick={() => setCurrentTab('MAP')}
                 className="px-6 py-2 bg-[#1A1A1A] border border-[#2C2C2C] text-secondary hover:bg-[#2C2C2C] transition-colors font-bold tracking-widest text-xs uppercase"
               >
@@ -69,21 +73,21 @@ export default function Home() {
         );
       case 'EQUIP':
         return (
-          <motion.div key="equip" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
+          <motion.div key="equip" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
             <LegionHub />
           </motion.div>
         );
       case 'LAB':
         return (
-          <motion.div key="lab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
+          <motion.div key="lab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
             <NecroLab />
           </motion.div>
         );
       case 'LOGS':
         return (
-          <motion.div key="logs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col p-2 pt-4">
+          <motion.div key="logs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col p-2 pt-4">
             <div className="flex items-center mb-3">
-              <button 
+              <button
                 onClick={() => setCurrentTab('HOME')}
                 className="flex items-center gap-2 text-gray-400 hover:text-primary transition-colors text-[10px] font-black tracking-widest uppercase bg-black/40 border border-[#1A1A1A] px-3 py-1.5 rounded-md backdrop-blur-sm shadow-md"
               >
@@ -97,47 +101,63 @@ export default function Home() {
           </motion.div>
         );
       default:
-        return <HomeHero key="home" />;
+        return (
+          <motion.div key="home-default" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+            <HomeHero />
+          </motion.div>
+        );
     }
   };
 
-  // サイドバー用のダミー（ResponsiveFrame用だが、今回はメインモニタに全て集約）
   const emptySidebar = <div className="hidden" />;
+
+  // MAP と BATTLE は全画面（ナビバーなし）でレンダリング
+  const isFullscreen = isInBattle || currentTab === 'MAP';
 
   return (
     <div className="h-[100dvh] w-full bg-[#050505] selection:bg-secondary/30 overflow-hidden">
       <AnimatePresence mode="wait">
         {isInBattle ? (
-            <motion.div 
-              key="battle-active"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 z-[9999] w-full h-full flex flex-col bg-black overflow-hidden"
-            >
-              <BattleCanvas onEnd={() => {
-                setIsInBattle(false);
-                if (activeStageId) addClearedStage(activeStageId);
-                setCurrentTab('MAP'); // 勝利後はマップへ戻る
-              }} />
-            </motion.div>
+          <motion.div
+            key="battle-active"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'absolute', inset: 0, zIndex: 9999, display: 'flex', flexDirection: 'column', background: '#000', overflow: 'hidden' }}
+          >
+            <BattleCanvas onEnd={() => {
+              setIsInBattle(false);
+              if (activeStageId) addClearedStage(activeStageId);
+              setCurrentTab('MAP');
+            }} />
+          </motion.div>
+        ) : currentTab === 'MAP' ? (
+          <motion.div
+            key="map-fullscreen"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'absolute', inset: 0, zIndex: 9999 }}
+          >
+            <AreaMap onStartStage={(stageId) => {
+              setActiveStageId(stageId);
+              setIsInBattle(true);
+              setCurrentTab('BATTLE');
+            }} />
+          </motion.div>
         ) : (
           <ResponsiveFrame
             leftSidebar={emptySidebar}
             mainMonitor={
-              <div className="w-full h-full relative">
-                <AnimatePresence mode="wait">
-                  {renderMainContent()}
-                </AnimatePresence>
-              </div>
+              <AnimatePresence mode="wait">
+                {renderMainContent()}
+              </AnimatePresence>
             }
             rightSidebar={emptySidebar}
           />
         )}
       </AnimatePresence>
-      
+
       {equippingMonster && (
-        <ShardEquipModal 
-          monster={equippingMonster} 
-          onClose={() => setEquippingMonsterId(null)} 
+        <ShardEquipModal
+          monster={equippingMonster}
+          onClose={() => setEquippingMonsterId(null)}
         />
       )}
     </div>

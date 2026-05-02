@@ -555,7 +555,9 @@ function SystemBar({ auto, speed, onAuto, onSpeed, onEscape, canEscape }: {
 }) {
   return (
     <div style={{
-      padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center',
+      paddingTop: 5, paddingLeft: 12, paddingRight: 12,
+      paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))' as string,
+      display: 'flex', gap: 6, alignItems: 'center',
       background: 'rgba(3,1,12,0.9)', borderTop: '1px solid rgba(255,255,255,0.04)',
     }}>
       <div onClick={onAuto} style={{
@@ -796,7 +798,8 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
 
       {/* ── TOP HUD ── */}
       <div style={{
-        padding: '54px 12px 0',
+        paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
+        paddingLeft: 12, paddingRight: 12, paddingBottom: 0,
         background: 'linear-gradient(180deg,rgba(3,1,12,0.92),rgba(3,1,12,0.6) 70%,transparent)',
         zIndex: 10,
       }}>

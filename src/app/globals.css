@@ -288,6 +288,56 @@ body::after {
   0%, 100% { box-shadow: 0 0 10px #8A2BE260, 0 0 20px #8A2BE230; }
   50% { box-shadow: 0 0 20px #8A2BE2aa, 0 0 36px #8A2BE260; }
 }
+@keyframes nodeBreath {
+  0%,100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
+@keyframes nodeRing {
+  0% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+@keyframes fogDrift {
+  0%,100% { transform: translateX(0) translateY(0); opacity: 0.55; }
+  33% { transform: translateX(12px) translateY(-8px); opacity: 0.7; }
+  66% { transform: translateX(-8px) translateY(10px); opacity: 0.45; }
+}
+@keyframes pathFlow {
+  0% { stroke-dashoffset: 120; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes particleRise {
+  0% { opacity: 0.8; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-50px) scale(0.2); }
+}
+@keyframes currentMarker {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes stamRegen {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+@keyframes sheetReveal {
+  from { transform: translateY(110%); }
+  to { transform: translateY(0); }
+}
+@keyframes crownFloat {
+  0%,100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-5px) rotate(2deg); }
+}
+@keyframes pulseGlow {
+  0%,100% { filter: drop-shadow(0 0 6px currentColor); }
+  50% { filter: drop-shadow(0 0 14px currentColor) drop-shadow(0 0 28px currentColor); }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 /* ═══════════════════════════════════════════
    UTILITY CLASSES

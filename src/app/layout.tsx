@@ -25,6 +25,12 @@ export const metadata: Metadata = {
   description: "魔王育成・ターン制RPG",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
