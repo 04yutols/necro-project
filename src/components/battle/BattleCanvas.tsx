@@ -18,8 +18,8 @@ interface EnemyState {
 }
 const INIT_ENEMIES: EnemyState[] = [
   { id: 0, name: '霊体騎士', nameEn: 'WRAITH KNIGHT', hp: 340, maxHp: 340, atk: 85,  color: '#06b6d4', pos: 'left',   size: 0.78, targeted: false },
-  { id: 1, name: '骨巨人',   nameEn: 'BONE GIANT',    hp: 580, maxHp: 580, atk: 120, color: '#8A2BE2', pos: 'center', size: 1.0,  targeted: true  },
-  { id: 2, name: '死骨竜',   nameEn: 'UNDEAD WYRM',   hp: 420, maxHp: 420, atk: 100, color: '#ef4444', pos: 'right',  size: 0.88, targeted: false },
+  { id: 1, name: '骨巨人',   nameEn: 'BONE GIANT',    hp: 580, maxHp: 580, atk: 120, color: '#8A2BE2', pos: 'center', size: 0.88, targeted: true  },
+  { id: 2, name: '死骨竜',   nameEn: 'UNDEAD WYRM',   hp: 420, maxHp: 420, atk: 100, color: '#ef4444', pos: 'right',  size: 0.80, targeted: false },
 ];
 
 // ── SKILLS / ITEMS ─────────────────────────────────────────────────────────────
@@ -247,10 +247,12 @@ function TurnOrderStrip() {
 }
 
 // ── BATTLE ARENA ──────────────────────────────────────────────────────────────
+// Positions keep visual edges (container_center ± width*scale/2) within 0–100%
+// at max responsiveMult=1.20 and each enemy's base size.
 const POSITIONS: Record<string, React.CSSProperties> = {
-  left:   { left: '6%',  width: '30%', alignSelf: 'flex-end', paddingBottom: 12 },
-  center: { left: '32%', width: '38%', alignSelf: 'flex-end', paddingBottom: 4  },
-  right:  { left: '64%', width: '32%', alignSelf: 'flex-end', paddingBottom: 16 },
+  left:   { left: '4%',  width: '32%', alignSelf: 'flex-end', paddingBottom: 12 },
+  center: { left: '28%', width: '40%', alignSelf: 'flex-end', paddingBottom: 4  },
+  right:  { left: '60%', width: '34%', alignSelf: 'flex-end', paddingBottom: 16 },
 };
 
 function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShake }: {
@@ -260,9 +262,27 @@ function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShak
   flashColor: string | null;
   screenShake: boolean;
 }) {
+  const arenaRef = useRef<HTMLDivElement>(null);
+  const [arenaH, setArenaH] = useState(260);
+
+  useEffect(() => {
+    const el = arenaRef.current;
+    if (!el) return;
+    const sync = () => setArenaH(el.clientHeight);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Scale enemies relative to arena height.
+  // Cap at 1.0: never upscale beyond base sizes to prevent top-edge clipping.
+  // containerHeight(≈183px) × size × mult must always be < arenaH.
+  const responsiveMult = Math.min(1.0, Math.max(0.65, arenaH / 280));
+
   return (
-    <div style={{
-      position: 'relative', flex: 1,
+    <div ref={arenaRef} style={{
+      position: 'relative', flex: 1, minHeight: 0,
       background: demonized
         ? 'linear-gradient(180deg, #1a0208 0%, #0d0108 100%)'
         : 'linear-gradient(180deg, #0d0420 0%, #07021a 100%)',
@@ -321,7 +341,7 @@ function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShak
             style={{
               position: 'absolute', ...POSITIONS[enemy.pos],
               cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4,
-              transform: `scale(${enemy.size})`, transformOrigin: 'bottom center',
+              transform: `scale(${enemy.size * responsiveMult})`, transformOrigin: 'bottom center',
             }}>
             {/* HP bar */}
             <div style={{ width: '100%', height: 5, background: 'rgba(0,0,0,0.5)', borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)', marginBottom: 4 }}>

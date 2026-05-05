@@ -270,7 +270,7 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
         animation: `slotReveal 0.4s ease-out ${delay}s both`,
         cursor: slot.locked ? 'default' : 'pointer',
         display: 'flex', alignItems: 'center', gap: 8,
-        padding: '7px 9px',
+        padding: '8px 10px',
         background: isSelected
           ? `linear-gradient(135deg, ${color}25, ${color}15)`
           : slot.filled
@@ -293,33 +293,33 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
         }} />
       )}
       <div style={{
-        width: 32, height: 32, flexShrink: 0,
+        width: 34, height: 34, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: slot.filled ? `${color}18` : 'rgba(255,255,255,0.04)',
-        border: `1px solid ${slot.filled ? color + '55' : color + '18'}`,
+        border: `1px solid ${slot.filled ? color + '60' : color + '20'}`,
         borderRadius: 8, fontSize: 14, position: 'relative',
       }}>
-        {slot.locked ? '🔒' : slot.filled ? slot.icon : <span style={{ color: color + '50', fontSize: 13 }}>＋</span>}
+        {slot.locked ? '🔒' : slot.filled ? slot.icon : <span style={{ color: color + '50', fontSize: 14 }}>＋</span>}
         {slot.filled && isVoid && !slot.locked && (
           <div style={{ position: 'absolute', inset: 0, borderRadius: 8, background: `radial-gradient(circle, ${color}28, transparent)`, animation: 'void-pulse 2s ease-in-out infinite' }} />
         )}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600, color: slot.filled ? '#e2d8f0' : '#5a4f6e', letterSpacing: '0.08em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600, color: slot.filled ? '#e2d8f0' : '#6b5f7a', letterSpacing: '0.08em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {slot.locked ? 'LOCKED' : slot.label}
         </div>
-        <div style={{ fontFamily: 'monospace', fontSize: 8, color: slot.filled ? '#9b7fc0' : '#3a2a4a', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontFamily: 'monospace', fontSize: 9, color: slot.filled ? '#9b7fc0' : '#4a3a5a', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {slot.locked ? '—' : slot.sublabel}
         </div>
       </div>
       {slot.filled && slot.level != null && !slot.locked && (
-        <div style={{ fontFamily: 'monospace', fontSize: 8, fontWeight: 700, color, background: `${color}18`, padding: '2px 5px', borderRadius: 4, border: `1px solid ${color}38`, flexShrink: 0 }}>
+        <div style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 600, color, background: `${color}18`, padding: '2px 5px', borderRadius: 4, border: `1px solid ${color}40`, flexShrink: 0 }}>
           Lv.{slot.level}
         </div>
       )}
       {isVoid && !slot.filled && !slot.locked && (
-        <div style={{ width: 20, height: 20, flexShrink: 0, borderRadius: '50%', border: `1px dashed ${color}38`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: `${color}28` }} />
+        <div style={{ width: 22, height: 22, flexShrink: 0, borderRadius: '50%', border: `1px dashed ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: `${color}30` }} />
         </div>
       )}
     </div>
@@ -752,153 +752,129 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
       animate={{ y: 0 }}
       exit={{ y: '100%' }}
       transition={{ type: 'spring', stiffness: 295, damping: 33 }}
-      className="absolute inset-0 flex flex-col overflow-hidden"
-      style={{ background: '#03010B', fontFamily: "'Inter', sans-serif" }}
-      data-demon={isDemonMode ? 'true' : 'false'}
+      style={{ position: 'absolute', inset: 0 }}
     >
+      <div
+        className="absolute inset-0 flex flex-col overflow-hidden"
+        style={{ background: '#03010B', fontFamily: "'Inter', sans-serif" }}
+        data-demon={isDemonMode ? 'true' : 'false'}
+      >
       {/* Canvas bg */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ opacity: 0.7 }} />
 
-      {/* Navbar */}
-      <div className="shrink-0 flex items-center gap-2 px-3 relative z-10" style={{ height: 44, borderBottom: `1px solid ${color}16` }}>
-        <motion.button onClick={() => { haptic(5); onBack(); }} whileTap={{ scale: 0.9 }}
-          className="flex items-center gap-1 px-2.5 py-2 rounded-xl"
-          style={{ background: 'rgba(10,5,26,0.88)', border: `1px solid ${color}36`, color: `${color}DD`, minHeight: 36 }}>
-          <ChevronLeft size={14} />
-          <span className="text-[10px] font-black tracking-wider" style={{ fontFamily: 'monospace' }}>LIST</span>
-        </motion.button>
-        <div className="flex-1 text-center">
-          <span className="text-[11px] font-black tracking-[0.16em]" style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', serif", textShadow: `0 0 10px ${color}55` }}>
-            UNIT DETAIL
-          </span>
-        </div>
-        <div className="px-2.5 py-1.5 rounded-xl shrink-0" style={{ background: `${color}1A`, border: `1px solid ${color}30` }}>
-          <span className="text-[10px] font-black" style={{ color, fontFamily: 'monospace' }}>
-            {info.lvl !== null ? `Lv.${info.lvl}` : info.cost !== null ? `C${info.cost}` : '—'}
-          </span>
-        </div>
-      </div>
+      {/* Full-screen ambient */}
+      <FloatingOrbs color={color} />
+      <ScanLine color={color} />
+      {isDemonMode && <div style={{ position: 'absolute', inset: 0, zIndex: 50, background: `radial-gradient(circle at center, ${color}40, transparent 70%)`, pointerEvents: 'none' }} />}
 
-      {/* Header */}
-      <div className="shrink-0 flex items-start justify-between px-3.5 py-3 relative z-10" style={{ animation: 'fadeSlideUp 0.4s ease-out' }}>
-        <div className="flex flex-col">
-          <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color, letterSpacing: '0.18em', textShadow: `0 0 10px ${color}` }}>
-            {info.sub}
-          </div>
-          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 15, fontWeight: 700, color: '#f5f0ff', letterSpacing: '0.04em', lineHeight: 1.1, textShadow: `0 0 18px ${color}60` }}>
+      {/* ── HEADER ── */}
+      <div className="shrink-0 relative z-10" style={{ padding: '8px 14px 6px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', animation: 'fadeSlideUp 0.4s ease-out', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color, letterSpacing: '0.18em', textTransform: 'uppercase', textShadow: `0 0 10px ${color}` }}>統合詳細ハブ</div>
+          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 16, fontWeight: 700, color: '#f5f0ff', letterSpacing: '0.04em', lineHeight: 1.1, textShadow: `0 0 20px ${color}60`, whiteSpace: 'nowrap' }}>
             {info.nameEn}
           </div>
-          <div className="flex items-center gap-1.5 mt-1">
-            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 8, color: accent, border: `1px solid ${accent}50`, padding: '1px 6px', borderRadius: 3, background: `${accent}10`, flexShrink: 0 }}>
-              {info.rank}
-            </div>
-            <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#8b7da8' }}>{info.isPlayer ? `${conf.label} · 主人公` : `${conf.label} · 軍団員`}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: accent, border: `1px solid ${accent}50`, padding: '1px 6px', borderRadius: 3, background: `${accent}10`, flexShrink: 0 }}>{info.rank}</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', whiteSpace: 'nowrap' }}>{conf.label} · {info.isPlayer ? '主人公' : '軍団員'}</div>
           </div>
         </div>
-        <div className="text-right">
-          <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#6b5f7a' }}>LEVEL</div>
-          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 22, fontWeight: 700, color, lineHeight: 1, textShadow: `0 0 14px ${color}` }}>
-            {info.lvl ?? info.cost ?? '?'}
-          </div>
-          <div style={{ fontFamily: 'monospace', fontSize: 7, color: '#4a3a5a' }}>/ {maxLvl}</div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#6b5f7a' }}>LEVEL</div>
+          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 24, fontWeight: 700, color, lineHeight: 1, textShadow: `0 0 16px ${color}` }}>{info.lvl ?? info.cost ?? '?'}</div>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#4a3a5a' }}>/ {maxLvl}</div>
           <div style={{ width: 50, height: 3, background: '#1a1228', borderRadius: 2, marginTop: 4, marginLeft: 'auto' }}>
-            <div style={{ width: `${xpPct}%`, height: '100%', borderRadius: 2, background: `linear-gradient(90deg, ${color}, ${accent})`, boxShadow: `0 0 5px ${color}` }} />
+            <div style={{ width: `${xpPct}%`, height: '100%', borderRadius: 2, background: `linear-gradient(90deg, ${color}, ${accent})`, boxShadow: `0 0 6px ${color}` }} />
           </div>
         </div>
       </div>
 
-      {/* Middle: LEFT slots | CHARACTER ART | RIGHT slots */}
-      <div className="flex-1 min-h-0 relative z-10" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 0 4px' }}>
-        <FloatingOrbs color={color} />
-        <ScanLine color={color} />
+      {/* Middle: absolutely-positioned slot columns flanking centered character art */}
+      <div className="flex-1 min-h-0 z-10" style={{ position: 'relative' }}>
 
-        {/* LEFT slots */}
-        <div style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', width: 108, display: 'flex', flexDirection: 'column', gap: 6, animation: 'slideInLeft 0.5s ease-out 0.2s both' }}>
-          {leftSlots.map((slot, i) => (
-            <HexSlot key={slot.id} slot={slot} selected={selectedSlot} onSelect={handleLeftSelect} color={color} delay={0.2 + i * 0.07} />
-          ))}
-          <div
-            onClick={() => selectedSlot && handleLeftSelect(selectedSlot)}
-            style={{
-              marginTop: 3, padding: '6px 10px',
-              background: selectedSlot ? `linear-gradient(135deg, ${color}28, ${color}14)` : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${selectedSlot ? color : color + '22'}`,
-              borderRadius: 8, textAlign: 'center', cursor: 'pointer',
-              fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600,
-              color: selectedSlot ? color : '#4a3a5a', letterSpacing: '0.08em',
-              boxShadow: selectedSlot ? `0 0 9px ${color}38` : 'none',
-              transition: 'all 0.22s ease',
-            }}>
-            装備
+        {/* CENTER — fills the entire middle area, character centered within */}
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          <AnimatePresence mode="wait">
+            <motion.div key={selKey}
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.04 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              style={{ width: 160, height: 255, position: 'relative', flexShrink: 0, marginTop: -10 }}>
+              {/* Void ring glow behind character */}
+              <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 110, height: 30, background: `radial-gradient(ellipse, ${color}50, transparent 70%)`, animation: 'void-pulse 2s ease-in-out infinite', pointerEvents: 'none' }} />
+              {/* Character display */}
+              <div style={{ width: '100%', height: '100%', position: 'relative', filter: isDemonMode ? `drop-shadow(0 0 20px ${color}) drop-shadow(0 0 40px ${color})` : `drop-shadow(0 0 8px ${color}60)`, transition: 'filter 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'auto' }}>
+                <motion.div animate={{ y: [-6, 6, -6] }} transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ width: 120, height: 180, borderRadius: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 88, background: `radial-gradient(circle at 35% 28%, ${color}2C, rgba(0,0,0,0.9))`, border: `2px solid ${color}66`, boxShadow: `0 14px 44px rgba(0,0,0,0.8), 0 0 36px ${color}2C, inset 0 0 24px rgba(0,0,0,0.55)`, position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 52%)', borderRadius: 'inherit' }} />
+                    <span style={{ filter: `drop-shadow(0 0 14px ${color}) drop-shadow(0 0 4px ${color})`, lineHeight: 1, animation: 'breathe 3.2s ease-in-out infinite', transformOrigin: 'center bottom' }}>{conf.emoji}</span>
+                  </div>
+                  <motion.div animate={{ scaleX: [1, 1.3, 1], opacity: [0.28, 0.07, 0.28] }} transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }} style={{ width: 80, height: 10, background: `radial-gradient(ellipse, ${color}77, transparent)`, filter: 'blur(6px)', borderRadius: 999, margin: '6px auto 0' }} />
+                </motion.div>
+              </div>
+              {/* Level ring */}
+              <svg style={{ position: 'absolute', bottom: -5, left: '50%', transform: 'translateX(-50%)', opacity: 0.6 }} width="90" height="30" viewBox="0 0 90 30">
+                <ellipse cx="45" cy="15" rx="42" ry="10" fill="none" stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.5"
+                  style={{ animation: 'magic-spin 12s linear infinite', transformOrigin: '45px 15px' }} />
+              </svg>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* LEFT column — outer div: positioning only (no animation, so translateY(-50%) is never overridden) */}
+        <div style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 112, zIndex: 2 }}>
+          {/* Inner div: animation only (translateX won't conflict with parent's translateY) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, animation: 'slideInLeft 0.5s ease-out 0.2s both' }}>
+            {leftSlots.map((slot, i) => (
+              <HexSlot key={slot.id} slot={slot} selected={selectedSlot} onSelect={handleLeftSelect} color={color} delay={0.15 + i * 0.06} />
+            ))}
+            <div
+              onClick={() => selectedSlot && handleLeftSelect(selectedSlot)}
+              style={{
+                marginTop: 2, padding: '6px 8px',
+                background: selectedSlot ? `linear-gradient(135deg, ${color}28, ${color}14)` : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${selectedSlot ? color : color + '22'}`,
+                borderRadius: 8, textAlign: 'center', cursor: 'pointer',
+                fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600,
+                color: selectedSlot ? color : '#4a3a5a', letterSpacing: '0.08em',
+                boxShadow: selectedSlot ? `0 0 9px ${color}38` : 'none',
+                transition: 'all 0.22s ease',
+              }}>
+              装備
+            </div>
           </div>
         </div>
 
-        {/* CENTER character art */}
-        <AnimatePresence mode="wait">
-          <motion.div key={selKey}
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.04 }}
-            transition={{ duration: 0.22, ease: 'easeOut' }}
-            style={{ width: 140, height: 200, position: 'relative', flexShrink: 0, marginTop: -8 }}>
-            {/* Void ring glow */}
-            <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 100, height: 24, background: `radial-gradient(ellipse, ${color}45, transparent 70%)`, animation: 'void-pulse 2s ease-in-out infinite', pointerEvents: 'none' }} />
-            {/* Character sprite */}
-            <div style={{ width: '100%', height: '100%', position: 'relative', filter: isDemonMode ? `drop-shadow(0 0 18px ${color}) drop-shadow(0 0 6px ${color}80)` : `drop-shadow(0 0 8px ${color}60)`, transition: 'filter 0.4s ease' }}>
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 24 }}>
-                {/* Orbit rings */}
-                <div style={{ position: 'relative', width: 0, height: 0 }}>
-                  {[{ r: 160, dur: 16, rev: false }, { r: 110, dur: 10, rev: true }, { r: 72, dur: 6.5, rev: false }].map(({ r, dur, rev }, idx) => (
-                    <div key={idx} style={{ position: 'absolute', width: r, height: r, left: -r / 2, top: -r / 2, borderRadius: '50%', border: `${idx === 0 ? 1 : 0.8}px solid ${['rgba('+color.slice(1)+'22', color+'18', color+'14'][idx]}`, borderStyle: idx === 1 ? 'dashed' : 'solid', animation: `magic-spin ${dur}s linear infinite ${rev ? 'reverse' : ''}` }} />
-                  ))}
-                  <div style={{ position: 'absolute', width: 110, height: 110, left: -55, top: -55, background: `radial-gradient(circle, ${color}1C 0%, transparent 70%)`, filter: 'blur(10px)', borderRadius: '50%' }} />
-                </div>
-                {/* Emoji sprite */}
-                <div style={{ position: 'absolute' }}>
-                  <motion.div animate={{ y: [-7, 7, -7] }} transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }}>
-                    <div style={{ width: 90, height: 90, borderRadius: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 54, background: `radial-gradient(circle at 35% 28%, ${color}2C, rgba(0,0,0,0.9))`, border: `2px solid ${color}66`, boxShadow: `0 14px 44px rgba(0,0,0,0.8), 0 0 36px ${color}2C, inset 0 0 24px rgba(0,0,0,0.55)`, position: 'relative', overflow: 'hidden' }}>
-                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 52%)', borderRadius: 'inherit' }} />
-                      <span style={{ filter: `drop-shadow(0 0 14px ${color}) drop-shadow(0 0 4px ${color})`, lineHeight: 1, animation: 'breathe 3.2s ease-in-out infinite', transformOrigin: 'center bottom' }}>{conf.emoji}</span>
-                    </div>
-                    <motion.div animate={{ scaleX: [1, 1.3, 1], opacity: [0.28, 0.07, 0.28] }} transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }} style={{ width: 72, height: 8, background: `radial-gradient(ellipse, ${color}77, transparent)`, filter: 'blur(6px)', borderRadius: 999, margin: '6px auto 0' }} />
-                  </motion.div>
-                </div>
-              </div>
+        {/* RIGHT column — outer div: positioning only (no animation, so translateY(-50%) is never overridden) */}
+        <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 112, zIndex: 2 }}>
+          {/* Inner div: animation only */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, animation: 'slideInRight 0.5s ease-out 0.2s both' }}>
+            {rightSlots.map((slot, i) => (
+              <HexSlot key={slot.id} slot={slot} selected={selectedSlot} onSelect={handleRightSelect} color={color} delay={0.15 + i * 0.06} isVoid />
+            ))}
+            <div
+              onClick={() => { haptic([10, 8, 18]); onOpenGear('RESIDUE', 0); }}
+              style={{
+                marginTop: 2, padding: '6px 8px',
+                background: `linear-gradient(135deg, ${color}22, ${color}0C)`,
+                border: `1px solid ${color}48`,
+                borderRadius: 8, textAlign: 'center', cursor: 'pointer',
+                fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600,
+                color, letterSpacing: '0.08em',
+                boxShadow: `0 0 10px ${color}28`,
+                animation: 'glow-pulse 2.5s ease-in-out infinite',
+                position: 'relative', overflow: 'hidden',
+              }}>
+              <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg, transparent, ${color}14, transparent)`, backgroundSize: '200% 100%', animation: 'shimmer 2s infinite', pointerEvents: 'none' }} />
+              強化
             </div>
-            {/* Level ring SVG */}
-            <svg style={{ position: 'absolute', bottom: -4, left: '50%', transform: 'translateX(-50%)', opacity: 0.55 }} width="80" height="26" viewBox="0 0 80 26">
-              <ellipse cx="40" cy="13" rx="38" ry="9" fill="none" stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.5"
-                style={{ animation: 'magic-spin 12s linear infinite', transformOrigin: '40px 13px' }} />
-            </svg>
-          </motion.div>
-        </AnimatePresence>
-
-        {/* RIGHT slots (residues) */}
-        <div style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 108, display: 'flex', flexDirection: 'column', gap: 6, animation: 'slideInRight 0.5s ease-out 0.2s both' }}>
-          {rightSlots.map((slot, i) => (
-            <HexSlot key={slot.id} slot={slot} selected={selectedSlot} onSelect={handleRightSelect} color={color} delay={0.2 + i * 0.07} isVoid />
-          ))}
-          <div
-            onClick={() => { haptic([10, 8, 18]); onOpenGear('RESIDUE', 0); }}
-            style={{
-              marginTop: 3, padding: '6px 10px',
-              background: `linear-gradient(135deg, ${color}22, ${color}0C)`,
-              border: `1px solid ${color}48`,
-              borderRadius: 8, textAlign: 'center', cursor: 'pointer',
-              fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600,
-              color, letterSpacing: '0.08em',
-              boxShadow: `0 0 10px ${color}28`,
-              animation: 'glow-pulse 2.5s ease-in-out infinite',
-              position: 'relative', overflow: 'hidden',
-            }}>
-            <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg, transparent, ${color}14, transparent)`, backgroundSize: '200% 100%', animation: 'shimmer 2s infinite', pointerEvents: 'none' }} />
-            強化
           </div>
         </div>
       </div>
 
       {/* Stats panel */}
-      <div className="shrink-0 relative z-10" style={{ margin: '0 10px 8px', padding: '10px 8px', background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))', border: `1px solid ${color}28`, borderRadius: 14, backdropFilter: 'blur(10px)', boxShadow: `0 0 18px ${color}14, inset 0 1px 0 rgba(255,255,255,0.05)`, animation: 'fadeSlideUp 0.5s ease-out 0.4s both' }}>
+      <div className="shrink-0 relative z-10" style={{ margin: '0 12px 8px', padding: '12px 8px', background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))', border: `1px solid ${color}30`, borderRadius: 14, backdropFilter: 'blur(10px)', boxShadow: `0 0 20px ${color}15, inset 0 1px 0 rgba(255,255,255,0.06)`, animation: 'fadeSlideUp 0.5s ease-out 0.4s both' }}>
         <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 1, background: `linear-gradient(90deg, transparent, ${color}55, transparent)`, borderRadius: '50%' }} />
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
           <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${color}28, ${color}0C)` }} />
@@ -917,9 +893,9 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
       </div>
 
       {/* Thumb strip + Formation button */}
-      <div className="shrink-0 relative z-10" style={{ padding: '8px 10px 12px', background: 'linear-gradient(0deg, rgba(5,2,15,0.98), transparent)', animation: 'fadeSlideUp 0.5s ease-out 0.5s both' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'rgba(255,255,255,0.03)', border: `1px solid ${color}18`, borderRadius: 16, padding: '8px 12px', backdropFilter: 'blur(8px)' }}>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      <div className="shrink-0 relative z-10" style={{ padding: '8px 12px 12px', background: 'linear-gradient(0deg, rgba(5,2,15,0.98), transparent)', animation: 'fadeSlideUp 0.5s ease-out 0.5s both' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'rgba(255,255,255,0.03)', border: `1px solid ${color}20`, borderRadius: 16, padding: '10px 14px', backdropFilter: 'blur(8px)' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
             {MEMBER_KEYS.map(k => {
               const isPlayer2 = k === 'PLAYER';
               const midx = isPlayer2 ? -1 : parseInt(k.replace('MONSTER_', ''));
@@ -931,11 +907,12 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
             })}
           </div>
           {/* Formation button */}
-          <div style={{ padding: '7px 11px', background: `linear-gradient(135deg, ${color}28, ${color}12)`, border: `1px solid ${color}55`, borderRadius: 10, cursor: 'pointer', boxShadow: `0 0 10px ${color}28`, flexShrink: 0 }}>
+          <div onClick={() => { haptic(5); onBack(); }} style={{ padding: '8px 12px', background: `linear-gradient(135deg, ${color}30, ${color}15)`, border: `1px solid ${color}60`, borderRadius: 10, cursor: 'pointer', boxShadow: `0 0 12px ${color}30`, flexShrink: 0, transition: 'all 0.2s ease' }}>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 700, color, letterSpacing: '0.05em', textAlign: 'center' }}>編成</div>
-            <div style={{ fontFamily: 'monospace', fontSize: 6, color: accent + '80', textAlign: 'center', marginTop: 1 }}>Formation</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 7, color: accent + '80', textAlign: 'center', marginTop: 1 }}>Formation</div>
           </div>
         </div>
+      </div>
       </div>
     </motion.div>
   );
@@ -1023,7 +1000,9 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
       animate={{ y: 0 }}
       exit={{ y: '100%' }}
       transition={{ type: 'spring', stiffness: 295, damping: 33 }}
-      className="absolute inset-0 flex flex-col overflow-hidden"
+      style={{ position: 'absolute', inset: 0 }}
+    >
+    <div className="absolute inset-0 flex flex-col overflow-hidden"
       style={{ background: 'linear-gradient(180deg, #050115 0%, #07021A 100%)' }}
     >
       {/* Navbar */}
@@ -1178,6 +1157,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
           )}
         </AnimatePresence>
       </div>
+    </div>
     </motion.div>
   );
 }
@@ -1185,11 +1165,11 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
 /* ──────────────────────────────────────────
    LEGION LIST VIEW
 ────────────────────────────────────────── */
-function LegionListView({ player, party, equippedResidueSlots, soulShards, demonGauge, isDemonMode, onSelect, onToggleDemon }: {
+function LegionListView({ player, party, equippedResidueSlots, soulShards, demonGauge, isDemonMode, onSelect, onToggleDemon, onBack }: {
   player: CharacterData | null; party: (MonsterData | null)[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
   soulShards: SoulShardData[]; demonGauge: number; isDemonMode: boolean;
-  onSelect: (k: MemberKey) => void; onToggleDemon: () => void;
+  onSelect: (k: MemberKey) => void; onToggleDemon: () => void; onBack: () => void;
 }) {
   const totalCost = (party as (MonsterData | null)[]).reduce((s, m) => s + (m?.cost ?? 0), 0);
   const maxCost = 12;
@@ -1207,6 +1187,12 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
             <div className="text-[11px] font-bold tracking-[0.2em] mt-0.5" style={{ color: 'rgba(182,165,232,0.52)', fontFamily: 'monospace' }}>ARMY FORMATION</div>
           </div>
           <div className="flex flex-col items-end gap-1.5">
+            <motion.button onClick={() => { haptic(5); onBack(); }} whileTap={{ scale: 0.9 }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl mb-1"
+              style={{ background: 'rgba(10,5,26,0.88)', border: '1px solid rgba(140,60,220,0.36)', color: 'rgba(200,160,255,0.85)' }}>
+              <ChevronLeft size={13} />
+              <span className="text-[10px] font-black tracking-wider" style={{ fontFamily: 'monospace' }}>DETAIL</span>
+            </motion.button>
             <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl" style={{ background: 'rgba(136,0,228,0.14)', border: '1px solid rgba(148,0,238,0.32)' }}>
               <span className="text-[12px] font-black" style={{ color: '#E090FF', fontFamily: 'monospace' }}>COST {totalCost}/{maxCost}</span>
             </div>
@@ -1247,13 +1233,14 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
 export default function LegionHub() {
   const { player, party, equippedResidueSlots, soulShards, abyssalResidues, residueMaterials, inventoryItems, demonGauge, isDemonMode, toggleDemonMode } = useGameStore();
   const sound = useGothicSound();
-  const [view, setView] = useState<'LIST' | 'DETAIL' | 'GEAR'>('LIST');
-  const [selKey, setSelKey] = useState<MemberKey | null>(null);
+  const [view, setView] = useState<'LIST' | 'DETAIL' | 'GEAR'>('DETAIL');
+  const [selKey, setSelKey] = useState<MemberKey | null>('PLAYER');
   const [gearCtx, setGearCtx] = useState<GearCtx | null>(null);
 
   const openDetail = useCallback((k: MemberKey) => { sound.playTap(); setSelKey(k); setView('DETAIL'); }, [sound]);
-  const goBackToList = useCallback(() => { haptic(5); sound.playTap(); setView('LIST'); setSelKey(null); }, [sound]);
+  const goBackToList = useCallback(() => { haptic(5); sound.playTap(); setView('LIST'); }, [sound]);
   const goBackToDetail = useCallback(() => { haptic(5); sound.playTap(); setView('DETAIL'); setGearCtx(null); }, [sound]);
+  const goBackFromList = useCallback(() => { haptic(5); sound.playTap(); if (selKey) setView('DETAIL'); }, [sound, selKey]);
 
   const openGear = useCallback((slotType: GearSlotType, slotIndex: number) => {
     if (!selKey) return;
@@ -1265,14 +1252,15 @@ export default function LegionHub() {
   const switchMember = useCallback((k: MemberKey) => { sound.playTap(); setSelKey(k); }, [sound]);
 
   return (
-    <div className="relative w-full h-full overflow-hidden" data-demon={isDemonMode ? 'true' : 'false'}>
+    <div className="absolute inset-0 overflow-hidden" data-demon={isDemonMode ? 'true' : 'false'}>
       <AnimatePresence mode="sync">
         {view === 'LIST' && (
           <LegionListView key="list"
             player={player} party={party as (MonsterData | null)[]}
             equippedResidueSlots={equippedResidueSlots} soulShards={soulShards}
             demonGauge={demonGauge} isDemonMode={isDemonMode}
-            onSelect={openDetail} onToggleDemon={() => { haptic([15, 10, 30]); toggleDemonMode(); }} />
+            onSelect={openDetail} onToggleDemon={() => { haptic([15, 10, 30]); toggleDemonMode(); }}
+            onBack={goBackFromList} />
         )}
         {view === 'DETAIL' && selKey && (
           <UnitDetailView key="detail"

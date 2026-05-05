@@ -12,18 +12,26 @@ interface ResponsiveFrameProps {
 
 export function ResponsiveFrame({ leftSidebar, mainMonitor, rightSidebar }: ResponsiveFrameProps) {
   return (
-    <div className="w-full h-[100dvh] bg-[#050505] text-[#A5A9B4] font-body overflow-hidden relative selection:bg-secondary/30">
-      <div className="fixed inset-0 pixel-grid opacity-20 pointer-events-none z-0" />
+    <div
+      className="text-[#A5A9B4] font-body selection:bg-secondary/30"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        background: '#050505',
+      }}
+    >
+      <div className="absolute inset-0 pixel-grid opacity-20 pointer-events-none z-0" />
 
       <MobileHeader />
 
-      {/* absolute配置で高さを明示的に確定させる — flex-1+h-fullの連鎖を避ける */}
       <main style={{
-        position: 'absolute',
-        top: '40px',
-        bottom: '56px',
-        left: 0,
-        right: 0,
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        position: 'relative',
         overflow: 'hidden',
         zIndex: 10,
       }}>
