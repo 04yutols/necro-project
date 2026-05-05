@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>バトル — ネクロマンスブレイブ</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width:100%; height:100%; background:#06050f; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+
+@keyframes waveReveal {
+  0% { opacity:0; transform:scale(1.3); }
+  60% { opacity:1; transform:scale(0.97); }
+  100% { opacity:1; transform:scale(1); }
+}
+@keyframes resultSlideIn {
+  from { opacity:0; transform:translateY(40px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes rankPop {
+  0% { transform:scale(0) rotate(-20deg); opacity:0; }
+  70% { transform:scale(1.15) rotate(3deg); opacity:1; }
+  100% { transform:scale(1) rotate(0deg); opacity:1; }
+}
+@keyframes rewardReveal {
+  from { opacity:0; transform:translateX(-16px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes bossAlert {
+  0%,100% { transform:scale(1); }
+  50% { transform:scale(1.04); }
+}
+@keyframes expGrow {
+  from { width:0%; }
+  to   { width:var(--exp-width); }
+}
+@keyframes floatDmg {
+  0%   { transform: translateY(0) scale(1);  opacity: 1; }
+  60%  { transform: translateY(-48px) scale(1.1); opacity: 1; }
+  100% { transform: translateY(-72px) scale(0.8); opacity: 0; }
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+@keyframes enemyHit {
+  0%,100% { filter: brightness(1); }
+  30% { filter: brightness(3) saturate(0); }
+  60% { filter: brightness(1.5); }
+}
+@keyframes breathe {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes demonPulse {
+  0%,100% { box-shadow: 0 0 18px #dc262680, inset 0 0 14px #dc262630; }
+  50% { box-shadow: 0 0 36px #dc2626cc, inset 0 0 28px #dc262660; }
+}
+@keyframes soulFill {
+  from { background-position: 200% center; }
+  to   { background-position: 0% center; }
+}
+@keyframes commandReveal {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes turnChipIn {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes screenFlash {
+  0%   { opacity: 0; }
+  15%  { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+@keyframes logFade {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes particleRise {
+  0%   { opacity: 0.9; transform: translateY(0) scale(1); }
+  100% { opacity: 0;   transform: translateY(-55px) scale(0.2); }
+}
+@keyframes skillReveal {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── INITIAL STATE ─────────────────────────────────────────────────────────────
+// ── WAVE DATA ──────────────────────────────────────────────────────────────
+const WAVES = [
+  {
+    wave: 1, label: "WAVE 1", bgTint: null, isBoss: false,
+    enemies: [
+      { id: 0, name: "霊体騎士", nameEn: "WRAITH KNIGHT", hp: 340, maxHp: 340, atk: 75,  color: "#06b6d4", pos: "left",   size: 0.78, targeted: false },
+      { id: 2, name: "死骨竜",   nameEn: "UNDEAD WYRM",   hp: 380, maxHp: 380, atk: 90,  color: "#ef4444", pos: "right",  size: 0.88, targeted: true  },
+    ],
+    rewards: { exp: 280, gold: 1200, items: ["骨片 ×8", "冥石 ×3"] },
+  },
+  {
+    wave: 2, label: "WAVE 2", bgTint: null, isBoss: false,
+    enemies: [
+      { id: 0, name: "霊体騎士", nameEn: "WRAITH KNIGHT", hp: 420, maxHp: 420, atk: 88,  color: "#06b6d4", pos: "left",   size: 0.78, targeted: false },
+      { id: 1, name: "骨巨人",   nameEn: "BONE GIANT",    hp: 620, maxHp: 620, atk: 130, color: "#8A2BE2", pos: "center", size: 1.0,  targeted: true  },
+      { id: 2, name: "死骨竜",   nameEn: "UNDEAD WYRM",   hp: 440, maxHp: 440, atk: 105, color: "#ef4444", pos: "right",  size: 0.88, targeted: false },
+    ],
+    rewards: { exp: 520, gold: 2400, items: ["竜骨 ×2", "冥結晶 ×5"] },
+  },
+  {
+    wave: 3, label: "BOSS", bgTint: "#200a04", isBoss: true,
+    enemies: [
+      { id: 1, name: "骨竜王 オッサリウス", nameEn: "OSSARIUS", hp: 1800, maxHp: 1800, atk: 220, color: "#f59e0b", pos: "center", size: 1.2, targeted: true },
+    ],
+    rewards: { exp: 1500, gold: 8000, items: ["竜王の骨角 ×1", "冥界の核 ×1", "黄金冥石 ×10"] },
+  },
+];
+const TOTAL_REWARDS = {
+  exp: WAVES.reduce((s,w) => s + w.rewards.exp, 0),
+  gold: WAVES.reduce((s,w) => s + w.rewards.gold, 0),
+  items: WAVES.flatMap(w => w.rewards.items),
+};
+const INIT_ENEMIES = WAVES[0].enemies.map(e => ({...e}));
+const INIT_PARTY = [
+  { id: 0, name: "骸骨騎士", icon: "💀", hp: 820, maxHp: 820, mp: 60, maxMp: 80,  color: "#8A2BE2", active: true  },
+  { id: 1, name: "腐乱兵",   icon: "🧟", hp: 580, maxHp: 580, mp: 40, maxMp: 60,  color: "#22c55e", active: false },
+  { id: 2, name: "リッチ",   icon: "🧙", hp: 420, maxHp: 420, mp: 80, maxMp: 100, color: "#06b6d4", active: false },
+];
+const SKILLS = [
+  { id: 0, name: "骸骨波",   nameEn: "Bone Wave",   mp: 15, power: 180, desc: "全敵に骨の衝撃波。",         icon: "💥", aoe: true  },
+  { id: 1, name: "死の抱擁", nameEn: "Death Grip",  mp: 20, power: 250, desc: "単体を掴み魂を吸収する。",   icon: "💀", aoe: false },
+  { id: 2, name: "冥土送り", nameEn: "Underworld",  mp: 30, power: 320, desc: "対象を冥界に引き込む。",     icon: "🌀", aoe: false },
+  { id: 3, name: "怨霊召喚", nameEn: "Wraith Call", mp: 25, power: 200, desc: "怨霊を召喚して全敵を攻撃。", icon: "👻", aoe: true  },
+];
+const DEMON_SKILLS = [
+  { id: 10, name: "魔神爪",   nameEn: "Demon Claw",  cost: "HP-50",  power: 420, desc: "HPを代償に爪で引き裂く。",     icon: "⚡", aoe: false, demonOnly: true },
+  { id: 11, name: "黒焔爆発", nameEn: "Void Blast",  cost: "全消費", power: 680, desc: "全ソウルを解放する超広域攻撃。",icon: "🔥", aoe: true,  demonOnly: true },
+  { id: 12, name: "魂喰い",   nameEn: "Soul Devour", cost: "HP-80",  power: 360, desc: "HPを大量消費し魂を奪う。",     icon: "🌑", aoe: false, demonOnly: true },
+];
+const ITEMS = [
+  { id: 0, name: "冥界薬",   desc: "HP+200 回復",  count: 3, icon: "🧪", effect: "heal", value: 200 },
+  { id: 1, name: "エーテル", desc: "MP全回復",      count: 2, icon: "💎", effect: "mpHeal", value: 100 },
+  { id: 2, name: "解毒草",   desc: "毒状態を解除",  count: 1, icon: "🌿", effect: "cure", value: 0 },
+];
+
+// ── SVG ENEMIES ───────────────────────────────────────────────────────────────
+function WraithKnightSVG({ hit, targeted, color }) {
+  return (
+    <svg viewBox="0 0 80 130" fill="none" style={{ width:"100%", height:"100%",
+      animation: hit ? "enemyHit 0.5s ease-out" : "breathe 3.5s ease-in-out infinite",
+      filter: targeted ? `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 18px ${color}90)` : `drop-shadow(0 0 3px ${color}50)`,
+      transition: "filter 0.3s ease",
+    }}>
+      <defs>
+        <radialGradient id="wkGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="45" cy="115" rx="28" ry="6" fill={color} opacity="0.2"/>
+      <ellipse cx="45" cy="60" rx="35" ry="55" fill="url(#wkGlow)"/>
+      {/* Cloak */}
+      <path d="M22 55 Q15 85 18 115 L72 115 Q75 85 68 55 Z" fill="#0a0420" opacity="0.9"/>
+      <path d="M22 55 Q18 85 20 115 L28 115 Q24 85 30 55Z" fill={color} opacity="0.08"/>
+      {/* Shoulders */}
+      <path d="M22 52 Q10 45 12 60 Q14 72 24 68 L32 58Z" fill="#150828" stroke={color} strokeWidth="0.7" strokeOpacity="0.6"/>
+      <path d="M68 52 Q80 45 78 60 Q76 72 66 68 L58 58Z" fill="#150828" stroke={color} strokeWidth="0.7" strokeOpacity="0.6"/>
+      {/* Body armor */}
+      <path d="M30 52 Q45 46 60 52 L58 88 Q45 94 32 88Z" fill="#100520" stroke={color} strokeWidth="0.8" strokeOpacity="0.5"/>
+      {/* Chest rune */}
+      <circle cx="45" cy="68" r="10" fill="none" stroke={color} strokeWidth="0.8" strokeOpacity="0.7"/>
+      <path d="M45 59 L47 65 L45 77 L43 65Z" fill={color} opacity="0.8"/>
+      <path d="M36 68 L42 66 L54 68 L42 70Z" fill={color} opacity="0.8"/>
+      {/* Ghostly arms */}
+      <path d="M30 58 Q15 70 12 90 L22 92 Q28 74 36 64Z" fill="#0d0520" opacity="0.7"/>
+      <path d="M60 58 Q75 70 78 90 L68 92 Q62 74 54 64Z" fill="#0d0520" opacity="0.7"/>
+      {/* Scythe */}
+      <rect x="6" y="30" width="3" height="75" rx="1.5" fill="#1a0a2e"/>
+      <rect x="7" y="30" width="1.5" height="75" rx="0.5" fill={color} opacity="0.6"/>
+      <path d="M9 32 Q22 25 26 38 Q22 42 9 42Z" fill={color} opacity="0.8"/>
+      {/* Ground shadow */}
+      <ellipse cx="40" cy="126" rx="24" ry="5" fill={color} opacity="0.25"/>
+      {/* Shoulder spikes */}
+      <polygon points="8,54 4,42 14,52" fill={color} opacity="0.9"/>
+      <polygon points="72,54 76,42 66,52" fill={color} opacity="0.9"/>
+      {/* Neck */}
+      <rect x="34" y="48" width="12" height="14" rx="3" fill="#0d0420"/>
+      {/* SKULL HEAD */}
+      <ellipse cx="40" cy="36" rx="20" ry="18" fill="#ddd6c8"/>
+      {/* Helmet over skull */}
+      <path d="M20 30 Q20 14 40 12 Q60 14 60 30 L57 40 Q48 34 40 34 Q32 34 23 40Z"
+        fill="#160830" stroke={color} strokeWidth="1.2" strokeOpacity="0.9"/>
+      <polygon points="28,22 24,8 32,20" fill={color} opacity="0.95"/>
+      <polygon points="40,18 40,4 44,18" fill={color} opacity="0.95"/>
+      <polygon points="52,22 56,8 48,20" fill={color} opacity="0.95"/>
+      {/* Exposed skull cheeks */}
+      <ellipse cx="27" cy="38" rx="6" ry="5" fill="#ddd6c8"/>
+      <ellipse cx="53" cy="38" rx="6" ry="5" fill="#ddd6c8"/>
+      {/* Eye sockets — large glowing */}
+      <ellipse cx="33" cy="34" rx="7" ry="7" fill="#050210"/>
+      <ellipse cx="47" cy="34" rx="7" ry="7" fill="#050210"/>
+      <ellipse cx="33" cy="34" rx="5" ry="5" fill={color} opacity="0.95"/>
+      <ellipse cx="47" cy="34" rx="5" ry="5" fill={color} opacity="0.95"/>
+      <ellipse cx="33" cy="34" rx="2.5" ry="2.5" fill="#fff" opacity="1"/>
+      <ellipse cx="47" cy="34" rx="2.5" ry="2.5" fill="#fff" opacity="1"/>
+      <ellipse cx="33" cy="34" rx="7" ry="7" fill="none" stroke={color} strokeWidth="1.5" strokeOpacity="0.8"/>
+      <ellipse cx="47" cy="34" rx="7" ry="7" fill="none" stroke={color} strokeWidth="1.5" strokeOpacity="0.8"/>
+      {/* Nose cavity */}
+      <path d="M37 42 L40 47 L43 42Z" fill="#050210"/>
+      {/* Jaw with teeth */}
+      <path d="M26 50 Q40 60 54 50 L54 54 Q40 64 26 54Z" fill="#c8c0b0"/>
+      {[30,35,40,45,50].map((x,i) => (
+        <polygon key={i} points={`${x},53 ${x-2.5},60 ${x+2.5},60`} fill="#ddd6c8"/>
+      ))}
+    </svg>
+  );
+}
+
+function BoneGiantSVG({ hit, targeted, color }) {
+  return (
+    <svg viewBox="0 0 120 150" fill="none" style={{ width:"100%", height:"100%",
+      animation: hit ? "enemyHit 0.5s ease-out" : "breathe 4s ease-in-out infinite",
+      filter: targeted ? `drop-shadow(0 0 10px ${color}) drop-shadow(0 0 22px ${color}60)` : "none",
+      transition: "filter 0.3s ease",
+    }}>
+      <defs>
+        <radialGradient id="bgGlow" cx="50%" cy="60%" r="50%">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="60" cy="145" rx="40" ry="8" fill={color} opacity="0.2"/>
+      <ellipse cx="60" cy="75" rx="55" ry="72" fill="url(#bgGlow)"/>
+      {/* Legs */}
+      <path d="M42 112 Q36 130 38 145 L52 145 Q52 130 54 112Z" fill="#c8bfb0"/>
+      <path d="M78 112 Q72 130 68 145 L82 145 Q84 130 84 112Z" fill="#c8bfb0"/>
+      <ellipse cx="45" cy="125" rx="9" ry="7" fill="#e0d8c8" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>
+      <ellipse cx="75" cy="125" rx="9" ry="7" fill="#e0d8c8" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>
+      {/* Body */}
+      <path d="M32 65 Q32 110 36 115 L84 115 Q88 110 88 65 Q88 50 60 46 Q32 50 32 65Z" fill="#d4ccbc"/>
+      <path d="M32 65 Q32 110 36 115 L84 115 Q88 110 88 65 Q88 50 60 46 Q32 50 32 65Z"
+        fill={color} fillOpacity="0.08"/>
+      {/* Rib cage */}
+      {[0,1,2,3].map(i => (
+        <g key={i}>
+          <path d={`M46 ${68+i*10} Q40 ${73+i*10} 42 ${78+i*10} L46 ${76+i*10}`}
+            stroke={color} strokeWidth="1.2" strokeOpacity="0.5" fill="none"/>
+          <path d={`M74 ${68+i*10} Q80 ${73+i*10} 78 ${78+i*10} L74 ${76+i*10}`}
+            stroke={color} strokeWidth="1.2" strokeOpacity="0.5" fill="none"/>
+          <line x1="46" y1={68+i*10} x2="74" y2={68+i*10}
+            stroke={color} strokeWidth="0.8" strokeOpacity="0.3"/>
+        </g>
+      ))}
+      {/* Spine */}
+      {[0,1,2,3,4,5].map(i => (
+        <ellipse key={i} cx="60" cy={65+i*9} rx="4" ry="3.5"
+          fill="#bfb8a8" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>
+      ))}
+      {/* Shoulders */}
+      <ellipse cx="30" cy="62" rx="14" ry="12" fill="#d4ccbc" stroke={color} strokeWidth="0.6" strokeOpacity="0.4"/>
+      <ellipse cx="90" cy="62" rx="14" ry="12" fill="#d4ccbc" stroke={color} strokeWidth="0.6" strokeOpacity="0.4"/>
+      {/* Arms */}
+      <path d="M16 62 Q4 90 8 118 L18 118 Q20 92 30 66Z" fill="#c8bfb0"/>
+      <path d="M104 62 Q116 90 112 118 L102 118 Q100 92 90 66Z" fill="#c8bfb0"/>
+      {/* Fists */}
+      <ellipse cx="13" cy="122" rx="9" ry="7" fill="#bfb8a8" stroke={color} strokeWidth="0.8" strokeOpacity="0.5"/>
+      <ellipse cx="107" cy="122" rx="9" ry="7" fill="#bfb8a8" stroke={color} strokeWidth="0.8" strokeOpacity="0.5"/>
+      {/* Neck */}
+      <rect x="52" y="36" width="16" height="14" rx="4" fill="#bfb8a8"/>
+      {/* Skull */}
+      <ellipse cx="60" cy="22" rx="26" ry="24" fill="#e8e0d0"/>
+      {/* Crack */}
+      <path d="M58 4 L56 14 L60 18 L62 28" stroke={color} strokeWidth="0.8" strokeOpacity="0.6" fill="none"/>
+      {/* Brows */}
+      <path d="M38 16 L50 20" stroke="#4a3a3a" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M82 16 L70 20" stroke="#4a3a3a" strokeWidth="2" strokeLinecap="round"/>
+      {/* Eyes */}
+      <ellipse cx="48" cy="23" rx="8" ry="7" fill="#03020a"/>
+      <ellipse cx="72" cy="23" rx="8" ry="7" fill="#03020a"/>
+      <ellipse cx="48" cy="23" rx="5" ry="4.5" fill={color} opacity="0.9"/>
+      <ellipse cx="72" cy="23" rx="5" ry="4.5" fill={color} opacity="0.9"/>
+      <ellipse cx="48" cy="23" rx="2.5" ry="2.5" fill="#fff" opacity="0.95"/>
+      <ellipse cx="72" cy="23" rx="2.5" ry="2.5" fill="#fff" opacity="0.95"/>
+      {/* Nose */}
+      <path d="M57 30 L60 36 L63 30Z" fill="#03020a"/>
+      {/* Jaw */}
+      <path d="M38 40 Q60 52 82 40" stroke="#d0c8b8" strokeWidth="2" fill="none"/>
+      {[42,50,58,66,74].map((x,i) => (
+        <path key={i} d={`M${x} 42 L${x} 49`} stroke="#e8e0d0" strokeWidth="2.2" strokeLinecap="round"/>
+      ))}
+      {/* Horns */}
+      <path d="M38 6 Q28 -8 34 -14 Q42 -2 46 8Z" fill="#8a8278" opacity="0.9"/>
+      <path d="M82 6 Q92 -8 86 -14 Q78 -2 74 8Z" fill="#8a8278" opacity="0.9"/>
+    </svg>
+  );
+}
+
+function BoneDragonSVG({ hit, targeted, color }) {
+  return (
+    <svg viewBox="0 0 140 110" fill="none" style={{ width:"100%", height:"100%",
+      animation: hit ? "enemyHit 0.5s ease-out" : "breathe 3s ease-in-out infinite 0.8s",
+      filter: targeted ? `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 20px ${color}60)` : `drop-shadow(0 0 3px ${color}50)`,
+      transition: "filter 0.3s ease",
+    }}>
+      {/* Shadow */}
+      <ellipse cx="80" cy="108" rx="42" ry="5" fill={color} opacity="0.2"/>
+
+      {/* TAIL — right side, curling up */}
+      <path d="M118 80 Q132 65 136 50 Q138 36 130 30 Q122 26 118 38 Q114 52 108 66Z" fill="#c8bfb0"/>
+      <path d="M130 30 L138 22 L128 28Z" fill="#bfb8a8"/>
+
+      {/* BODY — narrow elongated path */}
+      <path d="M38 70 Q60 60 90 62 Q112 64 128 72 Q130 80 126 86 Q108 88 88 86 Q62 84 42 80Z"
+        fill="#d4ccbc"/>
+      <path d="M38 70 Q60 60 90 62 Q112 64 128 72 Q130 80 126 86 Q108 88 88 86 Q62 84 42 80Z"
+        fill={color} fillOpacity="0.07"/>
+
+      {/* SPINE RIDGES */}
+      {[[50,63],[62,60],[74,60],[86,61],[98,64],[110,68],[120,73]].map(([x,y],i)=>(
+        <polygon key={i} points={`${x},${y} ${x-3},${y-8} ${x+3},${y-8}`}
+          fill="#bfb8a8" stroke={color} strokeWidth="0.5" strokeOpacity="0.5"/>
+      ))}
+
+      {/* WINGS — dominant feature, spread wide upward */}
+      <path d="M72 65 Q40 35 12 8 Q38 28 65 58Z" fill="#100420" stroke={color} strokeWidth="1" strokeOpacity="0.7"/>
+      <path d="M80 62 Q68 25 72 4 Q88 24 90 58Z" fill="#150530" stroke={color} strokeWidth="0.9" strokeOpacity="0.6"/>
+      <path d="M72 64 Q44 38 16 12" stroke={color} strokeWidth="0.8" strokeOpacity="0.6" fill="none"/>
+      <path d="M75 62 Q66 36 70 10" stroke={color} strokeWidth="0.6" strokeOpacity="0.4" fill="none"/>
+
+      {/* NECK — clearly elongated upper-left */}
+      <path d="M40 72 Q28 62 18 50 Q14 42 18 36 Q24 30 32 36 Q40 42 46 60 L42 78Z"
+        fill="#c8bfb0"/>
+      <polygon points="24,48 20,40 28,40" fill="#bfb8a8"/>
+      <polygon points="30,42 27,34 34,34" fill="#bfb8a8"/>
+
+      {/* HEAD — clear side profile */}
+      <path d="M8 36 Q6 28 10 22 Q16 16 24 20 Q30 24 34 32 Q32 40 24 44 Q14 46 8 36Z" fill="#d4ccbc"/>
+      <path d="M8 32 Q0 28 -4 26 Q0 24 6 28Z" fill="#c8bfb0"/>
+      <path d="M8 38 Q2 44 -2 48 Q4 50 10 44Z" fill="#bfb8a8"/>
+
+      {/* TEETH */}
+      {[[-2,28],[2,26],[6,27]].map(([x,y],i)=>(
+        <polygon key={i} points={`${x},${y} ${x-2},${y+7} ${x+2},${y+7}`} fill="#e8e0d0"/>
+      ))}
+      {[[0,44],[4,46]].map(([x,y],i)=>(
+        <polygon key={i} points={`${x},${y} ${x-2},${y-6} ${x+2},${y-6}`} fill="#ddd6c8"/>
+      ))}
+
+      {/* HORNS */}
+      <path d="M16 20 Q12 8 16 2 Q22 8 22 20Z" fill="#8a8278"/>
+      <path d="M22 19 Q22 8 28 4 Q32 10 28 20Z" fill="#8a8278"/>
+
+      {/* EYE */}
+      <ellipse cx="22" cy="30" rx="5" ry="5" fill="#050210"/>
+      <ellipse cx="22" cy="30" rx="3.5" ry="3.5" fill={color} opacity="0.95"/>
+      <ellipse cx="23" cy="29" rx="1.5" ry="1.5" fill="#fff"/>
+      <circle cx="22" cy="30" r="5" fill="none" stroke={color} strokeWidth="1.3" strokeOpacity="0.9"/>
+
+      {/* BREATH */}
+      <path d="M-4 30 Q-14 26 -18 22" stroke={color} strokeWidth="4" strokeOpacity="0.8" fill="none" strokeLinecap="round"/>
+      <path d="M-4 34 Q-16 34 -20 32" stroke={color} strokeWidth="2.5" strokeOpacity="0.55" fill="none" strokeLinecap="round"/>
+      <path d="M-2 38 Q-12 42 -14 46" stroke={color} strokeWidth="1.5" strokeOpacity="0.3" fill="none" strokeLinecap="round"/>
+
+      {/* CLAWS */}
+      <path d="M52 84 Q48 94 44 102 L52 102 Q54 94 60 88Z" fill="#c8bfb0"/>
+      <path d="M78 86 Q76 96 74 102 L82 102 Q82 94 86 90Z" fill="#c8bfb0"/>
+      {[42,46,50].map((x,i)=>(<polygon key={i} points={`${x},102 ${x-2},110 ${x+2},110`} fill="#bfb8a8"/>))}
+      {[72,76,80].map((x,i)=>(<polygon key={i} points={`${x},102 ${x-2},110 ${x+2},110`} fill="#bfb8a8"/>))}
+    </svg>
+  );
+}
+
+// ── DAMAGE FLOAT ──────────────────────────────────────────────────────────────
+let floatId = 0;
+function DamageFloat({ floats }) {
+  return (
+    <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:30 }}>
+      {floats.map(f => (
+        <div key={f.id} style={{
+          position:"absolute",
+          left: f.x, top: f.y,
+          fontFamily: "'Cinzel', serif",
+          fontSize: f.crit ? 26 : 20,
+          fontWeight: 900,
+          color: f.color || (f.heal ? "#4ade80" : "#fff"),
+          textShadow: `0 0 10px ${f.color || "#fff"}, 0 2px 4px rgba(0,0,0,0.8)`,
+          animation: "floatDmg 1.1s ease-out forwards",
+          whiteSpace: "nowrap",
+          letterSpacing: f.crit ? "0.05em" : "0.02em",
+          pointerEvents: "none",
+        }}>
+          {f.heal ? "+" : ""}{f.value}
+          {f.crit && <span style={{ fontSize:12, marginLeft:4, color:"#fbbf24" }}>CRIT</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── TURN ORDER STRIP ──────────────────────────────────────────────────────────
+function TurnOrderStrip({ order, current }) {
+  const items = [
+    { id:"p0", name:"骸骨騎士", icon:"💀", color:"#8A2BE2", isPlayer:true },
+    { id:"p1", name:"腐乱兵",   icon:"🧟", color:"#22c55e", isPlayer:true },
+    { id:"e1", name:"骨巨人",   icon:"💀", color:"#8A2BE2", isPlayer:false },
+    { id:"p2", name:"リッチ",   icon:"🧙", color:"#06b6d4", isPlayer:true },
+    { id:"e0", name:"霊体騎士", icon:"⚔",  color:"#06b6d4", isPlayer:false },
+    { id:"e2", name:"死骨竜",   icon:"🐉", color:"#ef4444", isPlayer:false },
+  ];
+  return (
+    <div style={{
+      display:"flex", gap:6, alignItems:"center",
+      padding:"6px 14px",
+      overflowX:"auto",
+    }}>
+      {items.map((item, i) => (
+        <div key={item.id} style={{
+          display:"flex", flexDirection:"column", alignItems:"center", gap:2,
+          animation: `turnChipIn 0.3s ease-out ${i*0.04}s both`,
+          flexShrink:0,
+        }}>
+          <div style={{
+            width: i === 0 ? 38 : 28,
+            height: i === 0 ? 38 : 28,
+            borderRadius:"50%",
+            background: item.isPlayer
+              ? `radial-gradient(circle, ${item.color}30, #0a0515)`
+              : "rgba(200,50,50,0.12)",
+            border: `${i===0 ? 2.5 : 1.5}px solid ${i===0 ? item.color : (item.isPlayer ? item.color+"80" : "#ef444460")}`,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            fontSize: i===0 ? 18 : 13,
+            boxShadow: i===0 ? `0 0 12px ${item.color}80` : "none",
+            transition:"all 0.3s ease",
+          }}>{item.icon}</div>
+          <div style={{
+            fontFamily:"'Inter', sans-serif", fontSize:7,
+            color: i===0 ? item.color : "#4a3a5a",
+            letterSpacing:"0.04em",
+          }}>{i===0 ? "▶" : ""}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── BATTLE ARENA ──────────────────────────────────────────────────────────────
+function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShake }) {
+  const POSITIONS = {
+    left:   { left:"6%",  width:"30%", alignSelf:"flex-end", paddingBottom:12 },
+    center: { left:"32%", width:"38%", alignSelf:"flex-end", paddingBottom:4 },
+    right:  { left:"64%", width:"32%", alignSelf:"flex-end", paddingBottom:16 },
+  };
+
+  return (
+    <div style={{
+      position:"relative", flexShrink:0, height:200,
+      background: demonized
+        ? "linear-gradient(180deg, #1a0208 0%, #0d0108 100%)"
+        : "linear-gradient(180deg, #0d0420 0%, #07021a 100%)",
+      overflow:"hidden",
+      animation: screenShake ? "shake 0.4s ease-out" : "none",
+      transition:"background 0.8s ease",
+    }}>
+      {/* Background terrain */}
+      <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%" }} viewBox="0 0 393 260" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <radialGradient id="arenaGlow" cx="50%" cy="100%" r="60%">
+            <stop offset="0%" stopColor={demonized ? "#3a0810" : "#1a0838"} stopOpacity="0.9"/>
+            <stop offset="100%" stopColor={demonized ? "#0d0208" : "#05021a"} stopOpacity="1"/>
+          </radialGradient>
+        </defs>
+        <rect width="393" height="260" fill="url(#arenaGlow)"/>
+        {/* Ground */}
+        <path d="M0 200 Q100 185 200 195 Q300 205 393 190 L393 260 L0 260Z" fill="#0a0520" opacity="0.8"/>
+        <path d="M0 210 Q100 198 200 205 Q300 212 393 200 L393 260 L0 260Z" fill="#07031a" opacity="0.9"/>
+        {/* Ground crack glow */}
+        <path d="M80 212 Q120 208 160 210 Q200 212 240 208 Q280 205 320 210"
+          stroke={demonized ? "#dc2626" : "#8A2BE2"} strokeWidth="1" strokeOpacity="0.3" fill="none"/>
+        {/* Mountains bg */}
+        {[[30,180],[90,160],[150,175],[230,155],[300,165],[360,172]].map(([x,y],i) => (
+          <polygon key={i} points={`${x},${y} ${x-35},210 ${x+35},210`}
+            fill="#0d0520" opacity={0.6+i*0.05}/>
+        ))}
+        {/* Stars */}
+        {[...Array(24)].map((_,i) => (
+          <circle key={i} cx={Math.random()*393} cy={Math.random()*120}
+            r={0.8+Math.random()*1.2} fill="#fff" opacity={0.2+Math.random()*0.4}/>
+        ))}
+        {/* Demonized atmosphere extras */}
+        {demonized && (
+          <>
+            <ellipse cx="196" cy="260" rx="180" ry="60" fill="#dc2626" opacity="0.08"/>
+            <path d="M50 180 Q100 160 150 170 Q200 180 250 160 Q300 140 350 170"
+              stroke="#dc2626" strokeWidth="1.5" strokeOpacity="0.2" fill="none"/>
+          </>
+        )}
+        {/* Floor particles */}
+        {[...Array(10)].map((_,i) => (
+          <circle key={i}
+            cx={30+i*38} cy={205+Math.sin(i)*5}
+            r={1.5+Math.random()}
+            fill={demonized ? "#dc2626" : "#8A2BE2"} opacity="0.5">
+          </circle>
+        ))}
+      </svg>
+
+      {/* Demonize screen overlay */}
+      {demonized && (
+        <div style={{
+          position:"absolute", inset:0,
+          background:"radial-gradient(ellipse at center bottom, rgba(220,38,38,0.12), transparent 70%)",
+          pointerEvents:"none",
+        }}/>
+      )}
+      {/* Flash overlay */}
+      {flashColor && (
+        <div style={{
+          position:"absolute", inset:0, background:flashColor,
+          animation:"screenFlash 0.5s ease-out forwards", pointerEvents:"none", zIndex:25,
+        }}/>
+      )}
+
+      {/* Enemy sprites */}
+      <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"flex-end" }}>
+        {enemies.filter(e => e.hp > 0).map(enemy => (
+          <div key={enemy.id} onClick={() => onTargetEnemy(enemy.id)}
+            style={{
+              position:"absolute",
+              ...POSITIONS[enemy.pos],
+              cursor:"pointer",
+              display:"flex", flexDirection:"column", gap:4,
+              transform:`scale(${enemy.size})`, transformOrigin:"bottom center",
+            }}>
+            {/* HP bar */}
+            <div style={{
+              width:"100%", height:5, background:"rgba(0,0,0,0.5)",
+              borderRadius:3, border:"1px solid rgba(255,255,255,0.1)",
+              marginBottom:4,
+            }}>
+              <div style={{
+                width:`${(enemy.hp/enemy.maxHp)*100}%`, height:"100%",
+                background: enemy.hp/enemy.maxHp > 0.5
+                  ? "linear-gradient(90deg,#22c55e,#4ade80)"
+                  : enemy.hp/enemy.maxHp > 0.25
+                  ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
+                  : "linear-gradient(90deg,#ef4444,#f87171)",
+                borderRadius:3,
+                boxShadow:"0 0 6px rgba(255,255,255,0.3)",
+                transition:"width 0.5s ease",
+              }}/>
+            </div>
+            {/* Enemy name */}
+            <div style={{
+              textAlign:"center",
+              fontFamily:"'Cinzel', serif", fontSize:8.5, fontWeight:600,
+              color: enemy.targeted ? enemy.color : "#6b5f7a",
+              letterSpacing:"0.06em",
+              textShadow: enemy.targeted ? `0 0 8px ${enemy.color}` : "none",
+              transition:"color 0.2s",
+            }}>{enemy.name}</div>
+            {/* Target marker */}
+            {enemy.targeted && (
+              <div style={{
+                position:"absolute", top:-16, left:"50%", transform:"translateX(-50%)",
+                fontSize:14, animation:"breathe 1s ease-in-out infinite",
+              }}>▼</div>
+            )}
+            {/* SVG sprite */}
+            <div style={{ width:"100%", aspectRatio:"1/1.15" }}>
+              {enemy.id===0 && <WraithKnightSVG hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
+              {enemy.id===1 && <BoneGiantSVG    hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
+              {enemy.id===2 && <BoneDragonSVG   hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Floating damage numbers */}
+    </div>
+  );
+}
+
+// ── PARTY STATUS BAR ──────────────────────────────────────────────────────────
+function PartyStatusBar({ party, demonized }) {
+  return (
+    <div style={{
+      padding:"4px 12px",
+      display:"flex", flexDirection:"column", gap:3,
+      background:"rgba(5,2,14,0.85)",
+      borderTop:"1px solid rgba(255,255,255,0.06)",
+      flexShrink:0,
+    }}>
+      {party.map((member,i) => (
+        <div key={member.id} style={{
+          display:"flex", alignItems:"center", gap:8,
+          opacity: member.hp <= 0 ? 0.35 : 1,
+        }}>
+          {/* Icon */}
+          <div style={{
+            width:28, height:28, borderRadius:"50%", flexShrink:0,
+            background: member.active
+              ? `radial-gradient(circle, ${member.color}30, #0a0515)`
+              : "rgba(255,255,255,0.04)",
+            border:`${member.active ? 2 : 1}px solid ${member.active ? member.color : member.color+"40"}`,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            fontSize:14,
+            boxShadow: member.active ? `0 0 10px ${member.color}60` : "none",
+          }}>{member.icon}</div>
+          {/* Name */}
+          <div style={{
+            width:56, flexShrink:0,
+            fontFamily:"'Cinzel', serif", fontSize:9, fontWeight:600,
+            color: member.active ? "#f0ebff" : "#6b5f7a",
+          }}>{member.name}</div>
+          {/* HP bar */}
+          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:2 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div style={{ fontFamily:"'Inter', sans-serif", fontSize:8, color:"#6b5f7a" }}>HP</div>
+              <div style={{ fontFamily:"'Cinzel', serif", fontSize:9, color:"#f87171" }}>
+                {member.hp}<span style={{ color:"#4a3a5a", fontSize:8 }}>/{member.maxHp}</span>
+              </div>
+            </div>
+            <div style={{ height:4, background:"rgba(255,255,255,0.06)", borderRadius:2, overflow:"hidden" }}>
+              <div style={{
+                width:`${(member.hp/member.maxHp)*100}%`, height:"100%",
+                background: member.hp/member.maxHp > 0.5 ? "linear-gradient(90deg,#dc2626,#f87171)"
+                  : member.hp/member.maxHp > 0.25 ? "#f59e0b" : "#dc2626",
+                borderRadius:2, transition:"width 0.4s ease",
+              }}/>
+            </div>
+          </div>
+          {/* MP bar */}
+          <div style={{ width:48, flexShrink:0, display:"flex", flexDirection:"column", gap:2 }}>
+            <div style={{ display:"flex", justifyContent:"space-between" }}>
+              <div style={{ fontFamily:"'Inter', sans-serif", fontSize:8, color:"#6b5f7a" }}>MP</div>
+              <div style={{ fontFamily:"'Cinzel', serif", fontSize:9, color:"#60a5fa" }}>{member.mp}</div>
+            </div>
+            <div style={{ height:4, background:"rgba(255,255,255,0.06)", borderRadius:2, overflow:"hidden" }}>
+              <div style={{
+                width:`${(member.mp/member.maxMp)*100}%`, height:"100%",
+                background:"linear-gradient(90deg,#1d4ed8,#60a5fa)",
+                borderRadius:2, transition:"width 0.4s ease",
+              }}/>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── SOUL GAUGE ────────────────────────────────────────────────────────────────
+function SoulGauge({ value, max, demonized }) {
+  const pct = (value/max)*100;
+  const full = pct >= 100;
+  return (
+    <div style={{
+      padding:"4px 14px",
+      display:"flex", alignItems:"center", gap:10,
+      background: demonized ? "rgba(30,4,4,0.9)" : "rgba(4,2,14,0.9)",
+      borderTop:"1px solid rgba(255,255,255,0.05)",
+      transition:"background 0.6s ease",
+      flexShrink:0,
+    }}>
+      <div style={{
+        fontFamily:"'Cinzel', serif", fontSize:9, fontWeight:700,
+        color: demonized ? "#dc2626" : "#8A2BE2",
+        letterSpacing:"0.1em", flexShrink:0,
+        textShadow: full ? `0 0 8px ${demonized ? "#dc2626" : "#8A2BE2"}` : "none",
+      }}>☠ SOUL</div>
+      <div style={{
+        flex:1, height:8, background:"rgba(255,255,255,0.06)",
+        borderRadius:4, overflow:"hidden",
+        border:`1px solid ${full ? (demonized ? "#dc262660" : "#8A2BE260") : "rgba(255,255,255,0.08)"}`,
+        boxShadow: full ? `0 0 12px ${demonized ? "#dc262680" : "#8A2BE280"}` : "none",
+      }}>
+        <div style={{
+          width:`${pct}%`, height:"100%", borderRadius:4,
+          background: demonized
+            ? "linear-gradient(90deg,#7f1d1d,#dc2626,#ef4444)"
+            : "linear-gradient(90deg,#4a0e8a,#8A2BE2,#c084fc,#8A2BE2)",
+          backgroundSize:"200% 100%",
+          animation: full ? "soulFill 1.5s linear infinite" : "none",
+          boxShadow: full ? "0 0 10px #8A2BE2" : "none",
+          transition:"width 0.6s ease",
+        }}/>
+      </div>
+      <div style={{
+        fontFamily:"'Cinzel', serif", fontSize:9, fontWeight:700,
+        color: full ? (demonized ? "#dc2626" : "#c084fc") : "#4a3a5a",
+        flexShrink:0,
+      }}>{full ? (demonized ? "解放中" : "MAX") : `${Math.round(pct)}%`}</div>
+    </div>
+  );
+}
+
+// ── COMMAND PANEL ─────────────────────────────────────────────────────────────
+function CommandButton({ label, sublabel, icon, enabled, color, onClick, glow, demonized }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <div onClick={() => { if(!enabled) return; setPressed(true); setTimeout(()=>setPressed(false),150); onClick(); }}
+      style={{
+        flex:1, padding:"10px 6px",
+        background: !enabled ? `${color}12`
+          : pressed ? `${color}35`
+          : demonized ? `linear-gradient(135deg,${color}28,${color}12)`
+          : `linear-gradient(135deg,${color}22,${color}0e)`,
+        border:`1px solid ${enabled ? (glow ? color : color+"60") : color+"35"}`,
+        borderRadius:14,
+        cursor: enabled ? "pointer" : "default",
+        opacity: enabled ? 1 : 0.55,
+        transform: pressed ? "scale(0.95)" : "scale(1)",
+        transition:"all 0.15s ease",
+        display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3,
+        boxShadow: glow && enabled ? `0 0 16px ${color}50, inset 0 0 10px ${color}18` : "none",
+        animation: enabled && glow ? "demonPulse 1.5s ease-in-out infinite" : "none",
+        position:"relative", overflow:"hidden",
+      }}>
+      {enabled && glow && <div style={{
+        position:"absolute", inset:0, borderRadius:14,
+        background:`linear-gradient(90deg,transparent,${color}18,transparent)`,
+        backgroundSize:"200% 100%",
+        animation:"shimmer 1.8s infinite",
+      }}/>}
+      <div style={{ fontSize:20 }}>{icon}</div>
+      <div style={{
+        fontFamily:"'Cinzel', serif", fontSize:11, fontWeight:700,
+        color: enabled ? "#f0ebff" : `${color}70`,
+        letterSpacing:"0.04em", lineHeight:1,
+      }}>{label}</div>
+      {sublabel && <div style={{
+        fontFamily:"'Inter', sans-serif", fontSize:8,
+        color: enabled ? color+"90" : `${color}45`,
+        letterSpacing:"0.08em",
+      }}>{sublabel}</div>}
+    </div>
+  );
+}
+
+function SkillButton({ skill, mp, onClick, demonized }) {
+  const canUse = demonized ? true : mp >= skill.mp;
+  return (
+    <div onClick={() => canUse && onClick(skill)} style={{
+      padding:"10px 8px",
+      background: canUse ? `linear-gradient(135deg,rgba(138,43,226,0.2),rgba(138,43,226,0.08))`
+        : "rgba(255,255,255,0.03)",
+      border:`1px solid ${canUse ? "#8A2BE260" : "rgba(255,255,255,0.06)"}`,
+      borderRadius:12,
+      cursor: canUse ? "pointer" : "default",
+      opacity: canUse ? 1 : 0.35,
+      display:"flex", flexDirection:"column", alignItems:"center", gap:4,
+      animation:`skillReveal 0.25s ease-out both`,
+      flex:1,
+    }}>
+      <div style={{ fontSize:22 }}>{skill.icon}</div>
+      <div style={{
+        fontFamily:"'Cinzel', serif", fontSize:9, fontWeight:700,
+        color: canUse ? "#f0ebff" : "#4a3a5a",
+        textAlign:"center", lineHeight:1.2,
+      }}>{skill.name}</div>
+      <div style={{
+        fontFamily:"'Inter', sans-serif", fontSize:8,
+        color: canUse ? "#60a5fa" : "#2a1a3a",
+        display:"flex", alignItems:"center", gap:2,
+      }}>
+        {demonized ? <span style={{color:"#ef4444"}}>{skill.cost}</span> : `MP ${skill.mp}`}
+      </div>
+    </div>
+  );
+}
+
+// ── BATTLE LOG ────────────────────────────────────────────────────────────────
+function BattleLog({ lines }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if(ref.current) ref.current.scrollTop = ref.current.scrollHeight;
+  }, [lines]);
+  return (
+    <div ref={ref} style={{
+      padding:"6px 14px",
+      height:48, flexShrink:0,
+      background:"linear-gradient(180deg,rgba(3,1,12,0.6),rgba(5,2,16,0.85))",
+      borderTop:"1px solid rgba(255,255,255,0.05)",
+      overflowY:"auto",
+      display:"flex", flexDirection:"column", justifyContent:"flex-end",
+      gap:2,
+    }}>
+      {lines.slice(-3).map((line,i) => (
+        <div key={i} style={{
+          fontFamily:"'Inter', sans-serif", fontSize:10, lineHeight:1.4,
+          color: i === lines.slice(-3).length-1 ? "#e2d8f0" : "#6b5f7a",
+          animation: i === lines.slice(-3).length-1 ? "logFade 0.3s ease-out" : "none",
+        }}>
+          {line}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── SYSTEM BAR ────────────────────────────────────────────────────────────────
+function SystemBar({ auto, speed, onAuto, onSpeed, onEscape, canEscape }) {
+  return (
+    <div style={{
+      padding:"5px 12px",
+      display:"flex", gap:6, alignItems:"center",
+      background:"rgba(3,1,12,0.9)",
+      borderTop:"1px solid rgba(255,255,255,0.04)",
+      flexShrink:0,
+    }}>
+      <div onClick={onAuto} style={{
+        padding:"5px 10px", borderRadius:8,
+        background: auto ? "rgba(138,43,226,0.3)" : "rgba(255,255,255,0.05)",
+        border:`1px solid ${auto ? "#8A2BE280" : "rgba(255,255,255,0.08)"}`,
+        fontFamily:"'Cinzel', serif", fontSize:9, fontWeight:700,
+        color: auto ? "#c084fc" : "#6b5f7a",
+        cursor:"pointer", letterSpacing:"0.06em",
+        boxShadow: auto ? "0 0 10px rgba(138,43,226,0.3)" : "none",
+        transition:"all 0.2s ease",
+      }}>AUTO {auto ? "ON" : "OFF"}</div>
+
+      <div onClick={onSpeed} style={{
+        padding:"5px 10px", borderRadius:8,
+        background:"rgba(255,255,255,0.05)",
+        border:"1px solid rgba(255,255,255,0.08)",
+        fontFamily:"'Cinzel', serif", fontSize:9, fontWeight:700,
+        color:"#8b7da8", cursor:"pointer", letterSpacing:"0.06em",
+        transition:"all 0.2s ease",
+      }}>×{speed}</div>
+
+      <div style={{ flex:1 }}/>
+
+      <div onClick={canEscape ? onEscape : undefined} style={{
+        padding:"5px 12px", borderRadius:8,
+        background: canEscape ? "rgba(239,68,68,0.12)" : "rgba(255,255,255,0.03)",
+        border:`1px solid ${canEscape ? "#ef444440" : "rgba(255,255,255,0.05)"}`,
+        fontFamily:"'Cinzel', serif", fontSize:9, fontWeight:700,
+        color: canEscape ? "#f87171" : "#2a1a3a",
+        cursor: canEscape ? "pointer" : "default",
+        opacity: canEscape ? 1 : 0.4,
+        letterSpacing:"0.06em",
+      }}>逃走</div>
+    </div>
+  );
+}
+
+// ── WAVE BANNER ─────────────────────────────────────────────────────────────
+function WaveBanner({ wave, isBoss }) {
+  return (
+    <div style={{
+      position:"absolute", inset:0, zIndex:40,
+      display:"flex", alignItems:"center", justifyContent:"center",
+      background: isBoss ? "rgba(20,4,0,0.88)" : "rgba(5,2,16,0.82)",
+      backdropFilter:"blur(8px)",
+      flexDirection:"column", gap:12,
+    }}>
+      {isBoss ? (
+        <>
+          <div style={{
+            fontFamily:"'Cinzel Decorative', serif", fontSize:11,
+            color:"#f59e0b", letterSpacing:"0.25em",
+            textShadow:"0 0 20px #f59e0b",
+            animation:"bossAlert 1s ease-in-out infinite",
+          }}>⚠ BOSS ENCOUNTER ⚠</div>
+          <div style={{
+            fontFamily:"'Cinzel', serif", fontSize:28, fontWeight:900,
+            color:"#fbbf24", letterSpacing:"0.08em",
+            textShadow:"0 0 30px #f59e0b, 0 0 60px #dc2626",
+            animation:"waveReveal 0.6s cubic-bezier(0.34,1.56,0.64,1)",
+          }}>{wave.enemies[0]?.name}</div>
+          <div style={{ fontFamily:"'Cinzel Decorative', serif", fontSize:9, color:"#f59e0b80", letterSpacing:"0.2em" }}>
+            {wave.enemies[0]?.nameEn}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{
+            fontFamily:"'Cinzel Decorative', serif", fontSize:10,
+            color:"#8A2BE2", letterSpacing:"0.25em",
+          }}>WAVE CLEARED</div>
+          <div style={{
+            fontFamily:"'Cinzel', serif", fontSize:36, fontWeight:900,
+            color:"#f0ebff", letterSpacing:"0.06em",
+            textShadow:"0 0 24px #8A2BE2",
+            animation:"waveReveal 0.5s cubic-bezier(0.34,1.56,0.64,1)",
+          }}>WAVE {wave.wave}</div>
+          <div style={{ display:"flex", gap:16, marginTop:4 }}>
+            <div style={{ fontFamily:"'Cinzel', serif", fontSize:13, color:"#fbbf24" }}>
+              EXP +{wave.rewards.exp}
+            </div>
+            <div style={{ fontFamily:"'Cinzel', serif", fontSize:13, color:"#34d399" }}>
+              Gold +{wave.rewards.gold}G
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── RESULT SCREEN ─────────────────────────────────────────────────────────────
+function ResultScreen({ party, totalExp, totalGold, battleTime, onReturn }) {
+  const aliveCount = party.filter(m => m.hp > 0).length;
+  const rank = aliveCount === 3 ? "S" : aliveCount === 2 ? "A" : "B";
+  const rankColor = rank === "S" ? "#f59e0b" : rank === "A" ? "#8A2BE2" : "#06b6d4";
+  const rankGlow  = rank === "S" ? "#f59e0b" : rank === "A" ? "#c084fc" : "#67e8f9";
+  const mins = String(Math.floor(battleTime/60)).padStart(2,"0");
+  const secs = String(battleTime%60).padStart(2,"0");
+
+  return (
+    <div style={{
+      position:"absolute", inset:0, zIndex:50,
+      background:"linear-gradient(180deg,#08041a 0%,#05020f 100%)",
+      display:"flex", flexDirection:"column",
+      fontFamily:"'Inter', sans-serif",
+      overflow:"hidden",
+    }}>
+      {/* Particle bg */}
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none" }}>
+        {[...Array(20)].map((_,i)=>(
+          <div key={i} style={{
+            position:"absolute",
+            left:`${5+Math.random()*90}%`, top:`${5+Math.random()*90}%`,
+            width:`${1+Math.random()*3}px`, height:`${1+Math.random()*3}px`,
+            borderRadius:"50%",
+            background: i%3===0 ? "#8A2BE2" : i%3===1 ? "#f59e0b" : "#c084fc",
+            opacity:0.4+Math.random()*0.4,
+            animation:`particleRise ${3+Math.random()*4}s ease-out infinite`,
+            animationDelay:`${Math.random()*5}s`,
+          }}/>
+        ))}
+      </div>
+
+      {/* Top glow */}
+      <div style={{
+        position:"absolute", top:0, left:"15%", right:"15%", height:2,
+        background:"linear-gradient(90deg,transparent,#f59e0b,transparent)",
+        opacity:0.8,
+      }}/>
+
+      {/* Header */}
+      <div style={{
+        padding:"62px 20px 0",
+        textAlign:"center",
+        animation:"resultSlideIn 0.5s ease-out",
+        zIndex:2,
+      }}>
+        <div style={{
+          fontFamily:"'Cinzel Decorative', serif", fontSize:9,
+          color:"#8A2BE2", letterSpacing:"0.25em", marginBottom:4,
+        }}>BATTLE COMPLETE</div>
+        <div style={{
+          fontFamily:"'Cinzel', serif", fontSize:22, fontWeight:900,
+          color:"#f0ebff", letterSpacing:"0.06em",
+          textShadow:"0 0 20px rgba(138,43,226,0.6)",
+        }}>骸骨山脈 — 攻略成功</div>
+        <div style={{
+          fontFamily:"'Inter', sans-serif", fontSize:10, color:"#6b5f7a",
+          marginTop:4,
+        }}>OSSUARY PEAKS · CLEARED</div>
+      </div>
+
+      {/* RANK */}
+      <div style={{
+        display:"flex", justifyContent:"center", alignItems:"center",
+        padding:"20px 0 12px",
+        zIndex:2, animation:"resultSlideIn 0.5s ease-out 0.1s both",
+      }}>
+        <div style={{
+          width:90, height:90,
+          borderRadius:"50%",
+          background:`radial-gradient(circle, ${rankColor}25, #0a0515)`,
+          border:`3px solid ${rankColor}`,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          boxShadow:`0 0 24px ${rankGlow}80, 0 0 48px ${rankGlow}40`,
+          animation:"rankPop 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.3s both",
+          position:"relative",
+        }}>
+          <div style={{
+            fontFamily:"'Cinzel', serif", fontSize:46, fontWeight:900,
+            color:rankColor, lineHeight:1,
+            textShadow:`0 0 20px ${rankGlow}`,
+          }}>{rank}</div>
+          {rank==="S" && (
+            <div style={{
+              position:"absolute", inset:-4, borderRadius:"50%",
+              border:`1px solid ${rankColor}60`,
+              animation:"waveReveal 1s ease-out infinite",
+            }}/>
+          )}
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div style={{
+        display:"flex", gap:0, margin:"0 16px",
+        background:"rgba(255,255,255,0.04)",
+        border:"1px solid rgba(255,255,255,0.08)",
+        borderRadius:14,
+        overflow:"hidden",
+        zIndex:2, animation:"resultSlideIn 0.5s ease-out 0.2s both",
+      }}>
+        {[
+          { label:"クリアタイム", value:`${mins}:${secs}`, color:"#c084fc" },
+          { label:"生存人数",     value:`${aliveCount}/3`, color:"#34d399" },
+          { label:"WAVE",        value:"3/3",     color:"#f59e0b" },
+        ].map((s,i)=>(
+          <div key={i} style={{
+            flex:1, padding:"12px 8px", textAlign:"center",
+            borderRight: i<2 ? "1px solid rgba(255,255,255,0.06)" : "none",
+          }}>
+            <div style={{ fontFamily:"'Cinzel', serif", fontSize:18, fontWeight:700, color:s.color }}>{s.value}</div>
+            <div style={{ fontFamily:"'Inter', sans-serif", fontSize:9, color:"#6b5f7a", marginTop:3 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* EXP bar */}
+      <div style={{
+        margin:"12px 16px 0", padding:"12px 14px",
+        background:"rgba(255,255,255,0.04)",
+        border:"1px solid rgba(255,255,255,0.08)",
+        borderRadius:12,
+        zIndex:2, animation:"resultSlideIn 0.5s ease-out 0.3s both",
+      }}>
+        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+          <div style={{ fontFamily:"'Cinzel', serif", fontSize:10, fontWeight:600, color:"#8A2BE2", letterSpacing:"0.1em" }}>EXP GAINED</div>
+          <div style={{ fontFamily:"'Cinzel', serif", fontSize:14, fontWeight:700, color:"#c084fc" }}>+{totalExp.toLocaleString()}</div>
+        </div>
+        <div style={{ height:8, background:"rgba(255,255,255,0.06)", borderRadius:4, overflow:"hidden" }}>
+          <div style={{
+            width:"72%", height:"100%",
+            background:"linear-gradient(90deg,#4a0e8a,#8A2BE2,#c084fc)",
+            borderRadius:4,
+            boxShadow:"0 0 10px #8A2BE260",
+            animation:"expGrow 1.2s cubic-bezier(0.34,1.2,0.64,1) 0.5s both",
+            "--exp-width":"72%",
+          }}/>
+        </div>
+        <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
+          <div style={{ fontFamily:"'Inter', sans-serif", fontSize:9, color:"#6b5f7a" }}>Lv.72</div>
+          <div style={{ fontFamily:"'Inter', sans-serif", fontSize:9, color:"#6b5f7a" }}>Lv.73まで あと 580</div>
+        </div>
+      </div>
+
+      {/* Rewards */}
+      <div style={{
+        margin:"10px 16px 0", padding:"12px 14px",
+        background:"rgba(255,255,255,0.04)",
+        border:"1px solid rgba(255,255,255,0.08)",
+        borderRadius:12,
+        zIndex:2, animation:"resultSlideIn 0.5s ease-out 0.4s both",
+        flex:1,
+      }}>
+        <div style={{ fontFamily:"'Cinzel', serif", fontSize:10, fontWeight:600, color:"#fbbf24", letterSpacing:"0.1em", marginBottom:8 }}>REWARDS</div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+          <div style={{
+            display:"flex", alignItems:"center", gap:6,
+            padding:"5px 10px",
+            background:"rgba(251,191,36,0.12)", border:"1px solid rgba(251,191,36,0.3)",
+            borderRadius:8,
+            fontFamily:"'Cinzel', serif", fontSize:11, fontWeight:700, color:"#fbbf24",
+          }}>💰 {totalGold.toLocaleString()}G</div>
+          {TOTAL_REWARDS.items.map((item,i)=>(
+            <div key={i} style={{
+              padding:"5px 10px",
+              background:"rgba(138,43,226,0.12)", border:"1px solid rgba(138,43,226,0.3)",
+              borderRadius:8,
+              fontFamily:"'Inter', sans-serif", fontSize:10, color:"#c4b8d8",
+              animation:`rewardReveal 0.4s ease-out ${0.5+i*0.08}s both`,
+            }}>{item}</div>
+          ))}
+        </div>
+      </div>
+
+      {/* Buttons */}
+      <div style={{
+        padding:"12px 16px 46px",
+        display:"flex", gap:10,
+        zIndex:2, animation:"resultSlideIn 0.5s ease-out 0.5s both",
+      }}>
+        <div onClick={onReturn} style={{
+          flex:1, padding:"16px",
+          background:"linear-gradient(135deg,rgba(138,43,226,0.35),rgba(88,28,135,0.2))",
+          border:"1px solid rgba(138,43,226,0.6)",
+          borderRadius:14,
+          textAlign:"center", cursor:"pointer",
+          boxShadow:"0 4px 24px rgba(138,43,226,0.25)",
+          position:"relative", overflow:"hidden",
+        }}>
+          <div style={{
+            position:"absolute", inset:0,
+            background:"linear-gradient(90deg,transparent,rgba(138,43,226,0.15),transparent)",
+            backgroundSize:"200% 100%",
+            animation:"shimmer 2s infinite",
+          }}/>
+          <div style={{ fontFamily:"'Cinzel', serif", fontSize:14, fontWeight:700, color:"#f0ebff", letterSpacing:"0.08em" }}>
+            ‹ マップへ戻る
+          </div>
+          <div style={{ fontFamily:"'Inter', sans-serif", fontSize:9, color:"#c084fc80", marginTop:2 }}>RETURN TO MAP</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MAIN BATTLE ───────────────────────────────────────────────────────────────
+function BattleScreen() {
+  const [waveIndex, setWaveIndex] = useState(0);
+  const [enemies,  setEnemies]  = useState(WAVES[0].enemies.map(e => ({...e})));
+  const [party,    setParty]    = useState(INIT_PARTY.map(p => ({...p})));
+  const [soul,     setSoul]     = useState(45);
+  const [phase,    setPhase]    = useState("playerTurn"); // playerTurn|skillMenu|itemMenu|animating|enemyTurn|waveTransition|result
+  const [demonized,setDemonized]= useState(false);
+  const [demonTurns,setDemonTurns]=useState(0);
+  const [auto,     setAuto]     = useState(false);
+  const [speed,    setSpeed]    = useState(1);
+  const [battleTime, setBattleTime] = useState(0);
+  const [log,      setLog]      = useState([
+    "戦闘開始！骸骨山脈の番人たちが立ちはだかる。",
+    "WAVE 1 開始。骸骨騎士のターン。",
+  ]);
+  const [floats,   setFloats]   = useState([]);
+  const [flashColor,setFlashColor]=useState(null);
+  const [screenShake,setScreenShake]=useState(false);
+  const [waveClearing, setWaveClearing] = useState(false);
+  const [totalExp, setTotalExp] = useState(0);
+  const [totalGold, setTotalGold] = useState(0);
+  const timerRef = useRef(null);
+
+  const speedMs = 900 / speed;
+  const currentMp = party[0]?.mp ?? 0;
+  const soulFull = soul >= 100;
+
+  function addLog(line) { setLog(prev => [...prev, line]); }
+
+  function spawnFloat(x, y, value, opts={}) {
+    const id = ++floatId;
+    setFloats(prev => [...prev, { id, x, y, value, ...opts }]);
+    setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), 1200);
+  }
+
+  function doEnemyHit(eid) {
+    setEnemies(prev => prev.map(e => e.id===eid ? {...e, hit:true} : e));
+    setTimeout(() => setEnemies(prev => prev.map(e => ({...e, hit:false}))), 500);
+  }
+
+  function damageEnemy(targetId, dmg, opts={}) {
+    const isCrit = Math.random() < 0.2;
+    const finalDmg = isCrit ? Math.round(dmg * 1.5) : dmg;
+    doEnemyHit(targetId);
+    const positions = { 0:{x:"12%",y:"18%"}, 1:{x:"36%",y:"12%"}, 2:{x:"62%",y:"16%"} };
+    const pos = positions[targetId] || {x:"40%",y:"15%"};
+    spawnFloat(pos.x, pos.y, finalDmg, { crit:isCrit, color: opts.color || "#fff" });
+    let next;
+    setEnemies(prev => {
+      next = prev.map(e => e.id === targetId ? {...e, hp: Math.max(0, e.hp - finalDmg)} : e);
+      return next;
+    });
+    // Defer wave check so state is settled
+    setTimeout(() => {
+      setEnemies(prev => { checkWaveClear(prev); return prev; });
+    }, 350);
+    return finalDmg;
+  }
+
+  function damageParty(partyIdx, dmg) {
+    setParty(prev => prev.map((m,i) =>
+      i === partyIdx ? {...m, hp: Math.max(0, m.hp - dmg)} : m
+    ));
+    spawnFloat("42%","58%", dmg, { color:"#f87171" });
+    setScreenShake(true);
+    setTimeout(() => setScreenShake(false), 450);
+  }
+
+  function getTargetId() {
+    const t = enemies.find(e => e.targeted && e.hp > 0);
+    return t ? t.id : enemies.find(e => e.hp > 0)?.id ?? 0;
+  }
+
+  function checkWaveClear(currentEnemies) {
+    const alive = currentEnemies.filter(e => e.hp > 0);
+    if (alive.length > 0) return false;
+    // Wave cleared!
+    const wave = WAVES[waveIndex];
+    const earnedExp = wave.rewards.exp;
+    const earnedGold = wave.rewards.gold;
+    setTotalExp(prev => prev + earnedExp);
+    setTotalGold(prev => prev + earnedGold);
+    setWaveClearing(true);
+    setPhase("waveTransition");
+    addLog(`★ WAVE ${wave.wave} クリア！EXP +${earnedExp} / Gold +${earnedGold}G`);
+    setTimeout(() => {
+      setWaveClearing(false);
+      const nextIdx = waveIndex + 1;
+      if (nextIdx >= WAVES.length) {
+        // All waves done → result
+        setPhase("result");
+        clearInterval(timerRef.current);
+      } else {
+        // Next wave
+        const nextWave = WAVES[nextIdx];
+        setWaveIndex(nextIdx);
+        setEnemies(nextWave.enemies.map(e => ({...e})));
+        setPhase("playerTurn");
+        if (nextWave.isBoss) {
+          addLog(`☠ BOSS登場！ ${nextWave.enemies[0].name} が現れた！`);
+          setFlashColor("rgba(245,158,11,0.35)");
+          setTimeout(() => setFlashColor(null), 600);
+        } else {
+          addLog(`WAVE ${nextWave.wave} 開始！`);
+        }
+      }
+    }, 2200);
+    return true;
+  }
+
+  function endPlayerTurn() {
+    // Check demonized turn countdown
+    let newDemon = demonized;
+    let newTurns = demonTurns;
+    if (demonized) {
+      newTurns = demonTurns - 1;
+      if (newTurns <= 0) {
+        newDemon = false;
+        newTurns = 0;
+        addLog("魔神化が解除された。通常形態に戻る。");
+        setDemonized(false);
+      }
+      setDemonTurns(newTurns);
+    }
+    // Soul gain from action
+    setSoul(prev => Math.min(100, prev + (demonized ? -20 : 10)));
+    setTimeout(() => runEnemyTurn(), speedMs * 0.4);
+  }
+
+  function runEnemyTurn() {
+    setPhase("enemyTurn");
+    const alive = enemies.filter(e => e.hp > 0);
+    if (alive.length === 0) { setPhase("playerTurn"); return; }
+
+    let delay = 0;
+    alive.forEach((enemy, i) => {
+      delay += speedMs * 0.55;
+      setTimeout(() => {
+        const dmg = Math.round(enemy.atk * (0.8 + Math.random() * 0.4));
+        const target = Math.floor(Math.random() * party.length);
+        damageParty(target, dmg);
+        addLog(`${enemy.name}の攻撃！ ${party[target].name}に ${dmg}ダメージ！`);
+        setFlashColor("rgba(239,68,68,0.25)");
+        setTimeout(() => setFlashColor(null), 300);
+      }, delay);
+    });
+
+    setTimeout(() => {
+      setPhase("playerTurn");
+      addLog("骸骨騎士のターン。コマンドを選択しろ。");
+    }, delay + speedMs * 0.4);
+  }
+
+  // ── Player actions
+  function handleAttack() {
+    if (phase !== "playerTurn") return;
+    setPhase("animating");
+    const tid = getTargetId();
+    const enemy = enemies.find(e => e.id === tid);
+    const dmg = demonized ? Math.round(1500 * (0.9 + Math.random() * 0.2)) : Math.round(1500 * (0.75 + Math.random() * 0.25));
+    addLog(demonized ? `殲滅！ ${enemy?.name}に圧倒的攻撃！` : `骸骨騎士の攻撃！ ${enemy?.name}を狙う！`);
+    setTimeout(() => {
+      damageEnemy(tid, dmg, { color: demonized ? "#dc2626" : "#f0ebff" });
+      if (demonized) {
+        setFlashColor("rgba(220,38,38,0.3)");
+        setTimeout(() => setFlashColor(null), 350);
+      }
+      setTimeout(() => {
+        addLog(`${enemy?.name}に ${dmg}ダメージ！`);
+        setPhase("playerTurn");
+        endPlayerTurn();
+      }, speedMs * 0.4);
+    }, speedMs * 0.3);
+  }
+
+  function handleSkill(skill) {
+    setPhase("animating");
+    // MP / cost deduction
+    if (!demonized) {
+      setParty(prev => prev.map((m,i) => i===0 ? {...m, mp: Math.max(0, m.mp - skill.mp)} : m));
+    } else {
+      const hpCost = parseInt(skill.cost) || 50;
+      setParty(prev => prev.map((m,i) => i===0 ? {...m, hp: Math.max(1, m.hp - Math.abs(hpCost))} : m));
+    }
+    // Soul cost for demon skills
+    if (skill.demonOnly && skill.id === 11) setSoul(0);
+    const targets = skill.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
+    addLog(`${demonized ? "魔神技" : "術"}発動！ ${skill.name}！`);
+    setFlashColor(`rgba(138,43,226,0.3)`);
+    setTimeout(() => setFlashColor(null), 400);
+    setTimeout(() => {
+      targets.forEach((tid, i) => {
+        setTimeout(() => {
+          const dmg = Math.round(skill.power * (0.85 + Math.random() * 0.3));
+          damageEnemy(tid, dmg, { color:"#c084fc" });
+          addLog(`${enemies.find(e=>e.id===tid)?.name}に ${dmg}ダメージ！`);
+        }, i * 200);
+      });
+      setTimeout(() => {
+        setPhase("playerTurn");
+        endPlayerTurn();
+      }, targets.length * 200 + speedMs * 0.3);
+    }, speedMs * 0.4);
+  }
+
+  function handleItem(item) {
+    setPhase("animating");
+    if (item.effect === "heal") {
+      setParty(prev => prev.map((m,i) => i===0 ? {...m, hp: Math.min(m.maxHp, m.hp + item.value)} : m));
+      spawnFloat("42%","52%", item.value, { heal:true, color:"#4ade80" });
+      addLog(`冥界薬を使用！ HP+${item.value}回復！`);
+    } else if (item.effect === "mpHeal") {
+      setParty(prev => prev.map((m,i) => i===0 ? {...m, mp: m.maxMp} : m));
+      addLog(`エーテルを使用！ MPが全回復！`);
+    }
+    setTimeout(() => { setPhase("playerTurn"); endPlayerTurn(); }, speedMs * 0.5);
+  }
+
+  function handleDemonize() {
+    if (!soulFull) return;
+    setDemonized(true);
+    setDemonTurns(3);
+    setSoul(100);
+    setFlashColor("rgba(180,0,0,0.5)");
+    setTimeout(() => setFlashColor(null), 800);
+    addLog("☠ 魔神化発動！闇の力が解放される！");
+    addLog("全コマンドが魔神専用に切り替わった。3ターン継続。");
+    setPhase("playerTurn");
+  }
+
+  function handleTargetEnemy(eid) {
+    if (enemies.find(e => e.id === eid)?.hp <= 0) return;
+    setEnemies(prev => prev.map(e => ({...e, targeted: e.id === eid})));
+  }
+
+  // Battle timer
+  useEffect(() => {
+    timerRef.current = setInterval(() => setBattleTime(t => t + 1), 1000);
+    return () => clearInterval(timerRef.current);
+  }, []);
+
+  // Auto battle
+  useEffect(() => {
+    if (!auto || phase !== "playerTurn") return;
+    const t = setTimeout(() => handleAttack(), speedMs * 0.4);
+    return () => clearTimeout(t);
+  }, [auto, phase]);
+
+  const mainSkills = demonized ? DEMON_SKILLS : SKILLS;
+
+  return (
+    <div style={{
+      width:"100%", height:"100%",
+      width:"100%", height:"100%",
+      display:"flex", flexDirection:"column",
+      background:"#06050f",
+      position:"relative", overflow:"hidden",
+      fontFamily:"'Inter', sans-serif",
+    }}>
+      {/* ── TOP HUD ── */}
+      <div style={{
+        padding:"54px 12px 4px",
+        background:"linear-gradient(180deg,rgba(3,1,12,0.92),rgba(3,1,12,0.6) 70%, transparent)",
+        zIndex:10, flexShrink:0,
+      }}>
+        {/* Back + title */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
+          <a href="Map.html" style={{
+            display:"flex", alignItems:"center", gap:4,
+            textDecoration:"none",
+            fontFamily:"'Inter', sans-serif", fontSize:10, color:"#8b7da8",
+          }}>
+            <span style={{fontSize:13}}>‹</span><span>マップ</span>
+          </a>
+          <div style={{
+            fontFamily:"'Cinzel', serif", fontSize:11, fontWeight:700,
+            color: demonized ? "#ef4444" : WAVES[waveIndex]?.isBoss ? "#f59e0b" : "#8A2BE2",
+            letterSpacing:"0.12em",
+            textShadow: demonized ? "0 0 12px #dc2626" : WAVES[waveIndex]?.isBoss ? "0 0 12px #f59e0b" : "0 0 8px #8A2BE2",
+            transition:"all 0.5s ease",
+          }}>{demonized ? "☠ 魔神化中" : WAVES[waveIndex]?.isBoss ? "⚠ BOSS" : `骸骨山脈 — WAVE ${waveIndex+1}/${WAVES.length}`}</div>
+          <div style={{
+            fontFamily:"'Inter', sans-serif", fontSize:9,
+            color: phase==="playerTurn" ? "#22c55e" : phase==="enemyTurn" ? "#ef4444" : "#f59e0b",
+            display:"flex", alignItems:"center", gap:4,
+          }}>
+            <div style={{
+              width:5, height:5, borderRadius:"50%",
+              background: phase==="playerTurn" ? "#22c55e" : phase==="enemyTurn" ? "#ef4444" : "#f59e0b",
+            }}/>
+            {phase==="playerTurn" ? "自ターン" : phase==="enemyTurn" ? "敵ターン" : "行動中"}
+          </div>
+        </div>
+        {/* Turn order */}
+        <TurnOrderStrip/>
+      </div>
+
+      {/* ── BATTLE ARENA ── */}
+      <BattleArena
+        enemies={enemies}
+        onTargetEnemy={handleTargetEnemy}
+        demonized={demonized}
+        flashColor={flashColor}
+        screenShake={screenShake}/>
+
+      {/* Damage floats overlay */}
+      <DamageFloat floats={floats}/>
+
+      {/* ── BATTLE LOG ── */}
+      <BattleLog lines={log}/>
+
+      {/* ── PARTY STATUS ── */}
+      <PartyStatusBar party={party} demonized={demonized}/>
+
+      {/* ── SOUL GAUGE ── */}
+      <SoulGauge value={soul} max={100} demonized={demonized}/>
+
+      {/* ── COMMAND PANEL ── */}
+      <div style={{
+        padding:"6px 12px",
+        background: demonized
+          ? "linear-gradient(180deg,rgba(15,2,2,0.97),rgba(8,1,1,0.99))"
+          : "linear-gradient(180deg,rgba(4,1,14,0.97),rgba(3,1,10,0.99))",
+        borderTop:`1px solid ${demonized ? "#dc262630" : "rgba(255,255,255,0.07)"}`,
+        transition:"background 0.6s ease",
+        zIndex:10,
+        flexShrink:0,
+      }}>
+        {phase === "skillMenu" ? (
+          /* SKILL SUBMENU */
+          <div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+              <div style={{
+                fontFamily:"'Cinzel', serif", fontSize:10, fontWeight:600,
+                color: demonized ? "#ef4444" : "#8A2BE2", letterSpacing:"0.1em",
+              }}>{demonized ? "魔神技選択" : "術・スキル選択"}</div>
+              <div onClick={() => setPhase("playerTurn")} style={{
+                padding:"3px 10px", borderRadius:6,
+                background:"rgba(255,255,255,0.05)",
+                border:"1px solid rgba(255,255,255,0.1)",
+                fontFamily:"'Inter', sans-serif", fontSize:9, color:"#8b7da8",
+                cursor:"pointer",
+              }}>← 戻る</div>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              {mainSkills.map(skill => (
+                <SkillButton key={skill.id} skill={skill} mp={currentMp}
+                  onClick={(sk) => { setPhase("playerTurn"); handleSkill(sk); }}
+                  demonized={demonized}/>
+              ))}
+            </div>
+            {/* Skill desc */}
+            <div style={{
+              marginTop:8, padding:"6px 10px",
+              background:"rgba(255,255,255,0.03)",
+              border:"1px solid rgba(255,255,255,0.06)",
+              borderRadius:8,
+              fontFamily:"'Inter', sans-serif", fontSize:9, color:"#8b7da8", lineHeight:1.5,
+            }}>スキルを選択してください。長押しで詳細確認。</div>
+          </div>
+        ) : phase === "itemMenu" ? (
+          /* ITEM MENU */
+          <div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+              <div style={{ fontFamily:"'Cinzel', serif", fontSize:10, fontWeight:600, color:"#f59e0b", letterSpacing:"0.1em" }}>道具選択</div>
+              <div onClick={() => setPhase("playerTurn")} style={{
+                padding:"3px 10px", borderRadius:6, background:"rgba(255,255,255,0.05)",
+                border:"1px solid rgba(255,255,255,0.1)", fontFamily:"'Inter', sans-serif",
+                fontSize:9, color:"#8b7da8", cursor:"pointer",
+              }}>← 戻る</div>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              {ITEMS.map(item => (
+                <div key={item.id} onClick={() => { setPhase("playerTurn"); handleItem(item); }} style={{
+                  display:"flex", alignItems:"center", gap:10,
+                  padding:"8px 12px",
+                  background:"rgba(255,255,255,0.04)",
+                  border:"1px solid rgba(255,255,255,0.08)",
+                  borderRadius:10, cursor:"pointer",
+                  animation:"skillReveal 0.2s ease-out",
+                }}>
+                  <div style={{fontSize:18}}>{item.icon}</div>
+                  <div style={{flex:1}}>
+                    <div style={{ fontFamily:"'Cinzel', serif", fontSize:11, color:"#f0ebff" }}>{item.name}</div>
+                    <div style={{ fontFamily:"'Inter', sans-serif", fontSize:9, color:"#8b7da8" }}>{item.desc}</div>
+                  </div>
+                  <div style={{ fontFamily:"'Inter', sans-serif", fontSize:9, color:"#6b5f7a" }}>×{item.count}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* MAIN COMMANDS */
+          <div style={{ display:"flex", gap:8, animation:"commandReveal 0.3s ease-out" }}>
+            <CommandButton
+              icon={demonized ? "💥" : "⚔"}
+              label={demonized ? "殲滅" : "攻撃"}
+              sublabel={demonized ? "ANNIHILATE" : "ATTACK"}
+              enabled={phase==="playerTurn"}
+              color={demonized ? "#dc2626" : "#8A2BE2"}
+              demonized={demonized}
+              onClick={handleAttack}/>
+            <CommandButton
+              icon={demonized ? "🔥" : "🔮"}
+              label={demonized ? "魔神技" : "術"}
+              sublabel={demonized ? "DEMON ARTS" : "SKILL"}
+              enabled={phase==="playerTurn"}
+              color={demonized ? "#dc2626" : "#8A2BE2"}
+              demonized={demonized}
+              onClick={() => setPhase("skillMenu")}/>
+            <CommandButton
+              icon="🧪"
+              label="道具"
+              sublabel="ITEM"
+              enabled={phase==="playerTurn"}
+              color="#f59e0b"
+              onClick={() => setPhase("itemMenu")}/>
+            <CommandButton
+              icon="☠"
+              label={demonized ? `残${demonTurns}T` : "魔神化"}
+              sublabel={demonized ? "DEMONIZED" : soulFull ? "DEMONIZE" : `SOUL ${Math.round(soul)}%`}
+              enabled={soulFull && !demonized}
+              color="#dc2626"
+              glow={soulFull && !demonized}
+              demonized={demonized}
+              onClick={handleDemonize}/>
+          </div>
+        )}
+      </div>
+
+      {/* ── SYSTEM BAR ── */}
+      <SystemBar
+        auto={auto} speed={speed}
+        onAuto={() => setAuto(a => !a)}
+        onSpeed={() => setSpeed(s => s >= 3 ? 1 : s + 1)}
+        onEscape={() => { addLog("逃走した。"); window.location.href="Map.html"; }}
+        canEscape={phase==="playerTurn"}/>
+
+      {/* ── WAVE TRANSITION BANNER ── */}
+      {waveClearing && (
+        <WaveBanner wave={WAVES[waveIndex]} isBoss={false}/>
+      )}
+      {phase==="waveTransition" && !waveClearing && waveIndex < WAVES.length && WAVES[waveIndex].isBoss && (
+        <WaveBanner wave={WAVES[waveIndex]} isBoss={true}/>
+      )}
+
+      {/* ── RESULT SCREEN ── */}
+      {phase==="result" && (
+        <ResultScreen
+          party={party}
+          totalExp={totalExp}
+          totalGold={totalGold}
+          battleTime={battleTime}
+          onReturn={() => { window.location.href="Map.html"; }}/>
+      )}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(
+  <IOSDevice dark={true} width={393} height={852}>
+    <BattleScreen/>
+  </IOSDevice>
+);
+</script>
+</body>
+</html>

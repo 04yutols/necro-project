@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battle → Loot Drop — ネクロマンスブレイブ</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.2/pixi.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; color: inherit; }
+html, body {
+  width: 100%; height: 100%;
+  background: #04020e;
+  color: #f0ebff;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+#pixi-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 48px;
+}
+#root {
+  position: relative;
+  z-index: 2;
+  width: 393px; height: 852px;
+  overflow: hidden;
+  background: #04020e;
+  border-radius: 48px;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+}
+
+/* ── ANIMATIONS ─────────────────────────────── */
+@keyframes fadeIn  { from { opacity:0 } to { opacity:1 } }
+@keyframes fadeOut { from { opacity:1 } to { opacity:0 } }
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes cardReveal {
+  0%   { opacity:0; transform:translateY(30px) scale(0.92); }
+  100% { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes shimmerLoop {
+  0%   { background-position: -300% center; }
+  100% { background-position: 300% center; }
+}
+@keyframes statReveal {
+  from { opacity:0; transform:translateX(-8px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes tap-hint {
+  0%,100% { opacity:0.5; transform:scale(1); }
+  50%     { opacity:1;   transform:scale(1.06); }
+}
+@keyframes runeRotate {
+  from { transform:rotate(0deg); }
+  to   { transform:rotate(360deg); }
+}
+@keyframes float-gentle {
+  0%,100% { transform:translateY(0px); }
+  50%     { transform:translateY(-10px); }
+}
+@keyframes rank-pop {
+  0%  { transform:scale(0) rotate(-15deg); opacity:0; }
+  65% { transform:scale(1.18) rotate(3deg); opacity:1; }
+  100%{ transform:scale(1) rotate(0deg); opacity:1; }
+}
+@keyframes victoryPulse {
+  0%,100% { text-shadow: 0 0 20px #fbbf24, 0 0 60px #f59e0b80; }
+  50%     { text-shadow: 0 0 40px #fbbf24, 0 0 120px #f59e0b; }
+}
+@keyframes expFill {
+  from { width: 0%; }
+  to   { width: var(--exp-w); }
+}
+@keyframes countUp {
+  from { opacity:0; transform:scale(0.8); }
+  to   { opacity:1; transform:scale(1); }
+}
+@keyframes wipeDown {
+  0%   { transform:translateY(-100%); }
+  100% { transform:translateY(0%); }
+}
+@keyframes wipeUp {
+  0%   { transform:translateY(0%); }
+  100% { transform:translateY(-100%); }
+}
+@keyframes slash {
+  0%   { opacity:0; transform:scaleX(0) rotate(-8deg); transform-origin:left center; }
+  30%  { opacity:1; transform:scaleX(1) rotate(-8deg); }
+  70%  { opacity:1; transform:scaleX(1) rotate(-8deg); }
+  100% { opacity:0; transform:scaleX(1.1) rotate(-8deg); }
+}
+@keyframes enemyShake {
+  0%,100% { transform:translateX(0) scale(1); }
+  15%     { transform:translateX(-12px) scale(0.97); }
+  35%     { transform:translateX(10px)  scale(1.02); }
+  55%     { transform:translateX(-6px)  scale(0.98); }
+  75%     { transform:translateX(4px)   scale(1.01); }
+}
+@keyframes enemyFall {
+  0%   { opacity:1; transform:translateY(0) rotate(0deg) scale(1); }
+  100% { opacity:0; transform:translateY(120px) rotate(28deg) scale(0.6); }
+}
+@keyframes victoryFlash {
+  0%,100% { opacity:0; }
+  10%,90% { opacity:1; }
+}
+@keyframes rewardRow {
+  from { opacity:0; transform:translateX(-12px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes glowPulse {
+  0%,100% { opacity:0.4; }
+  50%     { opacity:1; }
+}
+@keyframes borderMarch {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -40; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PIXI VFX ENGINE  (同一コードベース・Loot Drop VFXより)
+═══════════════════════════════════════════════════════════ -->
+<script>
+const PIXI_APP = {
+  app:null, width:0, height:0,
+  orbContainer:null, shardContainer:null,
+  flareContainer:null, fireflyContainer:null,
+  bgLayer:null, orbTicker:null, ambientTicker:null,
+};
+function hexToPixi(h){ return parseInt(h.replace('#',''),16); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+function easeOutBack(t){ const c1=1.70158,c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
+
+function initPixi(rarity){
+  let canvas = document.getElementById('pixi-canvas');
+  if(!canvas){
+    canvas = document.createElement('canvas');
+    canvas.id = 'pixi-canvas';
+    document.getElementById('root').prepend(canvas);
+  }
+  const W=393, H=852;
+  PIXI_APP.width=W; PIXI_APP.height=H;
+  if(PIXI_APP.app){ PIXI_APP.app.destroy(false); }
+
+  const app = new PIXI.Application({
+    view:canvas, width:W, height:H,
+    backgroundAlpha:0, antialias:true,
+    resolution:window.devicePixelRatio||1, autoDensity:true,
+  });
+  PIXI_APP.app=app;
+
+  const bgLayer      = new PIXI.Container();
+  const fireflyLayer = new PIXI.Container();
+  const orbLayer     = new PIXI.Container();
+  const flareLayer   = new PIXI.Container();
+  const shardLayer   = new PIXI.Container();
+  app.stage.addChild(bgLayer,fireflyLayer,orbLayer,flareLayer,shardLayer);
+  PIXI_APP.orbContainer=orbLayer;
+  PIXI_APP.shardContainer=shardLayer;
+  PIXI_APP.flareContainer=flareLayer;
+  PIXI_APP.fireflyContainer=fireflyLayer;
+  PIXI_APP.bgLayer=bgLayer;
+
+  const bgGfx = new PIXI.Graphics();
+  const col = rarity==='unique' ? 0xfbbf24 : 0x8A2BE2;
+  for(let i=0;i<12;i++){
+    const t=i/11;
+    bgGfx.beginFill(col, 0.22*(1-t));
+    bgGfx.drawCircle(W/2,H/2,lerp(0,Math.max(W,H)*0.9,t));
+    bgGfx.endFill();
+  }
+  bgLayer.addChild(bgGfx);
+  return app;
+}
+
+function spawnOrb(rarity, onLand){
+  const app=PIXI_APP.app;
+  const W=PIXI_APP.width, H=PIXI_APP.height;
+  const isUnique=rarity==='unique';
+  const mainColor=isUnique?0xfbbf24:0x8A2BE2;
+  const glowColor=isUnique?0xf59e0b:0xc084fc;
+  const cx=W/2, startY=-80, landY=H*0.38;
+
+  const container=new PIXI.Container();
+  container.x=cx; container.y=startY;
+  PIXI_APP.orbContainer.addChild(container);
+
+  const glow=new PIXI.Graphics();
+  glow.beginFill(mainColor,0.12); glow.drawCircle(0,0,isUnique?72:64); glow.endFill();
+  glow.beginFill(mainColor,0.22); glow.drawCircle(0,0,isUnique?52:46); glow.endFill();
+  container.addChild(glow);
+
+  const runeRing=new PIXI.Graphics();
+  runeRing.lineStyle(1.5,glowColor,0.7);
+  runeRing.drawCircle(0,0,isUnique?48:42);
+  for(let i=0;i<12;i++){
+    const a=(i/12)*Math.PI*2, r=isUnique?48:42;
+    runeRing.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+    runeRing.lineTo(Math.cos(a)*(r+8),Math.sin(a)*(r+8));
+  }
+  container.addChild(runeRing);
+
+  const core=new PIXI.Graphics();
+  const layers=isUnique
+    ?[[0xfffde7,0.9,8],[0xfde68a,0.8,14],[0xfbbf24,0.7,22],[0xf59e0b,0.6,30],[0xb45309,0.3,38]]
+    :[[0xf3e8ff,0.9,8],[0xe9d5ff,0.8,14],[0xc084fc,0.7,22],[0x8A2BE2,0.6,30],[0x4a0e8a,0.3,38]];
+  layers.reverse().forEach(([c,a,r])=>{ core.beginFill(c,a); core.drawCircle(0,0,r); core.endFill(); });
+  container.addChild(core);
+
+  const spot=new PIXI.Graphics();
+  spot.beginFill(0xffffff,0.6); spot.drawCircle(-8,-8,7); spot.endFill();
+  container.addChild(spot);
+
+  const trail=[];
+  const dispSprite=new PIXI.Sprite(PIXI.Texture.EMPTY);
+  dispSprite.width=200; dispSprite.height=200; dispSprite.anchor.set(0.5);
+  const dispFilter=new PIXI.DisplacementFilter(dispSprite);
+  dispFilter.scale.x=0; dispFilter.scale.y=0;
+  container.filters=[dispFilter]; container.addChild(dispSprite);
+
+  let t=0, phase='fall', pulseT=0, landed=false;
+  const ticker=(delta)=>{
+    if(phase==='fall'){
+      t+=delta*0.016;
+      const p=Math.min(t,1), ep=easeOutCubic(p);
+      container.y=lerp(startY,landY,ep);
+      if(Math.random()<0.35){
+        const tr=new PIXI.Graphics();
+        tr.beginFill(mainColor,0.5); tr.drawCircle(0,0,4+Math.random()*8); tr.endFill();
+        tr.x=cx+(Math.random()-0.5)*8; tr.y=container.y+20+Math.random()*20;
+        PIXI_APP.orbContainer.addChild(tr); trail.push({g:tr,life:1});
+      }
+      trail.forEach((tr,i)=>{
+        tr.life-=delta*0.06; tr.g.alpha=tr.life; tr.g.scale.set(tr.life);
+        if(tr.life<=0){ PIXI_APP.orbContainer.removeChild(tr.g); trail.splice(i,1); }
+      });
+      if(p>0.8){ app.stage.x=(Math.random()-0.5)*4*(1-p)*10; app.stage.y=(Math.random()-0.5)*4*(1-p)*10; }
+      if(p>=1){
+        phase='pulse'; app.stage.x=0; app.stage.y=0;
+        spawnShockwave(cx,landY,mainColor);
+        if(!landed){ landed=true; onLand&&onLand(); }
+      }
+    } else if(phase==='pulse'){
+      pulseT+=delta*0.04;
+      const s=1+Math.sin(pulseT*Math.PI*2)*0.06;
+      container.scale.set(s);
+      runeRing.rotation+=delta*0.018;
+      dispFilter.scale.x=Math.sin(pulseT*Math.PI*2)*18;
+      dispFilter.scale.y=Math.sin(pulseT*Math.PI*2+0.5)*18;
+      glow.alpha=0.7+Math.sin(pulseT*Math.PI*2)*0.3;
+      if(Math.random()<0.15) spawnSparkle(cx+container.scale.x*(Math.random()-0.5)*60, landY+(Math.random()-0.5)*60, mainColor, glowColor);
+    }
+  };
+  app.ticker.add(ticker);
+  PIXI_APP.orbTicker=ticker;
+  return { container, setPhase:(p)=>{ phase=p; } };
+}
+
+function spawnShockwave(x,y,color){
+  const app=PIXI_APP.app;
+  const ring=new PIXI.Graphics();
+  ring.lineStyle(3,color,0.9); ring.drawCircle(0,0,1);
+  ring.x=x; ring.y=y;
+  PIXI_APP.flareContainer.addChild(ring);
+  let t=0;
+  const tick=(delta)=>{
+    t+=delta*0.04; ring.scale.set(1+t*80); ring.alpha=Math.max(0,1-t*1.4);
+    if(t>0.8){ app.ticker.remove(tick); PIXI_APP.flareContainer.removeChild(ring); }
+  };
+  app.ticker.add(tick);
+}
+
+function spawnSparkle(x,y,c1,c2){
+  const app=PIXI_APP.app;
+  const g=new PIXI.Graphics();
+  const c=Math.random()<0.5?c1:c2;
+  g.beginFill(c,1); g.drawCircle(0,0,1.5+Math.random()*2.5); g.endFill();
+  g.x=x; g.y=y;
+  const vx=(Math.random()-0.5)*2, vy=-1.5-Math.random()*2;
+  PIXI_APP.flareContainer.addChild(g);
+  let t=0;
+  const tick=(delta)=>{
+    t+=delta*0.05; g.x+=vx*delta*0.8; g.y+=vy*delta*0.8; g.alpha=Math.max(0,1-t);
+    if(t>=1){ app.ticker.remove(tick); PIXI_APP.flareContainer.removeChild(g); }
+  };
+  app.ticker.add(tick);
+}
+
+function triggerShatter(rarity,cx,cy,onDone){
+  const app=PIXI_APP.app;
+  const isUnique=rarity==='unique';
+  const mainColor=isUnique?0xfbbf24:0x8A2BE2;
+  const glowColor=isUnique?0xf59e0b:0xc084fc;
+  const W=393,H=852;
+
+  if(PIXI_APP.orbTicker) app.ticker.remove(PIXI_APP.orbTicker);
+  PIXI_APP.orbContainer.removeChildren();
+
+  const bloom=new PIXI.Graphics();
+  bloom.beginFill(0xffffff,1); bloom.drawRect(0,0,W,H); bloom.endFill();
+  bloom.alpha=0; app.stage.addChild(bloom);
+
+  const shards=[];
+  for(let i=0;i<28;i++){
+    const g=new PIXI.Graphics();
+    const angle=(i/28)*Math.PI*2+Math.random()*0.4;
+    const size=6+Math.random()*18;
+    const c=i%3===0?0xffffff:i%3===1?glowColor:mainColor;
+    g.beginFill(c,0.9);
+    const pts=[];
+    for(let j=0;j<4;j++){
+      const a=(j/4)*Math.PI*2+Math.random();
+      pts.push(Math.cos(a)*size*(0.4+Math.random()*0.6));
+      pts.push(Math.sin(a)*size*(0.4+Math.random()*0.6));
+    }
+    g.drawPolygon(pts); g.endFill();
+    g.x=cx; g.y=cy;
+    const speed=4+Math.random()*14;
+    const vx=Math.cos(angle)*speed, vy=Math.sin(angle)*speed-4;
+    const rot=(Math.random()-0.5)*0.3;
+    PIXI_APP.shardContainer.addChild(g);
+    shards.push({g,vx,vy,rot,life:1});
+  }
+
+  const flareGfx=new PIXI.Graphics();
+  for(let i=0;i<12;i++){
+    const a=(i/12)*Math.PI*2;
+    const len=(i%2===0?220:100)*(0.6+Math.random()*0.4);
+    flareGfx.lineStyle(i%2===0?2.5:1, i%2===0?glowColor:mainColor, 0.8*(i%2===0?1:0.6));
+    flareGfx.moveTo(cx,cy); flareGfx.lineTo(cx+Math.cos(a)*len, cy+Math.sin(a)*len);
+  }
+  flareGfx.beginFill(0xffffff,0.95); flareGfx.drawCircle(cx,cy,22); flareGfx.endFill();
+  flareGfx.beginFill(glowColor,0.7);  flareGfx.drawCircle(cx,cy,14); flareGfx.endFill();
+  flareGfx.beginFill(0xffffff,0.9);   flareGfx.drawCircle(cx,cy,7);  flareGfx.endFill();
+  PIXI_APP.flareContainer.addChild(flareGfx);
+
+  const bloomRings=[];
+  for(let i=0;i<4;i++){
+    const r=new PIXI.Graphics();
+    r.lineStyle(3-i*0.5, i%2===0?glowColor:mainColor, 0.9);
+    r.drawCircle(cx,cy,10); PIXI_APP.flareContainer.addChild(r);
+    bloomRings.push({g:r,t:-i*0.04});
+  }
+  spawnFireflies(rarity);
+
+  let t=0;
+  const tick=(delta)=>{
+    t+=delta*0.035;
+    if(t<0.15) bloom.alpha=t/0.15; else bloom.alpha=Math.max(0,1-(t-0.15)/0.25);
+    shards.forEach(s=>{
+      s.life-=delta*0.022;
+      s.g.x+=s.vx*delta*0.7; s.g.y+=s.vy*delta*0.7; s.vy+=delta*0.35;
+      s.g.rotation+=s.rot*delta; s.g.alpha=Math.max(0,s.life); s.g.scale.set(Math.max(0,s.life));
+    });
+    flareGfx.alpha=Math.max(0,1-(t-0.12)/0.6);
+    bloomRings.forEach(r=>{
+      r.t+=delta*0.035; if(r.t<0) return;
+      r.g.scale.set(1+r.t*40); r.g.alpha=Math.max(0,1-r.t*1.2);
+    });
+    if(t>1.2){
+      app.ticker.remove(tick); bloom.alpha=0;
+      PIXI_APP.shardContainer.removeChildren();
+      PIXI_APP.flareContainer.removeChildren();
+      app.stage.removeChild(bloom);
+      onDone&&onDone();
+    }
+  };
+  app.ticker.add(tick);
+}
+
+function spawnFireflies(rarity){
+  const app=PIXI_APP.app;
+  const isUnique=rarity==='unique';
+  const c1=isUnique?0xfbbf24:0x8A2BE2;
+  const c2=isUnique?0xfde68a:0xc084fc;
+  const c3=isUnique?0xf59e0b:0x7c3aed;
+  const W=393,H=852;
+  for(let i=0;i<60;i++){
+    setTimeout(()=>{
+      const g=new PIXI.Graphics();
+      const c=[c1,c2,c3][Math.floor(Math.random()*3)];
+      const size=1.5+Math.random()*3;
+      g.beginFill(c,1); g.drawCircle(0,0,size); g.endFill();
+      g.beginFill(c,0.2); g.drawCircle(0,0,size*3); g.endFill();
+      g.x=W*(0.1+Math.random()*0.8); g.y=H*(0.3+Math.random()*0.6);
+      PIXI_APP.fireflyContainer.addChild(g);
+      const phase=Math.random()*Math.PI*2, speed=0.2+Math.random()*0.5;
+      const amplitude=15+Math.random()*25, riseSpeed=0.3+Math.random()*0.8;
+      let lt=0;
+      const tick=(delta)=>{
+        lt+=delta*0.016*speed;
+        g.x+=Math.sin(lt*2.3+phase)*amplitude*0.012*delta;
+        g.y-=riseSpeed*delta*0.4;
+        g.alpha=0.5+Math.sin(lt*3+phase)*0.5;
+        if(g.y<-20){ g.y=H+10; g.x=W*(0.1+Math.random()*0.8); lt=Math.random()*Math.PI*2; }
+      };
+      app.ticker.add(tick);
+    }, i*40);
+  }
+}
+
+function startOrbAmbient(rarity,cx,cy){
+  const app=PIXI_APP.app;
+  const isUnique=rarity==='unique';
+  const c1=isUnique?0xfbbf24:0x8A2BE2;
+  const c2=isUnique?0xfde68a:0xc084fc;
+  const tick=(delta)=>{
+    if(Math.random()<0.2) spawnSparkle(cx+(Math.random()-0.5)*80, cy+(Math.random()-0.5)*80, c1,c2);
+  };
+  app.ticker.add(tick);
+  PIXI_APP.ambientTicker=tick;
+}
+
+function stopOrbAmbient(){
+  if(PIXI_APP.ambientTicker) PIXI_APP.app?.ticker?.remove(PIXI_APP.ambientTicker);
+}
+
+// ── BATTLE RESULT PIXI: Blood particles + victory light ──────────────────────
+function spawnVictoryBurst(cx, cy) {
+  if(!PIXI_APP.app) return;
+  const app = PIXI_APP.app;
+  const colors = [0xfbbf24, 0xf59e0b, 0xfde68a, 0xffffff];
+  for(let i=0;i<40;i++){
+    const g=new PIXI.Graphics();
+    const c=colors[Math.floor(Math.random()*colors.length)];
+    g.beginFill(c,1); g.drawCircle(0,0,2+Math.random()*4); g.endFill();
+    g.x=cx; g.y=cy;
+    const angle=Math.random()*Math.PI*2;
+    const speed=3+Math.random()*8;
+    const vx=Math.cos(angle)*speed, vy=Math.sin(angle)*speed-4;
+    PIXI_APP.flareContainer.addChild(g);
+    let t=0;
+    const tick=(delta)=>{
+      t+=delta*0.04; g.x+=vx*delta*0.6; g.y+=vy*delta*0.6;
+      g.vy+=delta*0.3;
+      g.alpha=Math.max(0,1-t);
+      if(t>=1){ app.ticker.remove(tick); PIXI_APP.flareContainer.removeChild(g); }
+    };
+    app.ticker.add(tick);
+  }
+  // Central flash ring
+  spawnShockwave(cx, cy, 0xfbbf24);
+}
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     REACT APP
+═══════════════════════════════════════════════════════════ -->
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ── LOOT DATA ────────────────────────────────────────────── */
+const LOOT_ITEMS = [
+  {
+    id:"void_blade", rarity:"unique", rarityLabel:"UNIQUE",
+    name:"虚無の断刃", nameEn:"VOID CLEAVER", icon:"⚔",
+    type:"武器 — 大剣",
+    flavor:"深淵の底から引き上げられた伝説の刃。触れる者の魂を侵食する。",
+    stats:[
+      {label:"攻撃力",   value:"+1,840",   color:"#fbbf24"},
+      {label:"暗黒属性", value:"+68%",     color:"#c084fc"},
+      {label:"魂吸収",   value:"毎ターン+45",color:"#34d399"},
+    ],
+    passive:"装備者の攻撃が対象の最大HPの2%を追加ダメージとして与える。",
+  },
+  {
+    id:"abyss_core", rarity:"epic", rarityLabel:"EPIC",
+    name:"深淵の残滓", nameEn:"ABYSSAL RESIDUE", icon:"🌑",
+    type:"アクセサリー — 深淵片",
+    flavor:"魔王城の最深部で採取される希少な結晶。底知れぬ魔力を秘める。",
+    stats:[
+      {label:"全能力",   value:"+22%",      color:"#c084fc"},
+      {label:"冥力回復", value:"+35/turn",   color:"#60a5fa"},
+      {label:"耐性",     value:"光属性-50%", color:"#f87171"},
+    ],
+    passive:"装備者が魔神化している間、全ダメージが1.5倍になる。",
+  },
+];
+
+const RARITY = {
+  unique:{
+    bg:"linear-gradient(135deg, #1c1000, #0c0800, #1c1000)",
+    border:"#f59e0b", glow:"#fbbf24", text:"#fde68a",
+    shine:"linear-gradient(90deg, transparent 0%, #fbbf2440 40%, #fde68a60 50%, #fbbf2440 60%, transparent 100%)",
+    label:"UNIQUE", labelBg:"linear-gradient(90deg, #92400e, #b45309, #92400e)", stars:5,
+  },
+  epic:{
+    bg:"linear-gradient(135deg, #0f0a1a, #080510, #0f0a1a)",
+    border:"#8A2BE2", glow:"#c084fc", text:"#e9d5ff",
+    shine:"linear-gradient(90deg, transparent 0%, #8A2BE240 40%, #c084fc50 50%, #8A2BE240 60%, transparent 100%)",
+    label:"EPIC", labelBg:"linear-gradient(90deg, #4a0e8a, #6d28d9, #4a0e8a)", stars:4,
+  },
+};
+
+/* ── ENEMY DATA ───────────────────────────────────────────── */
+const ENEMY = {
+  name: "混沌の魔将",
+  nameEn: "CHAOS MARSHAL",
+  level: 87,
+  rank: "BOSS",
+  hp: 0, maxHp: 48200,
+};
+
+/* ── BATTLE RESULT DATA ───────────────────────────────────── */
+const BATTLE_DATA = {
+  rank: "S",
+  rankColor: "#fbbf24",
+  title: "VICTORY",
+  turns: 12,
+  damage: "284,700",
+  dmgBreakdown:[
+    {label:"物理ダメージ", value:"142,300", pct:50, color:"#f87171"},
+    {label:"暗黒属性",     value:"98,400",  pct:35, color:"#c084fc"},
+    {label:"魂砕き",       value:"44,000",  pct:15, color:"#34d399"},
+  ],
+  expGained: 18400,
+  expCurrent: 34200,
+  expMax: 52000,
+  goldGained: 3800,
+  bonusItems:[
+    {label:"骨髄エッセンス", qty:"×3", color:"#9ca3af"},
+    {label:"混沌の欠片",     qty:"×1", color:"#c084fc"},
+  ],
+};
+
+/* ── TRANSITION OVERLAY ───────────────────────────────────── */
+function TransitionOverlay({ active, color, onDone }) {
+  const ref = useRef(null);
+  useEffect(()=>{
+    if(!active || !ref.current) return;
+    const el = ref.current;
+    el.style.transform = 'translateY(-100%)';
+    el.style.transition = 'none';
+    el.getBoundingClientRect();
+    el.style.transition = 'transform 0.55s cubic-bezier(0.76,0,0.24,1)';
+    el.style.transform = 'translateY(0%)';
+    const t1 = setTimeout(()=>{
+      el.style.transition = 'transform 0.45s cubic-bezier(0.76,0,0.24,1) 0.15s';
+      el.style.transform = 'translateY(100%)';
+    }, 600);
+    const t2 = setTimeout(()=>{ onDone&&onDone(); }, 900);
+    return ()=>{ clearTimeout(t1); clearTimeout(t2); };
+  },[active]);
+
+  return (
+    <div ref={ref} style={{
+      position:"absolute", inset:0, zIndex:100,
+      background:`linear-gradient(180deg, ${color}ee 0%, ${color} 50%, #04020e 100%)`,
+      transform:"translateY(-100%)",
+      pointerEvents: active ? "all" : "none",
+    }}/>
+  );
+}
+
+/* ── ENEMY SILHOUETTE (SVG placeholder) ──────────────────── */
+function EnemySilhouette({ phase }) {
+  // phase: "alive" | "shaking" | "fallen"
+  const anim = phase==="shaking"
+    ? "enemyShake 0.55s ease-in-out"
+    : phase==="fallen"
+    ? "enemyFall 0.8s cubic-bezier(0.4,0,0.2,1) forwards"
+    : "float-gentle 4s ease-in-out infinite";
+
+  return (
+    <div style={{
+      width:140, height:180,
+      display:"flex", alignItems:"center", justifyContent:"center",
+      animation: anim,
+      filter: phase==="fallen" ? "none" : "drop-shadow(0 0 24px #8A2BE280)",
+      position:"relative",
+    }}>
+      {/* Armor-clad demon lord silhouette */}
+      <svg viewBox="0 0 140 180" width="140" height="180" fill="none">
+        {/* Cloak */}
+        <ellipse cx="70" cy="155" rx="52" ry="22" fill="#1a0a2e" opacity="0.7"/>
+        <path d="M30 90 Q20 140 18 170 Q50 155 70 160 Q90 155 122 170 Q120 140 110 90Z"
+          fill="#1a0a2e" stroke="#4a1e7a" strokeWidth="1"/>
+        {/* Armor chest */}
+        <path d="M45 80 Q42 100 44 120 Q57 128 70 128 Q83 128 96 120 Q98 100 95 80 Q82 76 70 76 Q58 76 45 80Z"
+          fill="#0f0820" stroke="#7c3aed" strokeWidth="1.5"/>
+        {/* Shoulder pads */}
+        <ellipse cx="36" cy="84" rx="16" ry="10" fill="#1a0a2e" stroke="#4a1e7a" strokeWidth="1" transform="rotate(-15,36,84)"/>
+        <ellipse cx="104" cy="84" rx="16" ry="10" fill="#1a0a2e" stroke="#4a1e7a" strokeWidth="1" transform="rotate(15,104,84)"/>
+        {/* Neck */}
+        <rect x="62" y="58" width="16" height="22" rx="6" fill="#0f0820" stroke="#4a1e7a" strokeWidth="1"/>
+        {/* Horned helm */}
+        <ellipse cx="70" cy="48" rx="24" ry="20" fill="#0f0820" stroke="#7c3aed" strokeWidth="1.5"/>
+        {/* Visor slit — glowing */}
+        <rect x="57" y="44" width="26" height="6" rx="3" fill="#8A2BE2" opacity="0.9"/>
+        <rect x="59" y="45" width="22" height="4" rx="2" fill="#c084fc"/>
+        {/* Left horn */}
+        <path d="M50 34 Q38 16 44 4 Q52 18 55 32Z" fill="#1a0a2e" stroke="#7c3aed" strokeWidth="1"/>
+        {/* Right horn */}
+        <path d="M90 34 Q102 16 96 4 Q88 18 85 32Z" fill="#1a0a2e" stroke="#7c3aed" strokeWidth="1"/>
+        {/* Scythe weapon */}
+        <line x1="104" y1="76" x2="118" y2="30" stroke="#4a1e7a" strokeWidth="3" strokeLinecap="round"/>
+        <path d="M118 30 Q136 20 134 36 Q124 42 116 36Z" fill="#c084fc" opacity="0.85"/>
+        {/* Runic glow on chest */}
+        <path d="M55 98 Q70 90 85 98" stroke="#8A2BE2" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+        <path d="M60 108 Q70 102 80 108" stroke="#c084fc" strokeWidth="1" strokeLinecap="round" opacity="0.5"/>
+      </svg>
+
+      {/* Death crack effect when fallen */}
+      {phase==="fallen" && (
+        <div style={{
+          position:"absolute", inset:0, pointerEvents:"none",
+          background:"radial-gradient(circle at 50% 40%, #8A2BE220, transparent 70%)",
+        }}/>
+      )}
+    </div>
+  );
+}
+
+/* ── HP BAR ───────────────────────────────────────────────── */
+function HpBar({ pct, color }) {
+  return (
+    <div style={{
+      width:"100%", height:6, borderRadius:4,
+      background:"rgba(255,255,255,0.08)",
+      overflow:"hidden",
+      border:"1px solid rgba(255,255,255,0.06)",
+    }}>
+      <div style={{
+        height:"100%", borderRadius:4,
+        width:`${pct}%`,
+        background:`linear-gradient(90deg, ${color}, ${color}cc)`,
+        boxShadow:`0 0 8px ${color}80`,
+        transition:"width 1.5s cubic-bezier(0.4,0,0.2,1)",
+      }}/>
+    </div>
+  );
+}
+
+/* ── SLASH VFX OVERLAY ────────────────────────────────────── */
+function SlashOverlay({ visible }) {
+  if(!visible) return null;
+  return (
+    <div style={{
+      position:"absolute", inset:0, zIndex:15,
+      pointerEvents:"none", overflow:"hidden",
+    }}>
+      {/* Multiple slash lines */}
+      {[
+        {top:"30%", left:"5%", width:"90%", angle:-8, delay:"0s",   color:"#fbbf24"},
+        {top:"38%", left:"10%",width:"80%", angle:-5, delay:"0.06s",color:"#ffffff"},
+        {top:"45%", left:"2%", width:"95%", angle:-10,delay:"0.12s",color:"#c084fc"},
+      ].map((s,i)=>(
+        <div key={i} style={{
+          position:"absolute", top:s.top, left:s.left,
+          width:s.width, height:"2px",
+          background:`linear-gradient(90deg, transparent, ${s.color}, transparent)`,
+          transform:`rotate(${s.angle}deg)`,
+          animation:`slash 0.6s ease-out ${s.delay} forwards`,
+          opacity:0,
+          boxShadow:`0 0 8px ${s.color}`,
+        }}/>
+      ))}
+      {/* Center impact flash */}
+      <div style={{
+        position:"absolute", top:"25%", left:"20%", right:"20%", bottom:"25%",
+        background:"radial-gradient(circle, rgba(255,255,255,0.6) 0%, transparent 70%)",
+        animation:"victoryFlash 0.5s ease-out forwards",
+      }}/>
+    </div>
+  );
+}
+
+/* ── BATTLE SCREEN ────────────────────────────────────────── */
+function BattleScreen({ onVictory }) {
+  const [battlePhase, setBattlePhase] = useState("intro"); 
+  // intro → fighting → slash → defeat → result
+  const [hpPct, setHpPct] = useState(100);
+  const [showSlash, setShowSlash] = useState(false);
+  const [enemyPhase, setEnemyPhase] = useState("alive"); // alive | shaking | fallen
+  const [hitCount, setHitCount] = useState(0);
+
+  useEffect(()=>{
+    // Initialize a minimal pixi for battle ambient
+    const canvas = document.createElement('canvas');
+    canvas.id = 'pixi-canvas';
+    canvas.style.cssText = `position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;border-radius:48px;`;
+    const rootEl = document.getElementById('root');
+    rootEl.prepend(canvas);
+
+    const app = new PIXI.Application({
+      view:canvas, width:393, height:852,
+      backgroundAlpha:0, antialias:true,
+      resolution:window.devicePixelRatio||1, autoDensity:true,
+    });
+    PIXI_APP.app=app;
+    PIXI_APP.width=393; PIXI_APP.height=852;
+    PIXI_APP.orbContainer=new PIXI.Container();
+    PIXI_APP.shardContainer=new PIXI.Container();
+    PIXI_APP.flareContainer=new PIXI.Container();
+    PIXI_APP.fireflyContainer=new PIXI.Container();
+    app.stage.addChild(PIXI_APP.orbContainer, PIXI_APP.fireflyContainer, PIXI_APP.flareContainer, PIXI_APP.shardContainer);
+
+    // Ambient purple glow bg
+    const bgGfx = new PIXI.Graphics();
+    bgGfx.beginFill(0x8A2BE2, 0.08); bgGfx.drawCircle(196, 200, 200); bgGfx.endFill();
+    bgGfx.beginFill(0x4a0e8a, 0.05); bgGfx.drawCircle(196, 200, 300); bgGfx.endFill();
+    PIXI_APP.orbContainer.addChild(bgGfx);
+
+    // Sequence
+    const t1 = setTimeout(()=>setBattlePhase("fighting"), 600);
+    // Simulate HP drain
+    const t2 = setTimeout(()=>setHpPct(62), 800);
+    const t3 = setTimeout(()=>{
+      setHitCount(1);
+      spawnVictoryBurst(196, 280);
+    }, 1400);
+    const t4 = setTimeout(()=>setHpPct(28), 1600);
+    const t5 = setTimeout(()=>{
+      setHitCount(2);
+      spawnVictoryBurst(196, 280);
+    }, 2200);
+    const t6 = setTimeout(()=>setHpPct(0), 2400);
+    const t7 = setTimeout(()=>{
+      setEnemyPhase("shaking");
+      spawnVictoryBurst(196, 260);
+    }, 2800);
+    const t8 = setTimeout(()=>setShowSlash(true), 3200);
+    const t9 = setTimeout(()=>setEnemyPhase("fallen"), 3500);
+    const t10 = setTimeout(()=>setBattlePhase("result"), 4200);
+    const t11 = setTimeout(()=>onVictory(), 4800);
+
+    return ()=>{
+      [t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11].forEach(clearTimeout);
+    };
+  },[]);
+
+  return (
+    <div style={{
+      position:"absolute", inset:0,
+      background:"linear-gradient(180deg, #06020f 0%, #0a0418 40%, #04020e 100%)",
+      display:"flex", flexDirection:"column",
+      animation:"fadeIn 0.4s ease-out",
+    }}>
+      {/* Top bar */}
+      <div style={{
+        padding:"56px 20px 12px",
+        display:"flex", alignItems:"center", justifyContent:"space-between",
+      }}>
+        <div>
+          <div style={{fontFamily:"'Inter'", fontSize:9, color:"#6b7280", letterSpacing:"0.14em"}}>DUNGEON B4F — BOSS</div>
+          <div style={{fontFamily:"'Cinzel'", fontSize:13, fontWeight:700, color:"#e9d5ff", marginTop:2}}>魔将討伐戦</div>
+        </div>
+        <div style={{textAlign:"right"}}>
+          <div style={{fontFamily:"'Inter'", fontSize:9, color:"#6b7280"}}>TURN</div>
+          <div style={{fontFamily:"'Cinzel'", fontSize:22, fontWeight:900, color:"#fbbf24",
+            textShadow:"0 0 12px #fbbf2480",
+          }}>{battlePhase==="fighting" ? "12" : "--"}</div>
+        </div>
+      </div>
+
+      {/* Enemy area */}
+      <div style={{
+        flex:1, display:"flex", flexDirection:"column",
+        alignItems:"center", justifyContent:"center",
+        position:"relative",
+        paddingBottom:20,
+      }}>
+        {/* Enemy name plate */}
+        <div style={{
+          display:"flex", flexDirection:"column", alignItems:"center",
+          marginBottom:16, zIndex:5,
+          animation:"slideUp 0.5s ease-out 0.3s both",
+        }}>
+          <div style={{
+            padding:"3px 14px", borderRadius:3,
+            background:"linear-gradient(90deg, #4a0e8a, #6d28d9, #4a0e8a)",
+            fontFamily:"'Cinzel'", fontSize:8, fontWeight:700,
+            color:"#fff", letterSpacing:"0.18em",
+            marginBottom:6,
+          }}>LV.{ENEMY.level} {ENEMY.rank}</div>
+          <div style={{fontFamily:"'Cinzel'", fontSize:18, fontWeight:900, color:"#e9d5ff",
+            textShadow:"0 0 14px #8A2BE260",
+          }}>{ENEMY.name}</div>
+          <div style={{fontFamily:"'Inter'", fontSize:9, color:"#8A2BE2", letterSpacing:"0.1em"}}>{ENEMY.nameEn}</div>
+        </div>
+
+        {/* Enemy silhouette */}
+        <div style={{ position:"relative", zIndex:10 }}>
+          <EnemySilhouette phase={enemyPhase}/>
+          {/* Hit flash markers */}
+          {hitCount >= 1 && (
+            <div style={{
+              position:"absolute", top:"20%", right:"-20px",
+              fontFamily:"'Cinzel'", fontSize:20, fontWeight:900,
+              color:"#fbbf24", textShadow:"0 0 12px #fbbf24",
+              animation:"countUp 0.3s ease-out",
+            }}>-142,300</div>
+          )}
+          {hitCount >= 2 && (
+            <div style={{
+              position:"absolute", top:"45%", left:"-30px",
+              fontFamily:"'Cinzel'", fontSize:18, fontWeight:900,
+              color:"#c084fc", textShadow:"0 0 12px #c084fc",
+              animation:"countUp 0.3s ease-out",
+            }}>-98,400</div>
+          )}
+        </div>
+
+        {/* SLASH VFX */}
+        <SlashOverlay visible={showSlash}/>
+
+        {/* HP bar section */}
+        <div style={{
+          width:"calc(100% - 40px)", marginTop:20, zIndex:5,
+          animation:"slideUp 0.5s ease-out 0.5s both",
+        }}>
+          <div style={{display:"flex", justifyContent:"space-between", marginBottom:6}}>
+            <div style={{fontFamily:"'Inter'", fontSize:9, color:"#9ca3af"}}>HP</div>
+            <div style={{fontFamily:"'Cinzel'", fontSize:10, color:"#f87171"}}>
+              {hpPct === 0 ? "0" : Math.floor((hpPct/100)*ENEMY.maxHp).toLocaleString()} / {ENEMY.maxHp.toLocaleString()}
+            </div>
+          </div>
+          <HpBar pct={hpPct} color="#f87171"/>
+        </div>
+
+        {/* DEFEAT label */}
+        {battlePhase === "result" && (
+          <div style={{
+            position:"absolute", inset:0,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            zIndex:20,
+          }}>
+            <div style={{
+              fontFamily:"'Cinzel Decorative'", fontSize:36, fontWeight:700,
+              color:"#fbbf24",
+              textShadow:"0 0 30px #fbbf24, 0 0 80px #f59e0b80",
+              animation:"victoryPulse 1s ease-in-out infinite, fadeIn 0.4s ease-out",
+              letterSpacing:"0.06em",
+            }}>VICTORY</div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom player stats (mock) */}
+      <div style={{
+        padding:"16px 20px 32px",
+        background:"linear-gradient(0deg, rgba(0,0,0,0.5), transparent)",
+        display:"flex", alignItems:"center", justifyContent:"space-between",
+      }}>
+        <div style={{display:"flex", alignItems:"center", gap:10}}>
+          <div style={{
+            width:40, height:40, borderRadius:"50%",
+            background:"linear-gradient(135deg, #1a0a2e, #2d1254)",
+            border:"2px solid #8A2BE2", display:"flex",
+            alignItems:"center", justifyContent:"center",
+            fontSize:18,
+          }}>💀</div>
+          <div>
+            <div style={{fontFamily:"'Cinzel'", fontSize:12, fontWeight:700, color:"#e9d5ff"}}>ネクロロード</div>
+            <div style={{fontFamily:"'Inter'", fontSize:9, color:"#6b7280"}}>LV.62 死霊術師</div>
+          </div>
+        </div>
+        <div style={{textAlign:"right"}}>
+          <div style={{fontFamily:"'Inter'", fontSize:9, color:"#6b7280"}}>残HP</div>
+          <div style={{fontFamily:"'Cinzel'", fontSize:14, fontWeight:700, color:"#34d399",
+            textShadow:"0 0 8px #34d39980",
+          }}>8,440 / 12,000</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── RESULT SCREEN ────────────────────────────────────────── */
+function ResultScreen({ onProceed }) {
+  const [phase, setPhase] = useState("animating"); // animating → ready
+  const bd = BATTLE_DATA;
+  const expPct = Math.floor(((bd.expCurrent) / bd.expMax) * 100);
+  const newExpPct = Math.floor(((bd.expCurrent + bd.expGained) / bd.expMax) * 100);
+
+  useEffect(()=>{
+    const t = setTimeout(()=>setPhase("ready"), 1800);
+    return ()=>clearTimeout(t);
+  },[]);
+
+  return (
+    <div style={{
+      position:"absolute", inset:0,
+      background:"linear-gradient(180deg, #07020f 0%, #0b0418 100%)",
+      display:"flex", flexDirection:"column",
+      animation:"fadeIn 0.5s ease-out",
+      overflow:"hidden",
+    }}>
+      {/* Top: VICTORY title */}
+      <div style={{
+        paddingTop:52, paddingBottom:12,
+        display:"flex", flexDirection:"column", alignItems:"center",
+        position:"relative", zIndex:5,
+      }}>
+        <div style={{
+          fontFamily:"'Inter'", fontSize:9, color:"#6b7280",
+          letterSpacing:"0.18em", marginBottom:8,
+        }}>BATTLE COMPLETE</div>
+        <div style={{
+          fontFamily:"'Cinzel Decorative'", fontSize:30, fontWeight:700,
+          color:"#fbbf24", letterSpacing:"0.06em",
+          textShadow:"0 0 24px #fbbf24, 0 0 60px #f59e0b60",
+          animation:"victoryPulse 2s ease-in-out infinite",
+        }}>VICTORY</div>
+        {/* Rank badge */}
+        <div style={{
+          marginTop:10,
+          width:58, height:58, borderRadius:"50%",
+          background:"radial-gradient(circle, #92400e, #1c1000)",
+          border:"2px solid #fbbf24",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          boxShadow:"0 0 24px #fbbf2480, 0 0 48px #f59e0b40",
+          animation:"rank-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.3s both",
+        }}>
+          <div style={{
+            fontFamily:"'Cinzel'", fontSize:28, fontWeight:900,
+            color:"#fbbf24",
+          }}>S</div>
+        </div>
+      </div>
+
+      {/* Scrollable content */}
+      <div style={{
+        flex:1, overflowY:"auto", padding:"0 20px 120px",
+        display:"flex", flexDirection:"column", gap:12,
+      }}>
+        {/* Enemy defeated */}
+        <div style={{
+          padding:"12px 16px",
+          background:"rgba(255,255,255,0.03)",
+          border:"1px solid rgba(138,43,226,0.3)",
+          borderRadius:14,
+          display:"flex", alignItems:"center", gap:12,
+          animation:"slideUp 0.4s ease-out 0.2s both",
+        }}>
+          <div style={{fontSize:28}}>☠️</div>
+          <div>
+            <div style={{fontFamily:"'Inter'", fontSize:9, color:"#6b7280", letterSpacing:"0.1em"}}>討伐対象</div>
+            <div style={{fontFamily:"'Cinzel'", fontSize:13, fontWeight:700, color:"#e9d5ff"}}>{ENEMY.name}</div>
+            <div style={{fontFamily:"'Inter'", fontSize:9, color:"#8A2BE2"}}>LV.{ENEMY.level} BOSS</div>
+          </div>
+          <div style={{marginLeft:"auto", textAlign:"right"}}>
+            <div style={{fontFamily:"'Inter'", fontSize:9, color:"#6b7280"}}>ターン数</div>
+            <div style={{fontFamily:"'Cinzel'", fontSize:18, fontWeight:900, color:"#fbbf24"}}>{bd.turns}</div>
+          </div>
+        </div>
+
+        {/* Damage breakdown */}
+        <div style={{
+          padding:"14px 16px",
+          background:"rgba(255,255,255,0.03)",
+          border:"1px solid rgba(138,43,226,0.2)",
+          borderRadius:14,
+          animation:"slideUp 0.4s ease-out 0.35s both",
+        }}>
+          <div style={{
+            fontFamily:"'Cinzel'", fontSize:9, fontWeight:600,
+            color:"#8A2BE2", letterSpacing:"0.14em", marginBottom:10,
+          }}>DAMAGE DEALT</div>
+          <div style={{
+            fontFamily:"'Cinzel'", fontSize:24, fontWeight:900,
+            color:"#f0ebff", marginBottom:12,
+            textShadow:"0 0 12px rgba(192,132,252,0.4)",
+          }}>{bd.damage}</div>
+          {/* Bar breakdown */}
+          <div style={{
+            height:8, borderRadius:8, overflow:"hidden",
+            background:"rgba(255,255,255,0.06)",
+            display:"flex",
+          }}>
+            {bd.dmgBreakdown.map((d,i)=>(
+              <div key={i} style={{
+                width:`${d.pct}%`, height:"100%",
+                background:d.color,
+                transition:`width 1s ease-out ${0.4+i*0.15}s`,
+              }}/>
+            ))}
+          </div>
+          <div style={{display:"flex", gap:12, marginTop:8, flexWrap:"wrap"}}>
+            {bd.dmgBreakdown.map((d,i)=>(
+              <div key={i} style={{display:"flex", alignItems:"center", gap:4}}>
+                <div style={{width:6, height:6, borderRadius:"50%", background:d.color, flexShrink:0}}/>
+                <div style={{fontFamily:"'Inter'", fontSize:9, color:"#6b7280"}}>{d.label} {d.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* EXP gained */}
+        <div style={{
+          padding:"14px 16px",
+          background:"rgba(255,255,255,0.03)",
+          border:"1px solid rgba(138,43,226,0.2)",
+          borderRadius:14,
+          animation:"slideUp 0.4s ease-out 0.5s both",
+        }}>
+          <div style={{
+            display:"flex", justifyContent:"space-between", alignItems:"baseline",
+            marginBottom:10,
+          }}>
+            <div style={{fontFamily:"'Cinzel'", fontSize:9, fontWeight:600,
+              color:"#8A2BE2", letterSpacing:"0.14em",
+            }}>EXPERIENCE</div>
+            <div style={{fontFamily:"'Cinzel'", fontSize:14, fontWeight:700,
+              color:"#34d399", textShadow:"0 0 8px #34d39960",
+            }}>+{bd.expGained.toLocaleString()} EXP</div>
+          </div>
+          {/* EXP bar */}
+          <div style={{
+            position:"relative", height:10, borderRadius:6,
+            background:"rgba(255,255,255,0.06)",
+            border:"1px solid rgba(255,255,255,0.06)",
+            overflow:"hidden",
+          }}>
+            {/* Old fill */}
+            <div style={{
+              position:"absolute", left:0, top:0, bottom:0,
+              width:`${expPct}%`,
+              background:"linear-gradient(90deg, #4a0e8a, #8A2BE2)",
+            }}/>
+            {/* New fill */}
+            <div style={{
+              position:"absolute", left:0, top:0, bottom:0,
+              width:`${newExpPct}%`,
+              background:"linear-gradient(90deg, #6d28d9, #34d399)",
+              animation:"expFill 1.2s cubic-bezier(0.4,0,0.2,1) 0.6s both",
+              '--exp-w':`${newExpPct}%`,
+              boxShadow:"0 0 10px #34d39980",
+            }}/>
+          </div>
+          <div style={{
+            display:"flex", justifyContent:"space-between", marginTop:6,
+            fontFamily:"'Inter'", fontSize:9, color:"#6b7280",
+          }}>
+            <div>{bd.expCurrent.toLocaleString()} EXP</div>
+            <div>NEXT: {(bd.expMax - bd.expCurrent - bd.expGained).toLocaleString()}</div>
+          </div>
+        </div>
+
+        {/* Rewards */}
+        <div style={{
+          padding:"14px 16px",
+          background:"rgba(255,255,255,0.03)",
+          border:"1px solid rgba(138,43,226,0.2)",
+          borderRadius:14,
+          animation:"slideUp 0.4s ease-out 0.65s both",
+        }}>
+          <div style={{fontFamily:"'Cinzel'", fontSize:9, fontWeight:600,
+            color:"#8A2BE2", letterSpacing:"0.14em", marginBottom:10,
+          }}>REWARDS</div>
+          <div style={{display:"flex", flexDirection:"column", gap:8}}>
+            {/* Gold */}
+            <div style={{display:"flex", alignItems:"center", justifyContent:"space-between",
+              animation:"rewardRow 0.4s ease-out 0.7s both",
+            }}>
+              <div style={{display:"flex", alignItems:"center", gap:8}}>
+                <div style={{
+                  width:28, height:28, borderRadius:"50%",
+                  background:"radial-gradient(circle, #fde68a, #f59e0b)",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:14, boxShadow:"0 0 8px #fbbf2460",
+                }}>💰</div>
+                <div style={{fontFamily:"'Inter'", fontSize:11, color:"#9ca3af"}}>ゴールド</div>
+              </div>
+              <div style={{fontFamily:"'Cinzel'", fontSize:14, fontWeight:700,
+                color:"#fbbf24", textShadow:"0 0 8px #fbbf2460",
+              }}>+{bd.goldGained.toLocaleString()}</div>
+            </div>
+            {bd.bonusItems.map((it,i)=>(
+              <div key={i} style={{display:"flex", alignItems:"center", justifyContent:"space-between",
+                animation:`rewardRow 0.4s ease-out ${0.8+i*0.1}s both`,
+              }}>
+                <div style={{display:"flex", alignItems:"center", gap:8}}>
+                  <div style={{
+                    width:28, height:28, borderRadius:8,
+                    background:"rgba(138,43,226,0.15)",
+                    border:"1px solid rgba(138,43,226,0.4)",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    fontSize:12,
+                  }}>✦</div>
+                  <div style={{fontFamily:"'Inter'", fontSize:11, color:"#9ca3af"}}>{it.label}</div>
+                </div>
+                <div style={{fontFamily:"'Cinzel'", fontSize:12, fontWeight:600,
+                  color:it.color,
+                }}>{it.qty}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ITEM DROP teaser */}
+        <div style={{
+          padding:"14px 16px",
+          background:"linear-gradient(135deg, #1c1000, #0c0800)",
+          border:"1px solid #f59e0b",
+          borderRadius:14,
+          position:"relative", overflow:"hidden",
+          animation:"slideUp 0.4s ease-out 0.85s both",
+          boxShadow:"0 0 24px #fbbf2430",
+        }}>
+          <div style={{
+            position:"absolute", inset:0, borderRadius:14,
+            background:"linear-gradient(90deg, transparent 0%, #fbbf2420 40%, #fde68a30 50%, #fbbf2420 60%, transparent 100%)",
+            backgroundSize:"300% 100%",
+            animation:"shimmerLoop 2s linear infinite",
+          }}/>
+          <div style={{
+            display:"flex", alignItems:"center", gap:12,
+            position:"relative", zIndex:1,
+          }}>
+            <div style={{
+              width:44, height:44, borderRadius:"50%",
+              background:"radial-gradient(circle, #fbbf2430, transparent)",
+              border:"1.5px solid #f59e0b",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:22, animation:"glowPulse 1.5s ease-in-out infinite",
+              boxShadow:"0 0 16px #fbbf2460",
+            }}>⚔</div>
+            <div style={{flex:1}}>
+              <div style={{
+                fontFamily:"'Cinzel'", fontSize:9, fontWeight:600,
+                color:"#fbbf24", letterSpacing:"0.14em", marginBottom:3,
+              }}>SPECIAL DROP DETECTED</div>
+              <div style={{
+                fontFamily:"'Cinzel'", fontSize:14, fontWeight:700,
+                color:"#fde68a",
+              }}>UNIQUE アイテムを獲得！</div>
+            </div>
+            <div style={{
+              width:28, height:28, borderRadius:"50%",
+              background:"rgba(251,191,36,0.15)",
+              border:"1px solid #fbbf24",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              color:"#fbbf24", fontSize:14,
+              animation:"glowPulse 1.5s ease-in-out infinite",
+            }}>!</div>
+          </div>
+        </div>
+      </div>
+
+      {/* CTA Button */}
+      <div style={{
+        position:"absolute", bottom:0, left:0, right:0,
+        padding:"16px 20px 40px",
+        background:"linear-gradient(0deg, #07020f 60%, transparent)",
+        zIndex:10,
+      }}>
+        <button onClick={phase==="ready" ? onProceed : undefined} style={{
+          width:"100%", padding:"16px",
+          background: phase==="ready"
+            ? "linear-gradient(135deg, #92400e, #b45309, #92400e)"
+            : "rgba(255,255,255,0.05)",
+          border:`1.5px solid ${phase==="ready" ? "#fbbf24" : "rgba(255,255,255,0.1)"}`,
+          borderRadius:16, cursor: phase==="ready" ? "pointer" : "default",
+          position:"relative", overflow:"hidden",
+          boxShadow: phase==="ready" ? "0 4px 30px #fbbf2440" : "none",
+          transition:"all 0.3s ease",
+        }}>
+          {phase==="ready" && (
+            <div style={{
+              position:"absolute", inset:0, borderRadius:16,
+              background:"linear-gradient(90deg, transparent 0%, #fbbf2430 40%, #fde68a50 50%, #fbbf2430 60%, transparent 100%)",
+              backgroundSize:"300% 100%",
+              animation:"shimmerLoop 2s linear infinite",
+            }}/>
+          )}
+          <div style={{
+            fontFamily:"'Cinzel'", fontSize:15, fontWeight:700,
+            color: phase==="ready" ? "#fff" : "#4b5563",
+            letterSpacing:"0.08em", position:"relative", zIndex:1,
+          }}>
+            {phase==="ready" ? "ドロップアイテムを開封する →" : "集計中..."}
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── ORB TAP HINT ─────────────────────────────────────────── */
+function OrbTapHint({ rarity, onTap }) {
+  const rc = RARITY[rarity];
+  return (
+    <div style={{
+      position:"absolute", inset:0, display:"flex", flexDirection:"column",
+      alignItems:"center", justifyContent:"center",
+      pointerEvents:"all", zIndex:10,
+    }} onClick={onTap}>
+      <div style={{
+        width:160, height:160, borderRadius:"50%",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        flexDirection:"column", gap:8, marginTop:"-5%",
+      }}>
+        <div style={{
+          fontFamily:"'Cinzel'", fontSize:11,
+          color:rc.glow, letterSpacing:"0.2em",
+          animation:"tap-hint 1.8s ease-in-out infinite",
+          textShadow:`0 0 12px ${rc.glow}`,
+          marginTop:120,
+        }}>TAP TO OPEN</div>
+      </div>
+    </div>
+  );
+}
+
+/* ── ITEM CARD ────────────────────────────────────────────── */
+function ItemCard({ item, visible }) {
+  const rc = RARITY[item.rarity];
+  if(!visible) return null;
+  return (
+    <div style={{
+      position:"absolute", left:0, right:0, top:"52%",
+      transform:"translateY(-50%)",
+      width:"min(300px, calc(100% - 32px))",
+      margin:"0 auto",
+      animation:"cardReveal 0.7s cubic-bezier(0.34,1.3,0.64,1) both",
+      zIndex:20,
+    }}>
+      <div style={{
+        background:rc.bg, border:`1.5px solid ${rc.border}`,
+        borderRadius:20, padding:"0 0 20px",
+        boxShadow:`0 0 40px ${rc.glow}60, 0 0 80px ${rc.glow}25, inset 0 1px 0 ${rc.glow}40`,
+        overflow:"hidden", position:"relative",
+      }}>
+        <div style={{
+          position:"absolute", inset:0, borderRadius:20,
+          background:rc.shine, backgroundSize:"300% 100%",
+          animation:"shimmerLoop 2.5s linear infinite",
+          pointerEvents:"none", zIndex:1,
+        }}/>
+        <div style={{height:3, background:`linear-gradient(90deg, transparent, ${rc.border}, ${rc.glow}, ${rc.border}, transparent)`, animation:"shimmerLoop 2s linear infinite", backgroundSize:"300% 100%"}}/>
+        <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px 8px", position:"relative", zIndex:2}}>
+          <div style={{padding:"3px 12px", background:rc.labelBg, backgroundSize:"200% 100%", animation:"shimmerLoop 2s linear infinite", borderRadius:4, fontFamily:"'Cinzel'", fontSize:9, fontWeight:700, color:"#fff", letterSpacing:"0.18em", boxShadow:`0 0 10px ${rc.glow}60`}}>{rc.label}</div>
+          <div style={{display:"flex", gap:2}}>
+            {[...Array(rc.stars)].map((_,i)=>(
+              <div key={i} style={{color:rc.glow, fontSize:14, textShadow:`0 0 8px ${rc.glow}`, animation:`rank-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.5+i*0.06}s forwards`}}>★</div>
+            ))}
+          </div>
+        </div>
+        <div style={{display:"flex", justifyContent:"center", padding:"8px 0 12px", position:"relative", zIndex:2}}>
+          <div style={{
+            width:88, height:88, borderRadius:"50%",
+            background:`radial-gradient(circle, ${rc.glow}30, ${rc.border}18, transparent)`,
+            border:`2px solid ${rc.border}`,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            fontSize:38, boxShadow:`0 0 28px ${rc.glow}80, inset 0 0 16px ${rc.glow}20`,
+            animation:"float-gentle 3s ease-in-out infinite", position:"relative",
+          }}>
+            {item.icon}
+            <svg style={{position:"absolute", inset:"-14px", width:"calc(100% + 28px)", height:"calc(100% + 28px)", animation:"runeRotate 6s linear infinite"}} viewBox="0 0 116 116">
+              <circle cx="58" cy="58" r="52" fill="none" stroke={rc.border} strokeWidth="1" strokeOpacity="0.7" strokeDasharray="6 4"/>
+              {[0,60,120,180,240,300].map((a,i)=>(<g key={i} transform={`rotate(${a}, 58, 58)`}><polygon points="58,8 61,14 55,14" fill={rc.glow} opacity="0.9"/></g>))}
+            </svg>
+          </div>
+        </div>
+        <div style={{textAlign:"center", padding:"0 20px 4px", position:"relative", zIndex:2}}>
+          <div style={{fontFamily:"'Cinzel Decorative'", fontSize:9, color:`${rc.glow}90`, letterSpacing:"0.2em", marginBottom:4}}>{item.nameEn}</div>
+          <div style={{fontFamily:"'Cinzel'", fontSize:20, fontWeight:900, color:rc.text, letterSpacing:"0.04em", textShadow:`0 0 16px ${rc.glow}80`, lineHeight:1.1}}>{item.name}</div>
+          <div style={{fontFamily:"'Inter'", fontSize:9, color:`${rc.glow}70`, marginTop:4, letterSpacing:"0.08em"}}>{item.type}</div>
+        </div>
+        <div style={{height:1, margin:"10px 20px", background:`linear-gradient(90deg, transparent, ${rc.border}60, transparent)`}}/>
+        <div style={{padding:"0 20px", display:"flex", flexDirection:"column", gap:6, position:"relative", zIndex:2}}>
+          {item.stats.map((s,i)=>(
+            <div key={i} style={{display:"flex", alignItems:"center", justifyContent:"space-between", animation:`statReveal 0.4s ease-out ${0.7+i*0.1}s forwards`}}>
+              <div style={{fontFamily:"'Inter'", fontSize:11, color:"#9ca3af", display:"flex", alignItems:"center", gap:6}}>
+                <div style={{width:4, height:4, borderRadius:"50%", background:s.color, flexShrink:0}}/>
+                {s.label}
+              </div>
+              <div style={{fontFamily:"'Cinzel'", fontSize:13, fontWeight:700, color:s.color, textShadow:`0 0 8px ${s.color}80`}}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{height:1, margin:"10px 20px", background:`linear-gradient(90deg, transparent, ${rc.border}40, transparent)`}}/>
+        <div style={{padding:"0 20px", position:"relative", zIndex:2}}>
+          <div style={{fontFamily:"'Cinzel'", fontSize:8, fontWeight:600, color:rc.glow, letterSpacing:"0.14em", marginBottom:5}}>PASSIVE</div>
+          <div style={{fontFamily:"'Inter'", fontSize:10, lineHeight:1.6, color:"#9ca3af"}}>{item.passive}</div>
+        </div>
+        <div style={{margin:"10px 20px 0", padding:"8px 10px", background:`${rc.border}10`, border:`1px solid ${rc.border}25`, borderRadius:8, position:"relative", zIndex:2}}>
+          <div style={{fontFamily:"'Inter'", fontSize:9, lineHeight:1.6, color:"#6b7280", fontStyle:"italic"}}>「{item.flavor}」</div>
+        </div>
+      </div>
+      <div style={{marginTop:14, animation:"cardReveal 0.5s ease-out 0.9s both"}}>
+        <div style={{
+          padding:"14px",
+          background:`linear-gradient(135deg, ${rc.border}40, ${rc.border}20)`,
+          border:`1.5px solid ${rc.border}`, borderRadius:14,
+          textAlign:"center", cursor:"pointer",
+          boxShadow:`0 4px 24px ${rc.glow}40`,
+          position:"relative", overflow:"hidden",
+        }}>
+          <div style={{position:"absolute", inset:0, borderRadius:14, background:rc.shine, backgroundSize:"300% 100%", animation:"shimmerLoop 2s infinite"}}/>
+          <div style={{fontFamily:"'Cinzel'", fontSize:14, fontWeight:700, color:"#fff", letterSpacing:"0.1em", position:"relative", zIndex:1}}>獲得する</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── LOOT DROP SCREEN ─────────────────────────────────────── */
+function LootDropScreen({ item, onReset }) {
+  const [stage, setStage] = useState("falling");
+  const [orbRef, setOrbRef] = useState(null);
+
+  useEffect(()=>{
+    // Re-init pixi for loot drop with proper rarity BG
+    const app = initPixi(item.rarity);
+    const cx=393/2, landY=852*0.38;
+    const orbCtrl = spawnOrb(item.rarity, ()=>{
+      setTimeout(()=>{
+        setStage("pulsing");
+        startOrbAmbient(item.rarity, cx, landY);
+        setTimeout(()=>{
+          setStage(prev=>{
+            if(prev==="pulsing"){ doShatter(item.rarity); return "shattering"; }
+            return prev;
+          });
+        }, 3500);
+      }, 200);
+    });
+    setOrbRef(orbCtrl);
+  },[]);
+
+  function doShatter(rarity){
+    stopOrbAmbient();
+    setStage("shattering");
+    triggerShatter(rarity, 393/2, 852*0.38, ()=>{
+      setStage("revealed");
+    });
+  }
+
+  function handleOrbTap(){
+    if(stage!=="pulsing") return;
+    doShatter(item.rarity);
+  }
+
+  const rc = RARITY[item.rarity];
+
+  return (
+    <div style={{
+      position:"absolute", inset:0,
+      background: `radial-gradient(ellipse at 50% 38%, ${rc.glow}15 0%, #04020e 65%)`,
+      animation:"fadeIn 0.4s ease-out",
+    }}>
+      {/* Rarity label at top */}
+      <div style={{
+        position:"absolute", top:52, left:0, right:0,
+        display:"flex", flexDirection:"column", alignItems:"center",
+        zIndex:20, pointerEvents:"none",
+        animation:"slideUp 0.5s ease-out 0.3s both",
+      }}>
+        <div style={{
+          fontFamily:"'Inter'", fontSize:9, color:"#6b7280",
+          letterSpacing:"0.18em", marginBottom:6,
+        }}>ITEM DROP</div>
+        <div style={{
+          fontFamily:"'Cinzel'", fontSize:18, fontWeight:900,
+          color:rc.text, textShadow:`0 0 16px ${rc.glow}80`,
+        }}>{item.name}</div>
+        <div style={{
+          marginTop:6, padding:"3px 12px", borderRadius:4,
+          background:rc.labelBg, backgroundSize:"200% 100%",
+          animation:"shimmerLoop 2s linear infinite",
+          fontFamily:"'Cinzel'", fontSize:9, fontWeight:700,
+          color:"#fff", letterSpacing:"0.18em",
+          boxShadow:`0 0 10px ${rc.glow}60`,
+        }}>{rc.label}</div>
+      </div>
+
+      {stage==="pulsing" && <OrbTapHint rarity={item.rarity} onTap={handleOrbTap}/>}
+      {stage==="revealed" && (
+        <div style={{position:"absolute", inset:0, zIndex:20}}>
+          <ItemCard item={item} visible={true}/>
+          <div onClick={onReset} style={{
+            position:"absolute", top:52, left:20,
+            display:"flex", alignItems:"center", gap:4,
+            cursor:"pointer", fontFamily:"'Inter'", fontSize:11,
+            color:"#8b7da8", zIndex:30,
+          }}>
+            <span style={{fontSize:14}}>‹</span> はじめに戻る
+          </div>
+        </div>
+      )}
+      {stage==="falling" && (
+        <div style={{
+          position:"absolute", inset:0, zIndex:5,
+          display:"flex", alignItems:"flex-end", justifyContent:"center",
+          paddingBottom:60,
+        }}>
+          <div style={{
+            fontFamily:"'Inter'", fontSize:10,
+            color:"rgba(255,255,255,0.2)", letterSpacing:"0.1em",
+          }}>...</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── ROOT APP ─────────────────────────────────────────────── */
+function App() {
+  // screen: "battle" | "transition-to-result" | "result" | "transition-to-loot" | "loot"
+  const [screen, setScreen] = useState("battle");
+  const [transitionActive, setTransitionActive] = useState(false);
+  const [selectedItem] = useState(LOOT_ITEMS[0]); // unique drop
+
+  function goToResult() {
+    setTransitionActive(true);
+  }
+
+  function onTransitionDone() {
+    setTransitionActive(false);
+    setScreen(prev => {
+      if(prev==="battle") return "result";
+      if(prev==="result") return "loot";
+      return prev;
+    });
+  }
+
+  function goToLoot() {
+    // Destroy battle pixi, start fresh
+    if(PIXI_APP.app){ PIXI_APP.app.destroy(false); PIXI_APP.app=null; }
+    const canvas = document.getElementById('pixi-canvas');
+    if(canvas) canvas.remove();
+    setTransitionActive(true);
+  }
+
+  function handleReset() {
+    if(PIXI_APP.app){ PIXI_APP.app.destroy(false); PIXI_APP.app=null; }
+    const canvas = document.getElementById('pixi-canvas');
+    if(canvas) canvas.remove();
+    setScreen("battle");
+    setTransitionActive(false);
+  }
+
+  return (
+    <div style={{width:"100%", height:"100%", position:"relative", overflow:"hidden"}}>
+      {/* ── SCREENS ── */}
+      {screen==="battle" && (
+        <BattleScreen onVictory={goToResult}/>
+      )}
+      {screen==="result" && (
+        <ResultScreen onProceed={goToLoot}/>
+      )}
+      {screen==="loot" && (
+        <LootDropScreen item={selectedItem} onReset={handleReset}/>
+      )}
+
+      {/* ── TRANSITION WIPE ── */}
+      <TransitionOverlay
+        active={transitionActive}
+        color={screen==="battle" || screen==="result" ? "#1c1000" : "#04020e"}
+        onDone={onTransitionDone}
+      />
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loot Drop VFX — ネクロマンスブレイブ</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<!-- PixiJS v7 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.2/pixi.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; color: inherit; }
+html, body {
+  width: 100%; height: 100%;
+  background: #04020e;
+  color: #f0ebff;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+#pixi-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 48px;
+}
+#root {
+  position: relative;
+  z-index: 2;
+  width: 393px; height: 852px;
+  overflow: hidden;
+  background: #04020e;
+  border-radius: 48px;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+}
+
+@keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+@keyframes fadeOut { from { opacity:1 } to { opacity:0 } }
+@keyframes cardReveal {
+  0%   { opacity:0; transform:translateY(30px) scale(0.92); }
+  100% { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes shimmerLoop {
+  0%   { background-position: -300% center; }
+  100% { background-position: 300% center; }
+}
+@keyframes statReveal {
+  from { opacity:0.1; transform:translateX(-8px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes orb-trail {
+  from { opacity: 0.9; }
+  to   { opacity: 0; transform: scale(0); }
+}
+@keyframes tap-hint {
+  0%,100% { opacity:0.5; transform:scale(1); }
+  50%     { opacity:1;   transform:scale(1.06); }
+}
+@keyframes runeRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes float-gentle {
+  0%,100% { transform: translateY(0px); }
+  50%     { transform: translateY(-10px); }
+}
+@keyframes rank-pop {
+  0%  { transform: scale(0) rotate(-15deg); opacity:0; }
+  65% { transform: scale(1.18) rotate(3deg); opacity:1; }
+  100%{ transform: scale(1) rotate(0deg); opacity:1; }
+}
+@keyframes crown-pulse {
+  0%,100% { filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 16px currentColor); }
+  50%     { filter: drop-shadow(0 0 20px currentColor) drop-shadow(0 0 40px currentColor); }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ── PIXI VFX ENGINE ──────────────────────────────────────────────────────────
+const PIXI_APP = {
+  app: null,
+  width: 0,
+  height: 0,
+  containers: {},
+  tweens: [],
+  particles: [],
+  fireflies: [],
+  orbContainer: null,
+  shardContainer: null,
+  flareContainer: null,
+  fireflyContainer: null,
+  displacementSprite: null,
+  displacementFilter: null,
+};
+
+function hexToPixi(hex) {
+  return parseInt(hex.replace('#',''), 16);
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function easeOutCubic(t) { return 1 - Math.pow(1-t, 3); }
+function easeOutBack(t) { const c1=1.70158, c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
+function easeInCubic(t) { return t * t * t; }
+
+function initPixi(rarity) {
+  // Create canvas inside root if not already there
+  let canvas = document.getElementById('pixi-canvas');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.id = 'pixi-canvas';
+    document.getElementById('root').prepend(canvas);
+  }
+  const W = 393;
+  const H = 852;
+  PIXI_APP.width = W;
+  PIXI_APP.height = H;
+
+  if (PIXI_APP.app) { PIXI_APP.app.destroy(false); PIXI_APP.tweens = []; }
+
+  const app = new PIXI.Application({
+    view: canvas,
+    width: W, height: H,
+    backgroundAlpha: 0,
+    antialias: true,
+    resolution: window.devicePixelRatio || 1,
+    autoDensity: true,
+  });
+  PIXI_APP.app = app;
+
+  // Containers
+  const bgLayer      = new PIXI.Container();
+  const fireflyLayer = new PIXI.Container();
+  const orbLayer     = new PIXI.Container();
+  const flareLayer   = new PIXI.Container();
+  const shardLayer   = new PIXI.Container();
+  app.stage.addChild(bgLayer, fireflyLayer, orbLayer, flareLayer, shardLayer);
+  PIXI_APP.orbContainer     = orbLayer;
+  PIXI_APP.shardContainer   = shardLayer;
+  PIXI_APP.flareContainer   = flareLayer;
+  PIXI_APP.fireflyContainer = fireflyLayer;
+
+  // Background radial gradient using graphics
+  const bgGfx = new PIXI.Graphics();
+  const colors = rarity === 'unique'
+    ? [[0xfbbf24, 0.22], [0xf59e0b, 0.12], [0x04020e, 0]]
+    : [[0x8A2BE2, 0.2],  [0x4a0e8a, 0.1],  [0x04020e, 0]];
+  for (let i = 0; i < 12; i++) {
+    const t = i / 11;
+    const [col1] = colors[0]; const [col2] = colors[2];
+    const alpha = lerp(colors[0][1], colors[2][1], t);
+    bgGfx.beginFill(colors[0][0], alpha * (1 - t));
+    bgGfx.drawCircle(W/2, H/2, lerp(0, Math.max(W,H)*0.9, t));
+    bgGfx.endFill();
+  }
+  bgLayer.addChild(bgGfx);
+
+  PIXI_APP.bgGfx = bgGfx;
+  PIXI_APP.bgLayer = bgLayer;
+
+  return app;
+}
+
+// ── ORB VFX ──────────────────────────────────────────────────────────────────
+function spawnOrb(rarity, onLand) {
+  const app = PIXI_APP.app;
+  const W = PIXI_APP.width, H = PIXI_APP.height;
+  const isUnique = rarity === 'unique';
+  const mainColor = isUnique ? 0xfbbf24 : 0x8A2BE2;
+  const glowColor = isUnique ? 0xf59e0b : 0xc084fc;
+  const cx = W / 2, startY = -80, landY = H * 0.38;
+
+  const container = new PIXI.Container();
+  container.x = cx; container.y = startY;
+  PIXI_APP.orbContainer.addChild(container);
+
+  // Outer glow ring
+  const glow = new PIXI.Graphics();
+  glow.beginFill(mainColor, 0.12);
+  glow.drawCircle(0, 0, isUnique ? 72 : 64);
+  glow.endFill();
+  glow.beginFill(mainColor, 0.22);
+  glow.drawCircle(0, 0, isUnique ? 52 : 46);
+  glow.endFill();
+  container.addChild(glow);
+
+  // Spinning rune ring
+  const runeRing = new PIXI.Graphics();
+  runeRing.lineStyle(1.5, glowColor, 0.7);
+  runeRing.drawCircle(0, 0, isUnique ? 48 : 42);
+  // Rune dashes
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const r = isUnique ? 48 : 42;
+    runeRing.moveTo(Math.cos(a)*r, Math.sin(a)*r);
+    runeRing.lineTo(Math.cos(a)*(r+8), Math.sin(a)*(r+8));
+  }
+  container.addChild(runeRing);
+
+  // Core orb
+  const core = new PIXI.Graphics();
+  // Layered radial fill simulation
+  const layers = isUnique
+    ? [[0xfffde7, 0.9, 8], [0xfde68a, 0.8, 14], [0xfbbf24, 0.7, 22], [0xf59e0b, 0.6, 30], [0xb45309, 0.3, 38]]
+    : [[0xf3e8ff, 0.9, 8], [0xe9d5ff, 0.8, 14], [0xc084fc, 0.7, 22], [0x8A2BE2, 0.6, 30], [0x4a0e8a, 0.3, 38]];
+  layers.reverse().forEach(([c, a, r]) => {
+    core.beginFill(c, a);
+    core.drawCircle(0, 0, r);
+    core.endFill();
+  });
+  container.addChild(core);
+
+  // Inner light spot
+  const spot = new PIXI.Graphics();
+  spot.beginFill(0xffffff, 0.6);
+  spot.drawCircle(-8, -8, 7);
+  spot.endFill();
+  container.addChild(spot);
+
+  // Trail container
+  const trail = [];
+
+  // Displacement filter for space distortion
+  const dispSprite = new PIXI.Sprite(PIXI.Texture.EMPTY);
+  dispSprite.width = 200; dispSprite.height = 200;
+  dispSprite.anchor.set(0.5);
+  const dispFilter = new PIXI.DisplacementFilter(dispSprite);
+  dispFilter.scale.x = 0;
+  dispFilter.scale.y = 0;
+  container.filters = [dispFilter];
+  container.addChild(dispSprite);
+  PIXI_APP.displacementFilter = dispFilter;
+
+  let t = 0;
+  let phase = 'fall'; // fall | pulse | waiting
+  let pulseT = 0;
+  let landed = false;
+
+  // Ticker
+  const ticker = (delta) => {
+    if (phase === 'fall') {
+      t += delta * 0.016;
+      const progress = Math.min(t, 1);
+      const easedP = easeOutCubic(progress);
+      container.y = lerp(startY, landY, easedP);
+
+      // Trail
+      if (Math.random() < 0.35) {
+        const trailGfx = new PIXI.Graphics();
+        trailGfx.beginFill(mainColor, 0.5);
+        trailGfx.drawCircle(0, 0, 4 + Math.random() * 8);
+        trailGfx.endFill();
+        trailGfx.x = cx + (Math.random()-0.5)*8;
+        trailGfx.y = container.y + 20 + Math.random()*20;
+        PIXI_APP.orbContainer.addChild(trailGfx);
+        trail.push({ g: trailGfx, life: 1 });
+      }
+      trail.forEach((t, i) => {
+        t.life -= delta * 0.06;
+        t.g.alpha = t.life;
+        t.g.scale.set(t.life);
+        if (t.life <= 0) { PIXI_APP.orbContainer.removeChild(t.g); trail.splice(i, 1); }
+      });
+
+      // Screen shake on approach
+      if (progress > 0.8) {
+        app.stage.x = (Math.random()-0.5) * 4 * (1-progress) * 10;
+        app.stage.y = (Math.random()-0.5) * 4 * (1-progress) * 10;
+      }
+
+      if (progress >= 1) {
+        phase = 'pulse';
+        app.stage.x = 0; app.stage.y = 0;
+        // Impact shockwave
+        spawnShockwave(cx, landY, mainColor);
+        if (!landed) { landed = true; onLand && onLand(); }
+      }
+    } else if (phase === 'pulse') {
+      pulseT += delta * 0.04;
+      const s = 1 + Math.sin(pulseT * Math.PI * 2) * 0.06;
+      container.scale.set(s);
+      runeRing.rotation += delta * 0.018;
+
+      // Displacement distortion
+      dispFilter.scale.x = Math.sin(pulseT * Math.PI * 2) * 18;
+      dispFilter.scale.y = Math.sin(pulseT * Math.PI * 2 + 0.5) * 18;
+
+      // Glow breathe
+      glow.alpha = 0.7 + Math.sin(pulseT * Math.PI * 2) * 0.3;
+
+      // Emit sparkles
+      if (Math.random() < 0.15) {
+        spawnSparkle(cx + container.scale.x * (Math.random()-0.5)*60,
+                     landY + (Math.random()-0.5)*60, mainColor, glowColor);
+      }
+    }
+  };
+
+  app.ticker.add(ticker);
+  PIXI_APP.orbTicker = ticker;
+  PIXI_APP.orbContainer._orbMain = container;
+
+  return { container, setPhase: (p) => { phase = p; } };
+}
+
+function spawnShockwave(x, y, color) {
+  const app = PIXI_APP.app;
+  const ring = new PIXI.Graphics();
+  ring.lineStyle(3, color, 0.9);
+  ring.drawCircle(0, 0, 1);
+  ring.x = x; ring.y = y;
+  PIXI_APP.flareContainer.addChild(ring);
+
+  let t = 0;
+  const tick = (delta) => {
+    t += delta * 0.04;
+    ring.scale.set(1 + t * 80);
+    ring.alpha = Math.max(0, 1 - t * 1.4);
+    if (t > 0.8) { app.ticker.remove(tick); PIXI_APP.flareContainer.removeChild(ring); }
+  };
+  app.ticker.add(tick);
+}
+
+function spawnSparkle(x, y, color1, color2) {
+  const app = PIXI_APP.app;
+  const g = new PIXI.Graphics();
+  const c = Math.random() < 0.5 ? color1 : color2;
+  g.beginFill(c, 1);
+  g.drawCircle(0, 0, 1.5 + Math.random() * 2.5);
+  g.endFill();
+  g.x = x; g.y = y;
+  const vx = (Math.random()-0.5) * 2;
+  const vy = -1.5 - Math.random() * 2;
+  PIXI_APP.flareContainer.addChild(g);
+  let t = 0;
+  const tick = (delta) => {
+    t += delta * 0.05;
+    g.x += vx * delta * 0.8;
+    g.y += vy * delta * 0.8;
+    g.alpha = Math.max(0, 1 - t);
+    if (t >= 1) { app.ticker.remove(tick); PIXI_APP.flareContainer.removeChild(g); }
+  };
+  app.ticker.add(tick);
+}
+
+// ── SHATTER + BLOOM VFX ──────────────────────────────────────────────────────
+function triggerShatter(rarity, cx, cy, onDone) {
+  const app = PIXI_APP.app;
+  const isUnique = rarity === 'unique';
+  const mainColor = isUnique ? 0xfbbf24 : 0x8A2BE2;
+  const glowColor = isUnique ? 0xf59e0b : 0xc084fc;
+  const W = 393, H = 852;
+
+  // Remove orb
+  if (PIXI_APP.orbTicker) app.ticker.remove(PIXI_APP.orbTicker);
+  PIXI_APP.orbContainer.removeChildren();
+
+  // ── BLOOM: full screen white flash
+  const bloom = new PIXI.Graphics();
+  bloom.beginFill(0xffffff, 1);
+  bloom.drawRect(0, 0, W, H);
+  bloom.endFill();
+  bloom.alpha = 0;
+  app.stage.addChild(bloom);
+
+  // ── SHARDS: polygon fragments flying outward
+  const SHARD_COUNT = 28;
+  const shards = [];
+  for (let i = 0; i < SHARD_COUNT; i++) {
+    const g = new PIXI.Graphics();
+    const angle = (i / SHARD_COUNT) * Math.PI * 2 + Math.random() * 0.4;
+    const size = 6 + Math.random() * 18;
+    const c = i % 3 === 0 ? 0xffffff : i % 3 === 1 ? glowColor : mainColor;
+    g.beginFill(c, 0.9);
+    // Irregular shard polygon
+    const pts = [];
+    for (let j = 0; j < 4; j++) {
+      const a = (j/4) * Math.PI*2 + Math.random();
+      pts.push(Math.cos(a) * size * (0.4 + Math.random()*0.6));
+      pts.push(Math.sin(a) * size * (0.4 + Math.random()*0.6));
+    }
+    g.drawPolygon(pts);
+    g.endFill();
+    g.x = cx; g.y = cy;
+    const speed = 4 + Math.random() * 14;
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed - 4;
+    const rot = (Math.random()-0.5) * 0.3;
+    PIXI_APP.shardContainer.addChild(g);
+    shards.push({ g, vx, vy, rot, life: 1 });
+  }
+
+  // ── LENS FLARE: radial cross spikes
+  const flareGfx = new PIXI.Graphics();
+  const SPIKE_COUNT = 12;
+  for (let i = 0; i < SPIKE_COUNT; i++) {
+    const a = (i / SPIKE_COUNT) * Math.PI * 2;
+    const len = (i % 2 === 0 ? 220 : 100) * (0.6 + Math.random() * 0.4);
+    flareGfx.lineStyle(i%2===0 ? 2.5 : 1, i%2===0 ? glowColor : mainColor,
+      0.8 * (i%2===0 ? 1 : 0.6));
+    flareGfx.moveTo(cx, cy);
+    flareGfx.lineTo(cx + Math.cos(a)*len, cy + Math.sin(a)*len);
+  }
+  // Central orb remnant
+  flareGfx.beginFill(0xffffff, 0.95);
+  flareGfx.drawCircle(cx, cy, 22);
+  flareGfx.endFill();
+  flareGfx.beginFill(glowColor, 0.7);
+  flareGfx.drawCircle(cx, cy, 14);
+  flareGfx.endFill();
+  flareGfx.beginFill(0xffffff, 0.9);
+  flareGfx.drawCircle(cx, cy, 7);
+  flareGfx.endFill();
+  PIXI_APP.flareContainer.addChild(flareGfx);
+
+  // Circular bloom rings
+  const bloomRings = [];
+  for (let i = 0; i < 4; i++) {
+    const r = new PIXI.Graphics();
+    r.lineStyle(3 - i*0.5, i%2===0 ? glowColor : mainColor, 0.9);
+    r.drawCircle(cx, cy, 10);
+    PIXI_APP.flareContainer.addChild(r);
+    bloomRings.push({ g: r, delay: i * 0.04, t: -i*0.04 });
+  }
+
+  // Spawn fireflies
+  spawnFireflies(rarity);
+
+  let t = 0;
+  const tick = (delta) => {
+    t += delta * 0.035;
+
+    // Flash bloom
+    if (t < 0.15) bloom.alpha = t / 0.15;
+    else bloom.alpha = Math.max(0, 1 - (t-0.15)/0.25);
+
+    // Shards
+    shards.forEach(s => {
+      s.life -= delta * 0.022;
+      s.g.x += s.vx * delta * 0.7;
+      s.g.y += s.vy * delta * 0.7;
+      s.vy += delta * 0.35; // gravity
+      s.g.rotation += s.rot * delta;
+      s.g.alpha = Math.max(0, s.life);
+      s.g.scale.set(Math.max(0, s.life));
+    });
+
+    // Flare fade
+    flareGfx.alpha = Math.max(0, 1 - (t - 0.12) / 0.6);
+
+    // Bloom rings expand
+    bloomRings.forEach(r => {
+      r.t += delta * 0.035;
+      if (r.t < 0) return;
+      r.g.scale.set(1 + r.t * 40);
+      r.g.alpha = Math.max(0, 1 - r.t * 1.2);
+    });
+
+    if (t > 1.2) {
+      app.ticker.remove(tick);
+      // Fade out bloom
+      bloom.alpha = 0;
+      PIXI_APP.shardContainer.removeChildren();
+      PIXI_APP.flareContainer.removeChildren();
+      app.stage.removeChild(bloom);
+      onDone && onDone();
+    }
+  };
+  app.ticker.add(tick);
+}
+
+// ── FIREFLIES ────────────────────────────────────────────────────────────────
+function spawnFireflies(rarity) {
+  const app = PIXI_APP.app;
+  const isUnique = rarity === 'unique';
+  const color1 = isUnique ? 0xfbbf24 : 0x8A2BE2;
+  const color2 = isUnique ? 0xfde68a : 0xc084fc;
+  const color3 = isUnique ? 0xf59e0b : 0x7c3aed;
+  const W = 393, H = 852;
+
+  const COUNT = 60;
+  for (let i = 0; i < COUNT; i++) {
+    setTimeout(() => {
+      const g = new PIXI.Graphics();
+      const c = [color1, color2, color3][Math.floor(Math.random()*3)];
+      const size = 1.5 + Math.random() * 3;
+      g.beginFill(c, 1);
+      g.drawCircle(0, 0, size);
+      g.endFill();
+      // Glow halo
+      g.beginFill(c, 0.2);
+      g.drawCircle(0, 0, size * 3);
+      g.endFill();
+      g.x = W * (0.1 + Math.random() * 0.8);
+      g.y = H * (0.3 + Math.random() * 0.6);
+      PIXI_APP.fireflyContainer.addChild(g);
+
+      const phase = Math.random() * Math.PI * 2;
+      const speed = 0.2 + Math.random() * 0.5;
+      const amplitude = 15 + Math.random() * 25;
+      const riseSpeed = 0.3 + Math.random() * 0.8;
+      let lt = 0;
+
+      const tick = (delta) => {
+        lt += delta * 0.016 * speed;
+        g.x += Math.sin(lt * 2.3 + phase) * amplitude * 0.012 * delta;
+        g.y -= riseSpeed * delta * 0.4;
+        g.alpha = 0.5 + Math.sin(lt * 3 + phase) * 0.5;
+        if (g.y < -20) {
+          g.y = H + 10;
+          g.x = W * (0.1 + Math.random() * 0.8);
+          lt = Math.random() * Math.PI * 2;
+        }
+      };
+      app.ticker.add(tick);
+    }, i * 40);
+  }
+}
+
+// ── CONTINUOUS ORB SPARKLES (while pulsing) ──────────────────────────────────
+function startOrbAmbient(rarity, cx, cy) {
+  const app = PIXI_APP.app;
+  const isUnique = rarity === 'unique';
+  const c1 = isUnique ? 0xfbbf24 : 0x8A2BE2;
+  const c2 = isUnique ? 0xfde68a : 0xc084fc;
+
+  const tick = (delta) => {
+    if (Math.random() < 0.2) {
+      spawnSparkle(
+        cx + (Math.random()-0.5)*80,
+        cy + (Math.random()-0.5)*80,
+        c1, c2
+      );
+    }
+  };
+  app.ticker.add(tick);
+  PIXI_APP.ambientTicker = tick;
+}
+
+function stopOrbAmbient() {
+  if (PIXI_APP.ambientTicker) PIXI_APP.app?.ticker?.remove(PIXI_APP.ambientTicker);
+}
+</script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── LOOT DATA ────────────────────────────────────────────────────────────────
+const LOOT_ITEMS = [
+  {
+    id: "void_blade",
+    rarity: "unique",
+    rarityLabel: "UNIQUE",
+    name: "虚無の断刃",
+    nameEn: "VOID CLEAVER",
+    icon: "⚔",
+    type: "武器 — 大剣",
+    flavor: "深淵の底から引き上げられた伝説の刃。触れる者の魂を侵食する。",
+    stats: [
+      { label: "攻撃力",   value: "+1,840",  color: "#fbbf24" },
+      { label: "暗黒属性", value: "+68%",    color: "#c084fc" },
+      { label: "魂吸収",   value: "毎ターン+45", color: "#34d399" },
+    ],
+    passive: "装備者の攻撃が対象の最大HPの2%を追加ダメージとして与える。",
+  },
+  {
+    id: "abyss_core",
+    rarity: "epic",
+    rarityLabel: "EPIC",
+    name: "深淵の残滓",
+    nameEn: "ABYSSAL RESIDUE",
+    icon: "🌑",
+    type: "アクセサリー — 深淵片",
+    flavor: "魔王城の最深部で採取される希少な結晶。底知れぬ魔力を秘める。",
+    stats: [
+      { label: "全能力",   value: "+22%",    color: "#c084fc" },
+      { label: "冥力回復", value: "+35/turn", color: "#60a5fa" },
+      { label: "耐性",     value: "光属性-50%", color: "#f87171" },
+    ],
+    passive: "装備者が魔神化している間、全ダメージが1.5倍になる。",
+  },
+];
+
+// ── RARITY CONFIG ─────────────────────────────────────────────────────────────
+const RARITY = {
+  unique: {
+    bg:    "linear-gradient(135deg, #1c1000, #0c0800, #1c1000)",
+    border:"#f59e0b",
+    glow:  "#fbbf24",
+    text:  "#fde68a",
+    shine: "linear-gradient(90deg, transparent 0%, #fbbf2440 40%, #fde68a60 50%, #fbbf2440 60%, transparent 100%)",
+    label: "UNIQUE",
+    labelBg: "linear-gradient(90deg, #92400e, #b45309, #92400e)",
+    stars: 5,
+  },
+  epic: {
+    bg:    "linear-gradient(135deg, #0f0a1a, #080510, #0f0a1a)",
+    border:"#8A2BE2",
+    glow:  "#c084fc",
+    text:  "#e9d5ff",
+    shine: "linear-gradient(90deg, transparent 0%, #8A2BE240 40%, #c084fc50 50%, #8A2BE240 60%, transparent 100%)",
+    label: "EPIC",
+    labelBg: "linear-gradient(90deg, #4a0e8a, #6d28d9, #4a0e8a)",
+    stars: 4,
+  },
+};
+
+// ── PHASE COMPONENT ──────────────────────────────────────────────────────────
+function OrbTapHint({ rarity, onTap }) {
+  const rc = RARITY[rarity];
+  return (
+    <div style={{
+      position:"absolute", inset:0, display:"flex", flexDirection:"column",
+      alignItems:"center", justifyContent:"center",
+      pointerEvents:"all", zIndex:10,
+    }} onClick={onTap}>
+      {/* Invisible tap zone centered on orb area */}
+      <div style={{
+        width:160, height:160, borderRadius:"50%",
+        background:"transparent",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        flexDirection:"column", gap:8,
+        marginTop: "-5%",
+      }}>
+        <div style={{
+          fontFamily:"'Cinzel', serif", fontSize:11,
+          color: rc.glow, letterSpacing:"0.2em",
+          animation:"tap-hint 1.8s ease-in-out infinite",
+          textShadow:`0 0 12px ${rc.glow}`,
+          marginTop:120,
+        }}>TAP TO OPEN</div>
+      </div>
+    </div>
+  );
+}
+
+// ── ITEM CARD ─────────────────────────────────────────────────────────────────
+function ItemCard({ item, visible }) {
+  const rc = RARITY[item.rarity];
+  if (!visible) return null;
+
+  return (
+    <div style={{
+      position:"absolute",
+      left:0, right:0, top:"52%",
+      transform:"translateY(-50%)",
+      width:"min(300px, calc(100% - 32px))",
+      margin:"0 auto",
+      animation:"cardReveal 0.7s cubic-bezier(0.34,1.3,0.64,1) both",
+      zIndex:20,
+    }}>
+      {/* Card */}
+      <div style={{
+        background: rc.bg,
+        border:`1.5px solid ${rc.border}`,
+        borderRadius:20,
+        padding:"0 0 20px",
+        boxShadow:`0 0 40px ${rc.glow}60, 0 0 80px ${rc.glow}25, inset 0 1px 0 ${rc.glow}40`,
+        overflow:"hidden",
+        position:"relative",
+      }}>
+        {/* Shimmer sweep */}
+        <div style={{
+          position:"absolute", inset:0, borderRadius:20,
+          background: rc.shine,
+          backgroundSize:"300% 100%",
+          animation:"shimmerLoop 2.5s linear infinite",
+          pointerEvents:"none", zIndex:1,
+        }}/>
+
+        {/* Top glow bar */}
+        <div style={{
+          height:3,
+          background:`linear-gradient(90deg, transparent, ${rc.border}, ${rc.glow}, ${rc.border}, transparent)`,
+          animation:"shimmerLoop 2s linear infinite",
+          backgroundSize:"300% 100%",
+        }}/>
+
+        {/* Rarity badge */}
+        <div style={{
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+          padding:"12px 16px 8px",
+          position:"relative", zIndex:2,
+        }}>
+          <div style={{
+            padding:"3px 12px",
+            background: rc.labelBg,
+            backgroundSize:"200% 100%",
+            animation:"shimmerLoop 2s linear infinite",
+            borderRadius:4,
+            fontFamily:"'Cinzel', serif", fontSize:9, fontWeight:700,
+            color:"#fff", letterSpacing:"0.18em",
+            boxShadow:`0 0 10px ${rc.glow}60`,
+          }}>{rc.label}</div>
+          {/* Stars */}
+          <div style={{ display:"flex", gap:2 }}>
+            {[...Array(rc.stars)].map((_,i)=>(
+              <div key={i} style={{
+                color: rc.glow, fontSize:14,
+                textShadow:`0 0 8px ${rc.glow}`,
+                animation:`rank-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.5+i*0.06}s forwards`,
+              }}>★</div>
+            ))}
+          </div>
+        </div>
+
+        {/* Icon area */}
+        <div style={{
+          display:"flex", justifyContent:"center", padding:"8px 0 12px",
+          position:"relative", zIndex:2,
+        }}>
+          <div style={{
+            width:88, height:88, borderRadius:"50%",
+            background:`radial-gradient(circle, ${rc.glow}30, ${rc.border}18, transparent)`,
+            border:`2px solid ${rc.border}`,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            fontSize:38,
+            boxShadow:`0 0 28px ${rc.glow}80, inset 0 0 16px ${rc.glow}20`,
+            animation:"float-gentle 3s ease-in-out infinite",
+            position:"relative",
+          }}>
+            {item.icon}
+            {/* Rotating rune ring */}
+            <svg style={{
+              position:"absolute", inset:"-14px",
+              width:"calc(100% + 28px)", height:"calc(100% + 28px)",
+              animation:"runeRotate 6s linear infinite",
+            }} viewBox="0 0 116 116">
+              <circle cx="58" cy="58" r="52" fill="none"
+                stroke={rc.border} strokeWidth="1" strokeOpacity="0.7"
+                strokeDasharray="6 4"/>
+              {[0,60,120,180,240,300].map((a,i)=>(
+                <g key={i} transform={`rotate(${a}, 58, 58)`}>
+                  <polygon points="58,8 61,14 55,14"
+                    fill={rc.glow} opacity="0.9"/>
+                </g>
+              ))}
+            </svg>
+          </div>
+        </div>
+
+        {/* Item name */}
+        <div style={{
+          textAlign:"center", padding:"0 20px 4px",
+          position:"relative", zIndex:2,
+        }}>
+          <div style={{
+            fontFamily:"'Cinzel Decorative', serif", fontSize:9,
+            color: rc.glow + "90", letterSpacing:"0.2em",
+            marginBottom:4,
+          }}>{item.nameEn}</div>
+          <div style={{
+            fontFamily:"'Cinzel', serif", fontSize:20, fontWeight:900,
+            color: rc.text, letterSpacing:"0.04em",
+            textShadow:`0 0 16px ${rc.glow}80`,
+            lineHeight:1.1,
+          }}>{item.name}</div>
+          <div style={{
+            fontFamily:"'Inter', sans-serif", fontSize:9,
+            color: rc.glow + "70", marginTop:4, letterSpacing:"0.08em",
+          }}>{item.type}</div>
+        </div>
+
+        {/* Divider */}
+        <div style={{
+          height:1, margin:"10px 20px",
+          background:`linear-gradient(90deg, transparent, ${rc.border}60, transparent)`,
+        }}/>
+
+        {/* Stats */}
+        <div style={{
+          padding:"0 20px",
+          display:"flex", flexDirection:"column", gap:6,
+          position:"relative", zIndex:2,
+        }}>
+          {item.stats.map((s,i)=>(
+            <div key={i} style={{
+              display:"flex", alignItems:"center", justifyContent:"space-between",
+              animation:`statReveal 0.4s ease-out ${0.7+i*0.1}s forwards`,
+            }}>
+              <div style={{
+                fontFamily:"'Inter', sans-serif", fontSize:11, color:"#9ca3af",
+                display:"flex", alignItems:"center", gap:6,
+              }}>
+                <div style={{ width:4, height:4, borderRadius:"50%", background:s.color, flexShrink:0 }}/>
+                {s.label}
+              </div>
+              <div style={{
+                fontFamily:"'Cinzel', serif", fontSize:13, fontWeight:700,
+                color: s.color,
+                textShadow:`0 0 8px ${s.color}80`,
+              }}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div style={{
+          height:1, margin:"10px 20px",
+          background:`linear-gradient(90deg, transparent, ${rc.border}40, transparent)`,
+        }}/>
+
+        {/* Passive */}
+        <div style={{
+          padding:"0 20px",
+          position:"relative", zIndex:2,
+        }}>
+          <div style={{
+            fontFamily:"'Cinzel', serif", fontSize:8, fontWeight:600,
+            color: rc.glow, letterSpacing:"0.14em", marginBottom:5,
+          }}>PASSIVE</div>
+          <div style={{
+            fontFamily:"'Inter', sans-serif", fontSize:10, lineHeight:1.6,
+            color:"#9ca3af",
+          }}>{item.passive}</div>
+        </div>
+
+        {/* Flavor */}
+        <div style={{
+          margin:"10px 20px 0", padding:"8px 10px",
+          background:`${rc.border}10`,
+          border:`1px solid ${rc.border}25`,
+          borderRadius:8,
+          position:"relative", zIndex:2,
+        }}>
+          <div style={{
+            fontFamily:"'Inter', sans-serif", fontSize:9, lineHeight:1.6,
+            color:"#6b7280", fontStyle:"italic",
+          }}>「{item.flavor}」</div>
+        </div>
+      </div>
+
+      {/* Get button */}
+      <div style={{
+        marginTop:14,
+        animation:"cardReveal 0.5s ease-out 0.9s both",
+      }}>
+        <div style={{
+          padding:"14px",
+          background:`linear-gradient(135deg, ${rc.border}40, ${rc.border}20)`,
+          border:`1.5px solid ${rc.border}`,
+          borderRadius:14,
+          textAlign:"center", cursor:"pointer",
+          boxShadow:`0 4px 24px ${rc.glow}40`,
+          position:"relative", overflow:"hidden",
+        }}>
+          <div style={{
+            position:"absolute", inset:0, borderRadius:14,
+            background: rc.shine,
+            backgroundSize:"300% 100%",
+            animation:"shimmerLoop 2s infinite",
+          }}/>
+          <div style={{
+            fontFamily:"'Cinzel', serif", fontSize:14, fontWeight:700,
+            color:"#fff", letterSpacing:"0.1em",
+            position:"relative", zIndex:1,
+          }}>獲得する</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
+function LootDropApp() {
+  const [stage, setStage]       = useState("select");   // select|falling|pulsing|shattering|revealed
+  const [item,  setItem]        = useState(null);
+  const [orbRef, setOrbRef]     = useState(null);
+  const W = 393, H = 852;
+
+  function startDrop(lootItem) {
+    setItem(lootItem);
+    setStage("falling");
+
+    // Small delay so React re-renders the select screen away first
+    setTimeout(() => {
+      const app = initPixi(lootItem.rarity);
+      const cx = 393 / 2, landY = 852 * 0.38;
+
+      const orbCtrl = spawnOrb(lootItem.rarity, () => {
+        // Landed — wait a beat before enabling tap
+        setTimeout(() => {
+          setStage("pulsing");
+          startOrbAmbient(lootItem.rarity, 393/2, 852*0.38);
+          // Auto-shatter after 3.5s if not tapped
+          setTimeout(() => {
+            setStage(prev => {
+              if (prev === "pulsing") { doShatter(lootItem.rarity); return "shattering"; }
+              return prev;
+            });
+          }, 3500);
+        }, 200);
+      });
+      setOrbRef(orbCtrl);
+    }, 80);
+  }
+
+  function doShatter(rarity) {
+    stopOrbAmbient();
+    setStage("shattering");
+    const cx = 393/2, cy = 852*0.38;
+    triggerShatter(rarity, cx, cy, () => {
+      setStage("revealed");
+    });
+  }
+
+  function handleOrbTap() {
+    if (stage !== "pulsing") return;
+    doShatter(item.rarity);
+  }
+
+  function handleReset() {
+    setStage("select");
+    setItem(null);
+    if (PIXI_APP.app) { PIXI_APP.app.destroy(false); PIXI_APP.app = null; }
+    const canvas = document.getElementById('pixi-canvas');
+    if (canvas) { canvas.getContext('2d')?.clearRect(0,0,9999,9999); }
+  }
+
+  const rc = item ? RARITY[item.rarity] : null;
+
+  return (
+    <div style={{ width:"100%", height:"100%", position:"relative", overflow:"hidden" }}>
+      {/* Dark bg */}
+      <div style={{
+        position:"absolute", inset:0,
+        background: item
+          ? `radial-gradient(ellipse at 50% 38%, ${rc.glow}15 0%, #04020e 65%)`
+          : "#04020e",
+        transition:"background 0.8s ease",
+      }}/>
+
+      {/* ── SELECT SCREEN ── */}
+      {stage === "select" && (
+        <div style={{
+          position:"absolute", inset:0,
+          display:"flex", flexDirection:"column",
+          alignItems:"center", justifyContent:"center",
+          gap:24, padding:"40px 24px",
+          animation:"fadeIn 0.5s ease-out",
+          zIndex:10,
+        }}>
+          <div style={{
+            fontFamily:"'Cinzel Decorative', serif", fontSize:11,
+            color:"#8A2BE2", letterSpacing:"0.2em",
+            textAlign:"center",
+          }}>ITEM DROP PREVIEW</div>
+          <div style={{
+            fontFamily:"'Cinzel', serif", fontSize:26, fontWeight:900,
+            color:"#f0ebff", textAlign:"center", letterSpacing:"0.04em",
+            textShadow:"0 0 24px rgba(138,43,226,0.5)",
+          }}>獲得アイテム選択</div>
+
+          {LOOT_ITEMS.map((it, i) => {
+            const r = RARITY[it.rarity];
+            return (
+              <div key={it.id} onClick={() => startDrop(it)} style={{
+                width:"100%", maxWidth:320,
+                padding:"18px 20px",
+                background:`linear-gradient(135deg, ${r.glow}15, ${r.border}08)`,
+                border:`1.5px solid ${r.border}`,
+                borderRadius:18, cursor:"pointer",
+                boxShadow:`0 4px 30px ${r.glow}25`,
+                display:"flex", alignItems:"center", gap:16,
+                position:"relative", overflow:"hidden",
+                animation:`cardReveal 0.5s ease-out ${i*0.1}s forwards`,
+              }}>
+                <div style={{
+                  position:"absolute", inset:0, borderRadius:18,
+                  background: r.shine, backgroundSize:"300% 100%",
+                  animation:"shimmerLoop 3s linear infinite",
+                  pointerEvents:"none",
+                }}/>
+                <div style={{
+                  width:52, height:52, borderRadius:"50%", flexShrink:0,
+                  background:`radial-gradient(circle, ${r.glow}30, transparent)`,
+                  border:`2px solid ${r.border}`,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:24,
+                  boxShadow:`0 0 14px ${r.glow}60`,
+                }}>{it.icon}</div>
+                <div style={{ flex:1, position:"relative", zIndex:1 }}>
+                  <div style={{
+                    display:"flex", alignItems:"center", gap:8, marginBottom:4,
+                  }}>
+                    <div style={{
+                      padding:"2px 8px", borderRadius:3,
+                      background: r.labelBg, backgroundSize:"200% 100%",
+                      fontFamily:"'Cinzel', serif", fontSize:8, fontWeight:700,
+                      color:"#fff", letterSpacing:"0.14em",
+                    }}>{r.label}</div>
+                    <div style={{ display:"flex", gap:1.5 }}>
+                      {[...Array(r.stars)].map((_,j)=>(
+                        <span key={j} style={{ color:r.glow, fontSize:10 }}>★</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontFamily:"'Cinzel', serif", fontSize:15, fontWeight:700,
+                    color: r.text,
+                  }}>{it.name}</div>
+                  <div style={{
+                    fontFamily:"'Inter', sans-serif", fontSize:9,
+                    color: r.glow+"80", marginTop:2,
+                  }}>{it.type}</div>
+                </div>
+                <div style={{
+                  color: r.glow, fontSize:18, flexShrink:0, position:"relative", zIndex:1,
+                }}>›</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── TAP HINT (while pulsing) ── */}
+      {stage === "pulsing" && (
+        <OrbTapHint rarity={item.rarity} onTap={handleOrbTap}/>
+      )}
+
+      {/* ── ITEM CARD (after shatter) ── */}
+      {stage === "revealed" && (
+        <div style={{ position:"absolute", inset:0, zIndex:20 }}>
+          <ItemCard item={item} visible={true}/>
+          {/* Back button */}
+          <div onClick={handleReset} style={{
+            position:"absolute", top:52, left:20,
+            display:"flex", alignItems:"center", gap:4,
+            cursor:"pointer",
+            fontFamily:"'Inter', sans-serif", fontSize:11,
+            color:"#8b7da8", zIndex:30,
+          }}>
+            <span style={{fontSize:14}}>‹</span> もう一度
+          </div>
+        </div>
+      )}
+
+      {/* ── FALLING/SHATTERING: backdrop tap to skip ── */}
+      {stage === "falling" && (
+        <div style={{
+          position:"absolute", inset:0, zIndex:5,
+          display:"flex", alignItems:"flex-end", justifyContent:"center",
+          paddingBottom:60,
+        }}>
+          <div style={{
+            fontFamily:"'Inter', sans-serif", fontSize:10,
+            color:"rgba(255,255,255,0.25)", letterSpacing:"0.1em",
+          }}>...</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<LootDropApp/>);
+</script>
+</body>
+</html>

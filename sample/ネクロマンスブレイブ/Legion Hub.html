@@ -612,7 +612,7 @@ function StatItem({ label, value, labelJa, color, delay = 0 }) {
 }
 
 // ── CHARACTER THUMB ──────────────────────────────────────────────────────────
-function CharThumb({ charKey, char, active, onSelect }) {
+function CharThumb({ charKey, char, active, onSelect, label }) {
   return (
     <div onClick={() => onSelect(charKey)} style={{
       display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
@@ -640,10 +640,11 @@ function CharThumb({ charKey, char, active, onSelect }) {
         }}/>}
       </div>
       <div style={{
-        fontFamily: "'Inter', sans-serif", fontSize: 8,
+        fontFamily: "'Cinzel', serif", fontSize: 8,
         color: active ? char.color : "#4a3a5a",
-        letterSpacing: "0.06em", transition: "color 0.3s ease",
-      }}>{char.rank}</div>
+        letterSpacing: "0.04em", transition: "color 0.3s ease",
+        whiteSpace: "nowrap",
+      }}>{label || char.name}</div>
     </div>
   );
 }
@@ -762,7 +763,17 @@ function LegionHub() {
         animation: mounted ? "fadeSlideUp 0.4s ease-out" : "none",
         zIndex: 2, gap: 8,
       }}>
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        {/* Back button */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <a href="Home.html" style={{
+            display: "flex", alignItems: "center", gap: 4,
+            textDecoration: "none",
+            fontFamily: "'Inter', sans-serif", fontSize: 11, color: "#8b7da8",
+            marginBottom: 6,
+          }}>
+            <span style={{ fontSize: 14, lineHeight: 1 }}>‹</span>
+            <span>ホーム</span>
+          </a>
           <div style={{
             fontFamily: "'Cinzel Decorative', serif", fontSize: 9,
             color: color, letterSpacing: "0.18em", textTransform: "uppercase",
@@ -986,7 +997,7 @@ function LegionHub() {
         }}>
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 18 }}>
             {Object.entries(CHARACTERS).map(([key, c]) => (
-              <CharThumb key={key} charKey={key} char={c} active={activeChar === key} onSelect={handleCharSwitch}/>
+              <CharThumb key={key} charKey={key} char={c} active={activeChar === key} onSelect={handleCharSwitch} label={c.name}/>
             ))}
           </div>
           {/* Formation button */}

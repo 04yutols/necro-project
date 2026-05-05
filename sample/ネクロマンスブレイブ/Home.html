@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ホーム — ネクロマンスブレイブ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: #06050f; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulseBar {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 1; }
+  }
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: 0 0 12px var(--glow, #8A2BE280), inset 0 0 10px var(--glow-in, #8A2BE220); }
+    50% { box-shadow: 0 0 22px var(--glow, #8A2BE2bb), inset 0 0 18px var(--glow-in, #8A2BE240); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes scanLine {
+    0% { transform: translateY(-100%); opacity: 0; }
+    10% { opacity: 0.2; }
+    90% { opacity: 0.2; }
+    100% { transform: translateY(400%); opacity: 0; }
+  }
+  @keyframes orbFloat {
+    0%, 100% { transform: translateY(0); opacity: 0.5; }
+    50% { transform: translateY(-10px); opacity: 0.9; }
+  }
+  @keyframes nGlow {
+    0%, 100% { box-shadow: 0 0 10px #8A2BE260, 0 0 20px #8A2BE230; }
+    50% { box-shadow: 0 0 20px #8A2BE2aa, 0 0 36px #8A2BE260; }
+  }
+  @keyframes menuPress {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.97); }
+    100% { transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<canvas id="bgCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
+
+<script type="text/babel" src="ios-frame.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ── BACKGROUND CANVAS ──────────────────────────────────────────────────────
+function initBg() {
+  const canvas = document.getElementById("bgCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const color = "#8A2BE2";
+  const particles = Array.from({ length: 55 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 2.5 + 0.5,
+    vx: (Math.random() - 0.5) * 0.2,
+    vy: -(Math.random() * 0.4 + 0.1),
+    life: Math.random(), speed: Math.random() * 0.003 + 0.001,
+  }));
+  const bokeh = Array.from({ length: 12 }, () => ({
+    x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+    r: Math.random() * 70 + 25, alpha: Math.random() * 0.07 + 0.02,
+    vx: (Math.random() - 0.5) * 0.06, vy: (Math.random() - 0.5) * 0.06,
+  }));
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const grad = ctx.createRadialGradient(canvas.width*.5, canvas.height*.35, 0, canvas.width*.5, canvas.height*.35, canvas.height*.8);
+    grad.addColorStop(0, "#110826"); grad.addColorStop(0.6, "#09041a"); grad.addColorStop(1, "#03020a");
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    bokeh.forEach(b => {
+      b.x += b.vx; b.y += b.vy;
+      if (b.x < -b.r) b.x = canvas.width + b.r; if (b.x > canvas.width + b.r) b.x = -b.r;
+      if (b.y < -b.r) b.y = canvas.height + b.r; if (b.y > canvas.height + b.r) b.y = -b.r;
+      const bg = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+      bg.addColorStop(0, color + "35"); bg.addColorStop(1, "transparent");
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+      ctx.fillStyle = bg; ctx.globalAlpha = b.alpha; ctx.fill(); ctx.globalAlpha = 1;
+    });
+    particles.forEach(p => {
+      p.life += p.speed; if (p.life > 1) { p.life = 0; p.x = Math.random()*canvas.width; p.y = canvas.height+5; }
+      p.x += p.vx; p.y += p.vy;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = color; ctx.globalAlpha = p.life < 0.1 ? p.life*8 : p.life > 0.9 ? (1-p.life)*8 : 0.5;
+      ctx.fill(); ctx.globalAlpha = 1;
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ── EXP BAR ──────────────────────────────────────────────────────────────────
+function ExpBar({ label, fill, remaining, color }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{
+        fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 600,
+        color: color, letterSpacing: "0.05em", width: 72, flexShrink: 0,
+      }}>{label}</div>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ color: color + "70", fontSize: 9, fontFamily: "'Inter', sans-serif" }}>[</div>
+        <div style={{
+          flex: 1, height: 8, background: "rgba(255,255,255,0.07)",
+          borderRadius: 2, overflow: "hidden", position: "relative",
+        }}>
+          <div style={{
+            width: `${fill}%`, height: "100%",
+            background: `linear-gradient(90deg, ${color}bb, ${color})`,
+            borderRadius: 2,
+            animation: "pulseBar 2s ease-in-out infinite",
+          }}/>
+        </div>
+        <div style={{ color: color + "70", fontSize: 9, fontFamily: "'Inter', sans-serif" }}>]</div>
+      </div>
+      <div style={{
+        fontFamily: "'Inter', sans-serif", fontSize: 9, color: "#6b5f7a",
+        whiteSpace: "nowrap", flexShrink: 0,
+      }}>あと {remaining.toLocaleString()}</div>
+    </div>
+  );
+}
+
+// ── MENU ITEM ─────────────────────────────────────────────────────────────────
+function MenuItem({ icon, label, sublabel, color, bg, href, delay }) {
+  const [pressed, setPressed] = useState(false);
+  function handleClick() {
+    setPressed(true);
+    setTimeout(() => {
+      if (href) window.location.href = href;
+      setPressed(false);
+    }, 180);
+  }
+  return (
+    <div onClick={handleClick} style={{
+      display: "flex", alignItems: "center", gap: 14,
+      padding: "16px 16px",
+      background: pressed
+        ? bg.replace(/[\d.]+\)$/, "0.2)")
+        : bg,
+      border: `1px solid ${color}45`,
+      borderRadius: "16px",
+      cursor: "pointer",
+      animation: `fadeSlideUp 0.5s ease-out ${delay}s both`,
+      boxShadow: `0 2px 20px ${color}18, inset 0 1px 0 rgba(255,255,255,0.06)`,
+      transform: pressed ? "scale(0.97)" : "scale(1)",
+      transition: "transform 0.15s ease, background 0.15s ease",
+      position: "relative", overflow: "hidden",
+    }}>
+      {/* Shimmer */}
+      <div style={{
+        position: "absolute", inset: 0, borderRadius: "16px",
+        background: `linear-gradient(90deg, transparent, ${color}0f, transparent)`,
+        backgroundSize: "200% 100%",
+        animation: "shimmer 3s infinite",
+        pointerEvents: "none",
+      }}/>
+      {/* Icon */}
+      <div style={{
+        width: 48, height: 48, borderRadius: "14px", flexShrink: 0,
+        background: "rgba(0,0,0,0.5)",
+        border: `1px solid ${color}40`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: `0 0 12px ${color}30`,
+        fontSize: 22,
+      }}>{icon}</div>
+      {/* Text */}
+      <div style={{ flex: 1 }}>
+        <div style={{
+          fontFamily: "'Cinzel', serif", fontSize: 16, fontWeight: 700,
+          color: "#f0ebff", letterSpacing: "0.02em",
+        }}>{label}</div>
+        <div style={{
+          fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 600,
+          color: color + "90", letterSpacing: "0.15em", marginTop: 3,
+          textTransform: "uppercase",
+        }}>{sublabel}</div>
+      </div>
+      {/* Arrow */}
+      <div style={{
+        width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+        background: `${color}18`, border: `1px solid ${color}40`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        color: color, fontSize: 11, fontWeight: 700,
+      }}>›</div>
+    </div>
+  );
+}
+
+// ── MAIN ─────────────────────────────────────────────────────────────────────
+function HomeScreen() {
+  useEffect(() => { initBg(); }, []);
+
+  const playerName = "アルド";
+  const playerLevel = 99;
+
+  return (
+    <div style={{
+      width: "100%", height: "100%",
+      display: "flex", flexDirection: "column",
+      background: "transparent",
+      position: "relative", overflow: "hidden",
+      fontFamily: "'Inter', sans-serif",
+    }}>
+      {/* Scan line */}
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 1 }}>
+        <div style={{
+          position: "absolute", width: "100%", height: "2px",
+          background: "linear-gradient(90deg, transparent, #8A2BE240, transparent)",
+          animation: "scanLine 8s ease-in-out infinite 1s",
+        }}/>
+      </div>
+
+      {/* ── HEADER ── */}
+      <div style={{
+        padding: "62px 16px 0",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        zIndex: 2,
+        animation: "fadeSlideUp 0.4s ease-out",
+      }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{
+            fontFamily: "'Cinzel Decorative', serif", fontSize: 8,
+            color: "#8A2BE2", letterSpacing: "0.2em",
+          }}>NECROMANCE BRAVE</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+            <div style={{
+              fontFamily: "'Cinzel', serif", fontSize: 17, fontWeight: 700,
+              color: "#f0ebff", letterSpacing: "0.04em",
+            }}>{playerName}</div>
+            <div style={{
+              fontFamily: "'Inter', sans-serif", fontSize: 10, color: "#6b5f7a",
+            }}>Lv.{playerLevel}</div>
+          </div>
+        </div>
+        {/* Settings */}
+        <div style={{
+          width: 36, height: 36, borderRadius: "10px",
+          background: "rgba(255,255,255,0.06)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", fontSize: 16, color: "#8b7da8",
+        }}>⚙</div>
+      </div>
+
+      {/* ── CHARACTER CARD ── */}
+      <div style={{
+        margin: "12px 14px 0",
+        background: "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)",
+        border: "1px solid rgba(138,43,226,0.35)",
+        borderRadius: "18px",
+        overflow: "hidden",
+        boxShadow: "0 4px 30px rgba(138,43,226,0.15), inset 0 1px 0 rgba(255,255,255,0.08)",
+        zIndex: 2,
+        animation: "fadeSlideUp 0.4s ease-out 0.05s both",
+        backdropFilter: "blur(12px)",
+        position: "relative",
+      }}>
+        {/* Card inner shimmer */}
+        <div style={{
+          position: "absolute", top: 0, left: "10%", right: "10%", height: 1,
+          background: "linear-gradient(90deg, transparent, rgba(138,43,226,0.6), transparent)",
+        }}/>
+
+        {/* Top row: avatar + info */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "14px 14px 10px",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}>
+          {/* Avatar */}
+          <div style={{
+            width: 72, height: 72, borderRadius: "14px", flexShrink: 0,
+            background: "linear-gradient(135deg, #1a0a2e, #0a0515)",
+            border: "1px solid rgba(138,43,226,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 0 16px rgba(138,43,226,0.4)",
+            overflow: "hidden",
+            position: "relative",
+          }}>
+            {/* Pixel-art style warrior placeholder */}
+            <svg viewBox="0 0 40 40" width="52" height="52">
+              <rect x="12" y="2" width="16" height="14" rx="2" fill="#2a1a3e"/>
+              <rect x="14" y="4" width="12" height="10" rx="1" fill="#3d2657"/>
+              <rect x="16" y="6" width="8" height="6" fill="#1a0a2e"/>
+              {/* eyes */}
+              <rect x="16" y="9" width="3" height="3" fill="#8A2BE2"/>
+              <rect x="21" y="9" width="3" height="3" fill="#8A2BE2"/>
+              {/* body */}
+              <rect x="10" y="16" width="20" height="16" rx="2" fill="#1e1030"/>
+              <rect x="10" y="16" width="20" height="16" rx="2" fill="#8A2BE2" fillOpacity="0.15"/>
+              {/* chest detail */}
+              <rect x="18" y="19" width="4" height="6" rx="1" fill="#8A2BE2" fillOpacity="0.7"/>
+              {/* shoulders */}
+              <rect x="5" y="16" width="7" height="8" rx="2" fill="#2a1a3e"/>
+              <rect x="28" y="16" width="7" height="8" rx="2" fill="#2a1a3e"/>
+              {/* legs */}
+              <rect x="11" y="31" width="8" height="8" rx="1" fill="#1a0a2e"/>
+              <rect x="21" y="31" width="8" height="8" rx="1" fill="#1a0a2e"/>
+              {/* weapon */}
+              <rect x="1" y="10" width="3" height="22" rx="1" fill="#6b5f7a"/>
+              <rect x="0" y="14" width="5" height="3" rx="1" fill="#4a3a5a"/>
+            </svg>
+            {/* glow overlay */}
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: "14px",
+              background: "radial-gradient(circle at 50% 80%, rgba(138,43,226,0.25), transparent 70%)",
+            }}/>
+          </div>
+          {/* Info */}
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 700,
+              color: "#f0ebff", letterSpacing: "0.03em", lineHeight: 1,
+            }}>{playerName}</div>
+            <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{
+                  fontFamily: "'Inter', sans-serif", fontSize: 10, color: "#6b5f7a",
+                  width: 52, flexShrink: 0,
+                }}>現在の職業:</div>
+                <div style={{
+                  fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700,
+                  color: "#c084fc", letterSpacing: "0.08em",
+                }}>WARRIOR</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 10, color: "#6b5f7a" }}>Lv. 1</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{
+                  fontFamily: "'Inter', sans-serif", fontSize: 10, color: "#6b5f7a",
+                  width: 52, flexShrink: 0,
+                }}>死霊術:</div>
+                <div style={{
+                  fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700,
+                  color: "#f472b6", letterSpacing: "0.08em",
+                }}>RANK 1</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 10, color: "#6b5f7a" }}>Lv. 1</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* HP / MP row */}
+        <div style={{
+          display: "flex",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}>
+          {/* HP */}
+          <div style={{
+            flex: 1, padding: "10px 14px",
+            borderRight: "1px solid rgba(255,255,255,0.06)",
+          }}>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: "#6b5f7a", letterSpacing: "0.1em", marginBottom: 4 }}>HP</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 22, fontWeight: 700, color: "#f87171", lineHeight: 1 }}>100</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "#6b5f7a" }}>/ 100</div>
+            </div>
+          </div>
+          {/* MP */}
+          <div style={{ flex: 1, padding: "10px 14px" }}>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: "#6b5f7a", letterSpacing: "0.1em", marginBottom: 4 }}>MP</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 22, fontWeight: 700, color: "#60a5fa", lineHeight: 1 }}>20</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "#6b5f7a" }}>/ 20</div>
+            </div>
+          </div>
+        </div>
+
+        {/* EXP bars */}
+        <div style={{
+          padding: "10px 14px",
+          display: "flex", flexDirection: "column", gap: 7,
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}>
+          <ExpBar label="JOB-EXP:" fill={60} remaining={450} color="#c084fc"/>
+          <ExpBar label="NECRO-EXP:" fill={28} remaining={2800} color="#f472b6"/>
+        </div>
+
+        {/* Gold / Army cost row */}
+        <div style={{ display: "flex" }}>
+          <div style={{
+            flex: 1, padding: "10px 14px",
+            borderRight: "1px solid rgba(255,255,255,0.06)",
+            display: "flex", flexDirection: "column", gap: 2,
+          }}>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: "#6b5f7a", letterSpacing: "0.06em" }}>所持金</div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 18, fontWeight: 700, color: "#fbbf24" }}>50,000G</div>
+          </div>
+          <div style={{
+            flex: 1, padding: "10px 14px",
+            display: "flex", flexDirection: "column", gap: 2,
+          }}>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: "#6b5f7a", letterSpacing: "0.06em" }}>軍団コスト</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 18, fontWeight: 700, color: "#f0ebff" }}>0</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "#4a3a5a" }}>/ 10</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── SECTION HEADER ── */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "18px 16px 10px",
+        zIndex: 2,
+        animation: "fadeSlideUp 0.5s ease-out 0.15s both",
+      }}>
+        {/* Pulse icon */}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M2 12h3l3-6 4 12 3-9 2 3h5" stroke="#8A2BE2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <div style={{
+          fontFamily: "'Cinzel', serif", fontSize: 13, fontWeight: 600,
+          color: "#c4b8d8", letterSpacing: "0.06em",
+        }}>作戦司令室</div>
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg, rgba(138,43,226,0.3), transparent)" }}/>
+      </div>
+
+      {/* ── MENU ITEMS ── */}
+      <div style={{
+        flex: 1, overflowY: "auto", padding: "0 14px",
+        display: "flex", flexDirection: "column", gap: 10,
+        zIndex: 2,
+        paddingBottom: 8,
+      }}>
+        <MenuItem
+          icon="🗺"
+          label="出撃・マップ"
+          sublabel="World Exploration"
+          color="#a855f7"
+          bg="linear-gradient(135deg, rgba(138,43,226,0.18), rgba(88,28,135,0.10))"
+          href="Map.html"
+          delay={0.2}
+        />
+        <MenuItem
+          icon="💀"
+          label="ネクロラボ"
+          sublabel="Necromancy & Upgrade"
+          color="#ec4899"
+          bg="linear-gradient(135deg, rgba(236,72,153,0.14), rgba(157,23,77,0.08))"
+          delay={0.28}
+        />
+        <MenuItem
+          icon="⚔"
+          label="装備・編成"
+          sublabel="Armory & Legion"
+          color="#2dd4bf"
+          bg="linear-gradient(135deg, rgba(45,212,191,0.14), rgba(15,118,110,0.08))"
+          href="Legion Hub.html"
+          delay={0.36}
+        />
+        <MenuItem
+          icon=">_"
+          label="兵歴記録"
+          sublabel="System Logs"
+          color="#8b7da8"
+          bg="linear-gradient(135deg, rgba(139,125,168,0.10), rgba(60,50,80,0.06))"
+          delay={0.44}
+        />
+      </div>
+
+      {/* ── BOTTOM ── */}
+      <div style={{
+        padding: "8px 16px 46px",
+        display: "flex", alignItems: "center",
+        zIndex: 2,
+        animation: "fadeSlideUp 0.5s ease-out 0.5s both",
+      }}>
+        {/* N logo */}
+        <div style={{
+          width: 42, height: 42, borderRadius: "50%",
+          background: "linear-gradient(135deg, #1a0a2e, #0d0520)",
+          border: "2px solid #8A2BE260",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer",
+          animation: "nGlow 3s ease-in-out infinite",
+          boxShadow: "0 0 10px #8A2BE260",
+        }}>
+          <div style={{
+            fontFamily: "'Cinzel Decorative', serif", fontSize: 16, fontWeight: 700,
+            color: "#c084fc",
+          }}>N</div>
+        </div>
+        <div style={{ flex: 1 }}/>
+        {/* Quick battle shortcut */}
+        <div style={{
+          padding: "8px 16px",
+          background: "linear-gradient(135deg, rgba(138,43,226,0.25), rgba(88,28,135,0.15))",
+          border: "1px solid rgba(138,43,226,0.45)",
+          borderRadius: "12px",
+          cursor: "pointer",
+          display: "flex", alignItems: "center", gap: 6,
+          boxShadow: "0 0 12px rgba(138,43,226,0.2)",
+        }}>
+          <div style={{ fontSize: 12 }}>⚡</div>
+          <div style={{
+            fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600,
+            color: "#c084fc", letterSpacing: "0.06em",
+          }}>クイック出撃</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(
+  <IOSDevice dark={true} width={393} height={852}>
+    <HomeScreen/>
+  </IOSDevice>
+);
+</script>
+</body>
+</html>
