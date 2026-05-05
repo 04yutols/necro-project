@@ -22,6 +22,43 @@ const INIT_ENEMIES: EnemyState[] = [
   { id: 2, name: '死骨竜',   nameEn: 'UNDEAD WYRM',   hp: 420, maxHp: 420, atk: 100, color: '#ef4444', pos: 'right',  size: 0.80, targeted: false },
 ];
 
+const BATTLE_WAVES = [
+  {
+    title: '骸骨山脈',
+    label: 'WAVE 1',
+    rewards: { exp: 520, gold: 1200 },
+    enemies: [
+      { ...INIT_ENEMIES[0], hp: 260, maxHp: 260, targeted: true },
+      { ...INIT_ENEMIES[1], hp: 320, maxHp: 320, targeted: false, size: 0.78 },
+    ],
+  },
+  {
+    title: '骸骨山脈',
+    label: 'WAVE 2',
+    rewards: { exp: 760, gold: 1800 },
+    enemies: [
+      { ...INIT_ENEMIES[0], hp: 360, maxHp: 360, targeted: false },
+      { ...INIT_ENEMIES[1], hp: 520, maxHp: 520, targeted: true },
+      { ...INIT_ENEMIES[2], hp: 380, maxHp: 380, targeted: false, size: 0.72 },
+    ],
+  },
+  {
+    title: '骸骨山脈',
+    label: 'BOSS',
+    isBoss: true,
+    rewards: { exp: 1320, gold: 3600 },
+    enemies: [
+      { ...INIT_ENEMIES[2], id: 2, name: '死骨竜王', nameEn: 'BONE WYRM LORD', hp: 720, maxHp: 720, atk: 148, targeted: true, pos: 'center' as const, size: 0.98 },
+    ],
+  },
+] satisfies Array<{
+  title: string;
+  label: string;
+  isBoss?: boolean;
+  rewards: { exp: number; gold: number };
+  enemies: EnemyState[];
+}>;
+
 // ── SKILLS / ITEMS ─────────────────────────────────────────────────────────────
 const SKILLS = [
   { id: 0, name: '骸骨波',   mp: 15, power: 180, icon: '💥', aoe: true  },
@@ -615,20 +652,35 @@ function SystemBar({ auto, speed, onAuto, onSpeed, onEscape, canEscape }: {
 export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const { player, party } = useGameStore();
 
-  const [enemies, setEnemies] = useState<EnemyState[]>(INIT_ENEMIES.map(e => ({ ...e })));
+  const [waveIndex, setWaveIndex] = useState(0);
+  const [enemies, setEnemies] = useState<EnemyState[]>(() => BATTLE_WAVES[0].enemies.map(e => ({ ...e })));
   const [soul, setSoul] = useState(45);
-  const [phase, setPhase] = useState<'playerTurn' | 'skillMenu' | 'itemMenu' | 'animating' | 'enemyTurn'>('playerTurn');
+  const [phase, setPhase] = useState<'playerTurn' | 'skillMenu' | 'itemMenu' | 'animating' | 'enemyTurn' | 'waveTransition'>('playerTurn');
   const [demonized, setDemonized] = useState(false);
   const [demonTurns, setDemonTurns] = useState(0);
   const [auto, setAuto] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [log, setLog] = useState(['戦闘開始！骸骨山脈の番人たちが立ちはだかる。', '骸骨騎士のターン。コマンドを選択しろ。']);
+  const [log, setLog] = useState(['戦闘開始！骸骨山脈の番人たちが立ちはだかる。', 'WAVE 1 開始。骸骨騎士のターン。']);
   const [floats, setFloats] = useState<FloatDmg[]>([]);
   const [flashColor, setFlashColor] = useState<string | null>(null);
   const [screenShake, setScreenShake] = useState(false);
 
   const [showResult, setShowResult] = useState(false);
-  const [battleResult, setBattleResult] = useState<{ isVictory: boolean; expGained: number; itemsGained: string[]; monstersGained: string[] } | null>(null);
+  const [battleResult, setBattleResult] = useState<{
+    isVictory: boolean;
+    expGained: number;
+    goldGained: number;
+    itemsGained: any[];
+    monstersGained: string[];
+    isPurplePillar: boolean;
+    wavesCleared: number;
+    totalWaves: number;
+    clearTime: number;
+  } | null>(null);
+  const waveIndexRef = useRef(0);
+  const enemiesRef = useRef<EnemyState[]>(BATTLE_WAVES[0].enemies.map(e => ({ ...e })));
+  const waveResolvingRef = useRef(false);
+  const battleTotalsRef = useRef({ exp: 0, gold: 0, waves: 0 });
 
   // Build battle party from store
   const battleParty: BattlePartyMember[] = [
@@ -652,8 +704,75 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const speedMs = 900 / speed;
   const currentMp = battleParty[0]?.mp ?? 0;
   const soulFull = soul >= 100;
+  const currentWave = BATTLE_WAVES[waveIndex];
 
   const addLog = useCallback((line: string) => setLog(prev => [...prev, line]), []);
+
+  useEffect(() => { waveIndexRef.current = waveIndex; }, [waveIndex]);
+  useEffect(() => { enemiesRef.current = enemies; }, [enemies]);
+
+  const resolveWaveClear = useCallback(() => {
+    if (waveResolvingRef.current) return;
+    waveResolvingRef.current = true;
+
+    const clearedIndex = waveIndexRef.current;
+    const clearedWave = BATTLE_WAVES[clearedIndex];
+    battleTotalsRef.current = {
+      exp: battleTotalsRef.current.exp + clearedWave.rewards.exp,
+      gold: battleTotalsRef.current.gold + clearedWave.rewards.gold,
+      waves: clearedIndex + 1,
+    };
+
+    setPhase('waveTransition');
+    setSoul(prev => Math.min(100, prev + 18));
+    addLog(`★ ${clearedWave.label} クリア！ EXP +${clearedWave.rewards.exp} / Gold +${clearedWave.rewards.gold}G`);
+
+    window.setTimeout(() => {
+      const nextIndex = clearedIndex + 1;
+      if (nextIndex >= BATTLE_WAVES.length) {
+        setBattleResult({
+          isVictory: true,
+          expGained: battleTotalsRef.current.exp,
+          goldGained: battleTotalsRef.current.gold,
+          itemsGained: [
+            { id: 'bone-chip', name: '骨の欠片', rarity: 'COMMON', isUnique: false, quantity: 4 },
+            {
+              id: 'hidden-unique-necro-edge',
+              name: '冥王の黒刃',
+              type: 'WEAPON',
+              rarity: 'HIDDEN_UNIQUE',
+              icon: '⚔',
+              stats: { atk: 88, matk: 42, luck: 12, tec: 16 },
+              isUnique: true,
+              discovererName: player?.name ?? 'アルド',
+              serialNo: 1,
+              passive: '魔神化中、与えるダメージが上昇し、撃破時に魂ゲージを追加回復する。',
+            },
+          ],
+          monstersGained: ['霊核: 死骨竜王'],
+          isPurplePillar: true,
+          wavesCleared: BATTLE_WAVES.length,
+          totalWaves: BATTLE_WAVES.length,
+          clearTime: 74 + Math.round(Math.random() * 18),
+        });
+        setShowResult(true);
+        return;
+      }
+
+      const nextWave = BATTLE_WAVES[nextIndex];
+      const nextEnemies = nextWave.enemies.map(e => ({ ...e }));
+      enemiesRef.current = nextEnemies;
+      setWaveIndex(nextIndex);
+      setEnemies(nextEnemies);
+      setPhase('playerTurn');
+      waveResolvingRef.current = false;
+      addLog(nextWave.isBoss ? `☠ BOSS登場！ ${nextWave.enemies[0].name} が現れた！` : `${nextWave.label} 開始！`);
+      if (nextWave.isBoss) {
+        setFlashColor('rgba(245,158,11,0.35)');
+        window.setTimeout(() => setFlashColor(null), 600);
+      }
+    }, 1200);
+  }, [addLog, player?.name]);
 
   function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
     const id = ++floatId;
@@ -673,7 +792,14 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     const positions: Record<number, { x: string; y: string }> = { 0: { x: '12%', y: '18%' }, 1: { x: '36%', y: '12%' }, 2: { x: '62%', y: '16%' } };
     const pos = positions[targetId] || { x: '40%', y: '15%' };
     spawnFloat(pos.x, pos.y, finalDmg, { crit: isCrit, color: opts.color || '#fff' });
-    setEnemies(prev => prev.map(e => e.id === targetId ? { ...e, hp: Math.max(0, e.hp - finalDmg) } : e));
+    setEnemies(prev => {
+      const next = prev.map(e => e.id === targetId ? { ...e, hp: Math.max(0, e.hp - finalDmg) } : e);
+      enemiesRef.current = next;
+      if (next.every(e => e.hp <= 0)) {
+        window.setTimeout(resolveWaveClear, 380);
+      }
+      return next;
+    });
     return finalDmg;
   }
 
@@ -683,6 +809,10 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   }
 
   function endPlayerTurn() {
+    if (enemiesRef.current.every(e => e.hp <= 0)) {
+      resolveWaveClear();
+      return;
+    }
     if (demonized) {
       const newTurns = demonTurns - 1;
       if (newTurns <= 0) {
@@ -699,10 +829,9 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
 
   function runEnemyTurn() {
     setPhase('enemyTurn');
-    const alive = enemies.filter(e => e.hp > 0);
+    const alive = enemiesRef.current.filter(e => e.hp > 0);
     if (alive.length === 0) {
-      setBattleResult({ isVictory: true, expGained: 800, itemsGained: ['骨の欠片'], monstersGained: [] });
-      setShowResult(true);
+      resolveWaveClear();
       return;
     }
     let delay = 0;
@@ -801,8 +930,13 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
       <ResultScreen
         isVictory={battleResult.isVictory}
         expGained={battleResult.expGained}
+        goldGained={battleResult.goldGained}
         itemsGained={battleResult.itemsGained}
         monstersGained={battleResult.monstersGained}
+        isPurplePillar={battleResult.isPurplePillar}
+        wavesCleared={battleResult.wavesCleared}
+        totalWaves={battleResult.totalWaves}
+        clearTime={battleResult.clearTime}
         onFinish={onEnd}
       />
     );
@@ -834,7 +968,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
             letterSpacing: '0.12em',
             textShadow: demonized ? '0 0 12px #dc2626' : '0 0 8px #8A2BE2',
             transition: 'all 0.5s ease',
-          }}>{demonized ? '☠ 魔神化中' : '骸骨山脈'}</div>
+          }}>{demonized ? '☠ 魔神化中' : currentWave.isBoss ? '⚠ BOSS' : `${currentWave.title} — ${currentWave.label}/${BATTLE_WAVES.length}`}</div>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: phase === 'playerTurn' ? '#22c55e' : phase === 'enemyTurn' ? '#ef4444' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 5, height: 5, borderRadius: '50%', background: phase === 'playerTurn' ? '#22c55e' : phase === 'enemyTurn' ? '#ef4444' : '#f59e0b' }}/>
             {phase === 'playerTurn' ? '自ターン' : phase === 'enemyTurn' ? '敵ターン' : '行動中'}
@@ -953,6 +1087,37 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
         onSpeed={() => setSpeed(s => s >= 3 ? 1 : s + 1)}
         onEscape={() => { addLog('逃走した。'); onEnd(); }}
         canEscape={true}/>
+
+      {phase === 'waveTransition' && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 45,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            background: 'radial-gradient(ellipse at center, rgba(138,43,226,0.22), transparent 56%)',
+            animation: 'fadeIn 0.18s ease-out',
+          }}
+        >
+          <div style={{
+            padding: '14px 24px',
+            borderRadius: 14,
+            border: '1px solid rgba(188,0,251,0.6)',
+            background: 'rgba(5,2,16,0.88)',
+            boxShadow: '0 0 28px rgba(188,0,251,0.34)',
+            color: '#f0ebff',
+            fontFamily: "'Cinzel', serif",
+            fontSize: 16,
+            fontWeight: 900,
+            letterSpacing: '0.14em',
+          }}>
+            WAVE CLEAR
+          </div>
+        </div>
+      )}
     </div>
   );
 }

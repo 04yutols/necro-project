@@ -3,7 +3,7 @@
 import React from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { motion } from 'framer-motion';
-import { Map, Skull, Sword, Terminal, ChevronRight, Activity, Swords } from 'lucide-react';
+import { Map, Skull, Sword, Terminal, ChevronRight, Activity, Swords, Settings } from 'lucide-react';
 
 const THEME = {
   primary: '#BC00FB',
@@ -64,8 +64,68 @@ export function HomeHero() {
   ] as const;
 
   return (
-    <div className="w-full h-full bg-[#050505] overflow-y-auto custom-scrollbar" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', padding: '64px 20px 32px 20px', maxWidth: '500px', margin: '0 auto', justifyContent: 'center' }}>
+    <div className="w-full h-full bg-[#050505] overflow-y-auto custom-scrollbar safe-scroll" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <div
+        style={{
+          minHeight: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: 'calc(env(safe-area-inset-top, 0px) + 18px) 16px calc(env(safe-area-inset-bottom, 0px) + 18px)',
+          maxWidth: 500,
+          margin: '0 auto',
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 12,
+          }}
+        >
+          <div>
+            <div style={{
+              fontFamily: "'Cinzel Decorative', serif",
+              fontSize: 8,
+              color: '#8A2BE2',
+              letterSpacing: '0.2em',
+              textShadow: '0 0 10px rgba(138,43,226,0.7)',
+            }}>
+              NECROMANCE BRAVE
+            </div>
+            <div style={{
+              fontFamily: "'Cinzel', serif",
+              fontSize: 18,
+              fontWeight: 700,
+              color: '#f0ebff',
+              letterSpacing: '0.04em',
+              lineHeight: 1.1,
+            }}>
+              拠点
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="設定"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: '#8b7da8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 16,
+            }}
+          >
+            <Settings size={16} />
+          </button>
+        </motion.div>
         
         {/* Header Profile UI */}
         <motion.div 
@@ -73,9 +133,10 @@ export function HomeHero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
           style={{ 
-            marginBottom: '24px', position: 'relative', borderRadius: '24px', 
+            marginBottom: 18, position: 'relative', borderRadius: 18,
             backgroundColor: '#0A0A0A', border: '1px solid #333', 
-            padding: '24px 20px', boxShadow: '0 20px 40px rgba(0,0,0,0.8)' 
+            padding: '16px 14px', boxShadow: '0 18px 34px rgba(0,0,0,0.75)',
+            overflow: 'hidden',
           }}
         >
           {/* Abstract Background for Profile */}
@@ -160,7 +221,7 @@ export function HomeHero() {
         </motion.div>
 
         {/* Primary Actions Grid */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* FORMATION hero button */}
           <motion.div
             role="button"
@@ -170,7 +231,7 @@ export function HomeHero() {
             onClick={() => setCurrentTab('EQUIP')}
             style={{
               display: 'flex', alignItems: 'center', gap: '14px',
-              height: 76, padding: '0 20px', borderRadius: '20px',
+              minHeight: 72, padding: '0 18px', borderRadius: 16,
               background: 'linear-gradient(135deg, rgba(140,0,230,0.35), rgba(180,0,80,0.22))',
               border: '1px solid rgba(204,34,255,0.6)',
               boxShadow: '0 0 28px rgba(188,0,251,0.35), inset 0 0 30px rgba(0,0,0,0.4)',
@@ -209,7 +270,7 @@ export function HomeHero() {
             </h3>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
             {NAV_BUTTONS.map((btn, index) => {
               const Icon = btn.icon;
               return (

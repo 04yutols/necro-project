@@ -108,6 +108,7 @@ export class BattleEngine {
 
   private processPlayerAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: MonsterData, skillId?: string): void {
     const { player } = this.state;
+    const playerStats = this.getMutableStats(player);
     const stats = this.getTotalStats(player);
     
     let cost = 0;
@@ -135,15 +136,15 @@ export class BattleEngine {
     }
 
     // MPコスト判定 (GDD-003)
-    if (player.stats.mp < cost) {
+    if (playerStats.mp < cost) {
       this.addLog('NO_MP', player.name, target.name, `MPが不足しています！（必要MP: ${cost}）`);
       return;
     }
 
     // MP消費
-    player.stats.mp -= cost;
+    playerStats.mp -= cost;
 
-    const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(stats, target.stats, target.resistances, type, power, element);
+    const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(stats, target.stats, target.resistances ?? {}, type, power, element);
 
     let desc = `${player.name}の${actionName}！`;
     if (isWeakness) desc += ` 弱点を突いた！`;
@@ -174,8 +175,9 @@ export class BattleEngine {
   private processAreaGimmick(): void {
     const { areaGimmick, player } = this.state;
     if (areaGimmick === 'SLIP_DAMAGE') {
-      const damage = Math.floor(player.stats.hp * 0.05);
-      player.stats.hp -= damage;
+      const playerStats = this.getMutableStats(player);
+      const damage = Math.floor(playerStats.hp * 0.05);
+      playerStats.hp -= damage;
       this.addLog('GIMMICK', 'Area', player.name, `エリアギミック：スリップダメージにより${damage}ダメージ。`);
     }
   }
@@ -192,14 +194,19 @@ export class BattleEngine {
   }
 
   private getTotalStats(player: CharacterData): BaseStats {
-    const total = { ...player.stats };
+    const total = { ...this.getMutableStats(player) };
+    const passives = (player as any).passives ?? (player as any).passiveBonuses ?? {};
     // パッシブ蓄積を反映 (GDD-004)
-    total.atk += player.passives.passiveAtkBonus;
-    total.def += player.passives.passiveDefBonus;
-    total.matk += player.passives.passiveMatkBonus;
-    total.mdef += player.passives.passiveMdefBonus;
+    total.atk += passives.passiveAtkBonus ?? 0;
+    total.def += passives.passiveDefBonus ?? 0;
+    total.matk += passives.passiveMatkBonus ?? 0;
+    total.mdef += passives.passiveMdefBonus ?? 0;
     
     return total;
+  }
+
+  private getMutableStats(player: CharacterData): BaseStats {
+    return ((player as any).stats ?? (player as any).baseStats) as BaseStats;
   }
 
   private updateState(): void {
@@ -222,8 +229,8 @@ export class BattleEngine {
       isCritical,
       isWeakness,
       isResisted,
-      playerMP: this.state.player.stats.mp,
-      playerHP: this.state.player.stats.hp,
+      playerMP: this.getMutableStats(this.state.player).mp,
+      playerHP: this.getMutableStats(this.state.player).hp,
       description
     });
   }

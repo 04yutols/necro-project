@@ -356,6 +356,7 @@ function DetailSheet({ region, onClose, onEnter }: {
               position: 'absolute', inset: 0,
               background: `linear-gradient(90deg, transparent, ${region.color}15, transparent)`,
               backgroundSize: '200% 100%', animation: 'shimmer 2s infinite',
+              pointerEvents: 'none',
             }}/>
           )}
           <div style={{
@@ -621,6 +622,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                 position: 'absolute', inset: 0,
                 background: 'linear-gradient(90deg, transparent, rgba(138,43,226,0.15), transparent)',
                 backgroundSize: '200% 100%', animation: 'shimmer 2s infinite',
+                pointerEvents: 'none',
               }}/>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, fontWeight: 700, color: '#f0ebff', letterSpacing: '0.06em' }}>侵攻</div>
               <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: 'rgba(192,132,252,0.7)', marginTop: 1 }}>ADVANCE</div>

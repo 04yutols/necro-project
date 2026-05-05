@@ -1,8 +1,6 @@
 'use client';
 
 import React from 'react';
-import { MobileHeader } from './MobileHeader';
-import { BottomNavBar } from './BottomNavBar';
 
 interface ResponsiveFrameProps {
   leftSidebar: React.ReactNode;
@@ -13,7 +11,7 @@ interface ResponsiveFrameProps {
 export function ResponsiveFrame({ leftSidebar, mainMonitor, rightSidebar }: ResponsiveFrameProps) {
   return (
     <div
-      className="text-[#A5A9B4] font-body selection:bg-secondary/30"
+      className="ios-app-shell text-[#A5A9B4] font-body selection:bg-secondary/30"
       style={{
         position: 'fixed',
         inset: 0,
@@ -25,8 +23,6 @@ export function ResponsiveFrame({ leftSidebar, mainMonitor, rightSidebar }: Resp
     >
       <div className="absolute inset-0 pixel-grid opacity-20 pointer-events-none z-0" />
 
-      <MobileHeader />
-
       <main style={{
         flex: 1,
         minHeight: 0,
@@ -37,8 +33,6 @@ export function ResponsiveFrame({ leftSidebar, mainMonitor, rightSidebar }: Resp
       }}>
         {mainMonitor}
       </main>
-
-      <BottomNavBar />
     </div>
   );
 }

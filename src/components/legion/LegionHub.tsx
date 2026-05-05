@@ -2,7 +2,7 @@
 
 import { useRef, useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Swords, Shield, Gem, Zap, Plus, Sparkles, ChevronRight } from 'lucide-react';
+import { ChevronLeft, Swords, Shield, Gem, Zap, Plus, Sparkles, ChevronRight, Home } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import { useGothicSound } from '../necro/useGothicSound';
 import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData } from '../../types/game';
@@ -687,6 +687,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
   onOpenGear: (slotType: 'WEAPON' | 'ARMOR' | 'ACCESSORY' | 'RESIDUE', slotIndex: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const setCurrentTab = useGameStore(state => state.setCurrentTab);
   const conf = getConf(selKey, player, party);
   const color = isDemonMode ? '#CC2222' : conf.color;
   const accent = isDemonMode ? '#ff6666' : conf.accent;
@@ -756,7 +757,15 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
     >
       <div
         className="absolute inset-0 flex flex-col overflow-hidden"
-        style={{ background: '#03010B', fontFamily: "'Inter', sans-serif" }}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          background: '#03010B',
+          fontFamily: "'Inter', sans-serif",
+        }}
         data-demon={isDemonMode ? 'true' : 'false'}
       >
       {/* Canvas bg */}
@@ -768,8 +777,28 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
       {isDemonMode && <div style={{ position: 'absolute', inset: 0, zIndex: 50, background: `radial-gradient(circle at center, ${color}40, transparent 70%)`, pointerEvents: 'none' }} />}
 
       {/* ── HEADER ── */}
-      <div className="shrink-0 relative z-10" style={{ padding: '8px 14px 6px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', animation: 'fadeSlideUp 0.4s ease-out', gap: 8 }}>
+      <div className="shrink-0 relative z-10" style={{ padding: 'max(12px, env(safe-area-inset-top, 12px)) 14px 6px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', animation: 'fadeSlideUp 0.4s ease-out', gap: 8 }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <button
+            type="button"
+            onClick={() => { haptic(5); setCurrentTab('HOME'); }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              alignSelf: 'flex-start',
+              padding: '0 0 6px',
+              color: '#8b7da8',
+              fontFamily: "'Inter', sans-serif",
+              fontSize: 11,
+              background: 'transparent',
+              border: 0,
+              cursor: 'pointer',
+            }}
+          >
+            <Home size={13} />
+            <span>ホーム</span>
+          </button>
           <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color, letterSpacing: '0.18em', textTransform: 'uppercase', textShadow: `0 0 10px ${color}` }}>統合詳細ハブ</div>
           <div style={{ fontFamily: "'Cinzel', serif", fontSize: 16, fontWeight: 700, color: '#f5f0ff', letterSpacing: '0.04em', lineHeight: 1.1, textShadow: `0 0 20px ${color}60`, whiteSpace: 'nowrap' }}>
             {info.nameEn}
@@ -1002,11 +1031,26 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
       transition={{ type: 'spring', stiffness: 295, damping: 33 }}
       style={{ position: 'absolute', inset: 0 }}
     >
-    <div className="absolute inset-0 flex flex-col overflow-hidden"
-      style={{ background: 'linear-gradient(180deg, #050115 0%, #07021A 100%)' }}
+    <div
+      className="absolute inset-0 flex flex-col overflow-hidden"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        background: 'linear-gradient(180deg, #050115 0%, #07021A 100%)',
+      }}
     >
       {/* Navbar */}
-      <div className="shrink-0 flex items-center gap-2 px-3 relative z-10" style={{ height: 44, borderBottom: `1px solid ${color}18` }}>
+      <div
+        className="shrink-0 flex items-center gap-2 px-3 relative z-10"
+        style={{
+          minHeight: 44,
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          borderBottom: `1px solid ${color}18`,
+        }}
+      >
         <motion.button onClick={() => { haptic(5); sound.playTap(); onBack(); }} whileTap={{ scale: 0.9 }}
           className="flex items-center gap-1 px-2.5 py-2 rounded-xl"
           style={{ background: 'rgba(10,5,26,0.88)', border: `1px solid ${color}36`, color: `${color}DD`, minHeight: 36 }}>
@@ -1171,18 +1215,31 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
   soulShards: SoulShardData[]; demonGauge: number; isDemonMode: boolean;
   onSelect: (k: MemberKey) => void; onToggleDemon: () => void; onBack: () => void;
 }) {
+  const setCurrentTab = useGameStore(state => state.setCurrentTab);
   const totalCost = (party as (MonsterData | null)[]).reduce((s, m) => s + (m?.cost ?? 0), 0);
   const maxCost = 12;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.2 }}
       className="absolute inset-0 flex flex-col"
-      style={{ background: 'linear-gradient(180deg, #03010B 0%, #060220 60%, #020110 100%)' }}>
+      style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #03010B 0%, #060220 60%, #020110 100%)' }}>
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(188,24,242,0.11) 0%, transparent 68%)' }} />
 
       {/* Header */}
-      <div className="shrink-0 px-4 pt-3.5 pb-3 relative z-10">
+      <div
+        className="shrink-0 px-4 pb-3 relative z-10"
+        style={{ paddingTop: 'max(12px, env(safe-area-inset-top, 12px))' }}
+      >
         <div className="flex items-center justify-between">
           <div>
+            <button
+              type="button"
+              onClick={() => { haptic(5); setCurrentTab('HOME'); }}
+              className="flex items-center gap-1 pb-1"
+              style={{ color: '#8b7da8', fontFamily: 'monospace', fontSize: 10, background: 'transparent', border: 0 }}
+            >
+              <Home size={12} />
+              <span>ホーム</span>
+            </button>
             <div className="text-[22px] font-black tracking-[0.3em] leading-tight" style={{ color: '#E090FF', fontFamily: "'Cinzel Decorative', serif", textShadow: '0 0 18px rgba(196,28,250,0.58)' }}>LEGION</div>
             <div className="text-[11px] font-bold tracking-[0.2em] mt-0.5" style={{ color: 'rgba(182,165,232,0.52)', fontFamily: 'monospace' }}>ARMY FORMATION</div>
           </div>
@@ -1252,7 +1309,7 @@ export default function LegionHub() {
   const switchMember = useCallback((k: MemberKey) => { sound.playTap(); setSelKey(k); }, [sound]);
 
   return (
-    <div className="absolute inset-0 overflow-hidden" data-demon={isDemonMode ? 'true' : 'false'}>
+    <div className="relative w-full h-full overflow-hidden" data-demon={isDemonMode ? 'true' : 'false'}>
       <AnimatePresence mode="sync">
         {view === 'LIST' && (
           <LegionListView key="list"

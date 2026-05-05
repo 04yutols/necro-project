@@ -33,17 +33,76 @@
   --noise-opacity: 0.04;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html {
-  overflow-x: hidden;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   max-width: 100vw;
+  background: #050505;
+  overscroll-behavior: none;
 }
 
 body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
   color: var(--foreground);
   background: var(--background);
   font-family: 'Space Grotesk', 'Noto Sans JP', system-ui, sans-serif;
   overflow: hidden;
   position: relative;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+button,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  letter-spacing: 0;
+}
+
+#__next,
+main {
+  min-width: 0;
+}
+
+.ios-app-shell {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #050505;
+  position: relative;
+}
+
+.safe-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* ── Global Noise Grain Overlay ── */
@@ -55,7 +114,7 @@ body::before {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   opacity: var(--noise-opacity);
   pointer-events: none;
-  z-index: 9999;
+  z-index: 0;
   mix-blend-mode: overlay;
 }
 
@@ -66,7 +125,12 @@ body::after {
   inset: 0;
   background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,10,0.4) 100%);
   pointer-events: none;
-  z-index: 9998;
+  z-index: 0;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* ═══════════════════════════════════════════
@@ -350,6 +414,43 @@ body::after {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes resultSlideIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rankPop {
+  0% { opacity: 0; transform: scale(0.62); }
+  70% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes expGrow {
+  from { width: 0; }
+  to { width: var(--exp-width, 72%); }
+}
+
+@keyframes purplePillar {
+  0% { opacity: 0; transform: translateX(-50%) scaleY(0.1); filter: blur(18px); }
+  30% { opacity: 1; transform: translateX(-50%) scaleY(1.08); filter: blur(2px); }
+  100% { opacity: 0.82; transform: translateX(-50%) scaleY(1); filter: blur(0); }
+}
+
+@keyframes pillarHalo {
+  0%, 100% { opacity: 0.34; transform: translate(-50%, -50%) scale(0.9); }
+  50% { opacity: 0.76; transform: translate(-50%, -50%) scale(1.08); }
+}
+
+@keyframes lootOrbPulse {
+  0%, 100% { box-shadow: 0 0 28px rgba(188, 0, 251, 0.5), inset 0 0 26px rgba(255,255,255,0.08); filter: brightness(1); }
+  50% { box-shadow: 0 0 60px rgba(188, 0, 251, 0.86), inset 0 0 36px rgba(255,255,255,0.14); filter: brightness(1.12); }
+}
+
+@keyframes cardReveal {
+  from { opacity: 0; transform: translateY(18px) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* ═══════════════════════════════════════════

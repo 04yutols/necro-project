@@ -819,7 +819,13 @@ export default function NecroLab() {
       {/* ── Header ── */}
       <div
         className="relative z-10 shrink-0 flex items-center justify-between px-4 py-3 gothic-panel"
-        style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none' }}
+        style={{
+          borderRadius: 0,
+          borderLeft: 'none',
+          borderRight: 'none',
+          borderTop: 'none',
+          paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
+        }}
       >
         <button
           onClick={() => { sound.playTap(); setCurrentTab('EQUIP'); }}

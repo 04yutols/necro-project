@@ -9,7 +9,7 @@ import { MasterDataService } from './MasterDataService';
 export class JobService {
   private masterData: MasterDataService;
 
-  constructor(private prisma: PrismaClient) {
+  constructor(private prisma?: PrismaClient) {
     this.masterData = MasterDataService.getInstance();
   }
 
@@ -17,7 +17,19 @@ export class JobService {
    * 転職処理。
    * トランザクションを用いて UserJob の生成・更新を行う。
    */
-  public async changeJob(characterId: string, nextJobId: string): Promise<void> {
+  public async changeJob(characterOrId: string | CharacterData, nextJobId: string): Promise<void> {
+    if (typeof characterOrId !== 'string') {
+      const character = characterOrId;
+      const existing = character.jobs.find(job => job.jobId === nextJobId);
+      if (!existing) {
+        character.jobs.push({ jobId: nextJobId, level: 1, exp: 0 });
+      }
+      character.currentJobId = nextJobId;
+      return;
+    }
+
+    if (!this.prisma) throw new Error('PrismaClient is required for persistent job changes.');
+    const characterId = characterOrId;
     await this.prisma.$transaction(async (tx: any) => {
       // マスターデータの存在確認
       const jobData = this.masterData.getJob(nextJobId);
@@ -57,7 +69,26 @@ export class JobService {
    * 職業レベルアップ時の処理とパッシブ蓄積。
    * Character モデルの passiveXxxBonus を確実に更新。
    */
-  public async onLevelUp(characterId: string, jobId: string, newLevel: number): Promise<void> {
+  public async onLevelUp(characterOrId: string | CharacterData, jobId: string, newLevel: number): Promise<void> {
+    if (typeof characterOrId !== 'string') {
+      const character = characterOrId;
+      const job = character.jobs.find(j => j.jobId === jobId);
+      if (job) job.level = newLevel;
+      else character.jobs.push({ jobId, level: newLevel, exp: 0 });
+
+      const jobData = this.masterData.getJob(jobId);
+      const bonus = jobData?.levelBonuses?.[newLevel.toString()];
+      if (bonus) {
+        character.passives.passiveAtkBonus += bonus.passiveAtkBonus || 0;
+        character.passives.passiveDefBonus += bonus.passiveDefBonus || 0;
+        character.passives.passiveMatkBonus += bonus.passiveMatkBonus || 0;
+        character.passives.passiveMdefBonus += bonus.passiveMdefBonus || 0;
+      }
+      return;
+    }
+
+    if (!this.prisma) throw new Error('PrismaClient is required for persistent job level updates.');
+    const characterId = characterOrId;
     await this.prisma.$transaction(async (tx: any) => {
       // UserJob のレベルを更新
       await tx.userJob.update({
