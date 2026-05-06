@@ -6,7 +6,34 @@
     "power": 1.5,
     "type": "PHYSICAL",
     "element": "NONE",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "none_slash",
     "description": "力任せに武器を振り下ろす。敵単体に物理大ダメージ。"
+  },
+  "skill_warrior_thunder_slash": {
+    "id": "skill_warrior_thunder_slash",
+    "name": "雷鳴斬り",
+    "mpCost": 6,
+    "power": 1.45,
+    "type": "PHYSICAL",
+    "element": "THUNDER",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "thunder_slash",
+    "description": "雷を帯びた斬撃を走らせる。敵単体に雷属性物理ダメージ。"
+  },
+  "skill_warrior_wind_slash": {
+    "id": "skill_warrior_wind_slash",
+    "name": "鎌鼬",
+    "mpCost": 4,
+    "power": 1.25,
+    "type": "PHYSICAL",
+    "element": "WIND",
+    "attackType": "SLASH",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "wind_slash",
+    "description": "風の刃を横薙ぎに放つ。敵全体に風属性物理ダメージ。"
   },
   "skill_warrior_2": {
     "id": "skill_warrior_2",
@@ -15,6 +42,9 @@
     "power": 1.4,
     "type": "PHYSICAL",
     "element": "LIGHT",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "light_slash",
     "description": "光の力で武器を振るう。アンデッドや悪魔に有効な光属性物理ダメージ。"
   },
   "skill_mage_1": {
@@ -24,7 +54,58 @@
     "power": 1.8,
     "type": "MAGICAL",
     "element": "FIRE",
-    "description": "炎の弾を放つ。敵単体に魔法ダメージ。"
+    "attackType": "MAGIC",
+    "targetType": "SINGLE",
+    "effectKey": "fire_magic",
+    "description": "炎の弾を放つ。敵単体に炎属性魔法ダメージ。"
+  },
+  "skill_mage_water": {
+    "id": "skill_mage_water",
+    "name": "アクアスパイク",
+    "mpCost": 11,
+    "power": 1.55,
+    "type": "MAGICAL",
+    "element": "WATER",
+    "attackType": "PROJECTILE",
+    "targetType": "SINGLE",
+    "effectKey": "water_projectile",
+    "description": "圧縮した水槍を撃ち出す。敵単体に水属性魔法ダメージ。"
+  },
+  "skill_mage_thunder": {
+    "id": "skill_mage_thunder",
+    "name": "ライトニング",
+    "mpCost": 14,
+    "power": 1.75,
+    "type": "MAGICAL",
+    "element": "THUNDER",
+    "attackType": "MAGIC",
+    "targetType": "SINGLE",
+    "effectKey": "thunder_magic",
+    "description": "上空から雷撃を落とす。敵単体に雷属性魔法ダメージ。"
+  },
+  "skill_mage_earth": {
+    "id": "skill_mage_earth",
+    "name": "ロックブレイク",
+    "mpCost": 10,
+    "power": 1.35,
+    "type": "MAGICAL",
+    "element": "EARTH",
+    "attackType": "STRIKE",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "earth_strike",
+    "description": "地面を砕き岩片を突き上げる。敵全体に土属性魔法ダメージ。"
+  },
+  "skill_mage_wind": {
+    "id": "skill_mage_wind",
+    "name": "エアロバースト",
+    "mpCost": 10,
+    "power": 1.4,
+    "type": "MAGICAL",
+    "element": "WIND",
+    "attackType": "MAGIC",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "wind_magic",
+    "description": "圧縮した風を爆ぜさせる。敵全体に風属性魔法ダメージ。"
   },
   "skill_darkpriest_1": {
     "id": "skill_darkpriest_1",
@@ -33,6 +114,9 @@
     "power": 1.2,
     "type": "MAGICAL",
     "element": "DARK",
+    "attackType": "MAGIC",
+    "targetType": "SINGLE",
+    "effectKey": "dark_magic",
     "description": "対象の生命力を吸収する。敵単体に魔法ダメージを与え、自身のHPを回復。"
   },
   "skill_rogue_1": {
@@ -42,6 +126,9 @@
     "power": 1.3,
     "type": "PHYSICAL",
     "element": "NONE",
+    "attackType": "STRIKE",
+    "targetType": "SINGLE",
+    "effectKey": "none_strike",
     "description": "敵の急所を狙う。会心が発生しやすい物理ダメージ。"
   },
   "skill_necromancer_1": {
@@ -51,6 +138,9 @@
     "power": 2.0,
     "type": "MAGICAL",
     "element": "DARK",
+    "attackType": "PROJECTILE",
+    "targetType": "SINGLE",
+    "effectKey": "dark_projectile",
     "description": "凝縮した魂の弾丸を放つ。敵単体に強力な魔法ダメージ。"
   }
 }

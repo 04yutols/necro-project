@@ -7,7 +7,8 @@ import {
   PassiveBonuses,
   ClassCategory,
   Resistances,
-  ElementType
+  ElementType,
+  SkillAttackType
 } from '../types/game';
 import { MasterDataService } from '../services/MasterDataService';
 
@@ -116,10 +117,12 @@ export class BattleEngine {
     let type: 'PHYSICAL' | 'MAGICAL' = 'PHYSICAL';
     let actionName = '攻撃';
     let element: ElementType = 'NONE';
+    let attackType: SkillAttackType = 'SLASH';
 
     if (actionType === 'PHYSICAL_ATTACK') {
       cost = 0;
       type = 'PHYSICAL';
+      attackType = 'SLASH';
     } else if (actionType === 'MAGIC_SKILL' && skillId) {
       const skillData = this.masterData.getSkill(skillId);
       if (skillData) {
@@ -128,11 +131,13 @@ export class BattleEngine {
         type = skillData.type === 'MAGICAL' ? 'MAGICAL' : 'PHYSICAL'; // HEAL等は簡略化のため省略
         actionName = skillData.name;
         if (skillData.element) element = skillData.element;
+        attackType = skillData.attackType ?? (type === 'MAGICAL' ? 'MAGIC' : 'SLASH');
       }
     } else {
       // フォールバック (旧ロジック互換)
       cost = this.getMPCost(player.category, actionType);
       type = player.category === 'MAGICAL' ? 'MAGICAL' : 'PHYSICAL';
+      attackType = type === 'MAGICAL' ? 'MAGIC' : 'SLASH';
     }
 
     // MPコスト判定 (GDD-003)
@@ -150,7 +155,7 @@ export class BattleEngine {
     if (isWeakness) desc += ` 弱点を突いた！`;
     else if (isResisted) desc += ` 効果はいまひとつのようだ。`;
 
-    this.addLog(actionType, player.name, target.name, desc, damage, isCritical, isWeakness, isResisted);
+    this.addLog(actionType, player.name, target.name, desc, damage, isCritical, isWeakness, isResisted, element, attackType);
   }
 
   private processMonsterActions(target: MonsterData): void {
@@ -168,7 +173,7 @@ export class BattleEngine {
 
       // 敵への追撃はとりあえず無属性とする
       const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(monsterStats, target.stats, target.resistances, 'PHYSICAL', 1.0, 'NONE');
-      this.addLog('MONSTER_ATTACK', monster.name, target.name, `${monster.name}の追撃！`, damage, isCritical, isWeakness, isResisted);
+      this.addLog('MONSTER_ATTACK', monster.name, target.name, `${monster.name}の追撃！`, damage, isCritical, isWeakness, isResisted, 'NONE', 'STRIKE');
     });
   }
 
@@ -218,7 +223,18 @@ export class BattleEngine {
     }
   }
 
-  private addLog(action: string, actorName: string, targetName: string, description: string, damage?: number, isCritical?: boolean, isWeakness?: boolean, isResisted?: boolean): void {
+  private addLog(
+    action: string,
+    actorName: string,
+    targetName: string,
+    description: string,
+    damage?: number,
+    isCritical?: boolean,
+    isWeakness?: boolean,
+    isResisted?: boolean,
+    element: ElementType = 'NONE',
+    attackType: SkillAttackType = 'SLASH'
+  ): void {
     this.logs.push({
       turn: this.state.turn,
       wave: this.state.wave,
@@ -229,6 +245,8 @@ export class BattleEngine {
       isCritical,
       isWeakness,
       isResisted,
+      element,
+      attackType,
       playerMP: this.getMutableStats(this.state.player).mp,
       playerHP: this.getMutableStats(this.state.player).hp,
       description

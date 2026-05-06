@@ -1,12 +1,36 @@
 'use client';
 
 import { useRef, useState, useEffect, useCallback } from 'react';
+import type { CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/useGameStore';
 import ResultScreen from './ResultScreen';
+import type { ElementType, SkillAttackType } from '../../types/game';
 
 interface BattleCanvasProps {
   onEnd: () => void;
+}
+
+type BattleSkill = {
+  id: number;
+  name: string;
+  mp?: number;
+  cost?: string;
+  power: number;
+  icon: string;
+  aoe: boolean;
+  element: ElementType;
+  attackType: SkillAttackType;
+  demonOnly?: boolean;
+};
+
+interface ActiveSkillEffect {
+  id: number;
+  name: string;
+  element: ElementType;
+  attackType: SkillAttackType;
+  targetIds: number[];
+  aoe: boolean;
 }
 
 // ── ENEMY STATE ───────────────────────────────────────────────────────────────
@@ -60,21 +84,43 @@ const BATTLE_WAVES = [
 }>;
 
 // ── SKILLS / ITEMS ─────────────────────────────────────────────────────────────
-const SKILLS = [
-  { id: 0, name: '骸骨波',   mp: 15, power: 180, icon: '💥', aoe: true  },
-  { id: 1, name: '死の抱擁', mp: 20, power: 250, icon: '💀', aoe: false },
-  { id: 2, name: '冥土送り', mp: 30, power: 320, icon: '🌀', aoe: false },
-  { id: 3, name: '怨霊召喚', mp: 25, power: 200, icon: '👻', aoe: true  },
+const SKILLS: BattleSkill[] = [
+  { id: 0, name: '火葬弾',     mp: 12, power: 260, icon: '🔥', aoe: false, element: 'FIRE',    attackType: 'MAGIC' },
+  { id: 1, name: '水葬渦',     mp: 14, power: 210, icon: '💧', aoe: true,  element: 'WATER',   attackType: 'MAGIC' },
+  { id: 2, name: '雷鳴斬り',   mp: 10, power: 300, icon: '⚡', aoe: false, element: 'THUNDER', attackType: 'SLASH' },
+  { id: 3, name: '岩崩し',     mp: 11, power: 230, icon: '◆',  aoe: true,  element: 'EARTH',   attackType: 'STRIKE' },
+  { id: 4, name: '鎌鼬',       mp: 8,  power: 190, icon: '✦',  aoe: true,  element: 'WIND',    attackType: 'SLASH' },
 ];
-const DEMON_SKILLS = [
-  { id: 10, name: '魔神爪',   cost: 'HP-50',  power: 420, icon: '⚡', aoe: false, demonOnly: true },
-  { id: 11, name: '黒焔爆発', cost: '全消費', power: 680, icon: '🔥', aoe: true,  demonOnly: true },
-  { id: 12, name: '魂喰い',   cost: 'HP-80',  power: 360, icon: '🌑', aoe: false, demonOnly: true },
+const DEMON_SKILLS: BattleSkill[] = [
+  { id: 10, name: '魔神爪',     cost: 'HP-50',  power: 420, icon: '⚡', aoe: false, element: 'THUNDER', attackType: 'SLASH', demonOnly: true },
+  { id: 11, name: '黒焔爆発',   cost: '全消費', power: 680, icon: '🔥', aoe: true,  element: 'FIRE',    attackType: 'MAGIC', demonOnly: true },
+  { id: 12, name: '魂喰い',     cost: 'HP-80',  power: 360, icon: '🌑', aoe: false, element: 'DARK',    attackType: 'PROJECTILE', demonOnly: true },
 ];
 const ITEMS = [
   { id: 0, name: '冥界薬',   desc: 'HP+200 回復', count: 3, icon: '🧪', effect: 'heal',   value: 200 },
   { id: 1, name: 'エーテル', desc: 'MP全回復',     count: 2, icon: '💎', effect: 'mpHeal', value: 100 },
 ];
+
+const ELEMENT_VFX: Record<ElementType, { label: string; color: string; glow: string; soft: string; aura: string }> = {
+  FIRE:    { label: '炎', color: '#ff5a1f', glow: 'rgba(255,90,31,0.72)',  soft: 'rgba(255,90,31,0.18)',  aura: 'radial-gradient(circle, rgba(255,90,31,0.38), transparent 64%)' },
+  WATER:   { label: '水', color: '#38bdf8', glow: 'rgba(56,189,248,0.72)', soft: 'rgba(56,189,248,0.18)', aura: 'radial-gradient(circle, rgba(56,189,248,0.32), transparent 64%)' },
+  THUNDER: { label: '雷', color: '#fde047', glow: 'rgba(253,224,71,0.78)', soft: 'rgba(253,224,71,0.18)', aura: 'radial-gradient(circle, rgba(253,224,71,0.36), transparent 64%)' },
+  EARTH:   { label: '土', color: '#a16207', glow: 'rgba(161,98,7,0.70)',   soft: 'rgba(161,98,7,0.20)',   aura: 'radial-gradient(circle, rgba(161,98,7,0.34), transparent 64%)' },
+  WIND:    { label: '風', color: '#7dd3fc', glow: 'rgba(125,211,252,0.70)', soft: 'rgba(125,211,252,0.16)', aura: 'radial-gradient(circle, rgba(125,211,252,0.28), transparent 64%)' },
+  ICE:     { label: '氷', color: '#93c5fd', glow: 'rgba(147,197,253,0.72)', soft: 'rgba(147,197,253,0.18)', aura: 'radial-gradient(circle, rgba(147,197,253,0.30), transparent 64%)' },
+  LIGHT:   { label: '光', color: '#fef3c7', glow: 'rgba(254,243,199,0.72)', soft: 'rgba(254,243,199,0.16)', aura: 'radial-gradient(circle, rgba(254,243,199,0.28), transparent 64%)' },
+  DARK:    { label: '闇', color: '#a855f7', glow: 'rgba(168,85,247,0.72)',  soft: 'rgba(168,85,247,0.20)',  aura: 'radial-gradient(circle, rgba(168,85,247,0.36), transparent 64%)' },
+  NONE:    { label: '無', color: '#f0ebff', glow: 'rgba(240,235,255,0.54)', soft: 'rgba(240,235,255,0.10)', aura: 'radial-gradient(circle, rgba(240,235,255,0.20), transparent 64%)' },
+};
+
+const ATTACK_TYPE_LABEL: Record<SkillAttackType, string> = {
+  SLASH: '斬撃',
+  STRIKE: '衝撃',
+  PROJECTILE: '射出',
+  MAGIC: '魔法',
+  SUMMON: '召喚',
+  HEAL: '回復',
+};
 
 // ── SVG ENEMIES ───────────────────────────────────────────────────────────────
 function WraithKnightSVG({ hit, targeted, color }: { hit?: boolean; targeted: boolean; color: string }) {
@@ -244,6 +290,235 @@ function DamageFloat({ floats }: { floats: FloatDmg[] }) {
           {f.crit && <span style={{ fontSize: 12, marginLeft: 4, color: '#fbbf24' }}>CRIT</span>}
         </div>
       ))}
+    </div>
+  );
+}
+
+function getEffectAnchor(targetIds: number[], aoe: boolean) {
+  if (aoe || targetIds.length > 1) return { x: 50, y: 34 };
+  const positions: Record<number, { x: number; y: number }> = {
+    0: { x: 23, y: 34 },
+    1: { x: 50, y: 32 },
+    2: { x: 73, y: 34 },
+  };
+  return positions[targetIds[0]] ?? { x: 50, y: 34 };
+}
+
+function SkillEffectOverlay({ effect }: { effect: ActiveSkillEffect | null }) {
+  if (!effect) return null;
+
+  const style = ELEMENT_VFX[effect.element];
+  const anchor = getEffectAnchor(effect.targetIds, effect.aoe);
+  const isSlash = effect.attackType === 'SLASH';
+  const isStrike = effect.attackType === 'STRIKE';
+  const isProjectile = effect.attackType === 'PROJECTILE';
+  const isMagic = effect.attackType === 'MAGIC' || isProjectile;
+
+  return (
+    <div
+      key={effect.id}
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 32, overflow: 'hidden' }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: `radial-gradient(ellipse at ${anchor.x}% ${anchor.y}%, ${style.soft}, transparent 42%)`,
+          animation: 'skillScreenBloom 0.82s ease-out both',
+        }}
+      />
+
+      <div
+        style={{
+          position: 'absolute',
+          left: `${anchor.x}%`,
+          top: `${anchor.y}%`,
+          width: effect.aoe ? 280 : 190,
+          height: effect.aoe ? 280 : 190,
+          transform: 'translate(-50%, -50%)',
+        }}
+      >
+        {isMagic && (
+          <>
+            <div
+              style={{
+                position: 'absolute',
+                inset: effect.aoe ? 18 : 34,
+                borderRadius: '50%',
+                border: `1px solid ${style.color}80`,
+                boxShadow: `0 0 28px ${style.glow}, inset 0 0 22px ${style.soft}`,
+                background: style.aura,
+                animation: 'skillMagicCircle 0.88s ease-out both',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                width: effect.aoe ? 190 : 132,
+                height: effect.aoe ? 190 : 132,
+                transform: 'translate(-50%, -50%)',
+                borderRadius: '50%',
+                border: `1px dashed ${style.color}90`,
+                animation: 'skillRuneSpin 1.1s linear both',
+              }}
+            />
+          </>
+        )}
+
+        {isSlash && Array.from({ length: effect.aoe ? 5 : 3 }, (_, i) => (
+          <div
+            key={`slash-${i}`}
+            style={{
+              position: 'absolute',
+              left: `${-10 + i * 9}%`,
+              top: `${38 + i * 4}%`,
+              width: effect.aoe ? 290 : 220,
+              height: effect.element === 'THUNDER' ? 5 : 4,
+              borderRadius: 999,
+              background: `linear-gradient(90deg, transparent, ${style.color}, #fff, ${style.color}, transparent)`,
+              boxShadow: `0 0 16px ${style.glow}`,
+              transform: `rotate(${-24 + i * 9}deg)`,
+              '--slash-rotate': `${-24 + i * 9}deg`,
+              animation: `skillElementSlash ${0.64 + i * 0.05}s cubic-bezier(0.18,0.9,0.26,1) ${i * 0.045}s both`,
+            } as CSSProperties & { '--slash-rotate': string }}
+          />
+        ))}
+
+        {effect.element === 'THUNDER' && (
+          <svg viewBox="0 0 200 200" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: `drop-shadow(0 0 10px ${style.color})`, animation: 'thunderVfxFlicker 0.78s steps(3,end) both' }}>
+            <polyline points="105,0 78,56 112,50 74,126 126,75 102,84 138,10" fill="none" stroke={style.color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points="72,28 52,78 82,70 48,146 104,88" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.86" />
+          </svg>
+        )}
+
+        {effect.element === 'FIRE' && Array.from({ length: 10 }, (_, i) => (
+          <div
+            key={`fire-${i}`}
+            style={{
+              position: 'absolute',
+              left: `${22 + ((i * 17) % 58)}%`,
+              top: `${24 + ((i * 23) % 56)}%`,
+              width: 10 + (i % 4) * 5,
+              height: 28 + (i % 3) * 9,
+              borderRadius: '50% 50% 46% 46%',
+              background: `linear-gradient(180deg, #fff7ad, ${style.color}, transparent)`,
+              boxShadow: `0 0 20px ${style.glow}`,
+              transformOrigin: 'center bottom',
+              animation: `fireVfxRise ${0.75 + i * 0.03}s ease-out ${i * 0.035}s both`,
+            }}
+          />
+        ))}
+
+        {effect.element === 'WATER' && Array.from({ length: 3 }, (_, i) => (
+          <div
+            key={`water-${i}`}
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: 84 + i * 46,
+              height: 84 + i * 46,
+              borderRadius: '50%',
+              border: `2px solid ${style.color}80`,
+              transform: 'translate(-50%, -50%)',
+              animation: `waterVfxRing 0.86s ease-out ${i * 0.11}s both`,
+            }}
+          />
+        ))}
+
+        {effect.element === 'EARTH' && Array.from({ length: effect.aoe ? 12 : 7 }, (_, i) => (
+          <div
+            key={`earth-${i}`}
+            style={{
+              position: 'absolute',
+              left: `${15 + ((i * 13) % 72)}%`,
+              bottom: `${12 + (i % 4) * 5}%`,
+              width: 12 + (i % 3) * 7,
+              height: 24 + (i % 4) * 9,
+              clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)',
+              background: `linear-gradient(180deg, #f7d59a, ${style.color})`,
+              boxShadow: `0 0 14px ${style.glow}`,
+              animation: `earthVfxSpike ${0.68 + i * 0.02}s cubic-bezier(0.2,1.2,0.28,1) ${i * 0.03}s both`,
+            }}
+          />
+        ))}
+
+        {effect.element === 'WIND' && Array.from({ length: effect.aoe ? 5 : 3 }, (_, i) => (
+          <div
+            key={`wind-${i}`}
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: 106 + i * 36,
+              height: 58 + i * 18,
+              borderTop: `3px solid ${style.color}`,
+              borderRadius: '50%',
+              transform: 'translate(-50%, -50%) rotate(-22deg)',
+              boxShadow: `0 -8px 18px ${style.soft}`,
+              animation: `windVfxArc ${0.72 + i * 0.05}s ease-out ${i * 0.05}s both`,
+            }}
+          />
+        ))}
+
+        {isStrike && (
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '56%',
+              width: effect.aoe ? 220 : 150,
+              height: effect.aoe ? 92 : 70,
+              transform: 'translate(-50%, -50%)',
+              borderRadius: '50%',
+              border: `2px solid ${style.color}90`,
+              boxShadow: `0 0 24px ${style.glow}`,
+              animation: 'strikeShockwave 0.72s ease-out both',
+            }}
+          />
+        )}
+
+        {Array.from({ length: effect.aoe ? 24 : 14 }, (_, i) => (
+          <div
+            key={`particle-${i}`}
+            style={{
+              position: 'absolute',
+              left: `${48 + (((i * 19) % 38) - 19)}%`,
+              top: `${48 + (((i * 31) % 38) - 19)}%`,
+              width: 3 + (i % 3),
+              height: 3 + (i % 3),
+              borderRadius: '50%',
+              background: i % 4 === 0 ? '#fff' : style.color,
+              boxShadow: `0 0 10px ${style.glow}`,
+              animation: `skillVfxParticle ${0.72 + (i % 5) * 0.08}s ease-out ${i * 0.018}s both`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div
+        style={{
+          position: 'absolute',
+          left: `${anchor.x}%`,
+          top: `calc(${anchor.y}% - 108px)`,
+          transform: 'translateX(-50%)',
+          padding: '4px 11px',
+          borderRadius: 999,
+          background: `${style.soft}`,
+          border: `1px solid ${style.color}80`,
+          color: style.color,
+          fontFamily: "'Cinzel', serif",
+          fontSize: 10,
+          fontWeight: 900,
+          letterSpacing: '0.12em',
+          textShadow: `0 0 10px ${style.glow}`,
+          animation: 'skillNameFlash 0.86s ease-out both',
+        }}
+      >
+        {style.label} × {ATTACK_TYPE_LABEL[effect.attackType]}
+      </div>
     </div>
   );
 }
@@ -580,25 +855,38 @@ function CommandButton({ label, sublabel, icon, enabled, color, onClick, glow, d
 
 // ── SKILL BUTTON ──────────────────────────────────────────────────────────────
 function SkillButton({ skill, mp, onClick, demonized }: {
-  skill: typeof SKILLS[0] | typeof DEMON_SKILLS[0]; mp: number;
-  onClick: (skill: typeof SKILLS[0] | typeof DEMON_SKILLS[0]) => void;
+  skill: BattleSkill; mp: number;
+  onClick: (skill: BattleSkill) => void;
   demonized: boolean;
 }) {
-  const canUse = demonized ? true : (('mp' in skill) ? mp >= skill.mp : true);
+  const elementStyle = ELEMENT_VFX[skill.element];
+  const canUse = demonized ? true : (skill.mp != null ? mp >= skill.mp : true);
   return (
     <div onClick={() => canUse && onClick(skill)} style={{
       padding: '10px 8px',
-      background: canUse ? 'linear-gradient(135deg,rgba(138,43,226,0.2),rgba(138,43,226,0.08))' : 'rgba(255,255,255,0.03)',
-      border: `1px solid ${canUse ? '#8A2BE260' : 'rgba(255,255,255,0.06)'}`,
+      background: canUse ? `linear-gradient(135deg,${elementStyle.soft},rgba(8,4,18,0.88))` : 'rgba(255,255,255,0.03)',
+      border: `1px solid ${canUse ? elementStyle.color + '70' : 'rgba(255,255,255,0.06)'}`,
       borderRadius: 12, cursor: canUse ? 'pointer' : 'default',
       opacity: canUse ? 1 : 0.35,
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-      animation: 'skillReveal 0.25s ease-out both', flex: 1,
+      animation: 'skillReveal 0.25s ease-out both',
+      flex: '0 0 82px',
+      minWidth: 82,
+      boxShadow: canUse ? `0 0 12px ${elementStyle.soft}` : 'none',
     }}>
-      <div style={{ fontSize: 22 }}>{skill.icon}</div>
+      <div style={{ fontSize: 22, filter: canUse ? `drop-shadow(0 0 8px ${elementStyle.color})` : 'none' }}>{skill.icon}</div>
       <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700, color: canUse ? '#f0ebff' : '#4a3a5a', textAlign: 'center', lineHeight: 1.2 }}>{skill.name}</div>
       <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: canUse ? '#60a5fa' : '#2a1a3a', display: 'flex', alignItems: 'center', gap: 2 }}>
-        {demonized ? <span style={{ color: '#ef4444' }}>{'cost' in skill ? skill.cost : ''}</span> : `MP ${'mp' in skill ? skill.mp : 0}`}
+        {demonized ? <span style={{ color: '#ef4444' }}>{skill.cost ?? ''}</span> : `MP ${skill.mp ?? 0}`}
+      </div>
+      <div style={{
+        fontFamily: 'monospace',
+        fontSize: 7,
+        color: elementStyle.color,
+        letterSpacing: '0.04em',
+        whiteSpace: 'nowrap',
+      }}>
+        {elementStyle.label}/{ATTACK_TYPE_LABEL[skill.attackType]}
       </div>
     </div>
   );
@@ -664,6 +952,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const [floats, setFloats] = useState<FloatDmg[]>([]);
   const [flashColor, setFlashColor] = useState<string | null>(null);
   const [screenShake, setScreenShake] = useState(false);
+  const [skillEffect, setSkillEffect] = useState<ActiveSkillEffect | null>(null);
 
   const [showResult, setShowResult] = useState(false);
   const [battleResult, setBattleResult] = useState<{
@@ -681,6 +970,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const enemiesRef = useRef<EnemyState[]>(BATTLE_WAVES[0].enemies.map(e => ({ ...e })));
   const waveResolvingRef = useRef(false);
   const battleTotalsRef = useRef({ exp: 0, gold: 0, waves: 0 });
+  const effectIdRef = useRef(0);
 
   // Build battle party from store
   const battleParty: BattlePartyMember[] = [
@@ -821,6 +1111,21 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), 1200);
   }
 
+  function triggerSkillEffect(skill: Pick<BattleSkill, 'name' | 'element' | 'attackType' | 'aoe'>, targetIds: number[]) {
+    const id = ++effectIdRef.current;
+    setSkillEffect({
+      id,
+      name: skill.name,
+      element: skill.element,
+      attackType: skill.attackType,
+      aoe: skill.aoe,
+      targetIds,
+    });
+    window.setTimeout(() => {
+      setSkillEffect(prev => prev?.id === id ? null : prev);
+    }, skill.element === 'THUNDER' || skill.attackType === 'SLASH' ? 920 : 1080);
+  }
+
   function doEnemyHit(eid: number) {
     setEnemies(prev => prev.map(e => e.id === eid ? { ...e, hit: true } : e));
     setTimeout(() => setEnemies(prev => prev.map(e => ({ ...e, hit: false }))), 500);
@@ -900,6 +1205,12 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     const tid = getTargetId();
     const enemy = enemies.find(e => e.id === tid);
     const dmg = demonized ? Math.round(1500 * (0.9 + Math.random() * 0.2)) : Math.round(1500 * (0.75 + Math.random() * 0.25));
+    triggerSkillEffect({
+      name: demonized ? '殲滅' : '攻撃',
+      element: demonized ? 'FIRE' : 'NONE',
+      attackType: 'SLASH',
+      aoe: false,
+    }, [tid]);
     addLog(demonized ? `殲滅！ ${enemy?.name}に圧倒的攻撃！` : `骸骨騎士の攻撃！ ${enemy?.name}を狙う！`);
     setTimeout(() => {
       damageEnemy(tid, dmg, { color: demonized ? '#dc2626' : '#f0ebff' });
@@ -915,14 +1226,16 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   function handleSkill(skill: typeof SKILLS[0] | typeof DEMON_SKILLS[0]) {
     setPhase('animating');
     const targets = (skill as any).aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
-    addLog(`${demonized ? '魔神技' : '術'}発動！ ${skill.name}！`);
-    setFlashColor('rgba(138,43,226,0.3)');
+    const vfxStyle = ELEMENT_VFX[skill.element];
+    triggerSkillEffect(skill, targets);
+    addLog(`${demonized ? '魔神技' : '術'}発動！ ${skill.name}！ ${vfxStyle.label}属性/${ATTACK_TYPE_LABEL[skill.attackType]}`);
+    setFlashColor(vfxStyle.soft);
     setTimeout(() => setFlashColor(null), 400);
     setTimeout(() => {
       targets.forEach((tid, i) => {
         setTimeout(() => {
           const dmg = Math.round(skill.power * (0.85 + Math.random() * 0.3));
-          damageEnemy(tid, dmg, { color: '#c084fc' });
+          damageEnemy(tid, dmg, { color: vfxStyle.color });
           addLog(`${enemies.find(e => e.id === tid)?.name}に ${dmg}ダメージ！`);
         }, i * 200);
       });
@@ -1030,6 +1343,9 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
       {/* Damage floats overlay */}
       <DamageFloat floats={floats}/>
 
+      {/* Element × attack-type skill VFX overlay */}
+      <SkillEffectOverlay effect={skillEffect}/>
+
       {/* ── BATTLE LOG ── */}
       <BattleLog lines={log}/>
 
@@ -1060,7 +1376,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
                 fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer',
               }}>← 戻る</div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="safe-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
               {mainSkills.map(skill => (
                 <SkillButton key={skill.id} skill={skill} mp={currentMp}
                   onClick={(sk) => { setPhase('playerTurn'); handleSkill(sk); }}

@@ -11,6 +11,8 @@
     },
     "skills": [
       { "level": 1, "skillId": "skill_warrior_1" },
+      { "level": 4, "skillId": "skill_warrior_thunder_slash" },
+      { "level": 8, "skillId": "skill_warrior_wind_slash" },
       { "level": 1, "skillId": "skill_warrior_2" }
     ]
   },
@@ -25,7 +27,11 @@
       "30": { "passiveMatkBonus": 15, "passiveMdefBonus": 5 }
     },
     "skills": [
-      { "level": 1, "skillId": "skill_mage_1" }
+      { "level": 1, "skillId": "skill_mage_1" },
+      { "level": 3, "skillId": "skill_mage_water" },
+      { "level": 5, "skillId": "skill_mage_thunder" },
+      { "level": 7, "skillId": "skill_mage_earth" },
+      { "level": 9, "skillId": "skill_mage_wind" }
     ]
   },
   "dark_priest": {

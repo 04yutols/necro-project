@@ -258,9 +258,10 @@ LUCKステータスがドロップ率に直接寄与する。
 アクティブスキルの発動とデータフロー、ダメージ計算の拡張仕様。
 
 ### スキルのデータ構造と解決フロー
-- **構造**: `MasterDataService` 内に `skills.json` を持ち、各スキルは `SkillData` インターフェース (`id`, `name`, `mpCost`, `power`, `type`等) で定義される。
+- **構造**: `MasterDataService` 内に `skills.json` を持ち、各スキルは `SkillData` インターフェース (`id`, `name`, `mpCost`, `power`, `type`, `element`, `attackType`, `targetType`, `effectKey`等) で定義される。
 - **習得**: `jobs.json` の各職業オブジェクトに `skills: [{ level: number, skillId: string }]` 配列を定義。プレイヤーの職業レベルがこの `level` 以上であれば、使用可能なスキルとしてフロントエンドに展開される。
 - **UI連携**: `BattleCanvas.tsx` において、`player.stats.mp` と `skill.mpCost` をリアルタイムで比較。MPが不足しているスキルは `disabled` および `grayscale` スタイルが適用され、選択できなくなる。
+- **VFX連携**: `effectKey` が存在する場合はスキル固有演出、未登録の場合は `element x attackType` の共通演出を使う。詳細は `docs/battle-skill-effects.md` を参照する。
 
 ### ダメージ計算式の拡張
 `BattleEngine.simulateAction` メソッドを拡張し、スキルの `power` (威力倍率) を計算式に組み込む。
@@ -268,11 +269,11 @@ LUCKステータスがドロップ率に直接寄与する。
 これにより、魔法職の高コスト・高威力スキル（例: 倍率2.0）や物理職の低コスト・低威力スキル（例: 倍率1.5）などの特性をダイナミックに表現可能となる。
 
 ### 属性相性と耐性計算アルゴリズム (Elemental Resistance Algorithm)
-スキルの `element` 属性（FIRE, ICE 等）と、防御側の `resistances` (例: `{ "FIRE": -20 }`) を用いてダメージを補正する。
+スキルの `element` 属性（FIRE, WATER, THUNDER, EARTH, WIND, LIGHT, DARK, ICE 等）と、防御側の `resistances` (例: `{ "FIRE": -20 }`) を用いてダメージを補正する。
 - **耐性補正 (Resistance Multiplier)**: `1 - (resistance / 100)`。
   - 耐性 `-50%` (弱点) の場合: `1 - (-50 / 100) = 1.5` 倍のダメージ。
   - 耐性 `50%` の場合: `1 - (50 / 100) = 0.5` 倍のダメージ。
-- **UIとの連携**: 計算時に `isWeakness` (弱点) および `isResisted` (耐性) フラグを算出し、`BattleLog` に乗せてフロントエンドへ渡す。PixiJSはこれらのフラグを解釈し、「WEAK!」や「RESIST」の文字アニメーションと専用カラーのテキストで戦闘の爽快感・戦略性をフィードバックする。
+- **UIとの連携**: 計算時に `isWeakness` (弱点) および `isResisted` (耐性) フラグを算出し、`BattleLog` に乗せてフロントエンドへ渡す。`BattleLog` には `element` と `attackType` も保持し、PixiJS/React側はこれらを解釈して「WEAK!」や「RESIST」の文字演出、属性別VFX、攻撃種別別VFXを再生する。
 
 ---
 

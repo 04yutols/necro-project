@@ -3,7 +3,8 @@
 
 export type ClassCategory = 'PHYSICAL' | 'MAGICAL';
 export type Tribe = 'UNDEAD' | 'DEMON' | 'BEAST' | 'HUMANOID';
-export type ElementType = 'FIRE' | 'ICE' | 'THUNDER' | 'LIGHT' | 'DARK' | 'NONE';
+export type ElementType = 'FIRE' | 'WATER' | 'THUNDER' | 'EARTH' | 'WIND' | 'ICE' | 'LIGHT' | 'DARK' | 'NONE';
+export type SkillAttackType = 'SLASH' | 'STRIKE' | 'PROJECTILE' | 'MAGIC' | 'SUMMON' | 'HEAL';
 
 export interface BaseStats {
   hp: number;
@@ -40,6 +41,9 @@ export interface SkillData {
   power: number;
   type: 'PHYSICAL' | 'MAGICAL' | 'HEAL';
   element?: ElementType;
+  attackType?: SkillAttackType;
+  targetType?: 'SINGLE' | 'ALL_ENEMIES' | 'SELF' | 'ALLY';
+  effectKey?: string;
   description: string;
 }
 
@@ -170,6 +174,8 @@ export interface BattleLog {
   isCritical?: boolean;
   isWeakness?: boolean;
   isResisted?: boolean;
+  element?: ElementType;
+  attackType?: SkillAttackType;
   playerMP: number;
   playerHP: number;
   description: string;
