@@ -453,6 +453,67 @@ body > * {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes rareRuneSpin {
+  from { transform: rotate(0deg); opacity: 0.58; }
+  to { transform: rotate(360deg); opacity: 0.58; }
+}
+
+@keyframes premiumOrbPulse {
+  0%, 100% { box-shadow: 0 0 30px rgba(251,191,36,0.42), inset 0 0 26px rgba(255,255,255,0.08); filter: brightness(1); }
+  50% { box-shadow: 0 0 68px rgba(251,191,36,0.82), 0 0 30px rgba(188,0,251,0.44), inset 0 0 38px rgba(255,255,255,0.14); filter: brightness(1.16); }
+}
+
+@keyframes premiumDropBurst {
+  0% { opacity: 1; transform: scale(1); filter: brightness(1); }
+  62% { opacity: 1; transform: scale(1.08); filter: brightness(2.2); }
+  100% { opacity: 0; transform: scale(1.26); filter: brightness(2.8); }
+}
+
+@keyframes premiumLightSweep {
+  from { transform: translateX(-120%); opacity: 0; }
+  20% { opacity: 1; }
+  to { transform: translateX(120%); opacity: 0; }
+}
+
+@keyframes normalDropSettle {
+  0% { opacity: 1; transform: scale(1); filter: brightness(1); }
+  100% { opacity: 0; transform: scale(1.08); filter: brightness(1.6); }
+}
+
+@keyframes cursedOrbPulse {
+  0%, 100% { box-shadow: 0 0 34px rgba(188,0,251,0.56), 0 0 18px rgba(127,29,29,0.42), inset 0 0 32px rgba(0,0,0,0.66); filter: brightness(0.95) saturate(1.1); }
+  50% { box-shadow: 0 0 76px rgba(188,0,251,0.9), 0 0 46px rgba(127,29,29,0.62), inset 0 0 48px rgba(0,0,0,0.82); filter: brightness(1.22) saturate(1.45); }
+}
+
+@keyframes cursedPillarBreath {
+  0%, 100% { opacity: 0.42; filter: blur(1px); }
+  50% { opacity: 0.82; filter: blur(0); }
+}
+
+@keyframes cursedDropShatter {
+  0% { opacity: 1; transform: scale(1) rotate(0deg); filter: brightness(0.9) saturate(1); }
+  35% { opacity: 1; transform: scale(0.94) rotate(-1.5deg); filter: brightness(0.55) saturate(1.7); }
+  68% { opacity: 1; transform: scale(1.12) rotate(2deg); filter: brightness(2.4) saturate(2); }
+  100% { opacity: 0; transform: scale(1.34) rotate(-3deg); filter: brightness(3.2) saturate(2.4); }
+}
+
+@keyframes cursedCardReveal {
+  0% { opacity: 0; transform: translateY(18px) scale(0.9); filter: brightness(0.65) saturate(1.4); }
+  55% { opacity: 1; transform: translateY(-4px) scale(1.04); filter: brightness(1.45) saturate(1.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1) saturate(1.2); }
+}
+
+@keyframes cursedMiasma {
+  0%, 100% { opacity: 0.36; filter: hue-rotate(0deg); }
+  50% { opacity: 0.72; filter: hue-rotate(-18deg); }
+}
+
+@keyframes vengeanceWisp {
+  0%, 100% { opacity: 0; transform: translateY(18px) scaleY(0.6); }
+  35% { opacity: 0.8; }
+  70% { opacity: 0.38; transform: translateY(-42px) scaleY(1.3); }
+}
+
 /* ═══════════════════════════════════════════
    UTILITY CLASSES
    ═══════════════════════════════════════════ */

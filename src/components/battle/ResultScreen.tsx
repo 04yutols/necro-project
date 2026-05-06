@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Package, Share2, Sparkles } from 'lucide-react';
+import { ChevronRight, Eye, Package, Share2, Skull, Sparkles } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
-import { ItemData } from '../../types/game';
+import type { ItemData } from '../../types/game';
 import AppraisalCertificate from './AppraisalCertificate';
 
-type ResultDrop = Partial<ItemData> & {
+type DropRarity = 'COMMON' | 'RARE' | 'SR' | 'SSR' | 'LR' | 'UR' | 'UNIQUE' | 'HIDDEN_UNIQUE';
+
+type ResultDrop = Omit<Partial<ItemData>, 'rarity'> & {
   name: string;
+  rarity?: DropRarity;
   icon?: string;
   passive?: string;
   flavor?: string;
@@ -28,28 +31,403 @@ interface ResultScreenProps {
   onFinish: () => void;
 }
 
-const DEFAULT_HIDDEN_UNIQUE: ResultDrop = {
+const DEFAULT_DROPS: ResultDrop[] = [
+  { id: 'bone-chip', name: '骨の欠片', rarity: 'COMMON', icon: '▣', isUnique: false, quantity: 3 },
+  { id: 'rusted-bone-sword', name: '朽ちた骨剣', type: 'WEAPON', rarity: 'COMMON', icon: '⚔', stats: { atk: 12 }, isUnique: false },
+  { id: 'spirit-silver-saber', name: '霊銀の斬骨刀', type: 'WEAPON', rarity: 'RARE', icon: '⚔', stats: { atk: 28, tec: 4 }, isUnique: false },
+];
+
+const DEFAULT_UNIQUE: ResultDrop = {
   id: 'hidden-unique-necro-edge',
   name: '冥王の黒刃',
   type: 'WEAPON',
-  rarity: 'HIDDEN_UNIQUE',
-  icon: '⚔',
+  rarity: 'UR',
+  icon: '☠',
   stats: { atk: 88, matk: 42, luck: 12, tec: 16 },
   isUnique: true,
   discovererName: 'Aldo',
   serialNo: 1,
   passive: '魔神化中、与えるダメージが上昇し、撃破時に魂ゲージを追加回復する。',
-  flavor: '紫の柱が沈黙したあと、刃だけが夜を覚えていた。',
+  flavor: '幾つもの魔物の怨念が刃の奥で重なり、持ち主の魂を試すように震えている。',
 };
 
-const rarityLabel: Record<string, string> = {
-  COMMON: 'COMMON',
-  UNIQUE: 'UNIQUE',
-  HIDDEN_UNIQUE: 'HIDDEN UNIQUE',
+const RARITY_STYLE: Record<DropRarity, {
+  label: string;
+  name: string;
+  color: string;
+  glow: string;
+  background: string;
+  tier: 'normal' | 'rare' | 'premium' | 'cursed';
+}> = {
+  COMMON: {
+    label: 'N',
+    name: 'NORMAL',
+    color: '#A5A9B4',
+    glow: 'rgba(165,169,180,0.24)',
+    background: 'linear-gradient(160deg, rgba(165,169,180,0.14), rgba(7,5,14,0.94))',
+    tier: 'normal',
+  },
+  RARE: {
+    label: 'R',
+    name: 'RARE',
+    color: '#55AAFF',
+    glow: 'rgba(85,170,255,0.36)',
+    background: 'linear-gradient(160deg, rgba(85,170,255,0.20), rgba(7,5,18,0.94))',
+    tier: 'rare',
+  },
+  SR: {
+    label: 'SR',
+    name: 'SUPER RARE',
+    color: '#C084FC',
+    glow: 'rgba(192,132,252,0.40)',
+    background: 'linear-gradient(160deg, rgba(192,132,252,0.24), rgba(10,5,24,0.94))',
+    tier: 'rare',
+  },
+  SSR: {
+    label: 'SSR',
+    name: 'SPECIAL SUPER RARE',
+    color: '#FBBF24',
+    glow: 'rgba(251,191,36,0.50)',
+    background: 'linear-gradient(160deg, rgba(251,191,36,0.26), rgba(30,14,4,0.96))',
+    tier: 'premium',
+  },
+  LR: {
+    label: 'LR',
+    name: 'LEGEND RARE',
+    color: '#FDE68A',
+    glow: 'rgba(253,230,138,0.58)',
+    background: 'linear-gradient(160deg, rgba(253,230,138,0.28), rgba(50,28,6,0.96))',
+    tier: 'premium',
+  },
+  UNIQUE: {
+    label: 'LR',
+    name: 'UNIQUE',
+    color: '#FBBF24',
+    glow: 'rgba(251,191,36,0.52)',
+    background: 'linear-gradient(160deg, rgba(251,191,36,0.28), rgba(24,10,4,0.96))',
+    tier: 'premium',
+  },
+  HIDDEN_UNIQUE: {
+    label: 'UR',
+    name: 'UNIQUE RARE',
+    color: '#BC00FB',
+    glow: 'rgba(188,0,251,0.72)',
+    background: 'linear-gradient(160deg, rgba(139,0,255,0.30), rgba(80,0,18,0.34), rgba(3,1,8,0.98))',
+    tier: 'cursed',
+  },
+  UR: {
+    label: 'UR',
+    name: 'UNIQUE RARE',
+    color: '#BC00FB',
+    glow: 'rgba(188,0,251,0.72)',
+    background: 'linear-gradient(160deg, rgba(139,0,255,0.30), rgba(80,0,18,0.34), rgba(3,1,8,0.98))',
+    tier: 'cursed',
+  },
 };
+
+const STAT_LABEL: Record<string, string> = {
+  hp: 'HP',
+  mp: 'MP',
+  atk: 'ATK',
+  def: 'DEF',
+  matk: 'MATK',
+  mdef: 'MDEF',
+  agi: 'AGI',
+  luck: 'LUCK',
+  tec: 'TEC',
+};
+
+function normalizeRarity(rarity?: string): DropRarity {
+  if (!rarity) return 'COMMON';
+  const upper = rarity.toUpperCase();
+  if (upper === 'HIDDEN_UNIQUE') return 'HIDDEN_UNIQUE';
+  if (upper in RARITY_STYLE) return upper as DropRarity;
+  return 'COMMON';
+}
+
+function isCursedDrop(drop: ResultDrop) {
+  const rarity = normalizeRarity(drop.rarity);
+  return rarity === 'UR' || rarity === 'HIDDEN_UNIQUE';
+}
+
+function isPremiumDrop(drop: ResultDrop) {
+  const tier = RARITY_STYLE[normalizeRarity(drop.rarity)].tier;
+  return tier === 'premium' || tier === 'cursed';
+}
 
 function haptic(pattern: VibratePattern) {
   if (typeof navigator !== 'undefined') navigator.vibrate?.(pattern);
+}
+
+function normalizeDrop(drop: ResultDrop | string, index: number): ResultDrop {
+  if (typeof drop === 'string') {
+    return {
+      id: `drop-${index}`,
+      name: drop,
+      rarity: 'COMMON',
+      icon: '▣',
+      isUnique: false,
+      quantity: 1,
+    };
+  }
+
+  return {
+    id: drop.id ?? `drop-${index}`,
+    icon: drop.icon ?? (drop.type === 'WEAPON' ? '⚔' : '▣'),
+    rarity: normalizeRarity(drop.rarity),
+    isUnique: false,
+    quantity: 1,
+    ...drop,
+  };
+}
+
+function RarityBadge({ drop, compact = false }: { drop: ResultDrop; compact?: boolean }) {
+  const rarity = normalizeRarity(drop.rarity);
+  const style = RARITY_STYLE[rarity];
+
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: compact ? 28 : 42,
+        height: compact ? 18 : 24,
+        padding: compact ? '0 6px' : '0 10px',
+        borderRadius: 5,
+        background: `${style.color}18`,
+        border: `1px solid ${style.color}70`,
+        color: style.color,
+        fontFamily: "'Cinzel', serif",
+        fontSize: compact ? 8 : 10,
+        fontWeight: 900,
+        letterSpacing: '0.08em',
+        boxShadow: style.tier === 'normal' ? 'none' : `0 0 12px ${style.glow}`,
+      }}
+    >
+      {style.label}
+    </span>
+  );
+}
+
+function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 'sealed' | 'revealing' | 'revealed'; onReveal: () => void }) {
+  const rarity = normalizeRarity(drop.rarity);
+  const style = RARITY_STYLE[rarity];
+  const cursed = style.tier === 'cursed';
+  const premium = style.tier === 'premium';
+  const revealed = stage === 'revealed';
+
+  return (
+    <div className="relative flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden">
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: cursed
+            ? 'radial-gradient(ellipse at 50% 42%, rgba(188,0,251,0.24), rgba(70,0,18,0.28) 38%, transparent 70%)'
+            : premium
+              ? `radial-gradient(ellipse at 50% 42%, ${style.glow}, transparent 62%)`
+              : `radial-gradient(ellipse at 50% 48%, ${style.glow}, transparent 58%)`,
+        }}
+      />
+
+      {premium && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            width: 'min(92vw, 360px)',
+            height: 'min(92vw, 360px)',
+            borderRadius: '50%',
+            border: `1px solid ${style.color}55`,
+            animation: 'rareRuneSpin 9s linear infinite',
+            boxShadow: `0 0 32px ${style.glow}`,
+          }}
+        />
+      )}
+
+      {cursed && (
+        <>
+          <div
+            className="absolute top-[-14%] bottom-[-14%] left-1/2 pointer-events-none"
+            style={{
+              width: 'min(26vw, 104px)',
+              transform: 'translateX(-50%)',
+              background: 'linear-gradient(90deg, transparent, rgba(72,0,24,0.64), rgba(188,0,251,0.62), rgba(15,0,8,0.84), transparent)',
+              boxShadow: '0 0 46px rgba(188,0,251,0.56), 0 0 100px rgba(127,29,29,0.38)',
+              animation: 'cursedPillarBreath 2.4s ease-in-out infinite',
+            }}
+          />
+          {Array.from({ length: 16 }, (_, i) => (
+            <div
+              key={i}
+              className="absolute pointer-events-none"
+              style={{
+                left: `${8 + ((i * 23) % 82)}%`,
+                bottom: `${8 + ((i * 31) % 62)}%`,
+                width: 2 + (i % 3),
+                height: 18 + (i % 4) * 8,
+                borderRadius: 99,
+                background: i % 2 === 0 ? 'rgba(188,0,251,0.58)' : 'rgba(127,29,29,0.58)',
+                filter: 'blur(0.5px)',
+                animation: `vengeanceWisp ${2.2 + (i % 5) * 0.28}s ease-in-out infinite`,
+                animationDelay: `${i * 0.13}s`,
+              }}
+            />
+          ))}
+        </>
+      )}
+
+      {!revealed ? (
+        <button
+          type="button"
+          onClick={stage === 'sealed' ? onReveal : undefined}
+          className="relative flex flex-col items-center justify-center"
+          style={{
+            width: cursed ? 184 : premium ? 174 : 150,
+            height: cursed ? 184 : premium ? 174 : 150,
+            borderRadius: '50%',
+            border: `2px solid ${style.color}88`,
+            background: cursed
+              ? 'radial-gradient(circle, rgba(188,0,251,0.76) 0%, rgba(60,0,26,0.86) 38%, rgba(2,1,8,0.98) 72%)'
+              : premium
+                ? `radial-gradient(circle, rgba(255,255,255,0.88) 0%, ${style.glow} 24%, rgba(10,5,18,0.96) 74%)`
+                : `radial-gradient(circle, rgba(255,255,255,0.20) 0%, ${style.glow} 44%, rgba(8,5,16,0.96) 76%)`,
+            color: style.color,
+            boxShadow: cursed
+              ? '0 0 48px rgba(188,0,251,0.72), inset 0 0 34px rgba(0,0,0,0.62)'
+              : premium
+                ? `0 0 42px ${style.glow}, inset 0 0 28px rgba(255,255,255,0.08)`
+                : `0 0 20px ${style.glow}, inset 0 0 18px rgba(255,255,255,0.04)`,
+            animation: stage === 'revealing'
+              ? (cursed ? 'cursedDropShatter 0.95s ease-out both' : premium ? 'premiumDropBurst 0.82s ease-out both' : 'normalDropSettle 0.5s ease-out both')
+              : (cursed ? 'cursedOrbPulse 1.5s ease-in-out infinite' : premium ? 'premiumOrbPulse 1.8s ease-in-out infinite' : 'lootOrbPulse 2.4s ease-in-out infinite'),
+          }}
+        >
+          {cursed ? <Skull size={40} /> : premium ? <Sparkles size={38} /> : <Package size={32} />}
+          <span
+            style={{
+              marginTop: 12,
+              fontFamily: "'Cinzel', serif",
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: '0.16em',
+              color: '#F0EAFF',
+            }}
+          >
+            {stage === 'revealing' ? 'APPRAISING' : 'TAP TO APPRAISE'}
+          </span>
+          {cursed && (
+            <span style={{ marginTop: 6, fontSize: 10, color: '#fca5a5', fontWeight: 700 }}>
+              怨念反応
+            </span>
+          )}
+        </button>
+      ) : (
+        <div
+          className="relative"
+          style={{
+            width: 'min(330px, 100%)',
+            borderRadius: 18,
+            overflow: 'hidden',
+            border: `1.5px solid ${style.color}AA`,
+            background: style.background,
+            boxShadow: cursed
+              ? '0 0 42px rgba(188,0,251,0.50), 0 0 86px rgba(127,29,29,0.30), inset 0 0 34px rgba(0,0,0,0.62)'
+              : premium
+                ? `0 0 40px ${style.glow}, inset 0 0 30px rgba(0,0,0,0.42)`
+                : `0 0 18px ${style.glow}, inset 0 0 20px rgba(0,0,0,0.44)`,
+            animation: cursed ? 'cursedCardReveal 0.78s cubic-bezier(0.2,1,0.28,1) both' : 'cardReveal 0.58s cubic-bezier(0.34,1.3,0.64,1) both',
+          }}
+        >
+          <div
+            className="absolute top-0 left-0 right-0 h-[3px] pointer-events-none"
+            style={{ background: cursed ? 'linear-gradient(90deg, #2b000d, #BC00FB, #7f1d1d, #BC00FB, #2b000d)' : `linear-gradient(90deg, transparent, ${style.color}, transparent)` }}
+          />
+          {isPremiumDrop(drop) && (
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'linear-gradient(110deg, transparent 15%, rgba(255,255,255,0.18) 34%, transparent 54%)',
+                animation: 'premiumLightSweep 1.35s ease-out 0.25s both',
+              }}
+            />
+          )}
+          {cursed && (
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: 'radial-gradient(circle at 18% 28%, rgba(127,29,29,0.32), transparent 18%), radial-gradient(circle at 78% 18%, rgba(188,0,251,0.22), transparent 18%), linear-gradient(145deg, transparent, rgba(80,0,20,0.28))',
+                mixBlendMode: 'screen',
+                animation: 'cursedMiasma 2.2s ease-in-out infinite',
+              }}
+            />
+          )}
+
+          <div style={{ padding: '16px 18px 18px', textAlign: 'center', position: 'relative' }}>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <RarityBadge drop={drop} />
+              <span style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 900, color: style.color, letterSpacing: '0.14em' }}>
+                {style.name}
+              </span>
+            </div>
+            <div
+              style={{
+                width: 82,
+                height: 82,
+                margin: '0 auto 12px',
+                borderRadius: '50%',
+                border: `2px solid ${style.color}80`,
+                background: cursed
+                  ? 'radial-gradient(circle, rgba(188,0,251,0.24), rgba(127,29,29,0.22), transparent 72%)'
+                  : `radial-gradient(circle, ${style.glow}, transparent 72%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 38,
+                boxShadow: `0 0 24px ${style.glow}`,
+              }}
+            >
+              {drop.icon ?? '✦'}
+            </div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 21, fontWeight: 900, color: '#F0EAFF', lineHeight: 1.18 }}>
+              {drop.name}
+            </div>
+            <div style={{ marginTop: 5, color: '#8b7da8', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em' }}>
+              {drop.type === 'WEAPON' ? 'WEAPON' : drop.quantity && drop.quantity > 1 ? `MATERIAL × ${drop.quantity}` : 'DROP'}
+            </div>
+
+            {drop.stats && Object.keys(drop.stats).length > 0 && (
+              <div style={{ marginTop: 13, display: 'grid', gap: 7 }}>
+                {Object.entries(drop.stats).slice(0, 5).map(([key, value]) => (
+                  <div key={key} className="flex items-center justify-between" style={{ fontSize: 12 }}>
+                    <span style={{ color: '#9ca3af', fontFamily: 'monospace' }}>{STAT_LABEL[key] ?? key.toUpperCase()}</span>
+                    <span style={{ color: style.color, fontFamily: "'Cinzel', serif", fontWeight: 900 }}>+{value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(drop.passive || drop.flavor || cursed) && (
+              <div
+                style={{
+                  marginTop: 13,
+                  padding: 10,
+                  borderRadius: 8,
+                  background: cursed ? 'rgba(30,0,12,0.42)' : 'rgba(0,0,0,0.25)',
+                  border: `1px solid ${style.color}28`,
+                  color: cursed ? '#f3d1ff' : '#a5a9b4',
+                  fontSize: 10,
+                  lineHeight: 1.6,
+                  textAlign: 'left',
+                }}
+              >
+                {drop.passive ?? drop.flavor ?? '魔物たちの怨念が凝固した異質な武装。装備者の魂に干渉し、力を貸す代償を求める。'}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ResultScreen({
@@ -65,37 +443,42 @@ export default function ResultScreen({
   onFinish,
 }: ResultScreenProps) {
   const [showContent, setShowContent] = useState(false);
-  const [phase, setPhase] = useState<'summary' | 'loot' | 'revealed'>('summary');
+  const [screen, setScreen] = useState<'summary' | 'appraisal'>('summary');
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [dropStage, setDropStage] = useState<'sealed' | 'revealing' | 'revealed'>('sealed');
+  const [revealedIds, setRevealedIds] = useState<string[]>([]);
   const [showCertificate, setShowCertificate] = useState(false);
   const { addExp } = useGameStore();
 
-  const particles = useMemo(() => Array.from({ length: 26 }, (_, i) => ({
-    left: 6 + ((i * 37) % 88),
-    top: 6 + ((i * 53) % 86),
-    size: 1.5 + (i % 4) * 0.7,
+  const particles = useMemo(() => Array.from({ length: 28 }, (_, i) => ({
+    left: 5 + ((i * 37) % 90),
+    top: 5 + ((i * 53) % 88),
+    size: 1.4 + (i % 4) * 0.7,
     delay: (i % 9) * 0.42,
     duration: 3.2 + (i % 5) * 0.55,
-    color: i % 4 === 0 ? '#8A2BE2' : i % 4 === 1 ? '#fbbf24' : i % 4 === 2 ? '#c084fc' : '#4a3a6a',
+    color: i % 5 === 0 ? '#8A2BE2' : i % 5 === 1 ? '#fbbf24' : i % 5 === 2 ? '#c084fc' : i % 5 === 3 ? '#7f1d1d' : '#4a3a6a',
   })), []);
 
   const normalizedDrops = useMemo<ResultDrop[]>(() => {
-    const drops = itemsGained.map((drop, index) => (
-      typeof drop === 'string'
-        ? { id: `drop-${index}`, name: drop, rarity: 'COMMON' as const, isUnique: false, quantity: 1 }
-        : drop
-    ));
-    return drops.length > 0 ? drops : [{ id: 'bone-chip', name: '骨の欠片', rarity: 'COMMON', isUnique: false, quantity: 2 }];
+    const drops = itemsGained.map((drop, index) => normalizeDrop(drop, index));
+    return drops.length > 0 ? drops : DEFAULT_DROPS;
   }, [itemsGained]);
 
-  const hiddenUnique = normalizedDrops.find(drop => drop.rarity === 'HIDDEN_UNIQUE');
-  const featuredDrop = hiddenUnique ?? normalizedDrops.find(drop => drop.rarity === 'UNIQUE') ?? DEFAULT_HIDDEN_UNIQUE;
-  const hasPurplePillar = isPurplePillar ?? Boolean(hiddenUnique);
+  const currentDrop = normalizedDrops[currentIndex] ?? normalizedDrops[0] ?? DEFAULT_UNIQUE;
+  const currentRarity = normalizeRarity(currentDrop.rarity);
+  const currentStyle = RARITY_STYLE[currentRarity];
+  const hasCursedDrop = (isPurplePillar ?? false) || normalizedDrops.some(isCursedDrop);
+  const rareSignalCount = normalizedDrops.filter(isPremiumDrop).length;
+  const revealedSet = useMemo(() => new Set(revealedIds), [revealedIds]);
+  const allRevealed = revealedIds.length >= normalizedDrops.length;
+
+  const certificateTarget = normalizedDrops.find(isCursedDrop) ?? currentDrop;
   const certificateItem = {
-    ...DEFAULT_HIDDEN_UNIQUE,
-    ...featuredDrop,
-    type: featuredDrop.type ?? 'WEAPON',
-    rarity: featuredDrop.rarity ?? 'HIDDEN_UNIQUE',
-    stats: featuredDrop.stats ?? DEFAULT_HIDDEN_UNIQUE.stats,
+    ...DEFAULT_UNIQUE,
+    ...certificateTarget,
+    type: certificateTarget.type ?? 'WEAPON',
+    rarity: 'HIDDEN_UNIQUE',
+    stats: certificateTarget.stats ?? DEFAULT_UNIQUE.stats,
     isUnique: true,
   } as ItemData;
 
@@ -110,23 +493,48 @@ export default function ResultScreen({
   const mins = String(Math.floor(clearTime / 60)).padStart(2, '0');
   const secs = String(clearTime % 60).padStart(2, '0');
 
-  const openLoot = () => {
-    haptic([18, 24, 35]);
-    setPhase('loot');
+  const goToAppraisal = () => {
+    haptic(hasCursedDrop ? [16, 24, 42] : [12, 18]);
+    setScreen('appraisal');
   };
 
-  const revealLoot = () => {
-    haptic([20, 30, 45]);
-    setPhase('revealed');
+  const revealCurrentDrop = () => {
+    if (dropStage !== 'sealed') return;
+    haptic(isCursedDrop(currentDrop) ? [18, 28, 45, 35, 70] : isPremiumDrop(currentDrop) ? [16, 26, 38] : [10, 16]);
+    setDropStage('revealing');
+
+    const revealDelay = isCursedDrop(currentDrop) ? 980 : isPremiumDrop(currentDrop) ? 780 : 460;
+    window.setTimeout(() => {
+      const id = String(currentDrop.id ?? currentDrop.name);
+      setRevealedIds(prev => prev.includes(id) ? prev : [...prev, id]);
+      setDropStage('revealed');
+    }, revealDelay);
+  };
+
+  const moveNext = () => {
+    if (currentIndex < normalizedDrops.length - 1) {
+      const nextIndex = currentIndex + 1;
+      const nextDrop = normalizedDrops[nextIndex];
+      const nextId = String(nextDrop.id ?? nextDrop.name);
+      setCurrentIndex(nextIndex);
+      setDropStage(revealedSet.has(nextId) ? 'revealed' : 'sealed');
+      haptic([8, 12]);
+      return;
+    }
+    onFinish();
   };
 
   return (
     <div
       className="w-full h-full relative overflow-hidden"
       style={{
-        background: hasPurplePillar
-          ? 'radial-gradient(ellipse at 50% 44%, rgba(138,43,226,0.22), #07020f 58%, #03010a 100%)'
-          : 'linear-gradient(180deg,#08041a 0%,#05020f 100%)',
+        background: screen === 'appraisal'
+          ? currentStyle.tier === 'cursed'
+            ? 'radial-gradient(ellipse at 50% 42%, rgba(70,0,28,0.38), #07020f 58%, #03010a 100%)'
+            : `radial-gradient(ellipse at 50% 42%, ${currentStyle.glow}, #07020f 56%, #03010a 100%)`
+          : hasCursedDrop
+            ? 'radial-gradient(ellipse at 50% 44%, rgba(138,43,226,0.18), #07020f 58%, #03010a 100%)'
+            : 'linear-gradient(180deg,#08041a 0%,#05020f 100%)',
         color: '#F0EAFF',
         fontFamily: "'Noto Sans JP', system-ui, sans-serif",
       }}
@@ -143,7 +551,7 @@ export default function ResultScreen({
               height: p.size,
               borderRadius: '50%',
               background: p.color,
-              opacity: 0.45,
+              opacity: 0.44,
               animation: `particleRise ${p.duration}s ease-out infinite`,
               animationDelay: `${p.delay}s`,
             }}
@@ -151,39 +559,13 @@ export default function ResultScreen({
         ))}
       </div>
 
-      {hasPurplePillar && (
-        <>
-          <div
-            className="absolute top-[-8%] bottom-[-8%] left-1/2 pointer-events-none"
-            style={{
-              width: 'min(28vw, 112px)',
-              background: 'linear-gradient(90deg, transparent, rgba(188,0,251,0.28), rgba(255,255,255,0.9), rgba(188,0,251,0.34), transparent)',
-              transformOrigin: 'center',
-              animation: 'purplePillar 1.2s cubic-bezier(0.2, 0.9, 0.2, 1) both',
-              boxShadow: '0 0 38px rgba(188,0,251,0.72), 0 0 120px rgba(138,43,226,0.48)',
-              zIndex: 1,
-            }}
-          />
-          <div
-            className="absolute left-1/2 top-[44%] pointer-events-none rounded-full"
-            style={{
-              width: 'min(78vw, 320px)',
-              height: 'min(78vw, 320px)',
-              background: 'radial-gradient(circle, rgba(188,0,251,0.28), rgba(138,43,226,0.08) 48%, transparent 68%)',
-              animation: 'pillarHalo 2.4s ease-in-out infinite',
-              zIndex: 1,
-            }}
-          />
-        </>
-      )}
-
       {!showContent ? (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className="text-[11px] animate-pulse tracking-[0.34em] uppercase" style={{ color: '#8A2BE2', fontFamily: 'monospace' }}>
             CALCULATING
           </div>
         </div>
-      ) : phase === 'summary' ? (
+      ) : screen === 'summary' ? (
         <div
           className="relative z-10 h-full flex flex-col"
           style={{ padding: 'max(18px, env(safe-area-inset-top, 18px)) 16px max(18px, env(safe-area-inset-bottom, 18px))' }}
@@ -192,40 +574,47 @@ export default function ResultScreen({
             <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: '#8A2BE2', letterSpacing: '0.25em', marginBottom: 5 }}>
               BATTLE COMPLETE
             </div>
-            <div style={{
-              fontFamily: "'Cinzel', serif",
-              fontSize: 30,
-              fontWeight: 900,
-              color: isVictory ? '#fbbf24' : '#ef4444',
-              letterSpacing: '0.06em',
-              textShadow: isVictory ? '0 0 26px rgba(251,191,36,0.65)' : '0 0 22px rgba(239,68,68,0.58)',
-            }}>
+            <div
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontSize: 30,
+                fontWeight: 900,
+                color: isVictory ? '#fbbf24' : '#ef4444',
+                letterSpacing: '0.06em',
+                textShadow: isVictory ? '0 0 26px rgba(251,191,36,0.65)' : '0 0 22px rgba(239,68,68,0.58)',
+              }}
+            >
               {isVictory ? 'VICTORY' : 'DEFEAT'}
             </div>
           </div>
 
           <div className="flex justify-center" style={{ padding: '16px 0 10px', animation: 'rankPop 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.18s both' }}>
-            <div style={{
-              width: 82,
-              height: 82,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(251,191,36,0.28), #130b02)',
-              border: '2.5px solid #fbbf24',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 26px rgba(251,191,36,0.55)',
-            }}>
+            <div
+              style={{
+                width: 82,
+                height: 82,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(251,191,36,0.28), #130b02)',
+                border: '2.5px solid #fbbf24',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 26px rgba(251,191,36,0.55)',
+              }}
+            >
               <span style={{ fontFamily: "'Cinzel', serif", fontSize: 42, fontWeight: 900, color: '#fbbf24' }}>S</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 overflow-hidden" style={{
-            borderRadius: 14,
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(255,255,255,0.04)',
-            animation: 'resultSlideIn 0.45s ease-out 0.12s both',
-          }}>
+          <div
+            className="grid grid-cols-3 overflow-hidden"
+            style={{
+              borderRadius: 14,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.04)',
+              animation: 'resultSlideIn 0.45s ease-out 0.12s both',
+            }}
+          >
             {[
               { label: 'クリアタイム', value: `${mins}:${secs}`, color: '#c084fc' },
               { label: 'WAVE', value: `${wavesCleared}/${totalWaves}`, color: '#f59e0b' },
@@ -238,55 +627,63 @@ export default function ResultScreen({
             ))}
           </div>
 
-          <div style={{
-            marginTop: 12,
-            padding: '12px 14px',
-            borderRadius: 12,
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            animation: 'resultSlideIn 0.45s ease-out 0.22s both',
-          }}>
+          <div
+            style={{
+              marginTop: 12,
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              animation: 'resultSlideIn 0.45s ease-out 0.22s both',
+            }}
+          >
             <div className="flex justify-between items-baseline mb-2">
               <span style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, color: '#8A2BE2', letterSpacing: '0.12em' }}>EXPERIENCE</span>
               <span style={{ fontFamily: "'Cinzel', serif", fontSize: 15, fontWeight: 700, color: '#34d399' }}>+{expGained.toLocaleString()}</span>
             </div>
             <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-              <div style={{
-                '--exp-width': '74%',
-                width: '74%',
-                height: '100%',
-                borderRadius: 4,
-                background: 'linear-gradient(90deg,#4a0e8a,#8A2BE2,#34d399)',
-                animation: 'expGrow 1s cubic-bezier(0.34,1.2,0.64,1) 0.35s both',
-                boxShadow: '0 0 10px rgba(52,211,153,0.55)',
-              } as CSSProperties} />
+              <div
+                style={{
+                  '--exp-width': '74%',
+                  width: '74%',
+                  height: '100%',
+                  borderRadius: 4,
+                  background: 'linear-gradient(90deg,#4a0e8a,#8A2BE2,#34d399)',
+                  animation: 'expGrow 1s cubic-bezier(0.34,1.2,0.64,1) 0.35s both',
+                  boxShadow: '0 0 10px rgba(52,211,153,0.55)',
+                } as CSSProperties}
+              />
             </div>
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto safe-scroll" style={{ marginTop: 12, animation: 'resultSlideIn 0.45s ease-out 0.32s both' }}>
-            <div style={{
-              padding: '12px 14px',
-              borderRadius: 12,
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}>
+            <div
+              style={{
+                padding: '12px 14px',
+                borderRadius: 12,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
               <div className="flex items-center gap-2 mb-3" style={{ color: '#fbbf24' }}>
                 <Package size={15} />
-                <span style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.12em' }}>REWARDS</span>
+                <span style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.12em' }}>BATTLE REWARDS</span>
               </div>
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span style={{ color: '#9ca3af', fontSize: 11 }}>ゴールド</span>
                   <span style={{ color: '#fbbf24', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>+{goldGained.toLocaleString()}G</span>
                 </div>
-                {normalizedDrops.map((drop) => (
-                  <div key={drop.id ?? drop.name} className="flex items-center justify-between" style={{ gap: 10 }}>
-                    <span style={{ color: drop.rarity === 'HIDDEN_UNIQUE' ? '#fde68a' : '#9ca3af', fontSize: 11 }}>{drop.name}</span>
-                    <span style={{ color: drop.rarity === 'HIDDEN_UNIQUE' ? '#fbbf24' : '#8A2BE2', fontFamily: 'monospace', fontSize: 10 }}>
-                      {rarityLabel[drop.rarity ?? 'COMMON'] ?? drop.rarity ?? 'DROP'}
-                    </span>
+                <div className="flex items-center justify-between">
+                  <span style={{ color: '#9ca3af', fontSize: 11 }}>未鑑定戦利品</span>
+                  <span style={{ color: '#8A2BE2', fontFamily: 'monospace', fontSize: 10 }}>{normalizedDrops.length} DROPS</span>
+                </div>
+                {rareSignalCount > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span style={{ color: '#fde68a', fontSize: 11 }}>高レア反応</span>
+                    <span style={{ color: '#fbbf24', fontFamily: 'monospace', fontSize: 10 }}>{rareSignalCount} SIGNALS</span>
                   </div>
-                ))}
+                )}
                 {monstersGained.map(monster => (
                   <div key={monster} className="flex items-center justify-between">
                     <span style={{ color: '#9ca3af', fontSize: 11 }}>{monster}</span>
@@ -296,23 +693,25 @@ export default function ResultScreen({
               </div>
             </div>
 
-            {hasPurplePillar && (
-              <div style={{
-                marginTop: 10,
-                padding: '13px 14px',
-                borderRadius: 14,
-                background: 'linear-gradient(135deg, rgba(138,43,226,0.22), rgba(251,191,36,0.08))',
-                border: '1px solid rgba(251,191,36,0.55)',
-                boxShadow: '0 0 28px rgba(188,0,251,0.28)',
-              }}>
+            {hasCursedDrop && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: '13px 14px',
+                  borderRadius: 14,
+                  background: 'linear-gradient(135deg, rgba(80,0,18,0.34), rgba(138,43,226,0.18), rgba(3,1,8,0.82))',
+                  border: '1px solid rgba(188,0,251,0.52)',
+                  boxShadow: '0 0 28px rgba(188,0,251,0.28), inset 0 0 22px rgba(0,0,0,0.34)',
+                }}
+              >
                 <div className="flex items-center gap-3">
-                  <Sparkles size={20} color="#fbbf24" />
+                  <Skull size={20} color="#BC00FB" />
                   <div className="flex-1">
-                    <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700, color: '#fbbf24', letterSpacing: '0.14em' }}>
-                      PURPLE PILLAR DETECTED
+                    <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700, color: '#BC00FB', letterSpacing: '0.14em' }}>
+                      PURPLE PILLAR RESONANCE
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#fde68a', marginTop: 2 }}>
-                      隠しユニーク反応あり
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#f3d1ff', marginTop: 2 }}>
+                      怨念を含む異質な戦利品反応
                     </div>
                   </div>
                 </div>
@@ -322,127 +721,85 @@ export default function ResultScreen({
 
           <button
             type="button"
-            onClick={hasPurplePillar ? openLoot : onFinish}
+            onClick={goToAppraisal}
             style={{
               marginTop: 12,
               width: '100%',
               minHeight: 54,
               borderRadius: 14,
-              border: `1.5px solid ${hasPurplePillar ? '#fbbf24' : 'rgba(138,43,226,0.65)'}`,
-              background: hasPurplePillar
-                ? 'linear-gradient(135deg, #7c2d12, #8A2BE2, #4c1d95)'
+              border: `1.5px solid ${hasCursedDrop ? '#BC00FB' : 'rgba(138,43,226,0.65)'}`,
+              background: hasCursedDrop
+                ? 'linear-gradient(135deg, #2b0010, #8A2BE2, #4c0519)'
                 : 'linear-gradient(135deg, rgba(138,43,226,0.34), rgba(88,28,135,0.24))',
               color: '#fff',
               fontFamily: "'Cinzel', serif",
               fontSize: 14,
               fontWeight: 700,
               letterSpacing: '0.08em',
-              boxShadow: hasPurplePillar ? '0 0 30px rgba(251,191,36,0.32)' : '0 0 20px rgba(138,43,226,0.25)',
+              boxShadow: hasCursedDrop ? '0 0 30px rgba(188,0,251,0.34)' : '0 0 20px rgba(138,43,226,0.25)',
             }}
           >
-            {hasPurplePillar ? '紫の柱を鑑定' : 'マップへ戻る'}
+            鑑定へ進む
           </button>
         </div>
       ) : (
         <div
-          className="relative z-10 h-full flex flex-col items-center"
-          style={{ padding: 'max(18px, env(safe-area-inset-top, 18px)) 18px max(18px, env(safe-area-inset-bottom, 18px))' }}
+          className="relative z-10 h-full flex flex-col"
+          style={{ padding: 'max(14px, env(safe-area-inset-top, 14px)) 14px max(14px, env(safe-area-inset-bottom, 14px))' }}
         >
-          <div style={{ textAlign: 'center', marginTop: 12 }}>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: '#8A2BE2', letterSpacing: '0.22em' }}>ITEM DROP</div>
-            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 19, fontWeight: 900, color: '#fde68a', marginTop: 6, textShadow: '0 0 16px rgba(251,191,36,0.55)' }}>
-              {featuredDrop.name}
+          <div className="shrink-0" style={{ textAlign: 'center', animation: 'resultSlideIn 0.32s ease-out both' }}>
+            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: currentStyle.color, letterSpacing: '0.24em' }}>
+              APPRAISAL
             </div>
-            <div style={{
-              display: 'inline-flex',
-              marginTop: 8,
-              padding: '3px 12px',
-              borderRadius: 4,
-              background: 'linear-gradient(90deg, #8A2BE2, #fbbf24, #8A2BE2)',
-              color: '#fff',
-              fontFamily: "'Cinzel', serif",
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: '0.16em',
-            }}>
-              {rarityLabel[featuredDrop.rarity ?? 'HIDDEN_UNIQUE']}
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 900, color: '#F0EAFF', marginTop: 5 }}>
+              戦利品鑑定
             </div>
           </div>
 
-          {phase === 'loot' ? (
-            <button
-              type="button"
-              onClick={revealLoot}
-              className="flex flex-col items-center justify-center"
-              style={{
-                marginTop: 'auto',
-                marginBottom: 'auto',
-                width: 178,
-                height: 178,
-                borderRadius: '50%',
-                border: '2px solid rgba(251,191,36,0.65)',
-                background: 'radial-gradient(circle, rgba(255,255,255,0.92) 0%, rgba(251,191,36,0.42) 18%, rgba(188,0,251,0.52) 48%, rgba(7,2,20,0.94) 72%)',
-                color: '#fff',
-                animation: 'lootOrbPulse 1.9s ease-in-out infinite',
-              }}
-            >
-              <Sparkles size={34} />
-              <span style={{ marginTop: 12, fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.16em' }}>
-                TAP TO OPEN
-              </span>
-            </button>
-          ) : (
-            <div style={{
-              marginTop: 'auto',
-              marginBottom: 'auto',
-              width: 'min(320px, 100%)',
-              borderRadius: 20,
-              overflow: 'hidden',
-              border: '1.5px solid rgba(251,191,36,0.72)',
-              background: 'linear-gradient(180deg, rgba(38,20,4,0.92), rgba(13,8,2,0.96))',
-              boxShadow: '0 0 40px rgba(251,191,36,0.3), 0 0 80px rgba(138,43,226,0.24)',
-              animation: 'cardReveal 0.65s cubic-bezier(0.34,1.3,0.64,1) both',
-            }}>
-              <div style={{ height: 3, background: 'linear-gradient(90deg, transparent, #fbbf24, #BC00FB, #fbbf24, transparent)' }} />
-              <div style={{ padding: '16px 18px 18px', textAlign: 'center' }}>
-                <div style={{
-                  width: 86,
-                  height: 86,
-                  margin: '0 auto 12px',
-                  borderRadius: '50%',
-                  border: '2px solid rgba(251,191,36,0.75)',
-                  background: 'radial-gradient(circle, rgba(251,191,36,0.22), rgba(138,43,226,0.18), transparent)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 38,
-                  boxShadow: '0 0 24px rgba(251,191,36,0.45)',
-                }}>
-                  {featuredDrop.icon ?? '✦'}
-                </div>
-                <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: '#fbbf24', letterSpacing: '0.2em' }}>
-                  HIDDEN UNIQUE
-                </div>
-                <div style={{ fontFamily: "'Cinzel', serif", fontSize: 21, fontWeight: 900, color: '#fde68a', lineHeight: 1.18, marginTop: 5 }}>
-                  {featuredDrop.name}
-                </div>
-                <div style={{ marginTop: 14, display: 'grid', gap: 7 }}>
-                  {Object.entries(featuredDrop.stats ?? {}).slice(0, 4).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between" style={{ fontSize: 12 }}>
-                      <span style={{ color: '#9ca3af', fontFamily: 'monospace' }}>{key.toUpperCase()}</span>
-                      <span style={{ color: '#fbbf24', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>+{value}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ marginTop: 13, padding: 10, borderRadius: 8, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(251,191,36,0.18)', color: '#a5a9b4', fontSize: 10, lineHeight: 1.6 }}>
-                  {featuredDrop.passive ?? DEFAULT_HIDDEN_UNIQUE.passive}
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="shrink-0 safe-scroll" style={{ marginTop: 10, overflowX: 'auto', display: 'flex', gap: 8, paddingBottom: 4 }}>
+            {normalizedDrops.map((drop, index) => {
+              const id = String(drop.id ?? drop.name);
+              const revealed = revealedSet.has(id);
+              const active = index === currentIndex;
+              const rs = RARITY_STYLE[normalizeRarity(drop.rarity)];
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    setCurrentIndex(index);
+                    setDropStage(revealed ? 'revealed' : 'sealed');
+                  }}
+                  style={{
+                    flexShrink: 0,
+                    minWidth: 92,
+                    height: 52,
+                    borderRadius: 10,
+                    padding: '7px 9px',
+                    border: `1px solid ${active ? rs.color + 'AA' : 'rgba(255,255,255,0.08)'}`,
+                    background: active ? `${rs.color}1C` : 'rgba(255,255,255,0.035)',
+                    boxShadow: active && rs.tier !== 'normal' ? `0 0 16px ${rs.glow}` : 'none',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <RarityBadge drop={drop} compact />
+                    <span style={{ color: revealed ? '#34d399' : '#6b5f7a', fontFamily: 'monospace', fontSize: 9 }}>
+                      {revealed ? 'OPEN' : '???'}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: 5, color: revealed ? '#F0EAFF' : '#6b5f7a', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {revealed ? drop.name : `未鑑定品 ${index + 1}`}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
 
-          {phase === 'revealed' && (
-            <div className="w-full" style={{ display: 'flex', gap: 10 }}>
+          <AppraisalField drop={currentDrop} stage={dropStage} onReveal={revealCurrentDrop} />
+
+          <div className="shrink-0" style={{ display: 'flex', gap: 9, marginTop: 10 }}>
+            {dropStage === 'revealed' && isCursedDrop(currentDrop) && (
               <button
                 type="button"
                 onClick={() => setShowCertificate(true)}
@@ -450,12 +807,12 @@ export default function ResultScreen({
                   flex: 1,
                   minHeight: 50,
                   borderRadius: 12,
-                  border: '1px solid rgba(251,191,36,0.55)',
-                  background: 'rgba(251,191,36,0.12)',
-                  color: '#fbbf24',
+                  border: '1px solid rgba(188,0,251,0.60)',
+                  background: 'rgba(80,0,28,0.28)',
+                  color: '#f3d1ff',
                   fontFamily: "'Cinzel', serif",
                   fontSize: 12,
-                  fontWeight: 700,
+                  fontWeight: 900,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -465,25 +822,45 @@ export default function ResultScreen({
                 <Share2 size={15} />
                 鑑定証
               </button>
-              <button
-                type="button"
-                onClick={onFinish}
-                style={{
-                  flex: 1.4,
-                  minHeight: 50,
-                  borderRadius: 12,
-                  border: '1px solid rgba(138,43,226,0.65)',
-                  background: 'linear-gradient(135deg, rgba(138,43,226,0.45), rgba(88,28,135,0.28))',
-                  color: '#fff',
-                  fontFamily: "'Cinzel', serif",
-                  fontSize: 13,
-                  fontWeight: 700,
-                }}
-              >
-                獲得して戻る
-              </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={dropStage === 'sealed' ? revealCurrentDrop : dropStage === 'revealed' ? moveNext : undefined}
+              disabled={dropStage === 'revealing'}
+              style={{
+                flex: dropStage === 'revealed' && isCursedDrop(currentDrop) ? 1.35 : 1,
+                minHeight: 50,
+                borderRadius: 12,
+                border: `1px solid ${currentStyle.color}88`,
+                background: currentStyle.tier === 'cursed'
+                  ? 'linear-gradient(135deg, rgba(80,0,28,0.72), rgba(139,0,255,0.52))'
+                  : `linear-gradient(135deg, ${currentStyle.color}38, rgba(12,5,28,0.82))`,
+                color: '#fff',
+                fontFamily: "'Cinzel', serif",
+                fontSize: 13,
+                fontWeight: 900,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 7,
+                opacity: dropStage === 'revealing' ? 0.65 : 1,
+              }}
+            >
+              {dropStage === 'sealed' && (
+                <>
+                  <Eye size={15} />
+                  鑑定する
+                </>
+              )}
+              {dropStage === 'revealing' && '鑑定中'}
+              {dropStage === 'revealed' && (
+                <>
+                  {allRevealed && currentIndex === normalizedDrops.length - 1 ? '獲得して戻る' : '次の戦利品'}
+                  <ChevronRight size={15} />
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
 
