@@ -62,23 +62,17 @@ flex item のデフォルト `min-width: auto` で、コンテンツが flex コ
 html { overflow-x: hidden; max-width: 100vw; }
 ```
 
-## このプロジェクトの既知の問題箇所
+## このプロジェクトの既知の状態
 
-**`src/components/legion/LegionHub.tsx` — UnitDetailView:**
-- `motion.div` に `initial={{ y: '100%' }} animate={{ y: 0 }}` と `className="...overflow-hidden"` が同居している
-- 右側スロット列が iPhone 13 Pro で常にはみ出る根本原因
-- 修正: animation wrapper と overflow container を分離
-- スロット幅: `width: 108` → `width: 112` (サンプル値)
-- キャラクターアート: `width: 160, height: 255, flexShrink: 0`
+**`src/components/legion/LegionHub.tsx` — UnitDetailView: 修正済み ✓**
+- `motion.div` は `style={{ position: 'absolute', inset: 0 }}` のみ (overflow なし)
+- 内側の `div` が `overflow: hidden` を持つ — 正しい2層分離パターン
 
-**`src/components/layout/ResponsiveFrame.tsx`:**
-- `<main>` に `minWidth: 0` が未設定
+**`src/app/layout.tsx`: 修正済み ✓**
+- `maximumScale: 1, userScalable: false, viewportFit: 'cover'` 設定済み
 
-**`src/app/layout.tsx`:**
-- `maximumScale: 1, userScalable: false` が未設定
-
-**`src/app/globals.css`:**
-- `html` に `overflow-x: hidden` が未設定
+**新しいコンポーネントを追加する際は必ずこのパターンに従うこと。**
+**`<main>` や flex item に `min-width: 0` が必要な場合は都度追加すること。**
 
 ## 診断手順
 
