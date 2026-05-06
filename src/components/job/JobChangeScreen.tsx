@@ -14,14 +14,13 @@ const SKILLS = skillsData as Record<string, SkillData>;
 
 const STAT_LABEL: Record<keyof BaseStats, string> = {
   hp: 'HP',
-  mp: 'MP',
   atk: 'ATK',
   def: 'DEF',
-  matk: 'MATK',
-  mdef: 'MDEF',
-  agi: 'AGI',
-  luck: 'LUCK',
-  tec: 'TEC',
+  spd: 'SPD',
+  critRate: 'CRIT%',
+  critDmg: 'CRIT DMG',
+  effectHit: 'EFF HIT',
+  effectRes: 'EFF RES',
 };
 
 const ATTACK_LABEL: Record<SkillAttackType, string> = {

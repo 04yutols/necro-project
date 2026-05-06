@@ -791,7 +791,7 @@ function PartyStatusBar({ party, demonized }: { party: BattlePartyMember[]; demo
           </div>
           <div style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#6b5f7a' }}>MP</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#6b5f7a' }}>EN</div>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: '#60a5fa' }}>{member.mp}</div>
             </div>
             <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
@@ -894,7 +894,7 @@ function SkillButton({ skill, mp, onClick, demonized }: {
   demonized: boolean;
 }) {
   const elementStyle = ELEMENT_VFX[skill.element];
-  const canUse = demonized ? true : (skill.mp != null ? mp >= skill.mp : true);
+  const canUse = demonized ? true : (skill.mp != null ? mp >= skill.mp : true); // mp = currentEnergy
   return (
     <div onClick={() => canUse && onClick(skill)} style={{
       padding: '10px 8px',
@@ -911,7 +911,7 @@ function SkillButton({ skill, mp, onClick, demonized }: {
       <div style={{ fontSize: 22, filter: canUse ? `drop-shadow(0 0 8px ${elementStyle.color})` : 'none' }}>{skill.icon}</div>
       <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700, color: canUse ? '#f0ebff' : '#4a3a5a', textAlign: 'center', lineHeight: 1.2 }}>{skill.name}</div>
       <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: canUse ? '#60a5fa' : '#2a1a3a', display: 'flex', alignItems: 'center', gap: 2 }}>
-        {demonized ? <span style={{ color: '#ef4444' }}>{skill.cost ?? ''}</span> : `MP ${skill.mp ?? 0}`}
+        {demonized ? <span style={{ color: '#ef4444' }}>{skill.cost ?? ''}</span> : `EN ${skill.mp ?? 0}`}
       </div>
       <div style={{
         fontFamily: 'monospace',
@@ -1011,13 +1011,13 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     {
       id: 'player', name: player?.name ?? '骸骨騎士', icon: '💀',
       hp: player?.stats?.hp ?? 820, maxHp: (player?.stats as any)?.maxHp ?? player?.stats?.hp ?? 820,
-      mp: player?.stats?.mp ?? 60,  maxMp: (player?.stats as any)?.maxMp ?? player?.stats?.mp ?? 80,
+      mp: player?.currentEnergy ?? 0, maxMp: player?.maxEnergy ?? 100,
       color: '#8A2BE2', active: true,
     },
     ...party.slice(0, 2).map((m, i): BattlePartyMember => m ? {
       id: m.id, name: m.name, icon: m.tribe === 'UNDEAD' ? '🧟' : '👻',
       hp: m.stats?.hp ?? 580, maxHp: (m.stats as any)?.maxHp ?? m.stats?.hp ?? 580,
-      mp: m.stats?.mp ?? 40,  maxMp: (m.stats as any)?.maxMp ?? 60,
+      mp: 0, maxMp: 100,
       color: ['#22c55e','#06b6d4'][i], active: false,
     } : {
       id: `slot_${i}`, name: `使役魔${i+1}`, icon: '💀',
@@ -1086,7 +1086,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
               type: 'WEAPON',
               rarity: 'SSR',
               icon: '☽',
-              stats: { atk: 46, matk: 18, luck: 6 },
+              stats: { atk: 46, critRate: 6 },
               isUnique: false,
               passive: '撃破時、低確率で追加の魂片を得る。',
             },
@@ -1096,7 +1096,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
               type: 'WEAPON',
               rarity: 'LR',
               icon: '✦',
-              stats: { atk: 64, def: 14, tec: 10 },
+              stats: { atk: 64, def: 14, critDmg: 15 },
               isUnique: false,
               passive: 'ボスWAVEで与える物理ダメージが上昇する。',
             },
@@ -1106,7 +1106,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
               type: 'WEAPON',
               rarity: 'UR',
               icon: '☠',
-              stats: { atk: 88, matk: 42, luck: 12, tec: 16 },
+              stats: { atk: 88, critRate: 12, critDmg: 20 },
               isUnique: true,
               discovererName: player?.name ?? 'アルド',
               serialNo: 1,

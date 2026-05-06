@@ -185,9 +185,9 @@ export function HomeHero() {
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                <span style={{ color: '#888', fontSize: '11px' }}>MP</span>
+                <span style={{ color: '#888', fontSize: '11px' }}>ENERGY</span>
                 <span style={{ color: '#4A90E2', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(74,144,226,0.3)', lineHeight: 1 }}>
-                  {player.stats.mp} <span style={{ color: '#555', fontSize: '14px' }}>/ {(player.stats as any).maxMp ?? player.stats.mp}</span>
+                  {player.currentEnergy} <span style={{ color: '#555', fontSize: '14px' }}>/ {player.maxEnergy}</span>
                 </span>
               </div>
             </div>

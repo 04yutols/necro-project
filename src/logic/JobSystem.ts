@@ -1,6 +1,6 @@
 import type { BaseStats, CharacterData, JobData, SkillData } from '../types/game';
 
-export const STAT_KEYS: (keyof BaseStats)[] = ['hp', 'mp', 'atk', 'def', 'matk', 'mdef', 'agi', 'luck', 'tec'];
+export const STAT_KEYS: (keyof BaseStats)[] = ['hp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
 
 export const JOB_ORDER = [
   'warrior',
@@ -67,10 +67,12 @@ export function calculateJobAdjustedStats(baseStats: BaseStats, job: JobData): B
 export function addPassiveBonuses(stats: BaseStats, character: CharacterData): BaseStats {
   return {
     ...stats,
-    atk: stats.atk + (character.passives.passiveAtkBonus ?? 0),
-    def: stats.def + (character.passives.passiveDefBonus ?? 0),
-    matk: stats.matk + (character.passives.passiveMatkBonus ?? 0),
-    mdef: stats.mdef + (character.passives.passiveMdefBonus ?? 0),
+    hp:       stats.hp       + (character.passives.passiveHpBonus       ?? 0),
+    atk:      stats.atk      + (character.passives.passiveAtkBonus      ?? 0),
+    def:      stats.def      + (character.passives.passiveDefBonus      ?? 0),
+    spd:      stats.spd      + (character.passives.passiveSpdBonus      ?? 0),
+    critRate: stats.critRate + (character.passives.passiveCritRateBonus ?? 0),
+    critDmg:  stats.critDmg  + (character.passives.passiveCritDmgBonus  ?? 0),
   };
 }
 

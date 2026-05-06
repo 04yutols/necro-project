@@ -63,20 +63,26 @@ export class GameManager {
       currentJobId: char.currentJobId || 'warrior',
       category: (this.masterData.getJob(char.currentJobId || 'warrior')?.category as any) || 'PHYSICAL',
       stats: {
-        hp: char.hp, mp: char.mp, atk: char.atk, def: char.def,
-        matk: char.matk, mdef: char.mdef, agi: char.agi, luck: char.luck, tec: char.tec
+        hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
+        critRate: char.critRate, critDmg: char.critDmg,
+        effectHit: char.effectHit, effectRes: char.effectRes,
       },
       passives: {
-        passiveAtkBonus: char.passiveAtkBonus,
-        passiveDefBonus: char.passiveDefBonus,
-        passiveMatkBonus: char.passiveMatkBonus,
-        passiveMdefBonus: char.passiveMdefBonus
+        passiveAtkBonus:      char.passiveAtkBonus,
+        passiveDefBonus:      char.passiveDefBonus,
+        passiveSpdBonus:      char.passiveSpdBonus ?? 0,
+        passiveCritRateBonus: char.passiveCritRateBonus ?? 0,
+        passiveCritDmgBonus:  char.passiveCritDmgBonus ?? 0,
+        passiveHpBonus:       char.passiveHpBonus ?? 0,
       },
       baseResistances: {},
-      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null }, // TODO: Load equipment properly
+      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
       jobs: char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
       isAwakened: false,
-      clearedStages: char.clearedStages
+      clearedStages: char.clearedStages,
+      currentEnergy: 0,
+      maxEnergy: 100,
+      elementDmgBoosts: {},
     };
 
     const monsterList = monsterData.map((m: any) => {
@@ -87,8 +93,9 @@ export class GameManager {
         tribe: m.tribe as any,
         cost: m.cost,
         stats: {
-          hp: m.hp, mp: m.mp, atk: m.atk, def: m.def,
-          matk: m.matk, mdef: m.mdef, agi: m.agi, luck: m.luck, tec: m.tec
+          hp: m.hp, atk: m.atk, def: m.def, spd: m.spd ?? 80,
+          critRate: m.critRate ?? 0, critDmg: m.critDmg ?? 150,
+          effectHit: m.effectHit ?? 0, effectRes: m.effectRes ?? 0,
         },
         resistances: mMaster ? mMaster.resistances || {} : {}
       };
@@ -114,7 +121,7 @@ export class GameManager {
     // 1. 経験値と報酬の計算
     const playerConverted = this.convertToCharacterData(char);
     const expGain = this.rewardService.calculateExp(stage.rewards.baseExp, playerConverted);
-    const rewards = this.rewardService.calculateDrops(stage.rewards.dropTable, char.luck);
+    const rewards = this.rewardService.calculateDrops(stage.rewards.dropTable, char.critRate ?? 5);
 
     // 2. DBへの反映 (トランザクション)
     await this.prisma.$transaction(async (tx: any) => {
@@ -165,20 +172,26 @@ export class GameManager {
       currentJobId: char.currentJobId || 'warrior',
       category: (this.masterData.getJob(char.currentJobId || 'warrior')?.category as any) || 'PHYSICAL',
       stats: {
-        hp: char.hp, mp: char.mp, atk: char.atk, def: char.def,
-        matk: char.matk, mdef: char.mdef, agi: char.agi, luck: char.luck, tec: char.tec
+        hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
+        critRate: char.critRate, critDmg: char.critDmg,
+        effectHit: char.effectHit, effectRes: char.effectRes,
       },
       passives: {
-        passiveAtkBonus: char.passiveAtkBonus,
-        passiveDefBonus: char.passiveDefBonus,
-        passiveMatkBonus: char.passiveMatkBonus,
-        passiveMdefBonus: char.passiveMdefBonus
+        passiveAtkBonus:      char.passiveAtkBonus,
+        passiveDefBonus:      char.passiveDefBonus,
+        passiveSpdBonus:      char.passiveSpdBonus ?? 0,
+        passiveCritRateBonus: char.passiveCritRateBonus ?? 0,
+        passiveCritDmgBonus:  char.passiveCritDmgBonus ?? 0,
+        passiveHpBonus:       char.passiveHpBonus ?? 0,
       },
       baseResistances: {},
-      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null }, // TODO: Load equipment properly
+      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
       jobs: char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
       isAwakened: false,
-      clearedStages: char.clearedStages || []
+      clearedStages: char.clearedStages || [],
+      currentEnergy: 0,
+      maxEnergy: 100,
+      elementDmgBoosts: {},
     };
   }
 

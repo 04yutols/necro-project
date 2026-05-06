@@ -7,25 +7,26 @@ export type ElementType = 'FIRE' | 'WATER' | 'THUNDER' | 'EARTH' | 'WIND' | 'ICE
 export type SkillAttackType = 'SLASH' | 'STRIKE' | 'PROJECTILE' | 'MAGIC' | 'SUMMON' | 'HEAL';
 
 export interface BaseStats {
-  hp: number;
-  mp: number;
-  atk: number;
-  def: number;
-  matk: number;
-  mdef: number;
-  agi: number;
-  luck: number;
-  tec: number;
+  hp:        number;  // 最大HP
+  atk:       number;  // 攻撃力（物理・魔法共通）
+  def:       number;  // 防御力（物理・魔法共通）
+  spd:       number;  // 速度（行動値 = 10000/spd）
+  critRate:  number;  // 会心率 %（基礎5.0）
+  critDmg:   number;  // 会心ダメージ %（基礎150.0 → 1.5×）
+  effectHit: number;  // 効果命中 %
+  effectRes: number;  // 効果抵抗 %
 }
 
 export type Resistances = Partial<Record<ElementType, number>>;
 
-// 永続パッシブの累積補正 (GDD-004)
+// 永続パッシブの累積補正 (GDD-004) — 転職後もリセットされない
 export interface PassiveBonuses {
-  passiveAtkBonus: number;
-  passiveDefBonus: number;
-  passiveMatkBonus: number;
-  passiveMdefBonus: number;
+  passiveAtkBonus:      number;  // flat ATK
+  passiveDefBonus:      number;  // flat DEF
+  passiveSpdBonus:      number;  // flat SPD
+  passiveCritRateBonus: number;  // % 追加
+  passiveCritDmgBonus:  number;  // % 追加
+  passiveHpBonus:       number;  // flat HP
 }
 
 export interface UserJobState {
@@ -59,7 +60,12 @@ export interface JobData {
     clearedStageId?: string;
   };
   statModifiers?: Partial<BaseStats>;
-  mpCurve: {
+  energyCurve: {
+    baseMaxEnergy: number;
+    energyRegen: number;
+    ultimateCost: number;
+  };
+  mpCurve?: {
     baseMaxMP: number;
     mpGrowth: number;
     skillCost: number;
@@ -71,13 +77,14 @@ export interface JobData {
 export interface SkillData {
   id: string;
   name: string;
-  mpCost: number;
+  mpCost: number;       // エネルギーコスト（旧 mpCost の名称を維持）
   power: number;
   type: 'PHYSICAL' | 'MAGICAL' | 'HEAL';
   element?: ElementType;
   attackType?: SkillAttackType;
   targetType?: 'SINGLE' | 'ALL_ENEMIES' | 'SELF' | 'ALLY';
   effectKey?: string;
+  isUltimate?: boolean; // 奥義フラグ — true のとき maxEnergy を全消費
   description: string;
 }
 
@@ -130,6 +137,11 @@ export interface CharacterData {
   jobs: UserJobState[];
   isAwakened: boolean;
   clearedStages: string[];
+  // エネルギーシステム（ランタイム状態 — DB非保存）
+  currentEnergy: number;
+  maxEnergy:     number;
+  // 属性ダメージ加成（装備・残滓から集計）
+  elementDmgBoosts: Partial<Record<ElementType, number>>;
 }
 
 // 魂の欠片 (GDD-005)

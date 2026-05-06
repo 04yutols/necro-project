@@ -915,7 +915,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
           <div style={{ width: 1, background: `${color}18`, alignSelf: 'stretch' }} />
           <StatItem label="DEF" labelJa="防御力" value={stats?.def ?? 0} color={color} delay={0.5} />
           <div style={{ width: 1, background: `${color}18`, alignSelf: 'stretch' }} />
-          <StatItem label="SPD" labelJa="速度" value={stats?.agi ?? 0} color={color} delay={0.55} />
+          <StatItem label="SPD" labelJa="速度" value={stats?.spd ?? 0} color={color} delay={0.55} />
           <div style={{ width: 1, background: `${color}18`, alignSelf: 'stretch' }} />
           <StatItem label="HP" labelJa="体力" value={stats?.hp ?? 0} color={color} delay={0.6} />
         </div>

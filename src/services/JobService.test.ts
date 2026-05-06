@@ -13,18 +13,26 @@ describe('JobService', () => {
       currentJobId: 'warrior',
       category: 'PHYSICAL',
       stats: {
-        hp: 100, mp: 10, atk: 10, def: 10, matk: 10, mdef: 10, agi: 10, luck: 10, tec: 10
+        hp: 100, atk: 10, def: 10, spd: 100, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 0
       },
       passives: {
         passiveAtkBonus: 0,
         passiveDefBonus: 0,
-        passiveMatkBonus: 0,
-        passiveMdefBonus: 0
+        passiveSpdBonus: 0,
+        passiveCritRateBonus: 0,
+        passiveCritDmgBonus: 0,
+        passiveHpBonus: 0,
       },
+      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
+      baseResistances: {},
       jobs: [
         { jobId: 'warrior', level: 10, exp: 100 }
       ],
-      isAwakened: false
+      isAwakened: false,
+      clearedStages: [],
+      currentEnergy: 0,
+      maxEnergy: 100,
+      elementDmgBoosts: {},
     };
   });
 

@@ -34,7 +34,7 @@ interface ResultScreenProps {
 const DEFAULT_DROPS: ResultDrop[] = [
   { id: 'bone-chip', name: '骨の欠片', rarity: 'COMMON', icon: '▣', isUnique: false, quantity: 3 },
   { id: 'rusted-bone-sword', name: '朽ちた骨剣', type: 'WEAPON', rarity: 'COMMON', icon: '⚔', stats: { atk: 12 }, isUnique: false },
-  { id: 'spirit-silver-saber', name: '霊銀の斬骨刀', type: 'WEAPON', rarity: 'RARE', icon: '⚔', stats: { atk: 28, tec: 4 }, isUnique: false },
+  { id: 'spirit-silver-saber', name: '霊銀の斬骨刀', type: 'WEAPON', rarity: 'RARE', icon: '⚔', stats: { atk: 28, critDmg: 10 }, isUnique: false },
 ];
 
 const DEFAULT_UNIQUE: ResultDrop = {
@@ -43,7 +43,7 @@ const DEFAULT_UNIQUE: ResultDrop = {
   type: 'WEAPON',
   rarity: 'UR',
   icon: '☠',
-  stats: { atk: 88, matk: 42, luck: 12, tec: 16 },
+  stats: { atk: 88, critRate: 12, critDmg: 20 },
   isUnique: true,
   discovererName: 'Aldo',
   serialNo: 1,

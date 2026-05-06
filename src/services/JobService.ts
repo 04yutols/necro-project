@@ -91,8 +91,10 @@ export class JobService {
       if (bonus) {
         character.passives.passiveAtkBonus += bonus.passiveAtkBonus || 0;
         character.passives.passiveDefBonus += bonus.passiveDefBonus || 0;
-        character.passives.passiveMatkBonus += bonus.passiveMatkBonus || 0;
-        character.passives.passiveMdefBonus += bonus.passiveMdefBonus || 0;
+        character.passives.passiveCritRateBonus += bonus.passiveCritRateBonus || 0;
+        character.passives.passiveCritDmgBonus  += bonus.passiveCritDmgBonus  || 0;
+        character.passives.passiveSpdBonus      += bonus.passiveSpdBonus      || 0;
+        character.passives.passiveHpBonus       += bonus.passiveHpBonus       || 0;
       }
       return;
     }
@@ -126,10 +128,12 @@ export class JobService {
     await tx.character.update({
       where: { id: characterId },
       data: {
-        passiveAtkBonus: { increment: bonus.passiveAtkBonus || 0 },
-        passiveDefBonus: { increment: bonus.passiveDefBonus || 0 },
-        passiveMatkBonus: { increment: bonus.passiveMatkBonus || 0 },
-        passiveMdefBonus: { increment: bonus.passiveMdefBonus || 0 },
+        passiveAtkBonus:      { increment: bonus.passiveAtkBonus      || 0 },
+        passiveDefBonus:      { increment: bonus.passiveDefBonus      || 0 },
+        passiveSpdBonus:      { increment: bonus.passiveSpdBonus      || 0 },
+        passiveCritRateBonus: { increment: bonus.passiveCritRateBonus || 0 },
+        passiveCritDmgBonus:  { increment: bonus.passiveCritDmgBonus  || 0 },
+        passiveHpBonus:       { increment: bonus.passiveHpBonus       || 0 },
       },
     });
   }

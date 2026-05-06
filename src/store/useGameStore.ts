@@ -6,15 +6,14 @@ import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, Equip
 const JOBS = jobsData as Record<string, JobData>;
 
 const INITIAL_PLAYER_BASE_STATS: BaseStats = {
-  hp: 7200,
-  mp: 180,
-  atk: 1250,
-  def: 720,
-  matk: 520,
-  mdef: 420,
-  agi: 118,
-  luck: 52,
-  tec: 44,
+  hp:        7200,
+  atk:       1250,
+  def:        720,
+  spd:        110,
+  critRate:     8,   // 8%
+  critDmg:    165,   // 165% (1.65×)
+  effectHit:    0,
+  effectRes:    5,
 };
 
 interface GameState {
@@ -39,7 +38,7 @@ interface GameState {
   upgradeResidue: (residueId: string, matIds: string[]) => void;
 
   updateHP: (hp: number) => void;
-  updateMP: (mp: number) => void;
+  updateEnergy: (energy: number) => void;
   addExp: (amount: number) => void;
   addGold: (amount: number) => void;
   addClearedStage: (stageId: string) => void;
@@ -156,8 +155,8 @@ export const useGameStore = create<GameState>((set) => ({
   updateHP: (hp) => set((state) => ({
     player: state.player ? { ...state.player, stats: { ...state.player.stats, hp } } : null
   })),
-  updateMP: (mp) => set((state) => ({
-    player: state.player ? { ...state.player, stats: { ...state.player.stats, mp } } : null
+  updateEnergy: (energy) => set((state) => ({
+    player: state.player ? { ...state.player, currentEnergy: Math.max(0, Math.min(energy, state.player.maxEnergy)) } : null
   })),
   addExp: (amount) => set((state) => {
     if (!state.player) return { player: null };
@@ -272,11 +271,11 @@ export const useGameStore = create<GameState>((set) => ({
       baseStats: INITIAL_PLAYER_BASE_STATS,
       stats: calculateJobAdjustedStats(INITIAL_PLAYER_BASE_STATS, JOBS.warrior),
       baseResistances: {},
-      passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveMatkBonus: 0, passiveMdefBonus: 0 },
+      passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveSpdBonus: 0, passiveCritRateBonus: 0, passiveCritDmgBonus: 0, passiveHpBonus: 0 },
       equipment: {
         weapon: { id: 'i1', name: 'Iron Sword', type: 'WEAPON', rarity: 'COMMON', stats: { atk: 10 }, isUnique: false },
         sub: null, head: null,
-        body: { id: 'i2', name: 'Leather Armor', type: 'BODY', rarity: 'COMMON', stats: { def: 5, mdef: 2 }, isUnique: false },
+        body: { id: 'i2', name: 'Leather Armor', type: 'BODY', rarity: 'COMMON', stats: { def: 5 }, isUnique: false },
         arms: null, legs: null, acc1: null, acc2: null,
       },
       jobs: [
@@ -288,6 +287,9 @@ export const useGameStore = create<GameState>((set) => ({
       ],
       isAwakened: false,
       clearedStages: [],
+      currentEnergy: 0,
+      maxEnergy: 100,
+      elementDmgBoosts: {},
     },
     necroStatus: {
       level: 1,
@@ -296,14 +298,14 @@ export const useGameStore = create<GameState>((set) => ({
       baseStatsBonus: 1.0,
     },
     inventoryMonsters: [
-      { id: 'm1', name: 'ゴブリン', tribe: 'HUMANOID', cost: 3, stats: { hp: 50, mp: 0, atk: 10, def: 5, matk: 0, mdef: 2, agi: 5, luck: 5, tec: 5 }, resistances: { FIRE: -20 } },
-      { id: 'm2', name: 'スケルトン', tribe: 'UNDEAD', cost: 4, stats: { hp: 40, mp: 0, atk: 12, def: 8, matk: 0, mdef: 2, agi: 5, luck: 0, tec: 8 }, resistances: { LIGHT: -50, DARK: 50 } },
-      { id: 'm3', name: 'ゾンビ', tribe: 'UNDEAD', cost: 4, stats: { hp: 80, mp: 0, atk: 8, def: 4, matk: 0, mdef: 0, agi: 2, luck: 2, tec: 2 }, resistances: { FIRE: -50, LIGHT: -20, DARK: 20 } },
+      { id: 'm1', name: 'ゴブリン',   tribe: 'HUMANOID', cost: 3, stats: { hp: 50, atk: 10, def: 5,  spd: 80,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0 }, resistances: { FIRE: -20 } },
+      { id: 'm2', name: 'スケルトン', tribe: 'UNDEAD',   cost: 4, stats: { hp: 40, atk: 12, def: 8,  spd: 50,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 20 }, resistances: { LIGHT: -50, DARK: 50 } },
+      { id: 'm3', name: 'ゾンビ',     tribe: 'UNDEAD',   cost: 4, stats: { hp: 80, atk: 8,  def: 4,  spd: 20,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0 }, resistances: { FIRE: -50, LIGHT: -20, DARK: 20 } },
     ],
     inventoryItems: [
-      { id: 'i1', name: 'Iron Sword', type: 'WEAPON', rarity: 'COMMON', stats: { atk: 10 }, isUnique: false },
-      { id: 'i2', name: 'Leather Armor', type: 'BODY', rarity: 'COMMON', stats: { def: 5, mdef: 2 }, isUnique: false },
-      { id: 'i3', name: 'Hero Soul Blade', type: 'WEAPON', rarity: 'UNIQUE', stats: { atk: 50, matk: 50, def: 10, mdef: 10 }, specialEffect: 'SOUL_RESONANCE', isUnique: true },
+      { id: 'i1', name: 'Iron Sword',    type: 'WEAPON', rarity: 'COMMON', stats: { atk: 10 }, isUnique: false },
+      { id: 'i2', name: 'Leather Armor', type: 'BODY',   rarity: 'COMMON', stats: { def: 5 }, isUnique: false },
+      { id: 'i3', name: 'Hero Soul Blade', type: 'WEAPON', rarity: 'UNIQUE', stats: { atk: 80, critDmg: 20 }, specialEffect: 'SOUL_RESONANCE', isUnique: true },
     ],
     soulShards: [
       {
@@ -334,8 +336,8 @@ export const useGameStore = create<GameState>((set) => ({
       { id: 'mat-8', name: '漆黒の霊石', quantity: 6, expValue: 300, rarity: 'RARE' },
     ],
     party: [
-      { id: 'm2', name: 'スケルトン', tribe: 'UNDEAD', cost: 4, stats: { hp: 40, mp: 0, atk: 12, def: 8, matk: 0, mdef: 2, agi: 5, luck: 0, tec: 8 }, resistances: { LIGHT: -50, DARK: 50 } },
-      { id: 'm3', name: 'ゾンビ', tribe: 'UNDEAD', cost: 4, stats: { hp: 80, mp: 0, atk: 8, def: 4, matk: 0, mdef: 0, agi: 2, luck: 2, tec: 2 }, resistances: { FIRE: -50, LIGHT: -20, DARK: 20 } },
+      { id: 'm2', name: 'スケルトン', tribe: 'UNDEAD', cost: 4, stats: { hp: 40, atk: 12, def: 8, spd: 50, critRate: 0, critDmg: 150, effectHit: 0, effectRes: 20 }, resistances: { LIGHT: -50, DARK: 50 } },
+      { id: 'm3', name: 'ゾンビ',     tribe: 'UNDEAD', cost: 4, stats: { hp: 80, atk: 8,  def: 4, spd: 20, critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0  }, resistances: { FIRE: -50, LIGHT: -20, DARK: 20 } },
       null,
     ],
     currentTab: 'HOME',

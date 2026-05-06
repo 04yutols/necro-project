@@ -31,12 +31,14 @@ export default function EquipmentManager() {
     const passives = player.passives;
     
     const total: BaseStats = {
-      hp: base.hp, mp: base.mp,
+      hp: base.hp + passives.passiveHpBonus,
       atk: base.atk + passives.passiveAtkBonus,
       def: base.def + passives.passiveDefBonus,
-      matk: base.matk + passives.passiveMatkBonus,
-      mdef: base.mdef + passives.passiveMdefBonus,
-      agi: base.agi, luck: base.luck, tec: base.tec,
+      spd: base.spd + passives.passiveSpdBonus,
+      critRate: base.critRate + passives.passiveCritRateBonus,
+      critDmg: base.critDmg + passives.passiveCritDmgBonus,
+      effectHit: base.effectHit,
+      effectRes: base.effectRes,
     };
 
     Object.values(equipment).forEach(item => {
@@ -138,11 +140,11 @@ export default function EquipmentManager() {
           <div className="grid grid-cols-2 gap-x-4">
             {renderStatRow('atk', 'ATK')}
             {renderStatRow('def', 'DEF')}
-            {renderStatRow('matk', 'MATK')}
-            {renderStatRow('mdef', 'MDEF')}
-            {renderStatRow('agi', 'AGI')}
-            {renderStatRow('luck', 'LUCK')}
-            {renderStatRow('tec', 'TEC')}
+            {renderStatRow('spd', 'SPD')}
+            {renderStatRow('critRate', 'CRIT%')}
+            {renderStatRow('critDmg', 'CRIT DMG')}
+            {renderStatRow('effectHit', 'EFF HIT')}
+            {renderStatRow('effectRes', 'EFF RES')}
           </div>
         </GameFrame>
 
@@ -193,7 +195,7 @@ export default function EquipmentManager() {
                       <div className="flex gap-2 font-mono text-[8px] text-gray-500">
                         {item.stats.atk ? `A+${item.stats.atk}` : ''}
                         {item.stats.def ? `D+${item.stats.def}` : ''}
-                        {item.stats.agi ? `S+${item.stats.agi}` : ''}
+                        {item.stats.spd ? `S+${item.stats.spd}` : ''}
                       </div>
                     </button>
                   ))}
