@@ -9,6 +9,7 @@ import {
   SkillAttackType
 } from '../types/game';
 import { MasterDataService } from '../services/MasterDataService';
+import { calculateCharacterStatProfile, hasElementDmgBoosts } from './StatSystem';
 
 /**
  * Necromance Brave Battle Engine
@@ -72,7 +73,8 @@ export class BattleEngine {
     let damage = attackerStats.atk * powerMultiplier;
 
     // 2. 防御軽減（HSR簡易版）
-    const defMult = 1 - defenderStats.def / (defenderStats.def + 200);
+    const defenderDef = Math.max(0, defenderStats.def);
+    const defMult = 1 - defenderDef / (defenderDef + 200);
     damage *= defMult;
 
     // 3. 属性ダメージ加成（装備・残滓から）
@@ -103,8 +105,11 @@ export class BattleEngine {
 
   private processPlayerAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: MonsterData, skillId?: string): void {
     const { player } = this.state;
-    const stats = this.getTotalStats(player);
-    const elementBoosts = player.elementDmgBoosts ?? {};
+    const profile = calculateCharacterStatProfile(player);
+    const stats = profile.total;
+    const elementBoosts = hasElementDmgBoosts(player.elementDmgBoosts)
+      ? player.elementDmgBoosts
+      : profile.elementDmgBoosts;
 
     let energyCost = 0;
     let power = 1.0;
@@ -178,16 +183,7 @@ export class BattleEngine {
   }
 
   private getTotalStats(player: CharacterData): BaseStats {
-    const total = { ...this.getMutableStats(player) };
-    const passives = (player as any).passives ?? (player as any).passiveBonuses ?? {};
-    // パッシブ蓄積を反映 (GDD-004)
-    total.atk      += passives.passiveAtkBonus      ?? 0;
-    total.def      += passives.passiveDefBonus      ?? 0;
-    total.spd      += passives.passiveSpdBonus      ?? 0;
-    total.critRate += passives.passiveCritRateBonus ?? 0;
-    total.critDmg  += passives.passiveCritDmgBonus  ?? 0;
-    total.hp       += passives.passiveHpBonus       ?? 0;
-    return total;
+    return calculateCharacterStatProfile(player).total;
   }
 
   private getMutableStats(player: CharacterData): BaseStats {
@@ -227,6 +223,7 @@ export class BattleEngine {
       isResisted,
       element,
       attackType,
+      playerEnergy: this.state.player.currentEnergy,
       playerMP: this.state.player.currentEnergy,
       playerHP: this.getMutableStats(this.state.player).hp,
       description

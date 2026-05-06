@@ -23,7 +23,9 @@
 
 | 定数 | 値 |
 |---|---|
-| ステータス種別 | 9種: hp / mp / atk / def / matk / mdef / agi / luck / tec |
+| ステータス種別 | 8種: hp / atk / def / spd / critRate / critDmg / effectHit / effectRes |
+| 戦闘リソース | Energy: currentEnergy / maxEnergy（旧 `mpCost` 名はマスターデータ互換のため維持） |
+| 属性ダメージ加成 | FIRE / WATER / THUNDER / EARTH / WIND / ICE / LIGHT / DARK |
 | 属性種別 | 9種: FIRE / WATER / THUNDER / EARTH / WIND / LIGHT / DARK / ICE / NONE |
 | 攻撃種別 | 6種: SLASH / STRIKE / PROJECTILE / MAGIC / SUMMON / HEAL |
 | 職業数 | 12種実装済 (Tier1: 4, Tier2: 8) |
@@ -46,12 +48,14 @@
 | 新しい画面・コンポーネントを追加したい | [06_UIコンポーネント.md](06_UIコンポーネント.md) |
 | デザイン・カラー・アニメーションのルールを知りたい | [07_デザインシステム.md](07_デザインシステム.md) |
 | テストを追加・修正したい | [08_テスト戦略.md](08_テスト戦略.md) |
-| 職業・転職UI・解放条件を変えたい | [09_職業転職システム.md](09_職業転職システム.md) |
+| ステータス計算・装備画面の表示を変えたい | [09_ステータスシステム.md](09_ステータスシステム.md) |
+| 職業・転職UI・解放条件を変えたい | [10_職業転職システム.md](10_職業転職システム.md) |
 
 ## 重要ファイルパス一覧
 
 ```
 src/types/game.ts               — 全型定義の正典
+src/logic/StatSystem.ts         — ステータス集計・表示ラベル・旧オプション互換
 src/logic/BattleEngine.ts       — 戦闘ロジック（純粋クラス）
 src/logic/GameManager.ts        — ゲームループ（サーバーサイド）
 src/store/useGameStore.ts       — Zustand 全クライアント状態

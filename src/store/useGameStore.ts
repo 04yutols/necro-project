@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import jobsData from '../data/master/jobs.json';
 import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
+import { calculateCharacterStatProfile } from '../logic/StatSystem';
 import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData, BaseStats, JobData } from '../types/game';
 
 const JOBS = jobsData as Record<string, JobData>;
@@ -15,6 +16,13 @@ const INITIAL_PLAYER_BASE_STATS: BaseStats = {
   effectHit:    0,
   effectRes:    5,
 };
+
+function withDerivedElementBoosts(player: CharacterData, residues: (AbyssalResidueData | null)[]): CharacterData {
+  return {
+    ...player,
+    elementDmgBoosts: calculateCharacterStatProfile(player, residues).elementDmgBoosts,
+  };
+}
 
 interface GameState {
   player: CharacterData | null;
@@ -119,7 +127,10 @@ export const useGameStore = create<GameState>((set) => ({
   equipResidueToSlot: (slotIndex, residue) => set((state) => {
     const slots = [...state.equippedResidueSlots] as (AbyssalResidueData | null)[];
     slots[slotIndex] = residue;
-    return { equippedResidueSlots: slots };
+    return {
+      equippedResidueSlots: slots,
+      player: state.player ? withDerivedElementBoosts(state.player, slots) : state.player,
+    };
   }),
   upgradeResidue: (residueId, matIds) => set((state) => {
     const residue = state.abyssalResidues.find(r => r.id === residueId);
@@ -196,15 +207,20 @@ export const useGameStore = create<GameState>((set) => ({
       ? state.player.jobs
       : [...state.player.jobs, { jobId, level: 1, exp: 0 }];
 
-    return {
-      player: {
+    const nextMaxEnergy = nextJob.energyCurve?.baseMaxEnergy ?? state.player.maxEnergy;
+    const nextPlayer = withDerivedElementBoosts({
         ...state.player,
         currentJobId: jobId,
         category: nextJob.category,
         baseStats,
         stats: calculateJobAdjustedStats(baseStats, nextJob),
         jobs: nextJobs,
-      },
+        maxEnergy: nextMaxEnergy,
+        currentEnergy: Math.min(state.player.currentEnergy, nextMaxEnergy),
+      }, state.equippedResidueSlots);
+
+    return {
+      player: nextPlayer,
       battleLogs: [
         ...state.battleLogs,
         `JOB CHANGE: ${nextJob.displayName ?? nextJob.name} に転職`,
@@ -238,27 +254,29 @@ export const useGameStore = create<GameState>((set) => ({
 
   equipItem: (slot, item) => set((state) => {
     if (!state.player) return state;
-    return {
-      player: {
-        ...state.player,
-        equipment: {
-          ...state.player.equipment,
-          [slot]: item
-        }
+    const nextPlayer = {
+      ...state.player,
+      equipment: {
+        ...state.player.equipment,
+        [slot]: item
       }
+    };
+    return {
+      player: withDerivedElementBoosts(nextPlayer, state.equippedResidueSlots)
     };
   }),
 
   unequipItem: (slot) => set((state) => {
     if (!state.player) return state;
-    return {
-      player: {
-        ...state.player,
-        equipment: {
-          ...state.player.equipment,
-          [slot]: null
-        }
+    const nextPlayer = {
+      ...state.player,
+      equipment: {
+        ...state.player.equipment,
+        [slot]: null
       }
+    };
+    return {
+      player: withDerivedElementBoosts(nextPlayer, state.equippedResidueSlots)
     };
   }),
 
@@ -305,24 +323,33 @@ export const useGameStore = create<GameState>((set) => ({
     inventoryItems: [
       { id: 'i1', name: 'Iron Sword',    type: 'WEAPON', rarity: 'COMMON', stats: { atk: 10 }, isUnique: false },
       { id: 'i2', name: 'Leather Armor', type: 'BODY',   rarity: 'COMMON', stats: { def: 5 }, isUnique: false },
-      { id: 'i3', name: 'Hero Soul Blade', type: 'WEAPON', rarity: 'UNIQUE', stats: { atk: 80, critDmg: 20 }, specialEffect: 'SOUL_RESONANCE', isUnique: true },
+      {
+        id: 'i3',
+        name: 'Hero Soul Blade',
+        type: 'WEAPON',
+        rarity: 'UNIQUE',
+        stats: { atk: 80, critDmg: 20 },
+        subOptions: [{ type: 'DARK_DMG_BOOST', value: 12 }],
+        specialEffect: 'SOUL_RESONANCE',
+        isUnique: true,
+      },
     ],
     soulShards: [
       {
         id: 'initial-shard-1',
         originMonsterName: 'ゴブリン',
-        effect: { atkBonus: 2, matkBonus: 0 }
+        effect: { atkBonus: 2, elementDmgBoost: 0 }
       }
     ],
     abyssalResidues: [
-      { id: 'r1', name: '深淵の指輪', itemId: 'abyss-ring', rarity: 'EPIC', mainStat: { type: 'ATK%', value: 35.2 }, subOptions: [{ type: 'CRIT_RATE', value: 7.8 }, { type: 'HP%', value: 6.2 }, { type: 'DEF_FLAT', value: 32 }, { type: 'MATK%', value: 4.1 }], level: 12, exp: 2400, maxExp: 4000 },
-      { id: 'r2', name: '虚無の骸骨', itemId: 'void-skull', rarity: 'RARE', mainStat: { type: 'HP%', value: 22.8 }, subOptions: [{ type: 'DEF%', value: 5.4 }, { type: 'ATK_FLAT', value: 18 }, { type: 'AGI%', value: 3.2 }], level: 8, exp: 1200, maxExp: 3000 },
-      { id: 'r3', name: '奈落の紋章', itemId: 'abyss-emblem', rarity: 'EPIC', mainStat: { type: 'CRIT_DMG', value: 51.6 }, subOptions: [{ type: 'ATK%', value: 9.1 }, { type: 'CRIT_RATE', value: 5.2 }, { type: 'TEC%', value: 4.8 }, { type: 'HP_FLAT', value: 120 }], level: 15, exp: 100, maxExp: 5000 },
-      { id: 'r4', name: '冥界の欠片', itemId: 'underworld-shard', rarity: 'COMMON', mainStat: { type: 'DEF%', value: 12.0 }, subOptions: [{ type: 'HP_FLAT', value: 85 }, { type: 'MDEF%', value: 3.1 }], level: 3, exp: 600, maxExp: 1500 },
-      { id: 'r5', name: '漆黒の霊核', itemId: 'black-spirit-core', rarity: 'RARE', mainStat: { type: 'MATK%', value: 28.4 }, subOptions: [{ type: 'CRIT_RATE', value: 6.0 }, { type: 'TEC%', value: 5.1 }, { type: 'HP%', value: 4.3 }, { type: 'MP%', value: 3.2 }], level: 10, exp: 800, maxExp: 3500 },
-      { id: 'r6', name: '魂の骨牌', itemId: 'soul-domino', rarity: 'RARE', mainStat: { type: 'AGI%', value: 18.6 }, subOptions: [{ type: 'LUCK%', value: 4.9 }, { type: 'ATK%', value: 5.8 }, { type: 'HP_FLAT', value: 96 }], level: 6, exp: 1800, maxExp: 2500 },
+      { id: 'r1', name: '深淵の指輪', itemId: 'abyss-ring', rarity: 'EPIC', mainStat: { type: 'ATK%', value: 35.2 }, subOptions: [{ type: 'CRIT_RATE', value: 7.8 }, { type: 'HP%', value: 6.2 }, { type: 'DEF_FLAT', value: 32 }, { type: 'FIRE_DMG_BOOST', value: 4.1 }], level: 12, exp: 2400, maxExp: 4000 },
+      { id: 'r2', name: '虚無の骸骨', itemId: 'void-skull', rarity: 'RARE', mainStat: { type: 'HP%', value: 22.8 }, subOptions: [{ type: 'DEF%', value: 5.4 }, { type: 'ATK_FLAT', value: 18 }, { type: 'SPD%', value: 3.2 }], level: 8, exp: 1200, maxExp: 3000 },
+      { id: 'r3', name: '奈落の紋章', itemId: 'abyss-emblem', rarity: 'EPIC', mainStat: { type: 'CRIT_DMG', value: 51.6 }, subOptions: [{ type: 'ATK%', value: 9.1 }, { type: 'CRIT_RATE', value: 5.2 }, { type: 'DARK_DMG_BOOST', value: 4.8 }, { type: 'HP_FLAT', value: 120 }], level: 15, exp: 100, maxExp: 5000 },
+      { id: 'r4', name: '冥界の欠片', itemId: 'underworld-shard', rarity: 'COMMON', mainStat: { type: 'DEF%', value: 12.0 }, subOptions: [{ type: 'HP_FLAT', value: 85 }, { type: 'EFFECT_RES', value: 3.1 }], level: 3, exp: 600, maxExp: 1500 },
+      { id: 'r5', name: '漆黒の霊核', itemId: 'black-spirit-core', rarity: 'RARE', mainStat: { type: 'WATER_DMG_BOOST', value: 28.4 }, subOptions: [{ type: 'CRIT_RATE', value: 6.0 }, { type: 'CRIT_DMG', value: 5.1 }, { type: 'HP%', value: 4.3 }, { type: 'EFFECT_HIT', value: 3.2 }], level: 10, exp: 800, maxExp: 3500 },
+      { id: 'r6', name: '魂の骨牌', itemId: 'soul-domino', rarity: 'RARE', mainStat: { type: 'SPD%', value: 18.6 }, subOptions: [{ type: 'CRIT_RATE', value: 4.9 }, { type: 'ATK%', value: 5.8 }, { type: 'HP_FLAT', value: 96 }], level: 6, exp: 1800, maxExp: 2500 },
       { id: 'r7', name: '死霊の印璽', itemId: 'necro-seal', rarity: 'COMMON', mainStat: { type: 'HP_FLAT', value: 380 }, subOptions: [{ type: 'DEF_FLAT', value: 25 }, { type: 'ATK_FLAT', value: 12 }], level: 1, exp: 0, maxExp: 800 },
-      { id: 'r8', name: '虚空の瞳', itemId: 'void-eye', rarity: 'EPIC', mainStat: { type: 'CRIT_RATE', value: 15.5 }, subOptions: [{ type: 'ATK%', value: 8.3 }, { type: 'CRIT_DMG', value: 12.4 }, { type: 'TEC%', value: 6.0 }, { type: 'MP%', value: 5.5 }], level: 20, exp: 3500, maxExp: 8000 },
+      { id: 'r8', name: '虚空の瞳', itemId: 'void-eye', rarity: 'EPIC', mainStat: { type: 'CRIT_RATE', value: 15.5 }, subOptions: [{ type: 'ATK%', value: 8.3 }, { type: 'CRIT_DMG', value: 12.4 }, { type: 'THUNDER_DMG_BOOST', value: 6.0 }, { type: 'EFFECT_HIT', value: 5.5 }], level: 20, exp: 3500, maxExp: 8000 },
     ],
     equippedResidueSlots: [null, null, null],
     residueMaterials: [

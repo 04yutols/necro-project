@@ -167,7 +167,7 @@ model SoulShard {
   id              String   @id @default(uuid())
   originMonster   String
   atkBonus        Int      @default(0)
-  matkBonus       Int      @default(0)
+  elementDmgBoost Int      @default(0)
   specialAbility  String?
   monsters        Monster[]
 }
@@ -180,4 +180,3 @@ model SpiritCore {
   atkMultiplier   Float    @default(1.0)
   monsters        Monster[]
 }
-

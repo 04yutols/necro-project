@@ -2,10 +2,20 @@
 
 import { useRef, useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Swords, Shield, Gem, Zap, Plus, Sparkles, ChevronRight, Home } from 'lucide-react';
+import { ChevronLeft, Swords, Shield, Gem, Zap, Plus, Sparkles, ChevronRight, Home, X } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import { useGothicSound } from '../necro/useGothicSound';
-import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData } from '../../types/game';
+import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats } from '../../types/game';
+import {
+  calculateCharacterStatProfile,
+  ELEMENT_DAMAGE_KEYS,
+  ELEMENT_VIEW_META,
+  formatOptionValue,
+  formatStatValue,
+  getOptionLabel,
+  STAT_VIEW_META,
+  type StatBreakdown,
+} from '../../logic/StatSystem';
 
 /* ──────────────────────────────────────────
    HAPTIC
@@ -53,13 +63,17 @@ const RARITY_GLOW:  Record<string, string> = { COMMON: 'rgba(153,170,188,0.32)',
 ────────────────────────────────────────── */
 const STAT_LABEL: Record<string, string> = {
   'ATK%': 'ATK', 'ATK_FLAT': 'ATK', 'DEF%': 'DEF', 'DEF_FLAT': 'DEF',
-  'HP%': 'HP', 'HP_FLAT': 'HP', 'MATK%': 'MATK', 'MDEF%': 'MDEF',
-  'AGI%': 'AGI', 'LUCK%': 'LUCK', 'TEC%': 'TEC', 'MP%': 'MP', 'MP_FLAT': 'MP',
+  'HP%': 'HP', 'HP_FLAT': 'HP', 'SPD%': 'SPD', 'SPD_FLAT': 'SPD',
   'CRIT_RATE': 'CRIT RATE', 'CRIT_DMG': 'CRIT DMG',
+  'EFFECT_HIT': 'EFFECT HIT', 'EFFECT_RES': 'EFFECT RES',
+  'FIRE_DMG_BOOST': 'FIRE DMG', 'WATER_DMG_BOOST': 'WATER DMG',
+  'THUNDER_DMG_BOOST': 'THUNDER DMG', 'EARTH_DMG_BOOST': 'EARTH DMG',
+  'WIND_DMG_BOOST': 'WIND DMG', 'ICE_DMG_BOOST': 'ICE DMG',
+  'LIGHT_DMG_BOOST': 'LIGHT DMG', 'DARK_DMG_BOOST': 'DARK DMG',
+  'VOID_DMG_BOOST': 'ALL DMG',
 };
 function formatStat(type: string, value: number): string {
-  const isFlat = type.endsWith('_FLAT') || type === 'HP_FLAT' || type === 'MP_FLAT';
-  return isFlat ? Math.round(value).toString() : `${value.toFixed(1)}%`;
+  return formatOptionValue(type, value);
 }
 
 /* ──────────────────────────────────────────
@@ -100,7 +114,7 @@ function getMemberInfo(
   const fake: AbyssalResidueData | null = (() => {
     if (!m.equippedShardId) return null;
     const s = soulShards.find((x: SoulShardData) => x.id === m.equippedShardId);
-    return s ? { id: s.id, name: `${s.originMonsterName}の魂`, itemId: s.id, rarity: 'RARE', mainStat: { type: 'ATK_FLAT', value: s.effect.atkBonus }, subOptions: [{ type: 'MATK_FLAT', value: s.effect.matkBonus }], level: 1, exp: 0, maxExp: 800 } : null;
+    return s ? { id: s.id, name: `${s.originMonsterName}の魂`, itemId: s.id, rarity: 'RARE', mainStat: { type: 'ATK_FLAT', value: s.effect.atkBonus }, subOptions: [{ type: 'DARK_DMG_BOOST', value: s.effect.elementDmgBoost }], level: 1, exp: 0, maxExp: 800 } : null;
   })();
   return {
     name: m.name, nameEn: m.name.toUpperCase(), sub: (TRIBE[m.tribe] ?? TRIBE.HUMANOID).label, rank: 'SR',
@@ -342,6 +356,199 @@ function StatItem({ label, labelJa, value, color, delay = 0 }: { label: string; 
         {labelJa}
       </div>
     </div>
+  );
+}
+
+function formatStatBonus(key: keyof BaseStats, value: number): string {
+  const prefix = value > 0 ? '+' : '';
+  return STAT_VIEW_META[key].percent
+    ? `${prefix}${value.toFixed(1)}%`
+    : `${prefix}${Math.round(value).toLocaleString()}`;
+}
+
+function StatusRow({ statKey, total, profile, color }: {
+  statKey: keyof BaseStats;
+  total: BaseStats;
+  profile: StatBreakdown | null;
+  color: string;
+}) {
+  const meta = STAT_VIEW_META[statKey];
+  const sources = profile
+    ? [
+        { label: '職業', value: profile.job[statKey] },
+        { label: '永続', value: profile.passives[statKey] },
+        { label: '装備', value: profile.equipment[statKey] },
+        { label: '残滓', value: profile.residues[statKey] },
+      ]
+    : [];
+
+  return (
+    <div
+      style={{
+        padding: '10px 11px',
+        borderRadius: 12,
+        background: 'rgba(255,255,255,0.035)',
+        border: `1px solid ${color}22`,
+        minWidth: 0,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, color: '#F0EAFF', letterSpacing: '0.08em', fontWeight: 800 }}>
+            {meta.label}
+          </div>
+          <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 9, color: '#7f7193', marginTop: 1 }}>
+            {meta.labelJa}
+          </div>
+        </div>
+        <div style={{ fontFamily: "'Cinzel', serif", fontSize: 18, color, fontWeight: 900, textShadow: `0 0 12px ${color}55`, whiteSpace: 'nowrap' }}>
+          {formatStatValue(statKey, total[statKey])}
+        </div>
+      </div>
+      {sources.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 5, marginTop: 8 }}>
+          {sources.map((source) => (
+            <div key={source.label} style={{ minWidth: 0, borderRadius: 8, background: 'rgba(0,0,0,0.24)', border: '1px solid rgba(255,255,255,0.05)', padding: '5px 4px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 7, color: '#615271' }}>{source.label}</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 8, color: source.value > 0 ? '#D7C3FF' : '#4a3a5a', marginTop: 2 }}>
+                {formatStatBonus(statKey, source.value)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ElementBoostGrid({ boosts }: { boosts: StatBreakdown['elementDmgBoosts'] }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 7 }}>
+      {ELEMENT_DAMAGE_KEYS.map((element) => {
+        const meta = ELEMENT_VIEW_META[element];
+        const value = boosts[element] ?? 0;
+        return (
+          <div
+            key={element}
+            style={{
+              borderRadius: 11,
+              padding: '9px 10px',
+              background: value > 0 ? `linear-gradient(135deg, ${meta.color}22, rgba(255,255,255,0.025))` : 'rgba(255,255,255,0.025)',
+              border: `1px solid ${value > 0 ? meta.color + '55' : 'rgba(255,255,255,0.06)'}`,
+              minWidth: 0,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: '#F0EAFF', letterSpacing: '0.06em' }}>{meta.label}</div>
+                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 9, color: meta.color }}>{meta.labelJa}属性</div>
+              </div>
+              <div style={{ fontFamily: 'monospace', fontSize: 12, color: value > 0 ? meta.color : '#51415f', fontWeight: 900, whiteSpace: 'nowrap' }}>
+                {value.toFixed(1)}%
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatusDetailSheet({ open, name, subtitle, stats, profile, currentEnergy, maxEnergy, color, accent, onClose }: {
+  open: boolean;
+  name: string;
+  subtitle: string;
+  stats: BaseStats | null;
+  profile: StatBreakdown | null;
+  currentEnergy?: number;
+  maxEnergy?: number;
+  color: string;
+  accent: string;
+  onClose: () => void;
+}) {
+  if (!open || !stats) return null;
+  const primaryKeys: (keyof BaseStats)[] = ['hp', 'atk', 'def', 'spd'];
+  const advancedKeys: (keyof BaseStats)[] = ['critRate', 'critDmg', 'effectHit', 'effectRes'];
+  const energyPct = maxEnergy ? Math.min(100, Math.max(0, ((currentEnergy ?? 0) / maxEnergy) * 100)) : 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={{ position: 'absolute', inset: 0, zIndex: 80, background: 'rgba(3,1,10,0.94)', backdropFilter: 'blur(16px)', display: 'flex', flexDirection: 'column' }}
+    >
+      <div
+        className="shrink-0"
+        style={{
+          padding: 'max(12px, env(safe-area-inset-top, 12px)) 14px 10px',
+          borderBottom: `1px solid ${color}26`,
+          background: `linear-gradient(180deg, ${color}16, rgba(3,1,10,0.72))`,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color, letterSpacing: '0.18em', textShadow: `0 0 10px ${color}` }}>
+              STATUS ARCHIVE
+            </div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 20, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.05em', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {name}
+            </div>
+            <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#8b7da8', marginTop: 2 }}>
+              {subtitle}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="閉じる"
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              border: `1px solid ${color}40`,
+              background: 'rgba(255,255,255,0.04)',
+              color,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <X size={17} />
+          </button>
+        </div>
+        {maxEnergy && (
+          <div style={{ marginTop: 10, borderRadius: 999, height: 7, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', border: `1px solid ${color}20` }}>
+            <div style={{ width: `${energyPct}%`, height: '100%', background: `linear-gradient(90deg, ${color}, ${accent})`, boxShadow: `0 0 10px ${color}` }} />
+          </div>
+        )}
+      </div>
+
+      <div className="safe-scroll custom-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px calc(env(safe-area-inset-bottom, 0px) + 14px)' }}>
+        <section style={{ borderRadius: 16, padding: 12, background: 'rgba(10,5,26,0.78)', border: `1px solid ${color}30`, boxShadow: `0 0 22px ${color}12` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.12em' }}>MAIN STATUS</div>
+            {maxEnergy && <div style={{ fontFamily: 'monospace', fontSize: 10, color }}>{currentEnergy ?? 0}/{maxEnergy} EN</div>}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+            {primaryKeys.map((key) => <StatusRow key={key} statKey={key} total={stats} profile={profile} color={color} />)}
+          </div>
+        </section>
+
+        <section style={{ marginTop: 10, borderRadius: 16, padding: 12, background: 'rgba(10,5,26,0.7)', border: `1px solid ${color}24` }}>
+          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.12em', marginBottom: 10 }}>ADVANCED</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+            {advancedKeys.map((key) => <StatusRow key={key} statKey={key} total={stats} profile={profile} color={color} />)}
+          </div>
+        </section>
+
+        <section style={{ marginTop: 10, borderRadius: 16, padding: 12, background: 'rgba(10,5,26,0.7)', border: `1px solid ${color}24` }}>
+          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.12em', marginBottom: 10 }}>ELEMENT DMG</div>
+          <ElementBoostGrid boosts={profile?.elementDmgBoosts ?? {}} />
+        </section>
+      </div>
+    </motion.div>
   );
 }
 
@@ -693,10 +900,15 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
   const accent = isDemonMode ? '#ff6666' : conf.accent;
   const info = getMemberInfo(selKey, player, party, equippedResidueSlots, soulShards);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [showStatusSheet, setShowStatusSheet] = useState(false);
 
   useCanvasBg(canvasRef, conf.color, isDemonMode);
 
-  const stats = info.stats;
+  const statProfile = useMemo(
+    () => (info.isPlayer && player ? calculateCharacterStatProfile(player, equippedResidueSlots) : null),
+    [info.isPlayer, player, equippedResidueSlots],
+  );
+  const stats = statProfile?.total ?? info.stats;
   const lvl = info.lvl ?? 1;
   const maxLvl = 80;
   const xpPct = Math.min(100, (lvl / maxLvl) * 100);
@@ -919,7 +1131,52 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
           <div style={{ width: 1, background: `${color}18`, alignSelf: 'stretch' }} />
           <StatItem label="HP" labelJa="体力" value={stats?.hp ?? 0} color={color} delay={0.6} />
         </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: 8, marginTop: 9 }}>
+          <div style={{ display: 'flex', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+            <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#8b7da8', whiteSpace: 'nowrap' }}>CR {formatStatValue('critRate', stats?.critRate ?? 0)}</span>
+            <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#8b7da8', whiteSpace: 'nowrap' }}>CD {formatStatValue('critDmg', stats?.critDmg ?? 0)}</span>
+            {statProfile && (
+              <span style={{ fontFamily: 'monospace', fontSize: 9, color, whiteSpace: 'nowrap' }}>
+                属性 {Math.max(...ELEMENT_DAMAGE_KEYS.map((element) => statProfile.elementDmgBoosts[element] ?? 0)).toFixed(1)}%
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => { haptic(5); setShowStatusSheet(true); }}
+            style={{
+              minHeight: 28,
+              borderRadius: 9,
+              padding: '0 10px',
+              background: `linear-gradient(135deg, ${color}22, rgba(255,255,255,0.04))`,
+              border: `1px solid ${color}55`,
+              color,
+              fontFamily: "'Cinzel', serif",
+              fontSize: 9,
+              fontWeight: 800,
+              letterSpacing: '0.08em',
+              boxShadow: `0 0 10px ${color}22`,
+            }}
+          >
+            詳細
+          </button>
+        </div>
       </div>
+
+      <AnimatePresence>
+        <StatusDetailSheet
+          open={showStatusSheet}
+          name={info.nameEn}
+          subtitle={`${conf.label} / ${info.isPlayer ? '主人公ステータス' : '軍団員ステータス'}`}
+          stats={stats}
+          profile={statProfile}
+          currentEnergy={info.isPlayer ? player?.currentEnergy : undefined}
+          maxEnergy={info.isPlayer ? player?.maxEnergy : undefined}
+          color={color}
+          accent={accent}
+          onClose={() => setShowStatusSheet(false)}
+        />
+      </AnimatePresence>
 
       {/* Thumb strip + Formation button */}
       <div className="shrink-0 relative z-10" style={{ padding: '8px 12px 12px', background: 'linear-gradient(0deg, rgba(5,2,15,0.98), transparent)', animation: 'fadeSlideUp 0.5s ease-out 0.5s both' }}>
@@ -1103,7 +1360,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
                             </div>
                             <div className="flex items-baseline gap-1">
                               <span className="text-[17px] font-black leading-none" style={{ color: RARITY_COLOR[selectedResidue.rarity], fontFamily: 'monospace' }}>{formatStat(selectedResidue.mainStat.type, selectedResidue.mainStat.value)}</span>
-                              <span className="text-[9px] font-bold" style={{ color: RARITY_COLOR[selectedResidue.rarity] + 'BB', fontFamily: 'monospace' }}>{STAT_LABEL[selectedResidue.mainStat.type] ?? selectedResidue.mainStat.type}</span>
+                              <span className="text-[9px] font-bold" style={{ color: RARITY_COLOR[selectedResidue.rarity] + 'BB', fontFamily: 'monospace' }}>{STAT_LABEL[selectedResidue.mainStat.type] ?? getOptionLabel(selectedResidue.mainStat.type)}</span>
                             </div>
                           </div>
                           <motion.button onClick={handleEquipResidue} whileTap={{ scale: 0.92 }}

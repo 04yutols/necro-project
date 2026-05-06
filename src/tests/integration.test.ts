@@ -25,7 +25,14 @@ describe('Integration Test: Job Persistence', () => {
       create: {
         id: characterId,
         name: 'Test Hero',
-        hp: 100, mp: 10, atk: 10, def: 10, matk: 10, mdef: 10, agi: 10, luck: 10, tec: 10,
+        hp: 100,
+        atk: 10,
+        def: 10,
+        spd: 100,
+        critRate: 5,
+        critDmg: 150,
+        effectHit: 0,
+        effectRes: 0,
         currentJobId: 'warrior'
       }
     });

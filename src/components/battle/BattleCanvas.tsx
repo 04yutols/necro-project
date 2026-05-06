@@ -8,6 +8,7 @@ import ResultScreen from './ResultScreen';
 import jobsData from '../../data/master/jobs.json';
 import skillsData from '../../data/master/skills.json';
 import { getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
+import { calculateCharacterStatProfile } from '../../logic/StatSystem';
 import type { ElementType, JobData, SkillAttackType, SkillData } from '../../types/game';
 
 interface BattleCanvasProps {
@@ -101,7 +102,7 @@ const DEMON_SKILLS: BattleSkill[] = [
 ];
 const ITEMS = [
   { id: 0, name: '冥界薬',   desc: 'HP+200 回復', count: 3, icon: '🧪', effect: 'heal',   value: 200 },
-  { id: 1, name: 'エーテル', desc: 'MP全回復',     count: 2, icon: '💎', effect: 'mpHeal', value: 100 },
+  { id: 1, name: 'エーテル', desc: 'EN全回復',     count: 2, icon: '💎', effect: 'mpHeal', value: 100 },
 ];
 
 const ELEMENT_VFX: Record<ElementType, { label: string; color: string; glow: string; soft: string; aura: string }> = {
@@ -972,7 +973,9 @@ function SystemBar({ auto, speed, onAuto, onSpeed, onEscape, canEscape }: {
 
 // ── MAIN BATTLE CANVAS ────────────────────────────────────────────────────────
 export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
-  const { player, party } = useGameStore();
+  const { player, party, equippedResidueSlots } = useGameStore();
+  const playerProfile = player ? calculateCharacterStatProfile(player, equippedResidueSlots) : null;
+  const playerStats = playerProfile?.total ?? player?.stats;
 
   const [waveIndex, setWaveIndex] = useState(0);
   const [enemies, setEnemies] = useState<EnemyState[]>(() => BATTLE_WAVES[0].enemies.map(e => ({ ...e })));
@@ -1010,7 +1013,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const battleParty: BattlePartyMember[] = [
     {
       id: 'player', name: player?.name ?? '骸骨騎士', icon: '💀',
-      hp: player?.stats?.hp ?? 820, maxHp: (player?.stats as any)?.maxHp ?? player?.stats?.hp ?? 820,
+      hp: playerStats?.hp ?? 820, maxHp: (playerStats as any)?.maxHp ?? playerStats?.hp ?? 820,
       mp: player?.currentEnergy ?? 0, maxMp: player?.maxEnergy ?? 100,
       color: '#8A2BE2', active: true,
     },
@@ -1029,6 +1032,11 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const currentMp = battleParty[0]?.mp ?? 0;
   const soulFull = soul >= 100;
   const currentWave = BATTLE_WAVES[waveIndex];
+  const getElementBoostMultiplier = (element: ElementType) => {
+    if (element === 'NONE') return 1;
+    const boost = playerProfile?.elementDmgBoosts[element] ?? player?.elementDmgBoosts?.[element] ?? 0;
+    return 1 + boost / 100;
+  };
 
   const addLog = useCallback((line: string) => setLog(prev => [...prev, line]), []);
 
@@ -1076,7 +1084,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
               type: 'WEAPON',
               rarity: 'RARE',
               icon: '⚔',
-              stats: { atk: 28, tec: 4 },
+              stats: { atk: 28, critDmg: 4 },
               isUnique: false,
               flavor: '死霊の冷気を帯びた軽い刀。骨を断つためだけに研がれている。',
             },
@@ -1268,7 +1276,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     setTimeout(() => {
       targets.forEach((tid, i) => {
         setTimeout(() => {
-          const dmg = Math.round(skill.power * (0.85 + Math.random() * 0.3));
+          const dmg = Math.round(skill.power * getElementBoostMultiplier(skill.element) * (0.85 + Math.random() * 0.3));
           damageEnemy(tid, dmg, { color: vfxStyle.color });
           addLog(`${enemies.find(e => e.id === tid)?.name}に ${dmg}ダメージ！`);
         }, i * 200);
@@ -1283,7 +1291,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
       spawnFloat('42%', '52%', item.value, { heal: true, color: '#4ade80' });
       addLog(`冥界薬を使用！ HP+${item.value}回復！`);
     } else {
-      addLog(`エーテルを使用！ MPが全回復！`);
+      addLog(`エーテルを使用！ ENが全回復！`);
     }
     setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, speedMs * 0.5);
   }

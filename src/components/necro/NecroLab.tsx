@@ -8,6 +8,7 @@ import { Home, Plus, Sparkles, Zap, ChevronRight } from 'lucide-react';
 import { useNecroLabPixi } from './useNecroLabPixi';
 import { useResidueEnhancePixi } from './useResidueEnhancePixi';
 import { useGothicSound } from './useGothicSound';
+import { formatOptionValue, getOptionLabel } from '../../logic/StatSystem';
 
 /* ──────────────────────────────────────────
    Constants
@@ -24,14 +25,18 @@ const RARITY_GLOW: Record<string, string> = {
 };
 const STAT_LABEL: Record<string, string> = {
   'ATK%': 'ATK', 'ATK_FLAT': 'ATK', 'DEF%': 'DEF', 'DEF_FLAT': 'DEF',
-  'HP%': 'HP', 'HP_FLAT': 'HP', 'MATK%': 'MATK', 'MDEF%': 'MDEF',
-  'AGI%': 'AGI', 'LUCK%': 'LUCK', 'TEC%': 'TEC', 'MP%': 'MP', 'MP_FLAT': 'MP',
+  'HP%': 'HP', 'HP_FLAT': 'HP', 'SPD%': 'SPD', 'SPD_FLAT': 'SPD',
   'CRIT_RATE': 'CRIT RATE', 'CRIT_DMG': 'CRIT DMG',
+  'EFFECT_HIT': 'EFFECT HIT', 'EFFECT_RES': 'EFFECT RES',
+  'FIRE_DMG_BOOST': 'FIRE DMG', 'WATER_DMG_BOOST': 'WATER DMG',
+  'THUNDER_DMG_BOOST': 'THUNDER DMG', 'EARTH_DMG_BOOST': 'EARTH DMG',
+  'WIND_DMG_BOOST': 'WIND DMG', 'ICE_DMG_BOOST': 'ICE DMG',
+  'LIGHT_DMG_BOOST': 'LIGHT DMG', 'DARK_DMG_BOOST': 'DARK DMG',
+  'VOID_DMG_BOOST': 'ALL DMG',
 };
 
 function formatStat(type: string, value: number): string {
-  const isFlat = type.endsWith('_FLAT') || type === 'HP_FLAT' || type === 'MP_FLAT';
-  return isFlat ? Math.round(value).toString() : `${value.toFixed(1)}%`;
+  return formatOptionValue(type, value);
 }
 
 /* ──────────────────────────────────────────
@@ -160,7 +165,7 @@ function ResidueDetailStrip({ residue, isEquipped, onEquip }: StripProps) {
   }
 
   const color = RARITY_COLOR[residue.rarity];
-  const statLabel = STAT_LABEL[residue.mainStat.type] ?? residue.mainStat.type;
+  const statLabel = STAT_LABEL[residue.mainStat.type] ?? getOptionLabel(residue.mainStat.type);
   const statValue = formatStat(residue.mainStat.type, residue.mainStat.value);
 
   return (
@@ -218,7 +223,7 @@ function ResidueDetailStrip({ residue, isEquipped, onEquip }: StripProps) {
                 {residue.subOptions.slice(0, 2).map((opt, i) => (
                   <span key={i} className="text-[10px]"
                     style={{ color: 'rgba(195,180,238,0.6)', fontFamily: 'monospace' }}>
-                    {STAT_LABEL[opt.type] ?? opt.type} +{formatStat(opt.type, opt.value)}
+                    {STAT_LABEL[opt.type] ?? getOptionLabel(opt.type)} +{formatStat(opt.type, opt.value)}
                   </span>
                 ))}
               </div>
@@ -491,7 +496,7 @@ function StatsComparison({ residue, expGain }: { residue: AbyssalResidueData | n
             {formatStat(residue.mainStat.type, residue.mainStat.value)}
           </span>
           <span className="text-[10px]" style={{ color: 'rgba(195,182,238,0.55)', fontFamily: 'monospace' }}>
-            {STAT_LABEL[residue.mainStat.type] ?? residue.mainStat.type}
+            {STAT_LABEL[residue.mainStat.type] ?? getOptionLabel(residue.mainStat.type)}
           </span>
         </div>
 
@@ -525,7 +530,7 @@ function StatsComparison({ residue, expGain }: { residue: AbyssalResidueData | n
             {formatStat(residue.mainStat.type, newMainValue)}
           </span>
           <span className="text-[10px]" style={{ color: 'rgba(195,182,238,0.55)', fontFamily: 'monospace' }}>
-            {STAT_LABEL[residue.mainStat.type] ?? residue.mainStat.type}
+            {STAT_LABEL[residue.mainStat.type] ?? getOptionLabel(residue.mainStat.type)}
           </span>
         </div>
       </div>

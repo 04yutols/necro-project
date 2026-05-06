@@ -77,4 +77,25 @@ describe('BattleEngine', () => {
     engine.simulateAction('PHYSICAL_ATTACK', mockTarget);
     expect(mockPlayer.currentEnergy).toBe(20); // 0 + 20
   });
+
+  test('Element damage boosts increase matching elemental skill damage', () => {
+    const basePlayer: CharacterData = {
+      ...mockPlayer,
+      currentEnergy: 100,
+      stats: { ...mockPlayer.stats, critRate: 0 },
+      elementDmgBoosts: {},
+    };
+    const boostedPlayer: CharacterData = {
+      ...basePlayer,
+      currentEnergy: 100,
+      elementDmgBoosts: { FIRE: 50 },
+    };
+
+    const baseLogs = new BattleEngine(basePlayer, []).simulateAction('MAGIC_SKILL', mockTarget, 'skill_mage_1');
+    const boostedLogs = new BattleEngine(boostedPlayer, []).simulateAction('MAGIC_SKILL', mockTarget, 'skill_mage_1');
+    const baseDamage = baseLogs.find(l => l.action === 'MAGIC_SKILL')?.damage ?? 0;
+    const boostedDamage = boostedLogs.find(l => l.action === 'MAGIC_SKILL')?.damage ?? 0;
+
+    expect(boostedDamage).toBeGreaterThan(baseDamage);
+  });
 });

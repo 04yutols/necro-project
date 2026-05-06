@@ -8,7 +8,7 @@ export async function fetchPlayerAction(characterId: string) {
     data: {
       id: characterId,
       name: 'アルド',
-      stats: { hp: 100, mp: 20 },
+      stats: { hp: 100, atk: 20, def: 10, spd: 100, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 0 },
       // ...
     }
   };
@@ -22,7 +22,7 @@ export async function processGrowthAction(characterId: string, type: 'RANK_UP' |
 export async function soulStoneAction(monsterId: string) {
   // GameManagerを介した魂石化 (モック)
   const id = `shard-${Math.random().toString(36).substr(2, 9)}`;
-  return { success: true, data: { id, originMonsterName: 'Goblin', effect: { atkBonus: 5, matkBonus: 0 } } };
+  return { success: true, data: { id, originMonsterName: 'Goblin', effect: { atkBonus: 5, elementDmgBoost: 0 } } };
 }
 
 export async function updatePartyAction(characterId: string, monsterIds: (string | null)[]) {

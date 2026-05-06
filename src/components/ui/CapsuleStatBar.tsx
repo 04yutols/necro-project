@@ -12,7 +12,7 @@ interface CapsuleStatBarProps {
 
 const STAT_CONFIG = {
   hp: { color: '#8B0000', label: 'HP' },
-  mp: { color: '#2B4A78', label: 'MP' },
+  mp: { color: '#2B4A78', label: 'EN' },
   exp: { color: '#D4AF37', label: 'EXP' },
   cost: { color: '#4A4D55', label: 'COST' },
 };

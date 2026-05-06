@@ -5,6 +5,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { ItemData, EquipmentSlots, BaseStats } from '../../types/game';
 import { equipItemAction, unequipItemAction } from '../../app/actions';
 import { Shield, Sword, X, ArrowRight, Package, Home } from 'lucide-react';
+import { calculateCharacterStatProfile, formatStatValue } from '../../logic/StatSystem';
 
 import { GameFrame } from '../ui/GameFrame';
 
@@ -20,45 +21,25 @@ const SLOT_LABELS: Record<keyof EquipmentSlots, string> = {
 };
 
 export default function EquipmentManager() {
-  const { player, inventoryItems, equipItem, unequipItem, setCurrentTab } = useGameStore();
+  const { player, inventoryItems, equipItem, unequipItem, setCurrentTab, equippedResidueSlots } = useGameStore();
   const [selectedSlot, setSelectedSlot] = useState<keyof EquipmentSlots | null>(null);
   const [previewItem, setPreviewItem] = useState<ItemData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const calculateTotalStats = (equipment: EquipmentSlots): BaseStats => {
-    if (!player) return {} as BaseStats;
-    const base = { ...player.stats };
-    const passives = player.passives;
-    
-    const total: BaseStats = {
-      hp: base.hp + passives.passiveHpBonus,
-      atk: base.atk + passives.passiveAtkBonus,
-      def: base.def + passives.passiveDefBonus,
-      spd: base.spd + passives.passiveSpdBonus,
-      critRate: base.critRate + passives.passiveCritRateBonus,
-      critDmg: base.critDmg + passives.passiveCritDmgBonus,
-      effectHit: base.effectHit,
-      effectRes: base.effectRes,
-    };
-
-    Object.values(equipment).forEach(item => {
-      if (item && item.stats) {
-        (Object.keys(item.stats) as (keyof BaseStats)[]).forEach(stat => {
-          total[stat] += (item.stats[stat] || 0);
-        });
-      }
-    });
-
-    return total;
+    if (!player) {
+      return { hp: 0, atk: 0, def: 0, spd: 0, critRate: 0, critDmg: 0, effectHit: 0, effectRes: 0 };
+    }
+    return calculateCharacterStatProfile({ ...player, equipment }, equippedResidueSlots).total;
   };
 
-  const currentStats = useMemo(() => calculateTotalStats(player?.equipment || {} as EquipmentSlots), [player]);
+  const currentStats = useMemo(() => calculateTotalStats(player?.equipment || {} as EquipmentSlots), [player, equippedResidueSlots]);
   
   const previewStats = useMemo(() => {
     if (!player || !selectedSlot || !previewItem) return null;
     const newEquipment = { ...player.equipment, [selectedSlot]: previewItem };
     return calculateTotalStats(newEquipment);
-  }, [player, selectedSlot, previewItem]);
+  }, [player, selectedSlot, previewItem, equippedResidueSlots]);
 
   const handleEquip = async () => {
     if (!player || !selectedSlot || !previewItem) return;
@@ -102,10 +83,10 @@ export default function EquipmentManager() {
       <div className="flex justify-between items-center text-[10px] py-0.5 border-b border-[#1A1A1A]">
         <span className="text-gray-500 font-bold">{label}</span>
         <div className="flex items-center gap-1">
-          <span className="text-primary">{currentVal}</span>
+          <span className="text-primary">{formatStatValue(statKey, currentVal)}</span>
           {previewVal !== null && diff !== 0 && (
             <span className={diff > 0 ? "text-green-500" : "text-red-500"}>
-              → {previewVal}
+              → {formatStatValue(statKey, previewVal)}
             </span>
           )}
         </div>

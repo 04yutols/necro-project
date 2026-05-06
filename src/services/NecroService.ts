@@ -32,13 +32,13 @@ export class NecroService {
       // 本来は MonsterMaster から成長限界などを加味すべきだが、
       // ここでは簡略化して現在のステータスから生成
       const atkBonus = Math.floor(monster.atk * 0.1);
-      const matkBonus = Math.floor(monster.matk * 0.1);
+      const elementDmgBoost = Math.floor((monster.effectHit ?? 0) * 0.1);
 
       const soulShard = await tx.soulShard.create({
         data: {
           originMonster: monster.name,
           atkBonus,
-          matkBonus,
+          elementDmgBoost,
           specialAbility: this.deriveSpecialAbility(monster.tribe as Tribe),
         },
       });
@@ -53,7 +53,7 @@ export class NecroService {
         originMonsterName: soulShard.originMonster,
         effect: {
           atkBonus: soulShard.atkBonus,
-          matkBonus: soulShard.matkBonus,
+          elementDmgBoost: soulShard.elementDmgBoost,
           specialAbility: soulShard.specialAbility || undefined,
         },
       };

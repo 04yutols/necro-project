@@ -147,7 +147,7 @@ export interface CharacterData {
 // 魂の欠片 (GDD-005)
 export interface SoulShardEffect {
   atkBonus: number;
-  matkBonus: number;
+  elementDmgBoost: number;
   specialAbility?: string; // 例: "UNDEAD_SYNERGY_BOOST"
 }
 
@@ -223,7 +223,8 @@ export interface BattleLog {
   isResisted?: boolean;
   element?: ElementType;
   attackType?: SkillAttackType;
-  playerMP: number;
+  playerEnergy: number;
+  playerMP?: number; // legacy alias for older UI log readers
   playerHP: number;
   description: string;
 }

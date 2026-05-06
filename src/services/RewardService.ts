@@ -26,19 +26,19 @@ export class RewardService {
   }
 
   /**
-   * ドロップ判定ロジック (GDD-003 LUCKの役割)
+   * ドロップ判定ロジック。
+   * 旧幸運ステータス廃止後は、暫定的に会心率や装備効果から算出した発見補正値を渡す。
    * @param dropTable ステージのドロップテーブル
-   * @param luck プレイヤーのLUCKステータス
+   * @param discoveryBonusRate 発見補正 %
    * @returns 獲得したアイテムとモンスターのリスト
    */
-  public calculateDrops(dropTable: any[], luck: number): DropResult {
+  public calculateDrops(dropTable: any[], discoveryBonusRate: number): DropResult {
     const result: DropResult = { items: [], monsters: [] };
 
-    // LUCKによるドロップ率上昇: BaseRate * (1 + LUCK / 100)
-    const luckMultiplier = 1 + luck / 100;
+    const discoveryMultiplier = 1 + discoveryBonusRate / 100;
 
     dropTable.forEach(entry => {
-      const adjustedRate = entry.rate * luckMultiplier;
+      const adjustedRate = entry.rate * discoveryMultiplier;
       if (Math.random() < adjustedRate) {
         if (entry.itemId) result.items.push(entry.itemId);
         if (entry.monsterId) result.monsters.push(entry.monsterId);

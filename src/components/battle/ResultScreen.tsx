@@ -129,14 +129,13 @@ const RARITY_STYLE: Record<DropRarity, {
 
 const STAT_LABEL: Record<string, string> = {
   hp: 'HP',
-  mp: 'MP',
   atk: 'ATK',
   def: 'DEF',
-  matk: 'MATK',
-  mdef: 'MDEF',
-  agi: 'AGI',
-  luck: 'LUCK',
-  tec: 'TEC',
+  spd: 'SPD',
+  critRate: 'CRIT RATE',
+  critDmg: 'CRIT DMG',
+  effectHit: 'EFFECT HIT',
+  effectRes: 'EFFECT RES',
 };
 
 function normalizeRarity(rarity?: string): DropRarity {
