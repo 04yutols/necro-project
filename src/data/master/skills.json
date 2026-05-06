@@ -119,6 +119,18 @@
     "effectKey": "dark_magic",
     "description": "対象の生命力を吸収する。敵単体に魔法ダメージを与え、自身のHPを回復。"
   },
+  "skill_darkpriest_curse_bind": {
+    "id": "skill_darkpriest_curse_bind",
+    "name": "呪縛",
+    "mpCost": 13,
+    "power": 1.32,
+    "type": "MAGICAL",
+    "element": "DARK",
+    "attackType": "MAGIC",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "dark_magic",
+    "description": "黒い聖句で敵全体を縛る。闇属性魔法ダメージ。"
+  },
   "skill_rogue_1": {
     "id": "skill_rogue_1",
     "name": "急所突き",
@@ -131,6 +143,138 @@
     "effectKey": "none_strike",
     "description": "敵の急所を狙う。会心が発生しやすい物理ダメージ。"
   },
+  "skill_rogue_shadow_throw": {
+    "id": "skill_rogue_shadow_throw",
+    "name": "影投げ",
+    "mpCost": 5,
+    "power": 1.2,
+    "type": "PHYSICAL",
+    "element": "DARK",
+    "attackType": "PROJECTILE",
+    "targetType": "SINGLE",
+    "effectKey": "dark_projectile",
+    "description": "影に隠した短剣を投げる。闇属性物理ダメージ。"
+  },
+  "skill_darkknight_shadow_edge": {
+    "id": "skill_darkknight_shadow_edge",
+    "name": "黒影刃",
+    "mpCost": 10,
+    "power": 1.85,
+    "type": "PHYSICAL",
+    "element": "DARK",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "dark_slash",
+    "description": "闇をまとった魔剣で敵を断つ。物理と呪力の境界を裂く単体攻撃。"
+  },
+  "skill_darkknight_grave_cross": {
+    "id": "skill_darkknight_grave_cross",
+    "name": "墓標十字",
+    "mpCost": 13,
+    "power": 1.62,
+    "type": "PHYSICAL",
+    "element": "DARK",
+    "attackType": "SLASH",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "dark_slash",
+    "description": "戦場に黒い十字の斬線を刻む。敵全体に闇属性斬撃。"
+  },
+  "skill_berserker_blood_cleave": {
+    "id": "skill_berserker_blood_cleave",
+    "name": "血炎断ち",
+    "mpCost": 6,
+    "power": 1.95,
+    "type": "PHYSICAL",
+    "element": "FIRE",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "fire_slash",
+    "description": "血の熱を刃に乗せる高火力斬撃。敵単体に炎属性物理ダメージ。"
+  },
+  "skill_berserker_earth_breaker": {
+    "id": "skill_berserker_earth_breaker",
+    "name": "地砕き",
+    "mpCost": 8,
+    "power": 1.55,
+    "type": "PHYSICAL",
+    "element": "EARTH",
+    "attackType": "STRIKE",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "earth_strike",
+    "description": "武器を地面へ叩きつけ、岩盤ごと敵を跳ね上げる。"
+  },
+  "skill_archmage_elemental_cascade": {
+    "id": "skill_archmage_elemental_cascade",
+    "name": "五源連唱",
+    "mpCost": 22,
+    "power": 2.15,
+    "type": "MAGICAL",
+    "element": "FIRE",
+    "attackType": "MAGIC",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "fire_magic",
+    "description": "五属性術式を連鎖させる大魔法。初期実装では炎属性の範囲魔法として扱う。"
+  },
+  "skill_archmage_thunder_orbit": {
+    "id": "skill_archmage_thunder_orbit",
+    "name": "雷環術式",
+    "mpCost": 20,
+    "power": 2.05,
+    "type": "MAGICAL",
+    "element": "THUNDER",
+    "attackType": "MAGIC",
+    "targetType": "SINGLE",
+    "effectKey": "thunder_magic",
+    "description": "雷の魔法陣を敵の頭上に固定し、連続雷撃を落とす。"
+  },
+  "skill_sorcerer_tempest_lance": {
+    "id": "skill_sorcerer_tempest_lance",
+    "name": "旋風槍",
+    "mpCost": 15,
+    "power": 1.72,
+    "type": "MAGICAL",
+    "element": "WIND",
+    "attackType": "PROJECTILE",
+    "targetType": "SINGLE",
+    "effectKey": "wind_projectile",
+    "description": "圧縮した風槍を高速で撃ち出す。"
+  },
+  "skill_sorcerer_mirror_spark": {
+    "id": "skill_sorcerer_mirror_spark",
+    "name": "鏡雷",
+    "mpCost": 17,
+    "power": 1.58,
+    "type": "MAGICAL",
+    "element": "THUNDER",
+    "attackType": "MAGIC",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "thunder_magic",
+    "description": "複数の虚像から雷を跳ね返す。敵全体に雷属性魔法ダメージ。"
+  },
+  "skill_warlock_abyss_hex": {
+    "id": "skill_warlock_abyss_hex",
+    "name": "奈落呪",
+    "mpCost": 18,
+    "power": 1.9,
+    "type": "MAGICAL",
+    "element": "DARK",
+    "attackType": "MAGIC",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "dark_magic",
+    "description": "敵全体へ沈むような呪いを流し込む。"
+  },
+  "skill_warlock_black_star": {
+    "id": "skill_warlock_black_star",
+    "name": "黒星",
+    "mpCost": 24,
+    "power": 2.25,
+    "type": "MAGICAL",
+    "element": "DARK",
+    "attackType": "PROJECTILE",
+    "targetType": "SINGLE",
+    "effectKey": "dark_projectile",
+    "description": "黒い星の核を撃ち込む、ウォーロックの高威力単体術。"
+  },
   "skill_necromancer_1": {
     "id": "skill_necromancer_1",
     "name": "ソウルバレット",
@@ -142,5 +286,65 @@
     "targetType": "SINGLE",
     "effectKey": "dark_projectile",
     "description": "凝縮した魂の弾丸を放つ。敵単体に強力な魔法ダメージ。"
+  },
+  "skill_necromancer_grave_command": {
+    "id": "skill_necromancer_grave_command",
+    "name": "墓軍号令",
+    "mpCost": 20,
+    "power": 1.72,
+    "type": "MAGICAL",
+    "element": "DARK",
+    "attackType": "SUMMON",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "dark_summon",
+    "description": "戦場の死霊を一斉に突撃させる。敵全体に闇属性召喚ダメージ。"
+  },
+  "skill_assassin_void_step": {
+    "id": "skill_assassin_void_step",
+    "name": "虚歩斬",
+    "mpCost": 7,
+    "power": 1.78,
+    "type": "PHYSICAL",
+    "element": "DARK",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "dark_slash",
+    "description": "影の中を一歩だけ渡り、敵の背後から斬る。"
+  },
+  "skill_assassin_thunder_kill": {
+    "id": "skill_assassin_thunder_kill",
+    "name": "雷迅殺",
+    "mpCost": 9,
+    "power": 1.66,
+    "type": "PHYSICAL",
+    "element": "THUNDER",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "thunder_slash",
+    "description": "雷光の踏み込みで急所を斬る。"
+  },
+  "skill_trickster_mirage_bolt": {
+    "id": "skill_trickster_mirage_bolt",
+    "name": "幻雷弾",
+    "mpCost": 13,
+    "power": 1.5,
+    "type": "MAGICAL",
+    "element": "THUNDER",
+    "attackType": "PROJECTILE",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "thunder_projectile",
+    "description": "虚像から放った雷弾を跳ね回らせる。敵全体に雷属性魔法ダメージ。"
+  },
+  "skill_trickster_lucky_knife": {
+    "id": "skill_trickster_lucky_knife",
+    "name": "幸運の刃",
+    "mpCost": 11,
+    "power": 1.42,
+    "type": "PHYSICAL",
+    "element": "WIND",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "wind_slash",
+    "description": "風に任せた一撃。会心とドロップへの願掛けを兼ねる軽い斬撃。"
   }
 }

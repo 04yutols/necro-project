@@ -5,14 +5,17 @@ import type { CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/useGameStore';
 import ResultScreen from './ResultScreen';
-import type { ElementType, SkillAttackType } from '../../types/game';
+import jobsData from '../../data/master/jobs.json';
+import skillsData from '../../data/master/skills.json';
+import { getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
+import type { ElementType, JobData, SkillAttackType, SkillData } from '../../types/game';
 
 interface BattleCanvasProps {
   onEnd: () => void;
 }
 
 type BattleSkill = {
-  id: number;
+  id: string;
   name: string;
   mp?: number;
   cost?: string;
@@ -85,16 +88,16 @@ const BATTLE_WAVES = [
 
 // ── SKILLS / ITEMS ─────────────────────────────────────────────────────────────
 const SKILLS: BattleSkill[] = [
-  { id: 0, name: '火葬弾',     mp: 12, power: 260, icon: '🔥', aoe: false, element: 'FIRE',    attackType: 'MAGIC' },
-  { id: 1, name: '水葬渦',     mp: 14, power: 210, icon: '💧', aoe: true,  element: 'WATER',   attackType: 'MAGIC' },
-  { id: 2, name: '雷鳴斬り',   mp: 10, power: 300, icon: '⚡', aoe: false, element: 'THUNDER', attackType: 'SLASH' },
-  { id: 3, name: '岩崩し',     mp: 11, power: 230, icon: '◆',  aoe: true,  element: 'EARTH',   attackType: 'STRIKE' },
-  { id: 4, name: '鎌鼬',       mp: 8,  power: 190, icon: '✦',  aoe: true,  element: 'WIND',    attackType: 'SLASH' },
+  { id: 'mock_fire',    name: '火葬弾',   mp: 12, power: 260, icon: '🔥', aoe: false, element: 'FIRE',    attackType: 'MAGIC' },
+  { id: 'mock_water',   name: '水葬渦',   mp: 14, power: 210, icon: '💧', aoe: true,  element: 'WATER',   attackType: 'MAGIC' },
+  { id: 'mock_thunder', name: '雷鳴斬り', mp: 10, power: 300, icon: '⚡', aoe: false, element: 'THUNDER', attackType: 'SLASH' },
+  { id: 'mock_earth',   name: '岩崩し',   mp: 11, power: 230, icon: '◆',  aoe: true,  element: 'EARTH',   attackType: 'STRIKE' },
+  { id: 'mock_wind',    name: '鎌鼬',     mp: 8,  power: 190, icon: '✦',  aoe: true,  element: 'WIND',    attackType: 'SLASH' },
 ];
 const DEMON_SKILLS: BattleSkill[] = [
-  { id: 10, name: '魔神爪',     cost: 'HP-50',  power: 420, icon: '⚡', aoe: false, element: 'THUNDER', attackType: 'SLASH', demonOnly: true },
-  { id: 11, name: '黒焔爆発',   cost: '全消費', power: 680, icon: '🔥', aoe: true,  element: 'FIRE',    attackType: 'MAGIC', demonOnly: true },
-  { id: 12, name: '魂喰い',     cost: 'HP-80',  power: 360, icon: '🌑', aoe: false, element: 'DARK',    attackType: 'PROJECTILE', demonOnly: true },
+  { id: 'demon_claw', name: '魔神爪',   cost: 'HP-50',  power: 420, icon: '⚡', aoe: false, element: 'THUNDER', attackType: 'SLASH', demonOnly: true },
+  { id: 'demon_burst', name: '黒焔爆発', cost: '全消費', power: 680, icon: '🔥', aoe: true,  element: 'FIRE',    attackType: 'MAGIC', demonOnly: true },
+  { id: 'demon_soul', name: '魂喰い',   cost: 'HP-80',  power: 360, icon: '🌑', aoe: false, element: 'DARK',    attackType: 'PROJECTILE', demonOnly: true },
 ];
 const ITEMS = [
   { id: 0, name: '冥界薬',   desc: 'HP+200 回復', count: 3, icon: '🧪', effect: 'heal',   value: 200 },
@@ -113,6 +116,21 @@ const ELEMENT_VFX: Record<ElementType, { label: string; color: string; glow: str
   NONE:    { label: '無', color: '#f0ebff', glow: 'rgba(240,235,255,0.54)', soft: 'rgba(240,235,255,0.10)', aura: 'radial-gradient(circle, rgba(240,235,255,0.20), transparent 64%)' },
 };
 
+const JOBS = jobsData as Record<string, JobData>;
+const MASTER_SKILLS = skillsData as Record<string, SkillData>;
+
+const ELEMENT_ICON: Record<ElementType, string> = {
+  FIRE: '🔥',
+  WATER: '💧',
+  THUNDER: '⚡',
+  EARTH: '◆',
+  WIND: '✦',
+  ICE: '❄',
+  LIGHT: '✚',
+  DARK: '☾',
+  NONE: '◇',
+};
+
 const ATTACK_TYPE_LABEL: Record<SkillAttackType, string> = {
   SLASH: '斬撃',
   STRIKE: '衝撃',
@@ -121,6 +139,22 @@ const ATTACK_TYPE_LABEL: Record<SkillAttackType, string> = {
   SUMMON: '召喚',
   HEAL: '回復',
 };
+
+function toBattleSkill(skill: SkillData): BattleSkill {
+  const element = skill.element ?? 'NONE';
+  const attackType = skill.attackType ?? (skill.type === 'MAGICAL' ? 'MAGIC' : 'SLASH');
+  const basePower = skill.type === 'MAGICAL' ? 180 : 190;
+  return {
+    id: skill.id,
+    name: skill.name,
+    mp: skill.mpCost,
+    power: Math.round(basePower * skill.power),
+    icon: ELEMENT_ICON[element],
+    aoe: skill.targetType === 'ALL_ENEMIES',
+    element,
+    attackType,
+  };
+}
 
 // ── SVG ENEMIES ───────────────────────────────────────────────────────────────
 function WraithKnightSVG({ hit, targeted, color }: { hit?: boolean; targeted: boolean; color: string }) {
@@ -976,8 +1010,8 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const battleParty: BattlePartyMember[] = [
     {
       id: 'player', name: player?.name ?? '骸骨騎士', icon: '💀',
-      hp: player?.stats?.hp ?? 820, maxHp: (player?.stats as any)?.maxHp ?? 820,
-      mp: player?.stats?.mp ?? 60,  maxMp: (player?.stats as any)?.maxMp ?? 80,
+      hp: player?.stats?.hp ?? 820, maxHp: (player?.stats as any)?.maxHp ?? player?.stats?.hp ?? 820,
+      mp: player?.stats?.mp ?? 60,  maxMp: (player?.stats as any)?.maxMp ?? player?.stats?.mp ?? 80,
       color: '#8A2BE2', active: true,
     },
     ...party.slice(0, 2).map((m, i): BattlePartyMember => m ? {
@@ -1223,9 +1257,9 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     }, speedMs * 0.3);
   }
 
-  function handleSkill(skill: typeof SKILLS[0] | typeof DEMON_SKILLS[0]) {
+  function handleSkill(skill: BattleSkill) {
     setPhase('animating');
-    const targets = (skill as any).aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
+    const targets = skill.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[skill.element];
     triggerSkillEffect(skill, targets);
     addLog(`${demonized ? '魔神技' : '術'}発動！ ${skill.name}！ ${vfxStyle.label}属性/${ATTACK_TYPE_LABEL[skill.attackType]}`);
@@ -1277,7 +1311,12 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auto, phase]);
 
-  const mainSkills = demonized ? DEMON_SKILLS : SKILLS;
+  const currentJobData = JOBS[player?.currentJobId ?? 'warrior'];
+  const currentJobLevel = player && currentJobData ? Math.max(1, getJobLevel(player, player.currentJobId)) : 1;
+  const jobSkills = currentJobData
+    ? resolveUnlockedJobSkills(currentJobData, currentJobLevel, MASTER_SKILLS).map(toBattleSkill)
+    : SKILLS;
+  const mainSkills = demonized ? DEMON_SKILLS : (jobSkills.length > 0 ? jobSkills : SKILLS);
 
   if (showResult && battleResult) {
     return (

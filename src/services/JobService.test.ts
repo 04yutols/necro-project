@@ -38,7 +38,7 @@ describe('JobService', () => {
   test('onLevelUp should add passive bonus at key levels', async () => {
     // warrior Lv10 -> Lv20
     await jobService.onLevelUp(mockCharacter, 'warrior', 20);
-    expect(mockCharacter.passives.passiveAtkBonus).toBe(5);
+    expect(mockCharacter.passives.passiveAtkBonus).toBe(10);
   });
 
   test('passive bonus persists across job changes', async () => {

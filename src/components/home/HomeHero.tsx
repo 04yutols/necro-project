@@ -3,7 +3,7 @@
 import React from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { motion } from 'framer-motion';
-import { Map, Skull, Sword, Terminal, ChevronRight, Activity, Swords, Settings } from 'lucide-react';
+import { Map, Skull, Sword, Terminal, ChevronRight, Activity, Swords, Settings, Sparkles } from 'lucide-react';
 
 const THEME = {
   primary: '#BC00FB',
@@ -58,6 +58,7 @@ export function HomeHero() {
 
   const NAV_BUTTONS = [
     { id: 'MAP', label: '出撃・マップ', sub: 'WORLD EXPLORATION', icon: Map, color: THEME.primary, border: THEME.primaryBorder, bg: THEME.primaryBg, glow: '0 0 20px rgba(188,0,251,0.3)' },
+    { id: 'JOB', label: '転職・職業', sub: 'UMBRA RITE-HALL', icon: Sparkles, color: '#D4AF37', border: 'rgba(212,175,55,0.48)', bg: 'rgba(212,175,55,0.12)', glow: '0 0 20px rgba(212,175,55,0.22)' },
     { id: 'LAB', label: 'ネクロラボ', sub: 'NECROMANCY & UPGRADE', icon: Skull, color: THEME.tertiary, border: THEME.tertiaryBorder, bg: THEME.tertiaryBg, glow: '0 0 20px rgba(255,107,155,0.3)' },
     { id: 'EQUIP', label: '装備・編成', sub: 'ARMORY & LEGION', icon: Sword, color: THEME.secondary, border: THEME.secondaryBorder, bg: THEME.secondaryBg, glow: '0 0 20px rgba(0,255,255,0.3)' },
     { id: 'LOGS', label: '兵歴記録', sub: 'SYSTEM LOGS', icon: Terminal, color: THEME.gray, border: THEME.grayBorder, bg: THEME.grayBg, glow: '0 0 10px rgba(255,255,255,0.1)' },
@@ -180,13 +181,13 @@ export function HomeHero() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
                 <span style={{ color: '#888', fontSize: '11px' }}>HP</span>
                 <span style={{ color: '#FF4D4D', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(255,77,77,0.3)', lineHeight: 1 }}>
-                  {player.stats.hp} <span style={{ color: '#555', fontSize: '14px' }}>/ {(player.stats as any).maxHp ?? 100}</span>
+                  {player.stats.hp} <span style={{ color: '#555', fontSize: '14px' }}>/ {(player.stats as any).maxHp ?? player.stats.hp}</span>
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
                 <span style={{ color: '#888', fontSize: '11px' }}>MP</span>
                 <span style={{ color: '#4A90E2', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(74,144,226,0.3)', lineHeight: 1 }}>
-                  {player.stats.mp} <span style={{ color: '#555', fontSize: '14px' }}>/ {(player.stats as any).maxMp ?? 20}</span>
+                  {player.stats.mp} <span style={{ color: '#555', fontSize: '14px' }}>/ {(player.stats as any).maxMp ?? player.stats.mp}</span>
                 </span>
               </div>
             </div>

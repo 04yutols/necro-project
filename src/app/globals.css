@@ -105,6 +105,71 @@ main {
   overscroll-behavior: contain;
 }
 
+.job-change-screen {
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  min-width: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.job-change-screen,
+.job-change-screen * {
+  box-sizing: border-box;
+}
+
+.job-change-screen__shell,
+.job-change-screen__body,
+.job-change-screen__content {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.job-change-screen__body {
+  scrollbar-gutter: stable;
+}
+
+.job-rail-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.job-rail-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 430px) {
+  .job-change-screen__hero {
+    padding: 12px !important;
+    gap: 12px !important;
+  }
+
+  .job-sigil-wrap {
+    min-height: 142px !important;
+  }
+
+  .job-change-screen__title {
+    font-size: 22px !important;
+  }
+
+  .job-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .job-rail-card {
+    flex-basis: 82px !important;
+    width: 82px !important;
+  }
+
+  .job-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
 /* ── Global Noise Grain Overlay ── */
 body::before {
   content: "";
@@ -418,6 +483,11 @@ body > * {
   0% { opacity: 0; transform: translateX(-50%) translateY(8px); filter: blur(5px); }
   24% { opacity: 1; transform: translateX(-50%) translateY(0); filter: blur(0); }
   100% { opacity: 0; transform: translateX(-50%) translateY(-18px); filter: blur(1px); }
+}
+
+@keyframes jobSigilSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes fadeSlideUp {

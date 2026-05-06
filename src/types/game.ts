@@ -34,6 +34,40 @@ export interface UserJobState {
   exp: number;
 }
 
+export interface JobSkillUnlock {
+  level: number;
+  skillId: string;
+}
+
+export interface JobUnlockRequirement {
+  jobId: string;
+  minLevel: number;
+}
+
+export interface JobData {
+  id?: string;
+  name: string;
+  displayName?: string;
+  nameEn?: string;
+  title?: string;
+  tier: number;
+  category: ClassCategory;
+  role?: string;
+  description?: string;
+  unlock?: {
+    jobs?: JobUnlockRequirement[];
+    clearedStageId?: string;
+  };
+  statModifiers?: Partial<BaseStats>;
+  mpCurve: {
+    baseMaxMP: number;
+    mpGrowth: number;
+    skillCost: number;
+  };
+  levelBonuses: Record<string, Partial<PassiveBonuses>>;
+  skills: JobSkillUnlock[];
+}
+
 export interface SkillData {
   id: string;
   name: string;
@@ -88,6 +122,7 @@ export interface CharacterData {
   name: string;
   currentJobId: string;
   category: ClassCategory;
+  baseStats?: BaseStats;
   stats: BaseStats;
   passives: PassiveBonuses;
   equipment: EquipmentSlots;

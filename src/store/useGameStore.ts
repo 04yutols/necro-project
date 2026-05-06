@@ -1,5 +1,21 @@
 import { create } from 'zustand';
-import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData } from '../types/game';
+import jobsData from '../data/master/jobs.json';
+import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
+import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData, BaseStats, JobData } from '../types/game';
+
+const JOBS = jobsData as Record<string, JobData>;
+
+const INITIAL_PLAYER_BASE_STATS: BaseStats = {
+  hp: 7200,
+  mp: 180,
+  atk: 1250,
+  def: 720,
+  matk: 520,
+  mdef: 420,
+  agi: 118,
+  luck: 52,
+  tec: 44,
+};
 
 interface GameState {
   player: CharacterData | null;
@@ -27,6 +43,7 @@ interface GameState {
   addExp: (amount: number) => void;
   addGold: (amount: number) => void;
   addClearedStage: (stageId: string) => void;
+  changeJob: (jobId: string) => void;
 
   // パーティ編成の更新
   updatePartySlot: (index: number, monster: MonsterData | null) => void;
@@ -64,8 +81,8 @@ interface GameState {
   toggleDemonMode: () => void;
 
   // 画面遷移管理
-  currentTab: 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'LOGS';
-  setCurrentTab: (tab: 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'LOGS') => void;
+  currentTab: 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'LOGS' | 'JOB';
+  setCurrentTab: (tab: 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'LOGS' | 'JOB') => void;
 
   // 初期化用
   initialize: () => void;
@@ -167,6 +184,34 @@ export const useGameStore = create<GameState>((set) => ({
       }
     };
   }),
+  changeJob: (jobId) => set((state) => {
+    if (!state.player) return state;
+    const nextJob = JOBS[jobId];
+    if (!nextJob) return state;
+    const unlock = getJobUnlockStatus(state.player, nextJob);
+    if (!unlock.unlocked) return state;
+
+    const baseStats = state.player.baseStats ?? state.player.stats;
+    const hasJob = state.player.jobs.some(job => job.jobId === jobId);
+    const nextJobs = hasJob
+      ? state.player.jobs
+      : [...state.player.jobs, { jobId, level: 1, exp: 0 }];
+
+    return {
+      player: {
+        ...state.player,
+        currentJobId: jobId,
+        category: nextJob.category,
+        baseStats,
+        stats: calculateJobAdjustedStats(baseStats, nextJob),
+        jobs: nextJobs,
+      },
+      battleLogs: [
+        ...state.battleLogs,
+        `JOB CHANGE: ${nextJob.displayName ?? nextJob.name} に転職`,
+      ].slice(-50),
+    };
+  }),
   
   updatePartySlot: (index, monster) => set((state) => {
     const newParty = [...state.party];
@@ -224,7 +269,8 @@ export const useGameStore = create<GameState>((set) => ({
       name: 'アルド',
       currentJobId: 'warrior',
       category: 'PHYSICAL',
-      stats: { hp: 8200, mp: 200, atk: 1500, def: 800, matk: 120, mdef: 200, agi: 120, luck: 50, tec: 40 },
+      baseStats: INITIAL_PLAYER_BASE_STATS,
+      stats: calculateJobAdjustedStats(INITIAL_PLAYER_BASE_STATS, JOBS.warrior),
       baseResistances: {},
       passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveMatkBonus: 0, passiveMdefBonus: 0 },
       equipment: {
@@ -233,7 +279,13 @@ export const useGameStore = create<GameState>((set) => ({
         body: { id: 'i2', name: 'Leather Armor', type: 'BODY', rarity: 'COMMON', stats: { def: 5, mdef: 2 }, isUnique: false },
         arms: null, legs: null, acc1: null, acc2: null,
       },
-      jobs: [{ jobId: 'warrior', level: 72, exp: 0 }],
+      jobs: [
+        { jobId: 'warrior', level: 72, exp: 0 },
+        { jobId: 'mage', level: 22, exp: 1300 },
+        { jobId: 'dark_priest', level: 21, exp: 900 },
+        { jobId: 'rogue', level: 9, exp: 700 },
+        { jobId: 'necromancer', level: 1, exp: 0 }
+      ],
       isAwakened: false,
       clearedStages: [],
     },

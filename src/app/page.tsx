@@ -13,6 +13,7 @@ const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').t
 import NecroLab from '../components/necro/NecroLab';
 import LegionHub from '../components/legion/LegionHub';
 import EquipmentManager from '../components/character/EquipmentManager';
+import JobChangeScreen from '../components/job/JobChangeScreen';
 import AreaMap from '../components/map/AreaMap';
 import ShardEquipModal from '../components/necro/ShardEquipModal';
 import { HomeHero } from '../components/home/HomeHero';
@@ -75,6 +76,12 @@ export default function Home() {
         return (
           <motion.div key="equip" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
             <LegionHub />
+          </motion.div>
+        );
+      case 'JOB':
+        return (
+          <motion.div key="job" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+            <JobChangeScreen />
           </motion.div>
         );
       case 'LAB':

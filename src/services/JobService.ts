@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { CharacterData, UserJobState } from '../types/game';
 import { MasterDataService } from './MasterDataService';
+import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
 
 /**
  * 職業に関するビジネスロジックを担当するサービス (GDD-004)
@@ -20,11 +21,20 @@ export class JobService {
   public async changeJob(characterOrId: string | CharacterData, nextJobId: string): Promise<void> {
     if (typeof characterOrId !== 'string') {
       const character = characterOrId;
+      const jobData = this.masterData.getJob(nextJobId);
+      if (!jobData) throw new Error(`Job ${nextJobId} not found in master data`);
+      const unlock = getJobUnlockStatus(character, jobData);
+      if (!unlock.unlocked) throw new Error(`Job ${nextJobId} is locked`);
+
       const existing = character.jobs.find(job => job.jobId === nextJobId);
       if (!existing) {
         character.jobs.push({ jobId: nextJobId, level: 1, exp: 0 });
       }
       character.currentJobId = nextJobId;
+      character.category = jobData.category;
+      const baseStats = character.baseStats ?? character.stats;
+      character.baseStats = baseStats;
+      character.stats = calculateJobAdjustedStats(baseStats, jobData);
       return;
     }
 
