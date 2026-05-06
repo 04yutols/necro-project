@@ -2,10 +2,11 @@
 
 import { useRef, useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Swords, Shield, Gem, Zap, Plus, Sparkles, ChevronRight, Home } from 'lucide-react';
+import { ChevronLeft, Swords, Plus, Home } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import { useGothicSound } from '../necro/useGothicSound';
 import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData } from '../../types/game';
+import { EquipTab, EnhanceTab, formatStat } from '../necro/ResidueEquipPanel';
 
 /* ──────────────────────────────────────────
    HAPTIC
@@ -48,19 +49,6 @@ function getConf(mk: MemberKey, player: CharacterData | null, party: (MonsterDat
 const RARITY_COLOR: Record<string, string> = { COMMON: '#99AABC', RARE: '#55AAFF', EPIC: '#CC22FF', UNIQUE: '#FBBB30' };
 const RARITY_GLOW:  Record<string, string> = { COMMON: 'rgba(153,170,188,0.32)', RARE: 'rgba(85,170,255,0.38)', EPIC: 'rgba(204,34,255,0.48)', UNIQUE: 'rgba(251,187,48,0.38)' };
 
-/* ──────────────────────────────────────────
-   INLINED FROM NecroLab — stat formatting
-────────────────────────────────────────── */
-const STAT_LABEL: Record<string, string> = {
-  'ATK%': 'ATK', 'ATK_FLAT': 'ATK', 'DEF%': 'DEF', 'DEF_FLAT': 'DEF',
-  'HP%': 'HP', 'HP_FLAT': 'HP', 'MATK%': 'MATK', 'MDEF%': 'MDEF',
-  'AGI%': 'AGI', 'LUCK%': 'LUCK', 'TEC%': 'TEC', 'MP%': 'MP', 'MP_FLAT': 'MP',
-  'CRIT_RATE': 'CRIT RATE', 'CRIT_DMG': 'CRIT DMG',
-};
-function formatStat(type: string, value: number): string {
-  const isFlat = type.endsWith('_FLAT') || type === 'HP_FLAT' || type === 'MP_FLAT';
-  return isFlat ? Math.round(value).toString() : `${value.toFixed(1)}%`;
-}
 
 /* ──────────────────────────────────────────
    MEMBER INFO
@@ -346,80 +334,6 @@ function StatItem({ label, labelJa, value, color, delay = 0 }: { label: string; 
 }
 
 /* ──────────────────────────────────────────
-   RESIDUE ICON — inlined from NecroLab
-────────────────────────────────────────── */
-function ResidueIcon({ rarity, size = 36 }: { rarity: string; size?: number }) {
-  const c = RARITY_COLOR[rarity] ?? RARITY_COLOR.COMMON;
-  return (
-    <svg width={size} height={size} viewBox="0 0 44 44" fill="none">
-      <polygon points="15,3 29,3 41,15 41,29 29,41 15,41 3,29 3,15" fill={`${c}28`} stroke={c} strokeWidth="1.5" />
-      {rarity === 'EPIC' && (<><polygon points="22,10 24.5,18 33,18 26.5,23 29,31 22,26 15,31 17.5,23 11,18 19.5,18" fill={`${c}44`} stroke={c} strokeWidth="0.7" /><circle cx="22" cy="22" r="3" fill={c} opacity="0.9" /></>)}
-      {rarity === 'RARE' && (<><circle cx="22" cy="22" r="7" fill={`${c}38`} stroke={c} strokeWidth="0.8" /><circle cx="22" cy="22" r="2.5" fill={c} opacity="0.85" /></>)}
-      {(rarity === 'COMMON' || rarity === 'UNIQUE') && <circle cx="22" cy="22" r="4" fill={`${c}60`} stroke={c} strokeWidth="0.8" />}
-    </svg>
-  );
-}
-
-/* ──────────────────────────────────────────
-   RESIDUE GRID CARD — inlined from NecroLab
-────────────────────────────────────────── */
-const GRID_ITEM_H = 100;
-const GRID_COLS = 3;
-const GRID_GAP = 8;
-const ROW_H = GRID_ITEM_H + GRID_GAP;
-
-function ResidueGridCard({ residue, isSelected, isEquipped, onSelect }: { residue: AbyssalResidueData; isSelected: boolean; isEquipped: boolean; onSelect: () => void }) {
-  const color = RARITY_COLOR[residue.rarity];
-  return (
-    <motion.button onClick={onSelect} whileTap={{ scale: 0.91 }}
-      className="rounded-xl flex flex-col items-center gap-1 py-2 px-1.5 relative overflow-hidden"
-      style={{ height: GRID_ITEM_H, background: isSelected ? `linear-gradient(160deg, ${RARITY_GLOW[residue.rarity]}, rgba(12,5,28,0.92))` : 'rgba(12,6,28,0.7)', border: `1.5px solid ${isSelected ? color + 'BB' : 'rgba(130,70,200,0.35)'}`, boxShadow: isSelected ? `0 0 14px ${RARITY_GLOW[residue.rarity]}` : 'none' }}>
-      <div className="absolute inset-0 pointer-events-none rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%)' }} />
-      {isEquipped && <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: '#00DD77', boxShadow: '0 0 5px #00DD77' }} />}
-      <ResidueIcon rarity={residue.rarity} size={28} />
-      <span className="text-[11px] font-black" style={{ color, fontFamily: 'monospace' }}>{formatStat(residue.mainStat.type, residue.mainStat.value)}</span>
-      <span className="text-[9px] truncate max-w-full px-0.5 text-center leading-tight" style={{ color: 'rgba(195,182,238,0.78)', fontFamily: 'monospace' }}>{residue.name}</span>
-      <span className="text-[9px]" style={{ color: 'rgba(195,182,238,0.55)', fontFamily: 'monospace' }}>Lv.{residue.level}</span>
-    </motion.button>
-  );
-}
-
-/* ──────────────────────────────────────────
-   VIRTUAL RESIDUE GRID — inlined from NecroLab
-────────────────────────────────────────── */
-function VirtualResidueGrid({ items, selectedId, equippedIds, onSelect }: { items: AbyssalResidueData[]; selectedId: string | null; equippedIds: Set<string>; onSelect: (id: string) => void }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [containerH, setContainerH] = useState(200);
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    setContainerH(el.clientHeight);
-    const ro = new ResizeObserver(() => setContainerH(el.clientHeight));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  const totalRows = Math.ceil(items.length / GRID_COLS);
-  const totalH = totalRows * ROW_H + GRID_GAP;
-  const startRow = Math.max(0, Math.floor(scrollTop / ROW_H) - 1);
-  const visibleRows = Math.ceil(containerH / ROW_H) + 2;
-  const endRow = Math.min(totalRows, startRow + visibleRows);
-  const offsetTop = startRow * ROW_H + GRID_GAP;
-  const visibleItems = items.slice(startRow * GRID_COLS, endRow * GRID_COLS);
-  return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto custom-scrollbar" onScroll={e => setScrollTop(e.currentTarget.scrollTop)}>
-      <div style={{ height: totalH, position: 'relative' }}>
-        <div style={{ position: 'absolute', top: offsetTop, left: GRID_GAP, right: GRID_GAP, display: 'grid', gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`, gap: GRID_GAP }}>
-          {visibleItems.map(r => (
-            <ResidueGridCard key={r.id} residue={r} isSelected={r.id === selectedId} isEquipped={equippedIds.has(r.id)} onSelect={() => onSelect(r.id)} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────
    ITEM GRID (weapon / armor / acc)
 ────────────────────────────────────────── */
 function ItemGridCard({ item, isSelected, isEquipped, onSelect }: { item: ItemData; isSelected: boolean; isEquipped: boolean; onSelect: () => void }) {
@@ -435,95 +349,6 @@ function ItemGridCard({ item, isSelected, isEquipped, onSelect }: { item: ItemDa
       </div>
       <span className="text-[10px] font-black text-center leading-tight max-w-full px-1 truncate" style={{ color: '#EDE8FF', fontFamily: 'monospace' }}>{(item as any).name}</span>
       <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: `${color}22`, border: `1px solid ${color}44`, color }}>{(item as any).rarity}</span>
-    </motion.button>
-  );
-}
-
-/* ──────────────────────────────────────────
-   STATS COMPARISON — inlined from NecroLab
-────────────────────────────────────────── */
-function StatsComparison({ residue, expGain }: { residue: AbyssalResidueData | null; expGain: number }) {
-  if (!residue) return (
-    <div className="gothic-panel rounded-2xl p-4 shrink-0 flex items-center justify-center opacity-35" style={{ height: 110 }}>
-      <span className="text-[11px] tracking-widest font-bold" style={{ color: 'rgba(180,100,255,0.75)', fontFamily: 'monospace' }}>SELECT RESIDUE</span>
-    </div>
-  );
-  let newExp = residue.exp + expGain, newLevel = residue.level, newMaxExp = residue.maxExp, levelledUp = false;
-  while (newExp >= newMaxExp && newLevel < 20) { newExp -= newMaxExp; newLevel++; newMaxExp = Math.floor(newMaxExp * 1.5); levelledUp = true; }
-  if (newLevel >= 20) newExp = Math.min(newExp, newMaxExp);
-  const newMainValue = levelledUp ? +(residue.mainStat.value * (1 + newLevel * 0.04)).toFixed(1) : residue.mainStat.value;
-  const color = RARITY_COLOR[residue.rarity];
-  return (
-    <div className="gothic-panel rounded-2xl p-3.5 shrink-0">
-      <span className="text-[10px] font-black tracking-[0.22em] block mb-2.5" style={{ color: 'rgba(185,110,255,0.92)', fontFamily: 'monospace' }}>STAT PREVIEW</span>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-col items-center gap-1 flex-1">
-          <span className="text-[10px] tracking-widest font-bold" style={{ color: 'rgba(195,182,238,0.65)', fontFamily: 'monospace' }}>BEFORE</span>
-          <span className="text-[11px] font-black" style={{ color: 'rgba(160,145,195,0.75)', fontFamily: 'monospace' }}>Lv.{residue.level}</span>
-          <span className="text-xl font-black leading-none" style={{ color: 'rgba(160,145,195,0.85)', fontFamily: 'monospace' }}>{formatStat(residue.mainStat.type, residue.mainStat.value)}</span>
-        </div>
-        <div className="flex flex-col items-center gap-1 shrink-0">
-          {levelledUp && <motion.span initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,210,110,0.18)', border: '1px solid rgba(0,210,110,0.45)', color: '#00DD77' }}>LV UP!</motion.span>}
-          <ChevronRight size={18} style={{ color: `${color}99` }} />
-        </div>
-        <div className="flex flex-col items-center gap-1 flex-1">
-          <span className="text-[10px] tracking-widest font-bold" style={{ color: 'rgba(195,182,238,0.65)', fontFamily: 'monospace' }}>AFTER</span>
-          <span className="text-[11px] font-black" style={{ color: levelledUp ? '#00DD77' : 'rgba(160,145,195,0.75)', fontFamily: 'monospace' }}>Lv.{newLevel}</span>
-          <span className="text-xl font-black leading-none" style={{ color: levelledUp ? color : 'rgba(195,185,240,0.92)', fontFamily: 'monospace', textShadow: levelledUp ? `0 0 12px ${color}99` : 'none' }}>{formatStat(residue.mainStat.type, newMainValue)}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────
-   ENHANCE GAUGE — inlined from NecroLab
-────────────────────────────────────────── */
-function EnhanceGauge({ residue, previewExpGain }: { residue: AbyssalResidueData | null; previewExpGain: number }) {
-  const current = residue && residue.maxExp > 0 ? residue.exp / residue.maxExp : 0;
-  const preview = residue && residue.maxExp > 0 ? Math.min(1, (residue.exp + previewExpGain) / residue.maxExp) : 0;
-  const currentPct = `${(current * 100).toFixed(1)}%`;
-  const previewPct = `${(preview * 100).toFixed(1)}%`;
-  return (
-    <div className="gothic-panel rounded-2xl p-3.5 shrink-0">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-black tracking-[0.22em]" style={{ color: 'rgba(185,110,255,0.92)', fontFamily: 'monospace' }}>✦ SOUL INFUSION</span>
-        <span className="text-[10px] font-black" style={{ color: '#E080FF', fontFamily: 'monospace' }}>{residue ? `${residue.exp.toLocaleString()} / ${residue.maxExp.toLocaleString()} EXP` : '—'}</span>
-      </div>
-      <div style={{ height: 48, width: '100%', borderRadius: 8, overflow: 'hidden', background: 'rgba(0,0,0,0.5)', position: 'relative' }}>
-        {/* preview bar (lighter) */}
-        <div style={{ position: 'absolute', inset: 0, width: previewPct, background: 'rgba(188,0,251,0.25)', transition: 'width 0.4s ease' }} />
-        {/* current bar */}
-        <div className="bar-shimmer" style={{ position: 'absolute', inset: 0, width: currentPct, background: 'linear-gradient(90deg, #7000cc, #BC00FB, #E080FF)', boxShadow: '0 0 12px rgba(188,0,251,0.6)', transition: 'width 0.4s ease' }} />
-        {/* percentage label */}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: 11, fontWeight: 900, color: '#EDE8FF', fontFamily: 'monospace', textShadow: '0 0 6px rgba(188,0,251,0.8)' }}>{currentPct}</span>
-        </div>
-      </div>
-      {previewExpGain > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-end mt-1 gap-1.5">
-          <Sparkles size={10} style={{ color: '#E080FF' }} />
-          <span className="text-[10px] font-black" style={{ color: '#E080FF', fontFamily: 'monospace' }}>+{previewExpGain.toLocaleString()} EXP</span>
-        </motion.div>
-      )}
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────
-   MATERIAL CARD — inlined from NecroLab
-────────────────────────────────────────── */
-function MaterialCard({ mat, isSelected, onToggle }: { mat: ResidueMatData; isSelected: boolean; onToggle: () => void }) {
-  const color = RARITY_COLOR[mat.rarity];
-  return (
-    <motion.button onClick={onToggle} whileTap={{ scale: 0.9 }}
-      className="rounded-xl flex flex-col items-center gap-1 py-2 px-1 relative overflow-hidden"
-      style={{ height: 84, background: isSelected ? `linear-gradient(160deg, ${RARITY_GLOW[mat.rarity]}, rgba(12,5,28,0.92))` : 'rgba(12,6,28,0.68)', border: `1.5px solid ${isSelected ? color + 'AA' : 'rgba(130,70,200,0.32)'}`, boxShadow: isSelected ? `0 0 10px ${RARITY_GLOW[mat.rarity]}` : 'none' }}>
-      <div className="absolute inset-0 pointer-events-none rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%)' }} />
-      {isSelected && <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ background: color }}><span style={{ fontSize: 8, color: '#000', fontWeight: 900, lineHeight: 1 }}>✓</span></div>}
-      <span style={{ fontSize: 18, lineHeight: 1 }}>💎</span>
-      <span className="text-[9px] font-black text-center leading-tight max-w-[52px]" style={{ color: isSelected ? '#EDE8FF' : 'rgba(195,182,238,0.72)', fontFamily: 'monospace' }}>{mat.name}</span>
-      <span className="text-[9px] font-bold" style={{ color: 'rgba(195,182,238,0.6)', fontFamily: 'monospace' }}>×{mat.quantity}</span>
     </motion.button>
   );
 }
@@ -966,7 +791,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   const [tab, setTab] = useState<'EQUIP' | 'ENHANCE'>('EQUIP');
   const [selectedResidueId, setSelectedResidueId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [selectedMatIds, setSelectedMatIds] = useState<Set<string>>(new Set());
+  const [activeSlot, setActiveSlot] = useState<number>(gearCtx.slotIndex);
 
   const isResidueSlot = gearCtx.slotType === 'RESIDUE';
   const slotLabel = { WEAPON: '武器', ARMOR: '鎧', ACCESSORY: '装飾品', RESIDUE: `残滓 ${['I', 'II', 'III'][gearCtx.slotIndex] ?? ''}` }[gearCtx.slotType];
@@ -974,23 +799,16 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   const info = getMemberInfo(gearCtx.mk, player, party, equippedResidueSlots, []);
   const memberName = info.nameEn;
 
-  const equippedIds = useMemo(() => new Set(equippedResidueSlots.filter(Boolean).map(s => s!.id)), [equippedResidueSlots]);
-
-  const selectedResidue = abyssalResidues.find(r => r.id === selectedResidueId) ?? null;
-  const totalExpGain = useMemo(() =>
-    [...selectedMatIds].reduce((acc, id) => { const mat = residueMaterials.find(m => m.id === id); return acc + (mat ? mat.expValue * mat.quantity : 0); }, 0),
-    [selectedMatIds, residueMaterials],
-  );
-
   const filteredItems = useMemo(() => {
     const typeMap: Record<string, string> = { WEAPON: 'WEAPON', ARMOR: 'BODY', ACCESSORY: 'ACC1' };
     return inventoryItems.filter(i => (i as any).type === typeMap[gearCtx.slotType]);
   }, [inventoryItems, gearCtx.slotType]);
 
   const handleEquipResidue = () => {
+    const selectedResidue = abyssalResidues.find(r => r.id === selectedResidueId) ?? null;
     if (!selectedResidue) return;
     sound.playEquip(); haptic([8, 4, 14]);
-    equipResidueToSlot(gearCtx.slotIndex, selectedResidue);
+    equipResidueToSlot(activeSlot, selectedResidue);
   };
 
   const handleEquipItem = (item: ItemData) => {
@@ -1000,27 +818,9 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     equipItem(slotMap[gearCtx.slotType], item);
   };
 
-  const handleEnhance = () => {
-    if (!selectedResidue || selectedMatIds.size === 0) return;
-    sound.playEquip();
-    upgradeResidue(selectedResidue.id, [...selectedMatIds]);
-    setSelectedMatIds(new Set());
-  };
-
-  const handleAutoSelect = () => {
-    if (!selectedResidue) return;
-    sound.playTap();
-    const needed = selectedResidue.maxExp - selectedResidue.exp;
-    let remaining = needed;
-    const next = new Set<string>();
-    const sorted = [...residueMaterials].sort((a, b) => b.expValue * b.quantity - a.expValue * a.quantity);
-    for (const mat of sorted) { if (remaining <= 0) break; next.add(mat.id); remaining -= mat.expValue * mat.quantity; }
-    setSelectedMatIds(next);
-  };
-
-  const toggleMat = (id: string) => {
-    sound.playTap();
-    setSelectedMatIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const handleEnhance = (matIds: string[]) => {
+    if (!selectedResidueId) return;
+    upgradeResidue(selectedResidueId, matIds);
   };
 
   return (
@@ -1086,44 +886,16 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
           {tab === 'EQUIP' ? (
             <motion.div key="equip" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.16 }} className="absolute inset-0 flex flex-col overflow-hidden">
               {isResidueSlot ? (
-                <>
-                  {/* Selected residue strip */}
-                  <div className="shrink-0 px-3 pb-2">
-                    {selectedResidue ? (
-                      <div className="gothic-panel rounded-2xl overflow-hidden relative" style={{ height: 76 }}>
-                        <div className="absolute top-0 left-0 right-0 h-[2px] pointer-events-none" style={{ background: `linear-gradient(90deg, transparent, ${RARITY_COLOR[selectedResidue.rarity]}, transparent)` }} />
-                        <div className="flex items-center gap-3 px-3 h-full">
-                          <div className="shrink-0 w-[44px] h-[44px] rounded-xl flex items-center justify-center" style={{ background: `radial-gradient(circle at 35% 30%, ${RARITY_COLOR[selectedResidue.rarity]}28, rgba(0,0,0,0.85))`, border: `1.5px solid ${RARITY_COLOR[selectedResidue.rarity]}66` }}>
-                            <ResidueIcon rarity={selectedResidue.rarity} size={28} />
-                          </div>
-                          <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] font-black truncate" style={{ color: '#EDE8FF', fontFamily: "'Cinzel Decorative', serif" }}>{selectedResidue.name}</span>
-                              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0" style={{ background: `${RARITY_COLOR[selectedResidue.rarity]}22`, border: `1px solid ${RARITY_COLOR[selectedResidue.rarity]}55`, color: RARITY_COLOR[selectedResidue.rarity] }}>{selectedResidue.rarity}</span>
-                            </div>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-[17px] font-black leading-none" style={{ color: RARITY_COLOR[selectedResidue.rarity], fontFamily: 'monospace' }}>{formatStat(selectedResidue.mainStat.type, selectedResidue.mainStat.value)}</span>
-                              <span className="text-[9px] font-bold" style={{ color: RARITY_COLOR[selectedResidue.rarity] + 'BB', fontFamily: 'monospace' }}>{STAT_LABEL[selectedResidue.mainStat.type] ?? selectedResidue.mainStat.type}</span>
-                            </div>
-                          </div>
-                          <motion.button onClick={handleEquipResidue} whileTap={{ scale: 0.92 }}
-                            className="shrink-0 rounded-xl text-[11px] font-black"
-                            style={{ background: equippedIds.has(selectedResidue.id) ? 'rgba(0,90,48,0.45)' : `linear-gradient(135deg, ${RARITY_COLOR[selectedResidue.rarity]}35, rgba(12,5,28,0.85))`, border: `1.5px solid ${equippedIds.has(selectedResidue.id) ? 'rgba(0,210,110,0.6)' : RARITY_COLOR[selectedResidue.rarity] + '77'}`, color: equippedIds.has(selectedResidue.id) ? '#00DD77' : RARITY_COLOR[selectedResidue.rarity], fontFamily: 'monospace', minWidth: 60, minHeight: 40, padding: '0 8px' }}>
-                            {equippedIds.has(selectedResidue.id) ? '✓ 装備中' : '装備する'}
-                          </motion.button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="gothic-panel rounded-2xl flex items-center justify-center gap-2 opacity-30" style={{ height: 76 }}>
-                        <span className="text-[10px] tracking-widest font-bold" style={{ color: 'rgba(180,100,255,0.7)', fontFamily: 'monospace' }}>残滓を選択</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="shrink-0 px-4 pb-1.5 flex items-center justify-between">
-                    <span className="text-[10px] font-black tracking-[0.18em]" style={{ color: 'rgba(185,110,255,0.9)', fontFamily: 'monospace' }}>☠ 残滓一覧 — {abyssalResidues.length}個</span>
-                  </div>
-                  <VirtualResidueGrid items={abyssalResidues} selectedId={selectedResidueId} equippedIds={equippedIds} onSelect={id => { sound.playTap(); setSelectedResidueId(id); }} />
-                </>
+                <EquipTab
+                  abyssalResidues={abyssalResidues}
+                  equippedResidueSlots={equippedResidueSlots}
+                  selectedId={selectedResidueId}
+                  activeSlot={activeSlot}
+                  onSelectResidue={setSelectedResidueId}
+                  onSlotTap={setActiveSlot}
+                  onEquip={handleEquipResidue}
+                  sound={sound}
+                />
               ) : (
                 <>
                   {/* Weapon/Armor/Acc grid */}
@@ -1149,47 +921,15 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
               )}
             </motion.div>
           ) : (
-            <motion.div key="enhance" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.16 }} className="absolute inset-0 flex flex-col overflow-hidden px-3 pt-1 pb-3 gap-2">
+            <motion.div key="enhance" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.16 }} className={`absolute inset-0 flex flex-col overflow-hidden${!isResidueSlot ? ' px-3 pt-1 pb-3 gap-2' : ''}`}>
               {isResidueSlot ? (
-                <>
-                  {/* Residue selector for enhance */}
-                  <div className="shrink-0 flex gap-2 pt-1">
-                    {abyssalResidues.slice(0, 4).map(r => (
-                      <motion.button key={r.id} onClick={() => { sound.playTap(); setSelectedResidueId(r.id); }} whileTap={{ scale: 0.92 }}
-                        className="flex-1 rounded-xl py-1.5 flex flex-col items-center gap-0.5 relative"
-                        style={{ height: 60, background: selectedResidueId === r.id ? `linear-gradient(160deg, ${RARITY_GLOW[r.rarity]}, rgba(12,5,28,0.92))` : 'rgba(12,6,28,0.7)', border: `1.5px solid ${selectedResidueId === r.id ? RARITY_COLOR[r.rarity] + 'BB' : 'rgba(130,70,200,0.35)'}` }}>
-                        <ResidueIcon rarity={r.rarity} size={22} />
-                        <span className="text-[8px] font-black truncate max-w-full px-0.5" style={{ color: RARITY_COLOR[r.rarity], fontFamily: 'monospace' }}>{formatStat(r.mainStat.type, r.mainStat.value)}</span>
-                      </motion.button>
-                    ))}
-                  </div>
-                  <StatsComparison residue={selectedResidue} expGain={totalExpGain} />
-                  <EnhanceGauge residue={selectedResidue} previewExpGain={totalExpGain} />
-                  <div className="gothic-panel rounded-2xl p-3 flex flex-col flex-1 overflow-hidden gap-2">
-                    <div className="flex items-center justify-between shrink-0">
-                      <span className="text-[10px] font-black tracking-[0.2em]" style={{ color: 'rgba(185,110,255,0.92)', fontFamily: 'monospace' }}>✦ 素材を選択</span>
-                      <button onClick={handleAutoSelect} disabled={!selectedResidue || residueMaterials.length === 0}
-                        className="flex items-center gap-1 text-[10px] font-black px-2.5 py-1.5 rounded-lg disabled:opacity-35"
-                        style={{ background: 'rgba(160,0,255,0.2)', border: '1px solid rgba(180,60,255,0.5)', color: '#E080FF', fontFamily: 'monospace' }}>
-                        <Zap size={10} /> 一括選択
-                      </button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar">
-                      {residueMaterials.length === 0 ? (
-                        <div className="flex items-center justify-center h-full opacity-40"><span className="text-[11px] italic" style={{ color: 'rgba(180,100,255,0.7)', fontFamily: 'monospace' }}>素材がありません</span></div>
-                      ) : (
-                        <div className="grid grid-cols-4 gap-2 content-start">
-                          {residueMaterials.map(mat => <MaterialCard key={mat.id} mat={mat} isSelected={selectedMatIds.has(mat.id)} onToggle={() => toggleMat(mat.id)} />)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <motion.button onClick={handleEnhance} whileTap={{ scale: 0.95 }} disabled={selectedMatIds.size === 0 || !selectedResidue}
-                    className="shrink-0 py-3.5 rounded-2xl text-[13px] font-black tracking-[0.3em] disabled:opacity-35"
-                    style={{ background: 'linear-gradient(135deg, rgba(120,0,220,0.5), rgba(50,0,120,0.65))', border: '1.5px solid rgba(160,50,255,0.65)', color: '#E080FF', boxShadow: '0 0 18px rgba(160,0,255,0.3)', fontFamily: 'monospace' }}>
-                    強 化
-                  </motion.button>
-                </>
+                <EnhanceTab
+                  abyssalResidues={abyssalResidues}
+                  residueMaterials={residueMaterials}
+                  selectedId={selectedResidueId}
+                  onEnhance={handleEnhance}
+                  sound={sound}
+                />
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-40">
                   <span style={{ fontSize: 36 }}>🔒</span>
