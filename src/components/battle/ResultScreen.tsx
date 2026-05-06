@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { motion } from 'framer-motion';
 import { ChevronRight, Eye, Package, Share2, Skull, Sparkles } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import type { ItemData } from '../../types/game';
@@ -155,6 +156,19 @@ function isPremiumDrop(drop: ResultDrop) {
   return tier === 'premium' || tier === 'cursed';
 }
 
+function getMeteorColor(rarity: DropRarity): string {
+  switch (rarity) {
+    case 'UR':
+    case 'HIDDEN_UNIQUE': return '#5A00A0';
+    case 'LR':            return '#C24000';
+    case 'SSR':           return '#C8960C';
+    case 'UNIQUE':        return '#A07800';
+    case 'SR':            return '#7040CC';
+    case 'RARE':          return '#1848AA';
+    default:              return '#3B1669';
+  }
+}
+
 function haptic(pattern: VibratePattern) {
   if (typeof navigator !== 'undefined') navigator.vibrate?.(pattern);
 }
@@ -210,15 +224,120 @@ function RarityBadge({ drop, compact = false }: { drop: ResultDrop; compact?: bo
   );
 }
 
-function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 'sealed' | 'revealing' | 'revealed'; onReveal: () => void }) {
+function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 'meteor' | 'sealed' | 'revealing' | 'revealed'; onReveal: () => void }) {
   const rarity = normalizeRarity(drop.rarity);
   const style = RARITY_STYLE[rarity];
   const cursed = style.tier === 'cursed';
   const premium = style.tier === 'premium';
   const revealed = stage === 'revealed';
+  const isMeteor = stage === 'meteor';
+  const meteorColor = getMeteorColor(rarity);
+  const orbSize = cursed ? 184 : premium ? 174 : 150;
+
+  const shards = useMemo(() => Array.from({ length: 12 }, (_, i) => {
+    const angle = (i / 12) * Math.PI * 2;
+    const dist = 72 + (i % 4) * 28;
+    return {
+      sx: `${Math.cos(angle) * dist}px`,
+      sy: `${Math.sin(angle) * dist}px`,
+      sr: `${i * 30 + (i % 3) * 18}deg`,
+      size: 3 + (i % 4) * 1.5,
+      color: i % 3 === 0 ? style.color : i % 3 === 1 ? '#ffffff' : `${style.color}88`,
+      delay: `${i * 0.028}s`,
+    };
+  }), [style.color]);
 
   return (
     <div className="relative flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden">
+
+      {/* ── Abyssal Meteor overlay (fixed, full-screen fall) ─────────── */}
+      {isMeteor && (
+        <div
+          onClick={onReveal}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          {/* Screen tint */}
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', pointerEvents: 'none' }} />
+          {/* Falling orb + tail (share the same animation so the tail stays above the orb) */}
+          <div
+            style={{
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              animation: 'meteorFall 1.7s cubic-bezier(0.22,1,0.36,1) both',
+            }}
+          >
+            {/* Narrow core tail */}
+            <div
+              style={{
+                width: 8,
+                height: 220,
+                background: `linear-gradient(0deg, ${meteorColor}DD 0%, ${meteorColor}55 50%, transparent 100%)`,
+                filter: 'blur(5px)',
+                animation: 'meteorTailFade 1.7s cubic-bezier(0.22,1,0.36,1) both',
+              }}
+            />
+            {/* Wide glow halo tail */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 54,
+                height: 190,
+                background: `linear-gradient(0deg, ${meteorColor}66 0%, transparent 100%)`,
+                filter: 'blur(22px)',
+                animation: 'meteorTailFade 1.7s cubic-bezier(0.22,1,0.36,1) both',
+                pointerEvents: 'none',
+              }}
+            />
+            {/* The orb */}
+            <div
+              style={{
+                width: orbSize,
+                height: orbSize,
+                borderRadius: '50%',
+                background: `radial-gradient(circle, ${meteorColor}EE 0%, ${meteorColor}99 30%, rgba(3,1,8,0.92) 76%)`,
+                border: `2.5px solid ${meteorColor}BB`,
+                boxShadow: `0 0 80px ${meteorColor}AA, 0 0 160px ${meteorColor}44, inset 0 0 28px rgba(0,0,0,0.5)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: style.color,
+                zIndex: 1,
+              }}
+            >
+              {cursed ? <Skull size={44} /> : premium ? <Sparkles size={40} /> : <Package size={34} />}
+            </div>
+          </div>
+          {/* Skip hint */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 'max(88px, env(safe-area-inset-bottom, 88px))',
+              color: 'rgba(240,234,255,0.42)',
+              fontSize: 10,
+              fontFamily: 'monospace',
+              letterSpacing: '0.18em',
+              animation: 'fadeIn 0.4s 1.2s both',
+            }}
+          >
+            TAP TO SKIP
+          </div>
+        </div>
+      )}
+
+      {/* ── Background glow ──────────────────────────────────────────── */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -230,7 +349,8 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
         }}
       />
 
-      {premium && (
+      {/* Rune ring (premium) */}
+      {premium && !isMeteor && (
         <div
           className="absolute pointer-events-none"
           style={{
@@ -244,7 +364,8 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
         />
       )}
 
-      {cursed && (
+      {/* Cursed pillar + wisps */}
+      {cursed && !isMeteor && (
         <>
           <div
             className="absolute top-[-14%] bottom-[-14%] left-1/2 pointer-events-none"
@@ -276,53 +397,97 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
         </>
       )}
 
+      {/* ── Orb / Shatter / Card ─────────────────────────────────────── */}
       {!revealed ? (
-        <button
-          type="button"
-          onClick={stage === 'sealed' ? onReveal : undefined}
-          className="relative flex flex-col items-center justify-center"
-          style={{
-            width: cursed ? 184 : premium ? 174 : 150,
-            height: cursed ? 184 : premium ? 174 : 150,
-            borderRadius: '50%',
-            border: `2px solid ${style.color}88`,
-            background: cursed
-              ? 'radial-gradient(circle, rgba(188,0,251,0.76) 0%, rgba(60,0,26,0.86) 38%, rgba(2,1,8,0.98) 72%)'
-              : premium
-                ? `radial-gradient(circle, rgba(255,255,255,0.88) 0%, ${style.glow} 24%, rgba(10,5,18,0.96) 74%)`
-                : `radial-gradient(circle, rgba(255,255,255,0.20) 0%, ${style.glow} 44%, rgba(8,5,16,0.96) 76%)`,
-            color: style.color,
-            boxShadow: cursed
-              ? '0 0 48px rgba(188,0,251,0.72), inset 0 0 34px rgba(0,0,0,0.62)'
-              : premium
-                ? `0 0 42px ${style.glow}, inset 0 0 28px rgba(255,255,255,0.08)`
-                : `0 0 20px ${style.glow}, inset 0 0 18px rgba(255,255,255,0.04)`,
-            animation: stage === 'revealing'
-              ? (cursed ? 'cursedDropShatter 0.95s ease-out both' : premium ? 'premiumDropBurst 0.82s ease-out both' : 'normalDropSettle 0.5s ease-out both')
-              : (cursed ? 'cursedOrbPulse 1.5s ease-in-out infinite' : premium ? 'premiumOrbPulse 1.8s ease-in-out infinite' : 'lootOrbPulse 2.4s ease-in-out infinite'),
-          }}
-        >
-          {cursed ? <Skull size={40} /> : premium ? <Sparkles size={38} /> : <Package size={32} />}
-          <span
+        <>
+          {/* Displacement rings — space-warping pulse around sealed orb */}
+          {stage === 'sealed' && (premium || cursed) && [1, 1.32, 1.65].map((scale, i) => (
+            <div
+              key={i}
+              className="absolute pointer-events-none"
+              style={{
+                width: orbSize * scale,
+                height: orbSize * scale,
+                borderRadius: '50%',
+                border: `${1.4 - i * 0.3}px solid ${style.color}${['44', '2A', '18'][i]}`,
+                animation: `orbDisplace ${2.1 + i * 0.45}s ease-in-out ${i * 0.32}s infinite`,
+              }}
+            />
+          ))}
+
+          {/* Shatter particles — fly outward during revealing */}
+          {stage === 'revealing' && shards.map((shard, i) => (
+            <div
+              key={i}
+              className="pointer-events-none"
+              style={{
+                position: 'absolute',
+                left: `calc(50% - ${shard.size / 2}px)`,
+                top: `calc(50% - ${shard.size / 2}px)`,
+                width: shard.size,
+                height: shard.size,
+                borderRadius: '50%',
+                background: shard.color,
+                boxShadow: `0 0 ${shard.size * 2}px ${shard.color}`,
+                '--sx': shard.sx,
+                '--sy': shard.sy,
+                '--sr': shard.sr,
+                animation: `shardFly 0.65s ease-out ${shard.delay} both`,
+              } as CSSProperties}
+            />
+          ))}
+
+          <button
+            type="button"
+            onClick={stage === 'sealed' ? onReveal : undefined}
+            className="relative flex flex-col items-center justify-center"
             style={{
-              marginTop: 12,
-              fontFamily: "'Cinzel', serif",
-              fontSize: 10,
-              fontWeight: 900,
-              letterSpacing: '0.16em',
-              color: '#F0EAFF',
+              width: orbSize,
+              height: orbSize,
+              borderRadius: '50%',
+              border: `2px solid ${style.color}88`,
+              background: cursed
+                ? 'radial-gradient(circle, rgba(188,0,251,0.76) 0%, rgba(60,0,26,0.86) 38%, rgba(2,1,8,0.98) 72%)'
+                : premium
+                  ? `radial-gradient(circle, rgba(255,255,255,0.88) 0%, ${style.glow} 24%, rgba(10,5,18,0.96) 74%)`
+                  : `radial-gradient(circle, rgba(255,255,255,0.20) 0%, ${style.glow} 44%, rgba(8,5,16,0.96) 76%)`,
+              color: style.color,
+              boxShadow: cursed
+                ? '0 0 48px rgba(188,0,251,0.72), inset 0 0 34px rgba(0,0,0,0.62)'
+                : premium
+                  ? `0 0 42px ${style.glow}, inset 0 0 28px rgba(255,255,255,0.08)`
+                  : `0 0 20px ${style.glow}, inset 0 0 18px rgba(255,255,255,0.04)`,
+              animation: stage === 'revealing'
+                ? (cursed ? 'cursedDropShatter 0.95s ease-out both' : premium ? 'premiumDropBurst 0.82s ease-out both' : 'normalDropSettle 0.5s ease-out both')
+                : (cursed ? 'cursedOrbPulse 1.5s ease-in-out infinite' : premium ? 'premiumOrbPulse 1.8s ease-in-out infinite' : 'lootOrbPulse 2.4s ease-in-out infinite'),
             }}
           >
-            {stage === 'revealing' ? 'APPRAISING' : 'TAP TO APPRAISE'}
-          </span>
-          {cursed && (
-            <span style={{ marginTop: 6, fontSize: 10, color: '#fca5a5', fontWeight: 700 }}>
-              怨念反応
+            {cursed ? <Skull size={40} /> : premium ? <Sparkles size={38} /> : <Package size={32} />}
+            <span
+              style={{
+                marginTop: 12,
+                fontFamily: "'Cinzel', serif",
+                fontSize: 10,
+                fontWeight: 900,
+                letterSpacing: '0.16em',
+                color: '#F0EAFF',
+              }}
+            >
+              {stage === 'revealing' ? 'APPRAISING' : 'TAP TO APPRAISE'}
             </span>
-          )}
-        </button>
+            {cursed && (
+              <span style={{ marginTop: 6, fontSize: 10, color: '#fca5a5', fontWeight: 700 }}>
+                怨念反応
+              </span>
+            )}
+          </button>
+        </>
       ) : (
-        <div
+        /* Item Materialization — spring from light */
+        <motion.div
+          initial={{ opacity: 0, scale: 0.62, y: 38, filter: 'brightness(4) blur(14px)' }}
+          animate={{ opacity: 1, scale: 1, y: 0, filter: 'brightness(1) blur(0px)' }}
+          transition={{ type: 'spring', stiffness: 170, damping: 15, mass: 0.85 }}
           className="relative"
           style={{
             width: 'min(330px, 100%)',
@@ -335,7 +500,6 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
               : premium
                 ? `0 0 40px ${style.glow}, inset 0 0 30px rgba(0,0,0,0.42)`
                 : `0 0 18px ${style.glow}, inset 0 0 20px rgba(0,0,0,0.44)`,
-            animation: cursed ? 'cursedCardReveal 0.78s cubic-bezier(0.2,1,0.28,1) both' : 'cardReveal 0.58s cubic-bezier(0.34,1.3,0.64,1) both',
           }}
         >
           <div
@@ -424,7 +588,7 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );
@@ -445,7 +609,8 @@ export default function ResultScreen({
   const [showContent, setShowContent] = useState(false);
   const [screen, setScreen] = useState<'summary' | 'appraisal'>('summary');
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [dropStage, setDropStage] = useState<'sealed' | 'revealing' | 'revealed'>('sealed');
+  const [dropStage, setDropStage] = useState<'meteor' | 'sealed' | 'revealing' | 'revealed'>('sealed');
+  const [showBloom, setShowBloom] = useState(false);
   const [revealedIds, setRevealedIds] = useState<string[]>([]);
   const [showCertificate, setShowCertificate] = useState(false);
   const { addExp } = useGameStore();
@@ -482,6 +647,19 @@ export default function ResultScreen({
     isUnique: true,
   } as ItemData;
 
+  // Firefly particles — rarity-tinted, rise upward when item is revealed
+  const fireflyParticles = useMemo(() => Array.from({ length: 22 }, (_, i) => ({
+    left: 4 + ((i * 19) % 88),
+    bottom: 4 + ((i * 13) % 72),
+    size: 1.8 + (i % 4) * 0.7,
+    color: i % 3 === 0 ? currentStyle.color : i % 3 === 1 ? `${currentStyle.color}88` : '#c084fc',
+    delay: (i * 0.17) % 3.6,
+    duration: 3.2 + (i % 5) * 0.56,
+    ffx1: `${-7 + ((i * 7) % 14)}px`,
+    ffx2: `${-9 + ((i * 11) % 18)}px`,
+    ffx3: `${-5 + ((i * 5) % 10)}px`,
+  })), [currentStyle.color]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setShowContent(true);
@@ -490,18 +668,37 @@ export default function ResultScreen({
     return () => window.clearTimeout(timer);
   }, [addExp, expGained]);
 
+  // Auto-transition meteor → sealed after animation completes
+  useEffect(() => {
+    if (dropStage !== 'meteor') return;
+    const t = window.setTimeout(() => setDropStage('sealed'), 2100);
+    return () => window.clearTimeout(t);
+  }, [dropStage]);
+
   const mins = String(Math.floor(clearTime / 60)).padStart(2, '0');
   const secs = String(clearTime % 60).padStart(2, '0');
 
   const goToAppraisal = () => {
     haptic(hasCursedDrop ? [16, 24, 42] : [12, 18]);
+    const firstDrop = normalizedDrops[0];
+    const startMeteor = firstDrop && isPremiumDrop(firstDrop);
+    setDropStage(startMeteor ? 'meteor' : 'sealed');
     setScreen('appraisal');
   };
 
   const revealCurrentDrop = () => {
+    // During meteor: skip directly to sealed (orb settles)
+    if (dropStage === 'meteor') {
+      setDropStage('sealed');
+      return;
+    }
     if (dropStage !== 'sealed') return;
     haptic(isCursedDrop(currentDrop) ? [18, 28, 45, 35, 70] : isPremiumDrop(currentDrop) ? [16, 26, 38] : [10, 16]);
     setDropStage('revealing');
+
+    // Lens-flare bloom flash
+    setShowBloom(true);
+    window.setTimeout(() => setShowBloom(false), 900);
 
     const revealDelay = isCursedDrop(currentDrop) ? 980 : isPremiumDrop(currentDrop) ? 780 : 460;
     window.setTimeout(() => {
@@ -517,7 +714,8 @@ export default function ResultScreen({
       const nextDrop = normalizedDrops[nextIndex];
       const nextId = String(nextDrop.id ?? nextDrop.name);
       setCurrentIndex(nextIndex);
-      setDropStage(revealedSet.has(nextId) ? 'revealed' : 'sealed');
+      const alreadyRevealed = revealedSet.has(nextId);
+      setDropStage(alreadyRevealed ? 'revealed' : isPremiumDrop(nextDrop) ? 'meteor' : 'sealed');
       haptic([8, 12]);
       return;
     }
@@ -747,7 +945,44 @@ export default function ResultScreen({
           className="relative z-10 h-full flex flex-col"
           style={{ padding: 'max(14px, env(safe-area-inset-top, 14px)) 14px max(14px, env(safe-area-inset-bottom, 14px))' }}
         >
-          <div className="shrink-0" style={{ textAlign: 'center', animation: 'resultSlideIn 0.32s ease-out both' }}>
+          {/* Bloom flash — full-screen lens flare on shatter */}
+          {showBloom && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 150,
+                pointerEvents: 'none',
+                background: `radial-gradient(ellipse at center, rgba(255,255,255,0.92) 0%, ${currentStyle.color}88 28%, transparent 68%)`,
+                animation: 'bloomFlash 0.92s ease-out both',
+              }}
+            />
+          )}
+
+          {/* Firefly particles — float up when item is revealed */}
+          {dropStage === 'revealed' && fireflyParticles.map((p, i) => (
+            <div
+              key={i}
+              style={{
+                position: 'absolute',
+                left: `${p.left}%`,
+                bottom: `${p.bottom}%`,
+                width: p.size,
+                height: p.size,
+                borderRadius: '50%',
+                background: p.color,
+                boxShadow: `0 0 ${p.size * 2.5}px ${p.color}`,
+                '--ffx1': p.ffx1,
+                '--ffx2': p.ffx2,
+                '--ffx3': p.ffx3,
+                animation: `fireflyFloat ${p.duration}s ease-in-out ${p.delay}s infinite`,
+                pointerEvents: 'none',
+                zIndex: 0,
+              } as CSSProperties}
+            />
+          ))}
+
+          <div className="shrink-0" style={{ textAlign: 'center', animation: 'resultSlideIn 0.32s ease-out both', position: 'relative', zIndex: 1 }}>
             <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: currentStyle.color, letterSpacing: '0.24em' }}>
               APPRAISAL
             </div>
@@ -756,7 +991,7 @@ export default function ResultScreen({
             </div>
           </div>
 
-          <div className="shrink-0 safe-scroll" style={{ marginTop: 10, overflowX: 'auto', display: 'flex', gap: 8, paddingBottom: 4 }}>
+          <div className="shrink-0 safe-scroll" style={{ marginTop: 10, overflowX: 'auto', display: 'flex', gap: 8, paddingBottom: 4, position: 'relative', zIndex: 1 }}>
             {normalizedDrops.map((drop, index) => {
               const id = String(drop.id ?? drop.name);
               const revealed = revealedSet.has(id);
@@ -768,7 +1003,7 @@ export default function ResultScreen({
                   type="button"
                   onClick={() => {
                     setCurrentIndex(index);
-                    setDropStage(revealed ? 'revealed' : 'sealed');
+                    setDropStage(revealed ? 'revealed' : isPremiumDrop(drop) ? 'meteor' : 'sealed');
                   }}
                   style={{
                     flexShrink: 0,
@@ -798,7 +1033,7 @@ export default function ResultScreen({
 
           <AppraisalField drop={currentDrop} stage={dropStage} onReveal={revealCurrentDrop} />
 
-          <div className="shrink-0" style={{ display: 'flex', gap: 9, marginTop: 10 }}>
+          <div className="shrink-0" style={{ display: 'flex', gap: 9, marginTop: 10, position: 'relative', zIndex: 1 }}>
             {dropStage === 'revealed' && isCursedDrop(currentDrop) && (
               <button
                 type="button"
@@ -825,7 +1060,12 @@ export default function ResultScreen({
             )}
             <button
               type="button"
-              onClick={dropStage === 'sealed' ? revealCurrentDrop : dropStage === 'revealed' ? moveNext : undefined}
+              onClick={
+                dropStage === 'meteor' ? revealCurrentDrop :
+                dropStage === 'sealed' ? revealCurrentDrop :
+                dropStage === 'revealed' ? moveNext :
+                undefined
+              }
               disabled={dropStage === 'revealing'}
               style={{
                 flex: dropStage === 'revealed' && isCursedDrop(currentDrop) ? 1.35 : 1,
@@ -846,10 +1086,10 @@ export default function ResultScreen({
                 opacity: dropStage === 'revealing' ? 0.65 : 1,
               }}
             >
-              {dropStage === 'sealed' && (
+              {(dropStage === 'meteor' || dropStage === 'sealed') && (
                 <>
                   <Eye size={15} />
-                  鑑定する
+                  {dropStage === 'meteor' ? 'スキップ' : '鑑定する'}
                 </>
               )}
               {dropStage === 'revealing' && '鑑定中'}

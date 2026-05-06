@@ -514,6 +514,47 @@ body > * {
   70% { opacity: 0.38; transform: translateY(-42px) scaleY(1.3); }
 }
 
+/* ── Premium Drop Reveal ─────────────────── */
+@keyframes meteorFall {
+  0% {
+    transform: translateY(-130vh) translateX(7vw) scale(0.22) rotate(-24deg);
+    opacity: 0;
+    filter: brightness(4);
+  }
+  7%  { opacity: 1; }
+  72% { transform: translateY(0) translateX(0) scale(1.14) rotate(1.5deg); filter: brightness(2); }
+  84% { transform: translateY(-14px) scale(0.94) rotate(-0.8deg); filter: brightness(1.1); }
+  93% { transform: translateY(4px) scale(1.04); }
+  100% { transform: translateY(0) scale(1) rotate(0deg); filter: brightness(1); }
+}
+@keyframes meteorTailFade {
+  0%   { opacity: 0.88; }
+  55%  { opacity: 0.5;  }
+  88%  { opacity: 0.06; }
+  100% { opacity: 0;    }
+}
+@keyframes bloomFlash {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  50%  { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+@keyframes shardFly {
+  0%   { opacity: 1; transform: translate(0, 0) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translate(var(--sx, 50px), var(--sy, -50px)) scale(0.08) rotate(var(--sr, 200deg)); }
+}
+@keyframes fireflyFloat {
+  0%   { opacity: 0; transform: translateY(0) translateX(0); }
+  18%  { opacity: 0.88; }
+  46%  { transform: translateY(-30px) translateX(var(--ffx1, 5px)); opacity: 0.72; }
+  76%  { transform: translateY(-58px) translateX(var(--ffx2, -7px)); opacity: 0.32; }
+  100% { opacity: 0; transform: translateY(-86px) translateX(var(--ffx3, 3px)); }
+}
+@keyframes orbDisplace {
+  0%, 100% { transform: scale(1);    opacity: 0.36; }
+  50%       { transform: scale(1.1); opacity: 0.68; }
+}
+
 /* ═══════════════════════════════════════════
    UTILITY CLASSES
    ═══════════════════════════════════════════ */
