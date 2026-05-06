@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import jobsData from '../data/master/jobs.json';
 import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
+import { isResidueSlotCompatible } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
 import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData, BaseStats, JobData } from '../types/game';
 
@@ -34,6 +35,7 @@ interface GameState {
   abyssalResidues: AbyssalResidueData[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
   residueMaterials: ResidueMatData[];
+  transmutationPoints: number;
 
   setPlayer: (player: CharacterData) => void;
   setNecroStatus: (status: NecroStatus) => void;
@@ -44,6 +46,7 @@ interface GameState {
   setAbyssalResidues: (residues: AbyssalResidueData[]) => void;
   equipResidueToSlot: (slotIndex: number, residue: AbyssalResidueData | null) => void;
   upgradeResidue: (residueId: string, matIds: string[]) => void;
+  setTransmutationPoints: (points: number) => void;
 
   updateHP: (hp: number) => void;
   updateEnergy: (energy: number) => void;
@@ -103,8 +106,9 @@ export const useGameStore = create<GameState>((set) => ({
   soulShards: [],
   inventoryItems: [],
   abyssalResidues: [],
-  equippedResidueSlots: [null, null, null],
+  equippedResidueSlots: [null, null, null, null, null],
   residueMaterials: [],
+  transmutationPoints: 0,
   equippingMonsterId: null,
   battleLogs: ['SYSTEM STANDBY...'],
   actionTrigger: null,
@@ -125,6 +129,7 @@ export const useGameStore = create<GameState>((set) => ({
   setInventoryItems: (items) => set({ inventoryItems: items }),
   setAbyssalResidues: (residues) => set({ abyssalResidues: residues }),
   equipResidueToSlot: (slotIndex, residue) => set((state) => {
+    if (residue && !isResidueSlotCompatible(residue, slotIndex)) return state;
     const slots = [...state.equippedResidueSlots] as (AbyssalResidueData | null)[];
     slots[slotIndex] = residue;
     return {
@@ -157,6 +162,7 @@ export const useGameStore = create<GameState>((set) => ({
     const remainingMaterials = state.residueMaterials.filter(m => !matIds.includes(m.id));
     return { abyssalResidues: updatedResidues, equippedResidueSlots: updatedEquippedSlots, residueMaterials: remainingMaterials };
   }),
+  setTransmutationPoints: (points) => set({ transmutationPoints: Math.max(0, points) }),
   setEquippingMonsterId: (id) => set({ equippingMonsterId: id }),
   addBattleLog: (log) => set((state) => ({ battleLogs: [...state.battleLogs, log].slice(-50) })),
   clearBattleLogs: () => set({ battleLogs: ['SYSTEM STANDBY...'] }),
@@ -342,16 +348,25 @@ export const useGameStore = create<GameState>((set) => ({
       }
     ],
     abyssalResidues: [
-      { id: 'r1', name: '深淵の指輪', itemId: 'abyss-ring', rarity: 'EPIC', mainStat: { type: 'ATK%', value: 35.2 }, subOptions: [{ type: 'CRIT_RATE', value: 7.8 }, { type: 'HP%', value: 6.2 }, { type: 'DEF_FLAT', value: 32 }, { type: 'FIRE_DMG_BOOST', value: 4.1 }], level: 12, exp: 2400, maxExp: 4000 },
-      { id: 'r2', name: '虚無の骸骨', itemId: 'void-skull', rarity: 'RARE', mainStat: { type: 'HP%', value: 22.8 }, subOptions: [{ type: 'DEF%', value: 5.4 }, { type: 'ATK_FLAT', value: 18 }, { type: 'SPD%', value: 3.2 }], level: 8, exp: 1200, maxExp: 3000 },
-      { id: 'r3', name: '奈落の紋章', itemId: 'abyss-emblem', rarity: 'EPIC', mainStat: { type: 'CRIT_DMG', value: 51.6 }, subOptions: [{ type: 'ATK%', value: 9.1 }, { type: 'CRIT_RATE', value: 5.2 }, { type: 'DARK_DMG_BOOST', value: 4.8 }, { type: 'HP_FLAT', value: 120 }], level: 15, exp: 100, maxExp: 5000 },
-      { id: 'r4', name: '冥界の欠片', itemId: 'underworld-shard', rarity: 'COMMON', mainStat: { type: 'DEF%', value: 12.0 }, subOptions: [{ type: 'HP_FLAT', value: 85 }, { type: 'EFFECT_RES', value: 3.1 }], level: 3, exp: 600, maxExp: 1500 },
-      { id: 'r5', name: '漆黒の霊核', itemId: 'black-spirit-core', rarity: 'RARE', mainStat: { type: 'WATER_DMG_BOOST', value: 28.4 }, subOptions: [{ type: 'CRIT_RATE', value: 6.0 }, { type: 'CRIT_DMG', value: 5.1 }, { type: 'HP%', value: 4.3 }, { type: 'EFFECT_HIT', value: 3.2 }], level: 10, exp: 800, maxExp: 3500 },
-      { id: 'r6', name: '魂の骨牌', itemId: 'soul-domino', rarity: 'RARE', mainStat: { type: 'SPD%', value: 18.6 }, subOptions: [{ type: 'CRIT_RATE', value: 4.9 }, { type: 'ATK%', value: 5.8 }, { type: 'HP_FLAT', value: 96 }], level: 6, exp: 1800, maxExp: 2500 },
-      { id: 'r7', name: '死霊の印璽', itemId: 'necro-seal', rarity: 'COMMON', mainStat: { type: 'HP_FLAT', value: 380 }, subOptions: [{ type: 'DEF_FLAT', value: 25 }, { type: 'ATK_FLAT', value: 12 }], level: 1, exp: 0, maxExp: 800 },
-      { id: 'r8', name: '虚空の瞳', itemId: 'void-eye', rarity: 'EPIC', mainStat: { type: 'CRIT_RATE', value: 15.5 }, subOptions: [{ type: 'ATK%', value: 8.3 }, { type: 'CRIT_DMG', value: 12.4 }, { type: 'THUNDER_DMG_BOOST', value: 6.0 }, { type: 'EFFECT_HIT', value: 5.5 }], level: 20, exp: 3500, maxExp: 8000 },
+      { id: 'r1', name: '深淵の指輪', itemId: 'chest', rarity: 'EPIC', mainStat: { type: 'ATK%', value: 35.2 }, subOptions: [{ type: 'CRIT_RATE', value: 7.8 }, { type: 'HP%', value: 6.2 }, { type: 'DEF_FLAT', value: 32 }, { type: 'FIRE_DMG_BOOST', value: 4.1 }], level: 12, exp: 2400, maxExp: 4000, tierHistory: [2, 3, 1] },
+      { id: 'r2', name: '虚無の骸骨', itemId: 'chest', rarity: 'RARE', mainStat: { type: 'HP%', value: 22.8 }, subOptions: [{ type: 'DEF%', value: 5.4 }, { type: 'ATK_FLAT', value: 18 }, { type: 'SPD%', value: 3.2 }], level: 8, exp: 1200, maxExp: 3000, tierHistory: [1, 2] },
+      { id: 'r3', name: '奈落の紋章', itemId: 'legs', rarity: 'EPIC', mainStat: { type: 'CRIT_DMG', value: 51.6 }, subOptions: [{ type: 'ATK%', value: 9.1 }, { type: 'CRIT_RATE', value: 5.2 }, { type: 'DARK_DMG_BOOST', value: 4.8 }, { type: 'HP_FLAT', value: 120 }], level: 15, exp: 100, maxExp: 5000, tierHistory: [4, 3, 2] },
+      { id: 'r4', name: '冥界の欠片', itemId: 'chest', rarity: 'COMMON', mainStat: { type: 'DEF%', value: 12.0 }, subOptions: [{ type: 'HP_FLAT', value: 85 }, { type: 'EFFECT_RES', value: 3.1 }], level: 3, exp: 600, maxExp: 1500 },
+      { id: 'r5', name: '漆黒の霊核', itemId: 'waist', rarity: 'RARE', mainStat: { type: 'WATER_DMG_BOOST', value: 28.4 }, subOptions: [{ type: 'CRIT_RATE', value: 6.0 }, { type: 'CRIT_DMG', value: 5.1 }, { type: 'HP%', value: 4.3 }, { type: 'EFFECT_HIT', value: 3.2 }], level: 10, exp: 800, maxExp: 3500, tierHistory: [2, 2] },
+      { id: 'r6', name: '魂の骨牌', itemId: 'arms', rarity: 'RARE', mainStat: { type: 'ATK_FLAT', value: 120 }, subOptions: [{ type: 'CRIT_RATE', value: 4.9 }, { type: 'ATK%', value: 5.8 }, { type: 'HP_FLAT', value: 96 }], level: 6, exp: 1800, maxExp: 2500, tierHistory: [3] },
+      { id: 'r7', name: '死霊の印璽', itemId: 'head', rarity: 'COMMON', mainStat: { type: 'HP_FLAT', value: 380 }, subOptions: [{ type: 'DEF_FLAT', value: 25 }, { type: 'ATK_FLAT', value: 12 }], level: 1, exp: 0, maxExp: 800 },
+      { id: 'r8', name: '虚空の瞳', itemId: 'legs', rarity: 'EPIC', mainStat: { type: 'CRIT_RATE', value: 15.5 }, subOptions: [{ type: 'ATK%', value: 8.3 }, { type: 'CRIT_DMG', value: 12.4 }, { type: 'THUNDER_DMG_BOOST', value: 6.0 }, { type: 'EFFECT_HIT', value: 5.5 }], level: 20, exp: 3500, maxExp: 8000, tierHistory: [4, 4, 3, 2, 4] },
+      { id: 'r9', name: '深淵王の帯', itemId: 'waist', rarity: 'LEGENDARY', mainStat: { type: 'DARK_DMG_BOOST', value: 38.8 }, subOptions: [{ type: 'CRIT_RATE', value: 8.8 }, { type: 'CRIT_DMG', value: 16.2 }, { type: 'ATK%', value: 7.4 }, { type: 'EFFECT_HIT', value: 4.4 }], level: 18, exp: 2600, maxExp: 7000, tierHistory: [4, 3, 4, 4] },
+      { id: 'r10', name: '忘却の兜', itemId: 'head', rarity: 'RARE', mainStat: { type: 'HP_FLAT', value: 620 }, subOptions: [{ type: 'CRIT_DMG', value: 6.4 }, { type: 'DEF%', value: 4.6 }, { type: 'EFFECT_RES', value: 3.4 }], level: 5, exp: 500, maxExp: 2200, tierHistory: [2] },
     ],
-    equippedResidueSlots: [null, null, null],
+    equippedResidueSlots: [
+      { id: 'r7', name: '死霊の印璽', itemId: 'head', rarity: 'COMMON', mainStat: { type: 'HP_FLAT', value: 380 }, subOptions: [{ type: 'DEF_FLAT', value: 25 }, { type: 'ATK_FLAT', value: 12 }], level: 1, exp: 0, maxExp: 800 },
+      { id: 'r6', name: '魂の骨牌', itemId: 'arms', rarity: 'RARE', mainStat: { type: 'ATK_FLAT', value: 120 }, subOptions: [{ type: 'CRIT_RATE', value: 4.9 }, { type: 'ATK%', value: 5.8 }, { type: 'HP_FLAT', value: 96 }], level: 6, exp: 1800, maxExp: 2500, tierHistory: [3] },
+      { id: 'r1', name: '深淵の指輪', itemId: 'chest', rarity: 'EPIC', mainStat: { type: 'ATK%', value: 35.2 }, subOptions: [{ type: 'CRIT_RATE', value: 7.8 }, { type: 'HP%', value: 6.2 }, { type: 'DEF_FLAT', value: 32 }, { type: 'FIRE_DMG_BOOST', value: 4.1 }], level: 12, exp: 2400, maxExp: 4000, tierHistory: [2, 3, 1] },
+      { id: 'r5', name: '漆黒の霊核', itemId: 'waist', rarity: 'RARE', mainStat: { type: 'WATER_DMG_BOOST', value: 28.4 }, subOptions: [{ type: 'CRIT_RATE', value: 6.0 }, { type: 'CRIT_DMG', value: 5.1 }, { type: 'HP%', value: 4.3 }, { type: 'EFFECT_HIT', value: 3.2 }], level: 10, exp: 800, maxExp: 3500, tierHistory: [2, 2] },
+      { id: 'r8', name: '虚空の瞳', itemId: 'legs', rarity: 'EPIC', mainStat: { type: 'CRIT_RATE', value: 15.5 }, subOptions: [{ type: 'ATK%', value: 8.3 }, { type: 'CRIT_DMG', value: 12.4 }, { type: 'THUNDER_DMG_BOOST', value: 6.0 }, { type: 'EFFECT_HIT', value: 5.5 }], level: 20, exp: 3500, maxExp: 8000, tierHistory: [4, 4, 3, 2, 4] },
+    ],
+    transmutationPoints: 1320,
     residueMaterials: [
       { id: 'mat-1', name: '深淵の砂', quantity: 8, expValue: 200, rarity: 'COMMON' },
       { id: 'mat-2', name: '虚無の結晶', quantity: 3, expValue: 800, rarity: 'RARE' },

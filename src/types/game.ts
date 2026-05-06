@@ -161,12 +161,14 @@ export interface AbyssalResidueData {
   id: string;
   name: string;
   itemId: string;
-  rarity: 'COMMON' | 'RARE' | 'EPIC';
+  rarity: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
   mainStat: { type: string; value: number };
   subOptions: SubOption[];
   level: number;
   exp: number;
   maxExp: number;
+  residueScore?: number;
+  tierHistory?: number[];
 }
 
 export interface ResidueMatData {
@@ -174,7 +176,7 @@ export interface ResidueMatData {
   name: string;
   quantity: number;
   expValue: number;
-  rarity: 'COMMON' | 'RARE' | 'EPIC';
+  rarity: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
 }
 
 export interface SpiritCoreData {

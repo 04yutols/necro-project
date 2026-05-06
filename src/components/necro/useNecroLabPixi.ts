@@ -94,10 +94,13 @@ export function useNecroLabPixi({ canvasContainer, enabled = true }: LabPixiOpti
           });
           // Two overlapping triangles
           [0, 1].forEach(offset => {
-            g.moveTo(hexPoints[offset * 2].x, hexPoints[offset * 2].y);
-            g.lineTo(hexPoints[offset * 2 + 2].x, hexPoints[offset * 2 + 2].y);
-            g.lineTo(hexPoints[offset * 2 + 4].x, hexPoints[offset * 2 + 4].y);
-            g.lineTo(hexPoints[offset * 2].x, hexPoints[offset * 2].y);
+            const a = (offset * 2) % hexPoints.length;
+            const b = (offset * 2 + 2) % hexPoints.length;
+            const c = (offset * 2 + 4) % hexPoints.length;
+            g.moveTo(hexPoints[a].x, hexPoints[a].y);
+            g.lineTo(hexPoints[b].x, hexPoints[b].y);
+            g.lineTo(hexPoints[c].x, hexPoints[c].y);
+            g.lineTo(hexPoints[a].x, hexPoints[a].y);
             g.stroke({ color: 0x8B00FF, alpha: 0.2, width: 1 });
           });
 

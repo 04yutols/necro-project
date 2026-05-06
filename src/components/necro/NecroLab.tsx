@@ -17,11 +17,13 @@ const RARITY_COLOR: Record<string, string> = {
   COMMON: '#99AABC',
   RARE: '#55AAFF',
   EPIC: '#CC22FF',
+  LEGENDARY: '#FFB84D',
 };
 const RARITY_GLOW: Record<string, string> = {
   COMMON: 'rgba(153,170,188,0.32)',
   RARE: 'rgba(85,170,255,0.38)',
   EPIC: 'rgba(204,34,255,0.48)',
+  LEGENDARY: 'rgba(255,184,77,0.48)',
 };
 const STAT_LABEL: Record<string, string> = {
   'ATK%': 'ATK', 'ATK_FLAT': 'ATK', 'DEF%': 'DEF', 'DEF_FLAT': 'DEF',
@@ -52,6 +54,17 @@ function ResidueIcon({ rarity, size = 36 }: { rarity: string; size?: number }) {
         stroke={c}
         strokeWidth="1.5"
       />
+      {rarity === 'LEGENDARY' && (
+        <>
+          <path
+            d="M12 29l4-13 6 8 6-8 4 13H12z"
+            fill={`${c}4D`}
+            stroke={c}
+            strokeWidth="0.8"
+          />
+          <circle cx="22" cy="22" r="3.2" fill={c} opacity="0.95" />
+        </>
+      )}
       {rarity === 'EPIC' && (
         <>
           <polygon

@@ -2,7 +2,7 @@
 
 import { useRef, useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Swords, Shield, Gem, Zap, Plus, Sparkles, ChevronRight, Home, X } from 'lucide-react';
+import { ChevronLeft, Swords, Shield, Gem, Zap, Plus, Sparkles, ChevronRight, Home, X, Crown, Filter, Recycle, Star } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import { useGothicSound } from '../necro/useGothicSound';
 import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats } from '../../types/game';
@@ -16,6 +16,15 @@ import {
   STAT_VIEW_META,
   type StatBreakdown,
 } from '../../logic/StatSystem';
+import {
+  calculateResidueScore,
+  getResidueScoreGrade,
+  getResidueSlotId,
+  getResidueSlotMeta,
+  isResidueSlotCompatible,
+  RESIDUE_SLOT_ORDER,
+  type ResidueSlotId,
+} from '../../logic/ResidueScore';
 
 /* ──────────────────────────────────────────
    HAPTIC
@@ -55,8 +64,8 @@ function getConf(mk: MemberKey, player: CharacterData | null, party: (MonsterDat
   return m ? (TRIBE[m.tribe] ?? TRIBE.HUMANOID) : VACANT_CONF;
 }
 
-const RARITY_COLOR: Record<string, string> = { COMMON: '#99AABC', RARE: '#55AAFF', EPIC: '#CC22FF', UNIQUE: '#FBBB30' };
-const RARITY_GLOW:  Record<string, string> = { COMMON: 'rgba(153,170,188,0.32)', RARE: 'rgba(85,170,255,0.38)', EPIC: 'rgba(204,34,255,0.48)', UNIQUE: 'rgba(251,187,48,0.38)' };
+const RARITY_COLOR: Record<string, string> = { COMMON: '#99AABC', RARE: '#55AAFF', EPIC: '#CC22FF', LEGENDARY: '#FFB84D', UNIQUE: '#FBBB30' };
+const RARITY_GLOW:  Record<string, string> = { COMMON: 'rgba(153,170,188,0.32)', RARE: 'rgba(85,170,255,0.38)', EPIC: 'rgba(204,34,255,0.48)', LEGENDARY: 'rgba(255,184,77,0.48)', UNIQUE: 'rgba(251,187,48,0.38)' };
 
 /* ──────────────────────────────────────────
    INLINED FROM NecroLab — stat formatting
@@ -110,18 +119,18 @@ function getMemberInfo(
   }
   const i = parseInt(mk.replace('MONSTER_', ''));
   const m = party[i] ?? null;
-  if (!m) return { name: 'VACANT', nameEn: 'VACANT', sub: 'EMPTY', rank: '—', lvl: null, cost: null, stats: null, weapon: null, armor: null, acc: null, residues: [null, null, null], isVacant: true, isPlayer: false };
+  if (!m) return { name: 'VACANT', nameEn: 'VACANT', sub: 'EMPTY', rank: '—', lvl: null, cost: null, stats: null, weapon: null, armor: null, acc: null, residues: [null, null, null, null, null], isVacant: true, isPlayer: false };
   const fake: AbyssalResidueData | null = (() => {
     if (!m.equippedShardId) return null;
     const s = soulShards.find((x: SoulShardData) => x.id === m.equippedShardId);
-    return s ? { id: s.id, name: `${s.originMonsterName}の魂`, itemId: s.id, rarity: 'RARE', mainStat: { type: 'ATK_FLAT', value: s.effect.atkBonus }, subOptions: [{ type: 'DARK_DMG_BOOST', value: s.effect.elementDmgBoost }], level: 1, exp: 0, maxExp: 800 } : null;
+    return s ? { id: s.id, name: `${s.originMonsterName}の魂`, itemId: 'head', rarity: 'RARE', mainStat: { type: 'ATK_FLAT', value: s.effect.atkBonus }, subOptions: [{ type: 'DARK_DMG_BOOST', value: s.effect.elementDmgBoost }], level: 1, exp: 0, maxExp: 800 } : null;
   })();
   return {
     name: m.name, nameEn: m.name.toUpperCase(), sub: (TRIBE[m.tribe] ?? TRIBE.HUMANOID).label, rank: 'SR',
     lvl: null, cost: m.cost,
     stats: m.stats as CharacterData['stats'],
     weapon: null, armor: null, acc: null,
-    residues: [fake, null, null],
+    residues: [fake, null, null, null, null],
     isVacant: false, isPlayer: false,
   };
 }
@@ -555,11 +564,335 @@ function StatusDetailSheet({ open, name, subtitle, stats, profile, currentEnergy
 /* ──────────────────────────────────────────
    RESIDUE ICON — inlined from NecroLab
 ────────────────────────────────────────── */
+function ResidueScoreBadge({ residue, compact = false }: { residue: AbyssalResidueData; compact?: boolean }) {
+  const score = residue.residueScore ?? calculateResidueScore(residue);
+  const grade = getResidueScoreGrade(score);
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: compact ? 3 : 5,
+        borderRadius: 999,
+        padding: compact ? '2px 5px' : '4px 8px',
+        background: `linear-gradient(135deg, ${grade.color}24, rgba(0,0,0,0.38))`,
+        border: `1px solid ${grade.color}66`,
+        boxShadow: score >= 50 ? `0 0 12px ${grade.color}33` : 'none',
+        color: grade.color,
+        fontFamily: 'monospace',
+        fontWeight: 900,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <Star size={compact ? 9 : 11} fill={grade.color} strokeWidth={1.5} />
+      <span style={{ fontSize: compact ? 8 : 10 }}>{grade.grade}</span>
+      <span style={{ fontSize: compact ? 8 : 10 }}>{score.toFixed(1)}</span>
+    </div>
+  );
+}
+
+function ResidueSlotRail({ slots, activeIndex, onSelect, color }: {
+  slots: (AbyssalResidueData | null)[];
+  activeIndex: number;
+  onSelect: (index: number) => void;
+  color: string;
+}) {
+  return (
+    <div className="shrink-0 px-3 pb-2">
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${RESIDUE_SLOT_ORDER.length}, minmax(0, 1fr))`, gap: 7 }}>
+        {RESIDUE_SLOT_ORDER.map((slotId, index) => {
+          const meta = getResidueSlotMeta(slotId);
+          const residue = slots[index] ?? null;
+          const active = activeIndex === index;
+          const rarityColor = residue ? RARITY_COLOR[residue.rarity] : color;
+          return (
+            <motion.button
+              key={slotId}
+              type="button"
+              onClick={() => onSelect(index)}
+              whileTap={{ scale: 0.92 }}
+              style={{
+                minHeight: 72,
+                borderRadius: 13,
+                padding: '7px 5px',
+                background: residue
+                  ? `linear-gradient(160deg, ${rarityColor}22, rgba(8,3,20,0.86))`
+                  : 'rgba(255,255,255,0.028)',
+                border: `1.5px solid ${active ? color : residue ? rarityColor + '66' : 'rgba(150,85,220,0.26)'}`,
+                boxShadow: active ? `0 0 14px ${color}44` : 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 3,
+                minWidth: 0,
+              }}
+            >
+              <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, color: active ? color : rarityColor, fontWeight: 900 }}>{meta.icon}</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 7, color: active ? '#F0EAFF' : 'rgba(198,184,238,0.62)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                {meta.nameJa.replace('の', '')}
+              </span>
+              {residue ? (
+                <span style={{ fontFamily: 'monospace', fontSize: 8, color: rarityColor, fontWeight: 900 }}>Lv.{residue.level}</span>
+              ) : (
+                <span style={{ fontFamily: 'monospace', fontSize: 8, color: 'rgba(130,90,190,0.45)' }}>EMPTY</span>
+              )}
+            </motion.button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ResidueSubstatList({ residue }: { residue: AbyssalResidueData }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
+      {residue.subOptions.map((option, index) => {
+        const label = STAT_LABEL[option.type] ?? getOptionLabel(option.type);
+        const valuable = ['CRIT_RATE', 'CRIT_DMG', 'ATK%', 'HP%'].includes(option.type);
+        return (
+          <div
+            key={`${option.type}-${index}`}
+            style={{
+              minWidth: 0,
+              borderRadius: 10,
+              padding: '7px 8px',
+              background: valuable ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.032)',
+              border: valuable ? '1px solid rgba(212,175,55,0.24)' : '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            <div style={{ fontFamily: 'monospace', fontSize: 8, color: valuable ? '#D4AF37' : '#7f7193', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#F0EAFF', fontWeight: 900, marginTop: 2 }}>+{formatStat(option.type, option.value)}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ResidueGrowthTrack({ residue }: { residue: AbyssalResidueData | null }) {
+  const events = [4, 8, 12, 16, 20];
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 5 }}>
+      {events.map((level, index) => {
+        const reached = !!residue && residue.level >= level;
+        const tier = residue?.tierHistory?.[index];
+        const tierColor = tier === 4 ? '#D4AF37' : tier === 3 ? '#CC22FF' : tier === 2 ? '#55AAFF' : '#6f647f';
+        return (
+          <div
+            key={level}
+            style={{
+              minHeight: 34,
+              borderRadius: 9,
+              background: reached ? `${tierColor}18` : 'rgba(255,255,255,0.026)',
+              border: `1px solid ${reached ? tierColor + '55' : 'rgba(255,255,255,0.055)'}`,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1,
+            }}
+          >
+            <span style={{ fontFamily: 'monospace', fontSize: 8, color: reached ? tierColor : '#51415f', fontWeight: 900 }}>Lv.{level}</span>
+            <span style={{ fontFamily: 'monospace', fontSize: 8, color: reached ? tierColor : '#443650' }}>{tier ? `T${tier}` : '—'}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ResidueDetailPanel({ residue, equipped, color, onEquip, equipDisabled }: {
+  residue: AbyssalResidueData | null;
+  equipped: AbyssalResidueData | null;
+  color: string;
+  onEquip: () => void;
+  equipDisabled: boolean;
+}) {
+  if (!residue) {
+    return (
+      <div className="gothic-panel rounded-2xl flex items-center justify-center opacity-35" style={{ minHeight: 154 }}>
+        <span style={{ color: 'rgba(180,100,255,0.72)', fontFamily: 'monospace', fontSize: 11, letterSpacing: '0.16em' }}>残滓を選択</span>
+      </div>
+    );
+  }
+
+  const rarityColor = RARITY_COLOR[residue.rarity];
+  const slotMeta = getResidueSlotMeta(getResidueSlotId(residue));
+  const currentScore = equipped ? calculateResidueScore(equipped) : 0;
+  const candidateScore = calculateResidueScore(residue);
+  const scoreDiff = candidateScore - currentScore;
+
+  return (
+    <div className="gothic-panel rounded-2xl overflow-hidden relative" style={{ minHeight: 154 }}>
+      <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${rarityColor}, transparent)` }} />
+      <div className="p-3 flex flex-col gap-3">
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 w-[56px] h-[56px] rounded-2xl flex items-center justify-center" style={{ background: `radial-gradient(circle at 35% 30%, ${rarityColor}32, rgba(0,0,0,0.82))`, border: `1.5px solid ${rarityColor}66`, boxShadow: `0 0 16px ${rarityColor}22` }}>
+            <ResidueIcon rarity={residue.rarity} size={34} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <span style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', serif", fontSize: 12, fontWeight: 900, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{residue.name}</span>
+              <span style={{ color: rarityColor, background: `${rarityColor}1A`, border: `1px solid ${rarityColor}44`, borderRadius: 999, padding: '2px 6px', fontFamily: 'monospace', fontSize: 8, fontWeight: 900, flexShrink: 0 }}>{residue.rarity}</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span style={{ color: color + 'CC', fontFamily: 'monospace', fontSize: 9 }}>{slotMeta.nameJa}</span>
+              <span style={{ color: '#7f7193', fontFamily: 'monospace', fontSize: 9 }}>Lv.{residue.level}/20</span>
+            </div>
+            <div className="flex items-baseline gap-2 mt-2">
+              <span style={{ color: rarityColor, fontFamily: "'Cinzel', serif", fontSize: 23, fontWeight: 900, lineHeight: 1, textShadow: `0 0 12px ${rarityColor}66` }}>{formatStat(residue.mainStat.type, residue.mainStat.value)}</span>
+              <span style={{ color: rarityColor + 'CC', fontFamily: 'monospace', fontSize: 10, fontWeight: 900 }}>{STAT_LABEL[residue.mainStat.type] ?? getOptionLabel(residue.mainStat.type)}</span>
+            </div>
+          </div>
+          <ResidueScoreBadge residue={residue} />
+        </div>
+
+        <ResidueSubstatList residue={residue} />
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8, alignItems: 'center' }}>
+          <div style={{ borderRadius: 11, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.24)', padding: '8px 9px', minWidth: 0 }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>装備中との差分</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 12, color: scoreDiff >= 0 ? '#8DFFBF' : '#FF8888', fontWeight: 900, marginTop: 2 }}>
+              {equipped ? `${scoreDiff >= 0 ? '+' : ''}${scoreDiff.toFixed(1)} SCORE` : 'EMPTY SLOT'}
+            </div>
+          </div>
+          <motion.button
+            type="button"
+            onClick={onEquip}
+            whileTap={{ scale: 0.94 }}
+            disabled={equipDisabled}
+            style={{
+              minHeight: 44,
+              minWidth: 86,
+              borderRadius: 13,
+              background: equipDisabled ? 'rgba(255,255,255,0.04)' : `linear-gradient(135deg, ${rarityColor}35, rgba(12,5,28,0.9))`,
+              border: `1.5px solid ${equipDisabled ? 'rgba(255,255,255,0.08)' : rarityColor + '77'}`,
+              color: equipDisabled ? '#5d5368' : rarityColor,
+              fontFamily: "'Noto Sans JP', sans-serif",
+              fontSize: 12,
+              fontWeight: 900,
+              boxShadow: equipDisabled ? 'none' : `0 0 12px ${rarityColor}24`,
+            }}
+          >
+            {equipDisabled ? '装備中' : '装備'}
+          </motion.button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TransmutationPanel({ activeSlotIndex, points, color }: {
+  activeSlotIndex: number;
+  points: number;
+  color: string;
+}) {
+  const activeSlotId = RESIDUE_SLOT_ORDER[activeSlotIndex];
+  const activeMeta = getResidueSlotMeta(activeSlotId);
+  return (
+    <div className="absolute inset-0 flex flex-col overflow-hidden px-3 pt-1 pb-3 gap-2" style={{ width: '100%' }}>
+      <div className="gothic-panel rounded-2xl overflow-hidden shrink-0" style={{ borderColor: `${color}44` }}>
+        <div className="p-3 flex items-center gap-3">
+          <div style={{ width: 48, height: 48, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `radial-gradient(circle at 35% 25%, ${color}33, rgba(0,0,0,0.82))`, border: `1px solid ${color}55` }}>
+            <Recycle size={22} style={{ color }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 10, color: '#F0EAFF', letterSpacing: '0.12em', fontWeight: 900 }}>SOUL TRANSMUTATION</div>
+            <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#8b7da8', marginTop: 3 }}>不要な残滓を錬成ポイントへ変換し、部位と主効果を指定する救済導線。</div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>POINTS</div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 22, color, fontWeight: 900, lineHeight: 1 }}>{points.toLocaleString()}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="gothic-panel rounded-2xl p-3 shrink-0">
+        <div className="flex items-center gap-2 mb-2">
+          <Crown size={14} style={{ color: '#D4AF37' }} />
+          <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#D4AF37', fontWeight: 900, letterSpacing: '0.16em' }}>特注残滓製造権</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}>
+          {RESIDUE_SLOT_ORDER.map((slotId) => {
+            const meta = getResidueSlotMeta(slotId);
+            const selected = slotId === activeSlotId;
+            const affordable = points >= meta.cost;
+            return (
+              <div
+                key={slotId}
+                style={{
+                  minHeight: 74,
+                  borderRadius: 12,
+                  padding: '7px 5px',
+                  textAlign: 'center',
+                  background: selected ? `linear-gradient(160deg, ${color}26, rgba(0,0,0,0.45))` : 'rgba(255,255,255,0.025)',
+                  border: `1px solid ${selected ? color + '66' : affordable ? 'rgba(212,175,55,0.26)' : 'rgba(255,255,255,0.06)'}`,
+                }}
+              >
+                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, color: selected ? color : '#bfaee2', fontWeight: 900 }}>{meta.icon}</div>
+                <div style={{ fontFamily: 'monospace', fontSize: 7, color: '#8b7da8', marginTop: 3, minHeight: 18 }}>{meta.role}</div>
+                <div style={{ fontFamily: 'monospace', fontSize: 9, color: affordable ? '#D4AF37' : '#5a4f66', fontWeight: 900 }}>{meta.cost}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="gothic-panel rounded-2xl p-3 flex-1 min-h-0 overflow-hidden flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 13, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.08em' }}>{activeMeta.nameEn}</div>
+            <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color }}>{activeMeta.nameJa} / {activeMeta.role}</div>
+          </div>
+          <div style={{ flexShrink: 0, borderRadius: 999, padding: '5px 9px', background: points >= activeMeta.cost ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${points >= activeMeta.cost ? 'rgba(212,175,55,0.36)' : 'rgba(255,255,255,0.07)'}`, color: points >= activeMeta.cost ? '#D4AF37' : '#6a5f76', fontFamily: 'monospace', fontSize: 10, fontWeight: 900 }}>
+            {points >= activeMeta.cost ? '製造可能' : 'ポイント不足'}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+          {[
+            ['部位指定', activeMeta.nameJa],
+            ['主効果候補', activeSlotId === 'waist' ? '属性DMG / HP% / ATK% / DEF%' : activeSlotId === 'legs' ? '会心率 / 会心DMG / HP% / ATK%' : activeSlotId === 'head' ? 'HP固定' : activeSlotId === 'arms' ? 'ATK固定' : 'HP% / ATK% / DEF%'],
+            ['保証サブ', '2種まで指定可能'],
+          ].map(([label, value]) => (
+            <div key={label} style={{ borderRadius: 12, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.06)', padding: '9px 10px' }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>{label}</div>
+              <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 11, color: '#F0EAFF', fontWeight: 800, marginTop: 3 }}>{value}</div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          disabled={points < activeMeta.cost}
+          style={{
+            marginTop: 'auto',
+            minHeight: 46,
+            borderRadius: 15,
+            background: points >= activeMeta.cost ? 'linear-gradient(135deg, rgba(212,175,55,0.28), rgba(139,0,255,0.18))' : 'rgba(255,255,255,0.035)',
+            border: `1.5px solid ${points >= activeMeta.cost ? 'rgba(212,175,55,0.52)' : 'rgba(255,255,255,0.07)'}`,
+            color: points >= activeMeta.cost ? '#D4AF37' : '#5f5369',
+            fontFamily: "'Noto Sans JP', sans-serif",
+            fontSize: 13,
+            fontWeight: 900,
+            letterSpacing: '0.18em',
+          }}
+        >
+          錬成準備
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ResidueIcon({ rarity, size = 36 }: { rarity: string; size?: number }) {
   const c = RARITY_COLOR[rarity] ?? RARITY_COLOR.COMMON;
   return (
     <svg width={size} height={size} viewBox="0 0 44 44" fill="none">
       <polygon points="15,3 29,3 41,15 41,29 29,41 15,41 3,29 3,15" fill={`${c}28`} stroke={c} strokeWidth="1.5" />
+      {rarity === 'LEGENDARY' && (<><path d="M12 29l4-13 6 8 6-8 4 13H12z" fill={`${c}4D`} stroke={c} strokeWidth="0.8" /><circle cx="22" cy="22" r="3.2" fill={c} opacity="0.95" /></>)}
       {rarity === 'EPIC' && (<><polygon points="22,10 24.5,18 33,18 26.5,23 29,31 22,26 15,31 17.5,23 11,18 19.5,18" fill={`${c}44`} stroke={c} strokeWidth="0.7" /><circle cx="22" cy="22" r="3" fill={c} opacity="0.9" /></>)}
       {rarity === 'RARE' && (<><circle cx="22" cy="22" r="7" fill={`${c}38`} stroke={c} strokeWidth="0.8" /><circle cx="22" cy="22" r="2.5" fill={c} opacity="0.85" /></>)}
       {(rarity === 'COMMON' || rarity === 'UNIQUE') && <circle cx="22" cy="22" r="4" fill={`${c}60`} stroke={c} strokeWidth="0.8" />}
@@ -570,23 +903,28 @@ function ResidueIcon({ rarity, size = 36 }: { rarity: string; size?: number }) {
 /* ──────────────────────────────────────────
    RESIDUE GRID CARD — inlined from NecroLab
 ────────────────────────────────────────── */
-const GRID_ITEM_H = 100;
+const GRID_ITEM_H = 118;
 const GRID_COLS = 3;
 const GRID_GAP = 8;
 const ROW_H = GRID_ITEM_H + GRID_GAP;
 
 function ResidueGridCard({ residue, isSelected, isEquipped, onSelect }: { residue: AbyssalResidueData; isSelected: boolean; isEquipped: boolean; onSelect: () => void }) {
   const color = RARITY_COLOR[residue.rarity];
+  const slotMeta = getResidueSlotMeta(getResidueSlotId(residue));
   return (
     <motion.button onClick={onSelect} whileTap={{ scale: 0.91 }}
       className="rounded-xl flex flex-col items-center gap-1 py-2 px-1.5 relative overflow-hidden"
       style={{ height: GRID_ITEM_H, background: isSelected ? `linear-gradient(160deg, ${RARITY_GLOW[residue.rarity]}, rgba(12,5,28,0.92))` : 'rgba(12,6,28,0.7)', border: `1.5px solid ${isSelected ? color + 'BB' : 'rgba(130,70,200,0.35)'}`, boxShadow: isSelected ? `0 0 14px ${RARITY_GLOW[residue.rarity]}` : 'none' }}>
       <div className="absolute inset-0 pointer-events-none rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%)' }} />
       {isEquipped && <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: '#00DD77', boxShadow: '0 0 5px #00DD77' }} />}
+      <span className="absolute top-1.5 left-1.5 text-[7px] font-black px-1.5 py-0.5 rounded-full" style={{ color: color + 'EE', border: `1px solid ${color}44`, background: `${color}14`, fontFamily: 'monospace' }}>{slotMeta.icon}</span>
       <ResidueIcon rarity={residue.rarity} size={28} />
       <span className="text-[11px] font-black" style={{ color, fontFamily: 'monospace' }}>{formatStat(residue.mainStat.type, residue.mainStat.value)}</span>
       <span className="text-[9px] truncate max-w-full px-0.5 text-center leading-tight" style={{ color: 'rgba(195,182,238,0.78)', fontFamily: 'monospace' }}>{residue.name}</span>
-      <span className="text-[9px]" style={{ color: 'rgba(195,182,238,0.55)', fontFamily: 'monospace' }}>Lv.{residue.level}</span>
+      <div className="flex items-center gap-1">
+        <span className="text-[9px]" style={{ color: 'rgba(195,182,238,0.55)', fontFamily: 'monospace' }}>Lv.{residue.level}</span>
+        <ResidueScoreBadge residue={residue} compact />
+      </div>
     </motion.button>
   );
 }
@@ -613,6 +951,16 @@ function VirtualResidueGrid({ items, selectedId, equippedIds, onSelect }: { item
   const endRow = Math.min(totalRows, startRow + visibleRows);
   const offsetTop = startRow * ROW_H + GRID_GAP;
   const visibleItems = items.slice(startRow * GRID_COLS, endRow * GRID_COLS);
+  if (items.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center px-6 text-center">
+        <div className="gothic-panel rounded-2xl p-4 opacity-45">
+          <Filter size={18} style={{ color: '#BC00FB', margin: '0 auto 8px' }} />
+          <span style={{ color: 'rgba(195,182,238,0.72)', fontFamily: 'monospace', fontSize: 11, letterSpacing: '0.08em' }}>この部位の残滓はありません</span>
+        </div>
+      </div>
+    );
+  }
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto custom-scrollbar" onScroll={e => setScrollTop(e.currentTarget.scrollTop)}>
       <div style={{ height: totalH, position: 'relative' }}>
@@ -753,9 +1101,11 @@ function PortraitCard({ mk, player, party, equippedResidueSlots, soulShards, dem
     { icon: '⚔', item: info.weapon, label: 'W' },
     { icon: '🛡', item: info.armor, label: 'A' },
     { icon: '💍', item: info.acc, label: 'C' },
-    { icon: '🌑', item: info.residues[0], label: 'R1' },
-    { icon: '🌑', item: info.residues[1], label: 'R2' },
-    { icon: '🌑', item: info.residues[2], label: 'R3' },
+    ...RESIDUE_SLOT_ORDER.map((slotId, index) => ({
+      icon: getResidueSlotMeta(slotId).icon,
+      item: info.residues[index] ?? null,
+      label: slotId,
+    })),
   ];
 
   const showDemonBadge = mk === 'PLAYER' && demonGauge >= 100;
@@ -809,13 +1159,13 @@ function PortraitCard({ mk, player, party, equippedResidueSlots, soulShards, dem
               {info.lvl !== null ? `Lv.${info.lvl}` : info.cost !== null ? `C${info.cost}` : '—'}
             </span>
           </div>
-          {/* 6 slot micro-icons */}
-          <div className="flex gap-1">
+          {/* equipment micro-icons */}
+          <div className="grid grid-cols-4 gap-1">
             {slotIcons.map((s, idx) => {
               const hasItem = s.item !== null;
               const rc = hasItem && (s.item as any).rarity ? RARITY_COLOR[(s.item as any).rarity] : null;
               return (
-                <div key={idx} className="flex-1 flex items-center justify-center rounded" style={{ height: 22, border: hasItem ? `1px solid ${rc ?? color}66` : '1px dashed rgba(120,70,200,0.3)', background: hasItem ? `${rc ?? color}14` : 'transparent', fontSize: 11 }}>
+                <div key={idx} className="flex items-center justify-center rounded" style={{ height: 20, border: hasItem ? `1px solid ${rc ?? color}66` : '1px dashed rgba(120,70,200,0.3)', background: hasItem ? `${rc ?? color}14` : 'transparent', fontSize: 10 }}>
                   <span style={{ filter: hasItem ? `drop-shadow(0 0 4px ${rc ?? color})` : 'none', opacity: hasItem ? 1 : 0.3 }}>{s.icon}</span>
                 </div>
               );
@@ -936,14 +1286,18 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
   ];
 
   // Build HexSlot data for right column (residues)
-  const rightSlots: HexSlotData[] = info.residues.map((r, i) => ({
-    id: `residue_${i}`, icon: '🌑',
-    label: r ? r.name : `虚空 ${['I', 'II', 'III'][i]}`,
-    sublabel: r ? formatStat(r.mainStat.type, r.mainStat.value) : '空',
-    filled: !!r, level: r?.level ?? null,
-    rarity: r?.rarity ?? null,
-    locked: !info.isPlayer && i > 0,
-  }));
+  const rightSlots: HexSlotData[] = RESIDUE_SLOT_ORDER.map((slotId, i) => {
+    const r = info.residues[i] ?? null;
+    const meta = getResidueSlotMeta(slotId);
+    return {
+      id: `residue_${i}`, icon: meta.icon,
+      label: r ? r.name : meta.nameJa,
+      sublabel: r ? `${formatStat(r.mainStat.type, r.mainStat.value)} / ${getResidueScoreGrade(calculateResidueScore(r)).grade}` : meta.role,
+      filled: !!r, level: r?.level ?? null,
+      rarity: r?.rarity ?? null,
+      locked: !info.isPlayer && i > 0,
+    };
+  });
 
   const handleLeftSelect = (id: string | null) => {
     setSelectedSlot(id);
@@ -1095,7 +1449,10 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
               <HexSlot key={slot.id} slot={slot} selected={selectedSlot} onSelect={handleRightSelect} color={color} delay={0.15 + i * 0.06} isVoid />
             ))}
             <div
-              onClick={() => { haptic([10, 8, 18]); onOpenGear('RESIDUE', 0); }}
+              onClick={() => {
+                const idx = selectedSlot?.startsWith('residue_') ? parseInt(selectedSlot.replace('residue_', '')) : 0;
+                haptic([10, 8, 18]); onOpenGear('RESIDUE', Number.isFinite(idx) ? idx : 0);
+              }}
               style={{
                 marginTop: 2, padding: '6px 8px',
                 background: `linear-gradient(135deg, ${color}22, ${color}0C)`,
@@ -1210,23 +1567,28 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
 type GearSlotType = 'WEAPON' | 'ARMOR' | 'ACCESSORY' | 'RESIDUE';
 interface GearCtx { mk: MemberKey; slotType: GearSlotType; slotIndex: number }
 
-function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResidues, residueMaterials, inventoryItems, onBack }: {
+function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResidues, residueMaterials, inventoryItems, transmutationPoints, onBack }: {
   gearCtx: GearCtx; player: CharacterData | null; party: (MonsterData | null)[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
   abyssalResidues: AbyssalResidueData[]; residueMaterials: ResidueMatData[];
-  inventoryItems: ItemData[]; onBack: () => void;
+  inventoryItems: ItemData[]; transmutationPoints: number; onBack: () => void;
 }) {
   const { equipResidueToSlot, upgradeResidue, equipItem } = useGameStore();
   const sound = useGothicSound();
   const conf = getConf(gearCtx.mk, player, party);
   const color = conf.color;
-  const [tab, setTab] = useState<'EQUIP' | 'ENHANCE'>('EQUIP');
+  const [tab, setTab] = useState<'EQUIP' | 'ENHANCE' | 'TRANSMUTE'>('EQUIP');
+  const [activeResidueSlotIndex, setActiveResidueSlotIndex] = useState(gearCtx.slotIndex);
   const [selectedResidueId, setSelectedResidueId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedMatIds, setSelectedMatIds] = useState<Set<string>>(new Set());
 
   const isResidueSlot = gearCtx.slotType === 'RESIDUE';
-  const slotLabel = { WEAPON: '武器', ARMOR: '鎧', ACCESSORY: '装飾品', RESIDUE: `残滓 ${['I', 'II', 'III'][gearCtx.slotIndex] ?? ''}` }[gearCtx.slotType];
+  const activeResidueSlotId: ResidueSlotId = RESIDUE_SLOT_ORDER[activeResidueSlotIndex] ?? 'chest';
+  const activeResidueSlotMeta = getResidueSlotMeta(activeResidueSlotId);
+  const slotLabel = isResidueSlot
+    ? activeResidueSlotMeta.nameJa
+    : { WEAPON: '武器', ARMOR: '鎧', ACCESSORY: '装飾品', RESIDUE: '残滓' }[gearCtx.slotType];
 
   const info = getMemberInfo(gearCtx.mk, player, party, equippedResidueSlots, []);
   const memberName = info.nameEn;
@@ -1234,6 +1596,13 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   const equippedIds = useMemo(() => new Set(equippedResidueSlots.filter(Boolean).map(s => s!.id)), [equippedResidueSlots]);
 
   const selectedResidue = abyssalResidues.find(r => r.id === selectedResidueId) ?? null;
+  const filteredResidues = useMemo(
+    () => abyssalResidues
+      .filter((r) => getResidueSlotId(r) === activeResidueSlotId)
+      .sort((a, b) => calculateResidueScore(b) - calculateResidueScore(a)),
+    [abyssalResidues, activeResidueSlotId],
+  );
+  const activeEquippedResidue = equippedResidueSlots[activeResidueSlotIndex] ?? null;
   const totalExpGain = useMemo(() =>
     [...selectedMatIds].reduce((acc, id) => { const mat = residueMaterials.find(m => m.id === id); return acc + (mat ? mat.expValue * mat.quantity : 0); }, 0),
     [selectedMatIds, residueMaterials],
@@ -1244,10 +1613,16 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     return inventoryItems.filter(i => (i as any).type === typeMap[gearCtx.slotType]);
   }, [inventoryItems, gearCtx.slotType]);
 
+  useEffect(() => {
+    if (!isResidueSlot) return;
+    if (selectedResidueId && filteredResidues.some((r) => r.id === selectedResidueId)) return;
+    setSelectedResidueId(activeEquippedResidue?.id ?? filteredResidues[0]?.id ?? null);
+  }, [activeEquippedResidue?.id, filteredResidues, isResidueSlot, selectedResidueId]);
+
   const handleEquipResidue = () => {
     if (!selectedResidue) return;
     sound.playEquip(); haptic([8, 4, 14]);
-    equipResidueToSlot(gearCtx.slotIndex, selectedResidue);
+    equipResidueToSlot(activeResidueSlotIndex, selectedResidue);
   };
 
   const handleEquipItem = (item: ItemData) => {
@@ -1297,6 +1672,9 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
         flexDirection: 'column',
         overflow: 'hidden',
         background: 'linear-gradient(180deg, #050115 0%, #07021A 100%)',
+        width: '100%',
+        maxWidth: 430,
+        margin: '0 auto',
       }}
     >
       {/* Navbar */}
@@ -1327,59 +1705,45 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
 
       {/* Tab switcher */}
       <div className="shrink-0 flex mx-3 mt-2.5 rounded-xl overflow-hidden" style={{ background: 'rgba(7,3,18,0.88)', border: `1px solid ${color}20` }}>
-        {(['EQUIP', 'ENHANCE'] as const).map(t => (
+        {(isResidueSlot ? (['EQUIP', 'ENHANCE', 'TRANSMUTE'] as const) : (['EQUIP', 'ENHANCE'] as const)).map(t => (
           <button key={t} onClick={() => { haptic(5); setTab(t); }}
             className="flex-1 py-2.5 text-[12px] font-black tracking-[0.12em] relative transition-colors"
             style={{ color: tab === t ? '#F0EAFF' : 'rgba(185,165,230,0.36)', fontFamily: 'monospace', background: tab === t ? `linear-gradient(135deg, ${color}22, ${color}09)` : 'transparent' }}>
-            {t === 'EQUIP' ? '⚔ 装備' : '✦ 強化'}
+            {t === 'EQUIP' ? '装備' : t === 'ENHANCE' ? '強化' : '錬成'}
             {tab === t && <motion.div layoutId="gear-tab-line" className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />}
           </button>
         ))}
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-h-0 relative mt-2">
+      <div className="flex-1 min-h-0 relative mt-2" style={{ width: '100%', alignSelf: 'stretch' }}>
         <AnimatePresence mode="wait">
           {tab === 'EQUIP' ? (
-            <motion.div key="equip" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.16 }} className="absolute inset-0 flex flex-col overflow-hidden">
+            <motion.div key="equip" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.16 }} className="absolute inset-0 flex flex-col overflow-hidden" style={{ position: 'absolute', inset: 0, width: '100%' }}>
               {isResidueSlot ? (
                 <>
-                  {/* Selected residue strip */}
+                  <ResidueSlotRail
+                    slots={equippedResidueSlots}
+                    activeIndex={activeResidueSlotIndex}
+                    color={color}
+                    onSelect={(index) => { sound.playTap(); setActiveResidueSlotIndex(index); }}
+                  />
                   <div className="shrink-0 px-3 pb-2">
-                    {selectedResidue ? (
-                      <div className="gothic-panel rounded-2xl overflow-hidden relative" style={{ height: 76 }}>
-                        <div className="absolute top-0 left-0 right-0 h-[2px] pointer-events-none" style={{ background: `linear-gradient(90deg, transparent, ${RARITY_COLOR[selectedResidue.rarity]}, transparent)` }} />
-                        <div className="flex items-center gap-3 px-3 h-full">
-                          <div className="shrink-0 w-[44px] h-[44px] rounded-xl flex items-center justify-center" style={{ background: `radial-gradient(circle at 35% 30%, ${RARITY_COLOR[selectedResidue.rarity]}28, rgba(0,0,0,0.85))`, border: `1.5px solid ${RARITY_COLOR[selectedResidue.rarity]}66` }}>
-                            <ResidueIcon rarity={selectedResidue.rarity} size={28} />
-                          </div>
-                          <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] font-black truncate" style={{ color: '#EDE8FF', fontFamily: "'Cinzel Decorative', serif" }}>{selectedResidue.name}</span>
-                              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0" style={{ background: `${RARITY_COLOR[selectedResidue.rarity]}22`, border: `1px solid ${RARITY_COLOR[selectedResidue.rarity]}55`, color: RARITY_COLOR[selectedResidue.rarity] }}>{selectedResidue.rarity}</span>
-                            </div>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-[17px] font-black leading-none" style={{ color: RARITY_COLOR[selectedResidue.rarity], fontFamily: 'monospace' }}>{formatStat(selectedResidue.mainStat.type, selectedResidue.mainStat.value)}</span>
-                              <span className="text-[9px] font-bold" style={{ color: RARITY_COLOR[selectedResidue.rarity] + 'BB', fontFamily: 'monospace' }}>{STAT_LABEL[selectedResidue.mainStat.type] ?? getOptionLabel(selectedResidue.mainStat.type)}</span>
-                            </div>
-                          </div>
-                          <motion.button onClick={handleEquipResidue} whileTap={{ scale: 0.92 }}
-                            className="shrink-0 rounded-xl text-[11px] font-black"
-                            style={{ background: equippedIds.has(selectedResidue.id) ? 'rgba(0,90,48,0.45)' : `linear-gradient(135deg, ${RARITY_COLOR[selectedResidue.rarity]}35, rgba(12,5,28,0.85))`, border: `1.5px solid ${equippedIds.has(selectedResidue.id) ? 'rgba(0,210,110,0.6)' : RARITY_COLOR[selectedResidue.rarity] + '77'}`, color: equippedIds.has(selectedResidue.id) ? '#00DD77' : RARITY_COLOR[selectedResidue.rarity], fontFamily: 'monospace', minWidth: 60, minHeight: 40, padding: '0 8px' }}>
-                            {equippedIds.has(selectedResidue.id) ? '✓ 装備中' : '装備する'}
-                          </motion.button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="gothic-panel rounded-2xl flex items-center justify-center gap-2 opacity-30" style={{ height: 76 }}>
-                        <span className="text-[10px] tracking-widest font-bold" style={{ color: 'rgba(180,100,255,0.7)', fontFamily: 'monospace' }}>残滓を選択</span>
-                      </div>
-                    )}
+                    <ResidueDetailPanel
+                      residue={selectedResidue}
+                      equipped={activeEquippedResidue}
+                      color={color}
+                      onEquip={handleEquipResidue}
+                      equipDisabled={!selectedResidue || equippedIds.has(selectedResidue.id) || !isResidueSlotCompatible(selectedResidue, activeResidueSlotIndex)}
+                    />
                   </div>
                   <div className="shrink-0 px-4 pb-1.5 flex items-center justify-between">
-                    <span className="text-[10px] font-black tracking-[0.18em]" style={{ color: 'rgba(185,110,255,0.9)', fontFamily: 'monospace' }}>☠ 残滓一覧 — {abyssalResidues.length}個</span>
+                    <span className="text-[10px] font-black tracking-[0.18em]" style={{ color: 'rgba(185,110,255,0.9)', fontFamily: 'monospace' }}>
+                      {activeResidueSlotMeta.nameJa} — {filteredResidues.length}個
+                    </span>
+                    <span className="text-[9px] font-black" style={{ color: '#7f7193', fontFamily: 'monospace' }}>SCORE順</span>
                   </div>
-                  <VirtualResidueGrid items={abyssalResidues} selectedId={selectedResidueId} equippedIds={equippedIds} onSelect={id => { sound.playTap(); setSelectedResidueId(id); }} />
+                  <VirtualResidueGrid items={filteredResidues} selectedId={selectedResidueId} equippedIds={equippedIds} onSelect={id => { sound.playTap(); setSelectedResidueId(id); }} />
                 </>
               ) : (
                 <>
@@ -1405,22 +1769,42 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
                 </>
               )}
             </motion.div>
+          ) : tab === 'TRANSMUTE' ? (
+            <TransmutationPanel
+              activeSlotIndex={activeResidueSlotIndex}
+              points={transmutationPoints}
+              color={color}
+            />
           ) : (
-            <motion.div key="enhance" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.16 }} className="absolute inset-0 flex flex-col overflow-hidden px-3 pt-1 pb-3 gap-2">
+            <motion.div key="enhance" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.16 }} className="absolute inset-0 flex flex-col overflow-hidden px-3 pt-1 pb-3 gap-2" style={{ position: 'absolute', inset: 0, width: '100%' }}>
               {isResidueSlot ? (
                 <>
                   {/* Residue selector for enhance */}
-                  <div className="shrink-0 flex gap-2 pt-1">
-                    {abyssalResidues.slice(0, 4).map(r => (
+                  <ResidueSlotRail
+                    slots={equippedResidueSlots}
+                    activeIndex={activeResidueSlotIndex}
+                    color={color}
+                    onSelect={(index) => { sound.playTap(); setActiveResidueSlotIndex(index); }}
+                  />
+                  <div className="shrink-0 flex gap-2 pt-1 overflow-x-auto custom-scrollbar pb-1">
+                    {filteredResidues.slice(0, 6).map(r => (
                       <motion.button key={r.id} onClick={() => { sound.playTap(); setSelectedResidueId(r.id); }} whileTap={{ scale: 0.92 }}
-                        className="flex-1 rounded-xl py-1.5 flex flex-col items-center gap-0.5 relative"
-                        style={{ height: 60, background: selectedResidueId === r.id ? `linear-gradient(160deg, ${RARITY_GLOW[r.rarity]}, rgba(12,5,28,0.92))` : 'rgba(12,6,28,0.7)', border: `1.5px solid ${selectedResidueId === r.id ? RARITY_COLOR[r.rarity] + 'BB' : 'rgba(130,70,200,0.35)'}` }}>
+                        className="rounded-xl py-1.5 flex flex-col items-center gap-0.5 relative shrink-0"
+                        style={{ width: 72, height: 66, background: selectedResidueId === r.id ? `linear-gradient(160deg, ${RARITY_GLOW[r.rarity]}, rgba(12,5,28,0.92))` : 'rgba(12,6,28,0.7)', border: `1.5px solid ${selectedResidueId === r.id ? RARITY_COLOR[r.rarity] + 'BB' : 'rgba(130,70,200,0.35)'}` }}>
                         <ResidueIcon rarity={r.rarity} size={22} />
                         <span className="text-[8px] font-black truncate max-w-full px-0.5" style={{ color: RARITY_COLOR[r.rarity], fontFamily: 'monospace' }}>{formatStat(r.mainStat.type, r.mainStat.value)}</span>
+                        <ResidueScoreBadge residue={r} compact />
                       </motion.button>
                     ))}
                   </div>
                   <StatsComparison residue={selectedResidue} expGain={totalExpGain} />
+                  <div className="gothic-panel rounded-2xl p-3 shrink-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-black tracking-[0.18em]" style={{ color: 'rgba(185,110,255,0.92)', fontFamily: 'monospace' }}>強化TIER履歴</span>
+                      {selectedResidue && <ResidueScoreBadge residue={selectedResidue} compact />}
+                    </div>
+                    <ResidueGrowthTrack residue={selectedResidue} />
+                  </div>
                   <EnhanceGauge residue={selectedResidue} previewExpGain={totalExpGain} />
                   <div className="gothic-panel rounded-2xl p-3 flex flex-col flex-1 overflow-hidden gap-2">
                     <div className="flex items-center justify-between shrink-0">
@@ -1545,7 +1929,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
    ROOT
 ────────────────────────────────────────── */
 export default function LegionHub() {
-  const { player, party, equippedResidueSlots, soulShards, abyssalResidues, residueMaterials, inventoryItems, demonGauge, isDemonMode, toggleDemonMode } = useGameStore();
+  const { player, party, equippedResidueSlots, soulShards, abyssalResidues, residueMaterials, inventoryItems, transmutationPoints, demonGauge, isDemonMode, toggleDemonMode } = useGameStore();
   const sound = useGothicSound();
   const [view, setView] = useState<'LIST' | 'DETAIL' | 'GEAR'>('DETAIL');
   const [selKey, setSelKey] = useState<MemberKey | null>('PLAYER');
@@ -1591,6 +1975,7 @@ export default function LegionHub() {
             equippedResidueSlots={equippedResidueSlots}
             abyssalResidues={abyssalResidues} residueMaterials={residueMaterials}
             inventoryItems={inventoryItems as ItemData[]}
+            transmutationPoints={transmutationPoints}
             onBack={goBackToDetail} />
         )}
       </AnimatePresence>
