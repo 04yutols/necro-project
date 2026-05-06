@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { ChevronRight, Eye, Package, Share2, Skull, Sparkles } from 'lucide-react';
+import { ChevronRight, Eye, FastForward, Package, Share2, Skull, Sparkles } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import type { ItemData } from '../../types/game';
 import AppraisalCertificate from './AppraisalCertificate';
@@ -50,6 +50,8 @@ const DEFAULT_UNIQUE: ResultDrop = {
   passive: '魔神化中、与えるダメージが上昇し、撃破時に魂ゲージを追加回復する。',
   flavor: '幾つもの魔物の怨念が刃の奥で重なり、持ち主の魂を試すように震えている。',
 };
+
+const CURSE_WORDS = ['怨', '呪', '哭', '喰', '縛', '滅'];
 
 const RARITY_STYLE: Record<DropRarity, {
   label: string;
@@ -231,29 +233,88 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
       />
 
       {premium && (
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            width: 'min(92vw, 360px)',
-            height: 'min(92vw, 360px)',
-            borderRadius: '50%',
-            border: `1px solid ${style.color}55`,
-            animation: 'rareRuneSpin 9s linear infinite',
-            boxShadow: `0 0 32px ${style.glow}`,
-          }}
-        />
+        <>
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              width: 'min(92vw, 360px)',
+              height: 'min(92vw, 360px)',
+              borderRadius: '50%',
+              border: `1px solid ${style.color}55`,
+              animation: 'rareRuneSpin 9s linear infinite',
+              boxShadow: `0 0 32px ${style.glow}`,
+            }}
+          />
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              width: 'min(74vw, 292px)',
+              height: 'min(74vw, 292px)',
+              borderRadius: '50%',
+              border: `1px dashed ${style.color}55`,
+              animation: 'premiumRingPulse 2.8s ease-in-out infinite',
+            }}
+          />
+          {Array.from({ length: 18 }, (_, i) => (
+            <div
+              key={i}
+              className="absolute pointer-events-none"
+              style={{
+                left: `${6 + ((i * 29) % 88)}%`,
+                top: `${8 + ((i * 41) % 70)}%`,
+                width: 2 + (i % 3),
+                height: 2 + (i % 3),
+                borderRadius: '50%',
+                background: i % 2 === 0 ? style.color : '#F0EAFF',
+                boxShadow: `0 0 10px ${style.color}`,
+                animation: `premiumSparkFall ${2.2 + (i % 5) * 0.22}s ease-in-out infinite`,
+                animationDelay: `${i * 0.11}s`,
+              }}
+            />
+          ))}
+        </>
       )}
 
       {cursed && (
         <>
           <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: 'linear-gradient(90deg, transparent, rgba(188,0,251,0.05), transparent), repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 6px)',
+              mixBlendMode: 'screen',
+              animation: 'curseStatic 0.72s steps(2, end) infinite',
+            }}
+          />
+          <div
             className="absolute top-[-14%] bottom-[-14%] left-1/2 pointer-events-none"
             style={{
-              width: 'min(26vw, 104px)',
+              width: 'min(30vw, 120px)',
               transform: 'translateX(-50%)',
-              background: 'linear-gradient(90deg, transparent, rgba(72,0,24,0.64), rgba(188,0,251,0.62), rgba(15,0,8,0.84), transparent)',
-              boxShadow: '0 0 46px rgba(188,0,251,0.56), 0 0 100px rgba(127,29,29,0.38)',
-              animation: 'cursedPillarBreath 2.4s ease-in-out infinite',
+              background: 'linear-gradient(90deg, transparent, rgba(14,0,8,0.92), rgba(72,0,24,0.74), rgba(188,0,251,0.64), rgba(3,0,5,0.96), transparent)',
+              boxShadow: '0 0 60px rgba(188,0,251,0.66), 0 0 130px rgba(127,29,29,0.48), inset 0 0 24px rgba(0,0,0,0.95)',
+              animation: 'cursedPillarBreath 1.7s ease-in-out infinite',
+            }}
+          />
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              width: 'min(92vw, 360px)',
+              height: 'min(92vw, 360px)',
+              borderRadius: '50%',
+              border: '1px solid rgba(188,0,251,0.36)',
+              boxShadow: '0 0 34px rgba(188,0,251,0.34), inset 0 0 46px rgba(0,0,0,0.72)',
+              background: 'conic-gradient(from 20deg, transparent, rgba(188,0,251,0.12), transparent, rgba(127,29,29,0.18), transparent)',
+              animation: 'cursedSigilSpin 11s linear infinite',
+            }}
+          />
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              width: 'min(68vw, 268px)',
+              height: 'min(68vw, 268px)',
+              borderRadius: '50%',
+              border: '1px dashed rgba(127,29,29,0.55)',
+              animation: 'cursedSigilSpin 7s linear reverse infinite',
             }}
           />
           {Array.from({ length: 16 }, (_, i) => (
@@ -272,6 +333,26 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
                 animationDelay: `${i * 0.13}s`,
               }}
             />
+          ))}
+          {CURSE_WORDS.map((word, i) => (
+            <div
+              key={word}
+              className="absolute pointer-events-none"
+              style={{
+                left: `${12 + ((i * 17) % 76)}%`,
+                top: `${18 + ((i * 23) % 58)}%`,
+                color: i % 2 === 0 ? 'rgba(188,0,251,0.38)' : 'rgba(127,29,29,0.42)',
+                fontFamily: "'Noto Sans JP', serif",
+                fontSize: 22 + (i % 3) * 7,
+                fontWeight: 900,
+                textShadow: '0 0 16px rgba(188,0,251,0.8)',
+                transform: `rotate(${(i - 2) * 12}deg)`,
+                animation: `curseWordFloat ${3.4 + i * 0.22}s ease-in-out infinite`,
+                animationDelay: `${i * 0.18}s`,
+              }}
+            >
+              {word}
+            </div>
           ))}
         </>
       )}
@@ -298,8 +379,8 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
                 ? `0 0 42px ${style.glow}, inset 0 0 28px rgba(255,255,255,0.08)`
                 : `0 0 20px ${style.glow}, inset 0 0 18px rgba(255,255,255,0.04)`,
             animation: stage === 'revealing'
-              ? (cursed ? 'cursedDropShatter 0.95s ease-out both' : premium ? 'premiumDropBurst 0.82s ease-out both' : 'normalDropSettle 0.5s ease-out both')
-              : (cursed ? 'cursedOrbPulse 1.5s ease-in-out infinite' : premium ? 'premiumOrbPulse 1.8s ease-in-out infinite' : 'lootOrbPulse 2.4s ease-in-out infinite'),
+              ? (cursed ? 'cursedDropShatter 1.15s ease-out both' : premium ? 'premiumDropBurst 0.82s ease-out both' : 'normalDropSettle 0.5s ease-out both')
+              : (cursed ? 'cursedOrbEnter 0.72s cubic-bezier(0.2,1.2,0.18,1) both, cursedOrbPulse 1.15s ease-in-out 0.72s infinite' : premium ? 'premiumOrbEnter 0.62s cubic-bezier(0.2,1.2,0.18,1) both, premiumOrbPulse 1.55s ease-in-out 0.62s infinite' : 'dropOrbEnter 0.46s ease-out both, lootOrbPulse 2.2s ease-in-out 0.46s infinite'),
           }}
         >
           {cursed ? <Skull size={40} /> : premium ? <Sparkles size={38} /> : <Package size={32} />}
@@ -361,6 +442,30 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
               }}
             />
           )}
+          {cursed && (
+            <>
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundImage: 'linear-gradient(120deg, transparent 0 28%, rgba(188,0,251,0.18) 29%, transparent 31% 62%, rgba(127,29,29,0.18) 63%, transparent 65%), radial-gradient(circle at 50% -10%, rgba(0,0,0,0.84), transparent 46%)',
+                  animation: 'cursedVeinCrawler 3.1s ease-in-out infinite',
+                }}
+              />
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  left: 14,
+                  right: 14,
+                  top: 14,
+                  bottom: 14,
+                  border: '1px solid rgba(127,29,29,0.42)',
+                  borderRadius: 14,
+                  boxShadow: 'inset 0 0 22px rgba(0,0,0,0.82), 0 0 18px rgba(127,29,29,0.24)',
+                  animation: 'cursedFrameTwitch 1.45s steps(2, end) infinite',
+                }}
+              />
+            </>
+          )}
 
           <div style={{ padding: '16px 18px 18px', textAlign: 'center', position: 'relative' }}>
             <div className="flex items-center justify-center gap-2 mb-2">
@@ -369,6 +474,30 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
                 {style.name}
               </span>
             </div>
+            {cursed && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  marginBottom: 10,
+                  padding: '4px 10px',
+                  borderRadius: 999,
+                  border: '1px solid rgba(188,0,251,0.45)',
+                  background: 'rgba(22,0,10,0.62)',
+                  color: '#f3d1ff',
+                  fontFamily: 'monospace',
+                  fontSize: 9,
+                  fontWeight: 900,
+                  letterSpacing: '0.08em',
+                  boxShadow: '0 0 16px rgba(188,0,251,0.24)',
+                }}
+              >
+                <Skull size={12} />
+                怨念封入
+              </div>
+            )}
             <div
               style={{
                 width: 82,
@@ -383,12 +512,21 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: 38,
-                boxShadow: `0 0 24px ${style.glow}`,
+                boxShadow: cursed ? '0 0 28px rgba(188,0,251,0.72), inset 0 0 26px rgba(0,0,0,0.86)' : `0 0 24px ${style.glow}`,
+                animation: cursed ? 'cursedIconPulse 1.18s ease-in-out infinite' : premium ? 'premiumIconFlare 1.6s ease-in-out infinite' : 'none',
               }}
             >
               {drop.icon ?? '✦'}
             </div>
-            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 21, fontWeight: 900, color: '#F0EAFF', lineHeight: 1.18 }}>
+            <div style={{
+              fontFamily: "'Cinzel', serif",
+              fontSize: 21,
+              fontWeight: 900,
+              color: cursed ? '#fff2ff' : '#F0EAFF',
+              lineHeight: 1.18,
+              textShadow: cursed ? '0 0 10px rgba(188,0,251,0.9), 2px 0 0 rgba(127,29,29,0.44)' : 'none',
+              animation: cursed ? 'cursedNameGlitch 1.9s steps(2, end) infinite' : 'none',
+            }}>
               {drop.name}
             </div>
             <div style={{ marginTop: 5, color: '#8b7da8', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em' }}>
@@ -420,7 +558,26 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
                   textAlign: 'left',
                 }}
               >
-                {drop.passive ?? drop.flavor ?? '魔物たちの怨念が凝固した異質な武装。装備者の魂に干渉し、力を貸す代償を求める。'}
+                {cursed
+                  ? (drop.flavor ?? '魔物たちの怨念が凝固した異質な武装。装備者の魂に干渉し、力を貸す代償を求める。')
+                  : (drop.passive ?? drop.flavor)}
+              </div>
+            )}
+            {cursed && drop.passive && (
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  background: 'rgba(0,0,0,0.34)',
+                  border: '1px solid rgba(188,0,251,0.24)',
+                  color: '#c9b6ff',
+                  fontSize: 9,
+                  lineHeight: 1.55,
+                  textAlign: 'left',
+                }}
+              >
+                呪能: {drop.passive}
               </div>
             )}
           </div>
@@ -448,6 +605,9 @@ export default function ResultScreen({
   const [dropStage, setDropStage] = useState<'sealed' | 'revealing' | 'revealed'>('sealed');
   const [revealedIds, setRevealedIds] = useState<string[]>([]);
   const [showCertificate, setShowCertificate] = useState(false);
+  const [skipMode, setSkipMode] = useState(false);
+  const revealTimerRef = useRef<number | null>(null);
+  const skipTimersRef = useRef<number[]>([]);
   const { addExp } = useGameStore();
 
   const particles = useMemo(() => Array.from({ length: 28 }, (_, i) => ({
@@ -471,6 +631,19 @@ export default function ResultScreen({
   const rareSignalCount = normalizedDrops.filter(isPremiumDrop).length;
   const revealedSet = useMemo(() => new Set(revealedIds), [revealedIds]);
   const allRevealed = revealedIds.length >= normalizedDrops.length;
+  const currentDropId = String(currentDrop.id ?? currentDrop.name);
+  const currentIsCursed = isCursedDrop(currentDrop);
+  const nextCursedIndex = normalizedDrops.findIndex((drop, index) => index >= currentIndex && isCursedDrop(drop));
+  const skipDisabled = skipMode || dropStage === 'revealing' || currentIsCursed || allRevealed;
+  const skipLabel = skipMode
+    ? '高速鑑定中'
+    : currentIsCursed
+      ? (revealedSet.has(currentDropId) ? 'UR確認' : 'UR停止')
+      : allRevealed
+        ? '完了'
+        : nextCursedIndex >= 0
+          ? 'URまで'
+          : '全開封';
 
   const certificateTarget = normalizedDrops.find(isCursedDrop) ?? currentDrop;
   const certificateItem = {
@@ -490,6 +663,21 @@ export default function ResultScreen({
     return () => window.clearTimeout(timer);
   }, [addExp, expGained]);
 
+  const clearSkipTimers = () => {
+    skipTimersRef.current.forEach(timer => window.clearTimeout(timer));
+    skipTimersRef.current = [];
+  };
+
+  const markRevealed = (drop: ResultDrop) => {
+    const id = String(drop.id ?? drop.name);
+    setRevealedIds(prev => prev.includes(id) ? prev : [...prev, id]);
+  };
+
+  useEffect(() => () => {
+    clearSkipTimers();
+    if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
+  }, []);
+
   const mins = String(Math.floor(clearTime / 60)).padStart(2, '0');
   const secs = String(clearTime % 60).padStart(2, '0');
 
@@ -500,18 +688,79 @@ export default function ResultScreen({
 
   const revealCurrentDrop = () => {
     if (dropStage !== 'sealed') return;
+    if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
     haptic(isCursedDrop(currentDrop) ? [18, 28, 45, 35, 70] : isPremiumDrop(currentDrop) ? [16, 26, 38] : [10, 16]);
     setDropStage('revealing');
 
-    const revealDelay = isCursedDrop(currentDrop) ? 980 : isPremiumDrop(currentDrop) ? 780 : 460;
-    window.setTimeout(() => {
-      const id = String(currentDrop.id ?? currentDrop.name);
-      setRevealedIds(prev => prev.includes(id) ? prev : [...prev, id]);
+    const revealDelay = isCursedDrop(currentDrop) ? 1180 : isPremiumDrop(currentDrop) ? 820 : 420;
+    revealTimerRef.current = window.setTimeout(() => {
+      markRevealed(currentDrop);
       setDropStage('revealed');
+      revealTimerRef.current = null;
     }, revealDelay);
   };
 
+  const skipToUnique = () => {
+    if (skipDisabled) return;
+    clearSkipTimers();
+    if (revealTimerRef.current) {
+      window.clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+
+    const stopIndex = normalizedDrops.findIndex((drop, index) => index >= currentIndex && isCursedDrop(drop));
+    const revealUntil = stopIndex >= 0 ? stopIndex : normalizedDrops.length;
+    const revealIndexes = normalizedDrops
+      .map((drop, index) => ({ drop, index }))
+      .filter(({ index }) => index >= currentIndex && index < revealUntil);
+
+    setSkipMode(true);
+    haptic([10, 14, 18]);
+
+    if (revealIndexes.length === 0) {
+      const timer = window.setTimeout(() => {
+        if (stopIndex >= 0) {
+          const stopDrop = normalizedDrops[stopIndex];
+          const stopId = String(stopDrop.id ?? stopDrop.name);
+          setCurrentIndex(stopIndex);
+          setDropStage(revealedSet.has(stopId) ? 'revealed' : 'sealed');
+          haptic([24, 36, 70]);
+        }
+        setSkipMode(false);
+      }, 120);
+      skipTimersRef.current.push(timer);
+      return;
+    }
+
+    revealIndexes.forEach(({ drop, index }, step) => {
+      const timer = window.setTimeout(() => {
+        setCurrentIndex(index);
+        markRevealed(drop);
+        setDropStage('revealed');
+      }, step * 110);
+      skipTimersRef.current.push(timer);
+    });
+
+    const finishTimer = window.setTimeout(() => {
+      if (stopIndex >= 0) {
+        const stopDrop = normalizedDrops[stopIndex];
+        const stopId = String(stopDrop.id ?? stopDrop.name);
+        setCurrentIndex(stopIndex);
+        setDropStage(revealedSet.has(stopId) ? 'revealed' : 'sealed');
+        haptic([26, 42, 80]);
+      } else {
+        const lastIndex = Math.max(0, normalizedDrops.length - 1);
+        setCurrentIndex(lastIndex);
+        setDropStage('revealed');
+      }
+      setSkipMode(false);
+      skipTimersRef.current = [];
+    }, revealIndexes.length * 110 + 130);
+    skipTimersRef.current.push(finishTimer);
+  };
+
   const moveNext = () => {
+    if (skipMode) return;
     if (currentIndex < normalizedDrops.length - 1) {
       const nextIndex = currentIndex + 1;
       const nextDrop = normalizedDrops[nextIndex];
@@ -747,13 +996,41 @@ export default function ResultScreen({
           className="relative z-10 h-full flex flex-col"
           style={{ padding: 'max(14px, env(safe-area-inset-top, 14px)) 14px max(14px, env(safe-area-inset-bottom, 14px))' }}
         >
-          <div className="shrink-0" style={{ textAlign: 'center', animation: 'resultSlideIn 0.32s ease-out both' }}>
+          <div className="shrink-0 relative" style={{ textAlign: 'center', animation: 'resultSlideIn 0.32s ease-out both' }}>
             <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: currentStyle.color, letterSpacing: '0.24em' }}>
               APPRAISAL
             </div>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 900, color: '#F0EAFF', marginTop: 5 }}>
               戦利品鑑定
             </div>
+            <button
+              type="button"
+              onClick={skipToUnique}
+              disabled={skipDisabled}
+              aria-label="ユニークまでスキップ"
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                minHeight: 36,
+                padding: '0 9px',
+                borderRadius: 10,
+                border: `1px solid ${skipDisabled ? 'rgba(255,255,255,0.10)' : 'rgba(188,0,251,0.45)'}`,
+                background: skipDisabled ? 'rgba(255,255,255,0.035)' : 'rgba(80,0,28,0.28)',
+                color: skipDisabled ? '#4a3a5a' : '#f3d1ff',
+                fontFamily: 'monospace',
+                fontSize: 9,
+                fontWeight: 900,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                opacity: skipDisabled ? 0.72 : 1,
+                boxShadow: skipDisabled ? 'none' : '0 0 14px rgba(188,0,251,0.20)',
+              }}
+            >
+              <FastForward size={13} />
+              {skipLabel}
+            </button>
           </div>
 
           <div className="shrink-0 safe-scroll" style={{ marginTop: 10, overflowX: 'auto', display: 'flex', gap: 8, paddingBottom: 4 }}>
@@ -780,6 +1057,7 @@ export default function ResultScreen({
                     background: active ? `${rs.color}1C` : 'rgba(255,255,255,0.035)',
                     boxShadow: active && rs.tier !== 'normal' ? `0 0 16px ${rs.glow}` : 'none',
                     textAlign: 'left',
+                    animation: active && !revealed ? 'dropChipPulse 1.6s ease-in-out infinite' : 'none',
                   }}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -795,6 +1073,28 @@ export default function ResultScreen({
               );
             })}
           </div>
+
+          {skipMode && (
+            <div
+              className="shrink-0"
+              style={{
+                marginTop: 6,
+                padding: '5px 10px',
+                borderRadius: 999,
+                border: '1px solid rgba(188,0,251,0.25)',
+                background: 'rgba(80,0,28,0.18)',
+                color: '#c084fc',
+                fontFamily: 'monospace',
+                fontSize: 9,
+                fontWeight: 900,
+                textAlign: 'center',
+                letterSpacing: '0.08em',
+                animation: 'skipScanPulse 0.72s ease-in-out infinite',
+              }}
+            >
+              非ユニーク戦利品を高速鑑定中
+            </div>
+          )}
 
           <AppraisalField drop={currentDrop} stage={dropStage} onReveal={revealCurrentDrop} />
 
@@ -826,7 +1126,7 @@ export default function ResultScreen({
             <button
               type="button"
               onClick={dropStage === 'sealed' ? revealCurrentDrop : dropStage === 'revealed' ? moveNext : undefined}
-              disabled={dropStage === 'revealing'}
+              disabled={dropStage === 'revealing' || skipMode}
               style={{
                 flex: dropStage === 'revealed' && isCursedDrop(currentDrop) ? 1.35 : 1,
                 minHeight: 50,
@@ -843,17 +1143,18 @@ export default function ResultScreen({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 7,
-                opacity: dropStage === 'revealing' ? 0.65 : 1,
+                opacity: dropStage === 'revealing' || skipMode ? 0.65 : 1,
               }}
             >
-              {dropStage === 'sealed' && (
+              {skipMode && '高速鑑定中'}
+              {!skipMode && dropStage === 'sealed' && (
                 <>
                   <Eye size={15} />
                   鑑定する
                 </>
               )}
-              {dropStage === 'revealing' && '鑑定中'}
-              {dropStage === 'revealed' && (
+              {!skipMode && dropStage === 'revealing' && '鑑定中'}
+              {!skipMode && dropStage === 'revealed' && (
                 <>
                   {allRevealed && currentIndex === normalizedDrops.length - 1 ? '獲得して戻る' : '次の戦利品'}
                   <ChevronRight size={15} />
