@@ -9,7 +9,8 @@ describe('NecroService', () => {
     name: `Monster-${id}`,
     tribe: 'UNDEAD',
     cost,
-    stats: { hp: 100, mp: 0, atk: 50, def: 20, matk: 10, mdef: 10, agi: 10, luck: 10, tec: 10 }
+    stats: { hp: 100, atk: 50, def: 20, spd: 80, critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0 },
+    resistances: {},
   });
 
   const mockNecroStatus: NecroStatus = {

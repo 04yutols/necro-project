@@ -20,22 +20,23 @@ model Character {
   userId          String?
   user            User?    @relation(fields: [userId], references: [id])
   
-  // 9種の基礎ステータス
+  // 8種の基礎ステータス（HSR互換）
   hp              Int
-  mp              Int
   atk             Int
   def             Int
-  matk            Int
-  mdef            Int
-  agi             Int
-  luck            Int
-  tec             Int
-  
+  spd             Int
+  critRate        Float    @default(5.0)
+  critDmg         Float    @default(150.0)
+  effectHit       Float    @default(0.0)
+  effectRes       Float    @default(0.0)
+
   // 職業レベル到達時に獲得する永続パッシブの累積補正
-  passiveAtkBonus  Int      @default(0)
-  passiveDefBonus  Int      @default(0)
-  passiveMatkBonus Int      @default(0)
-  passiveMdefBonus Int      @default(0)
+  passiveAtkBonus      Int    @default(0)
+  passiveDefBonus      Int    @default(0)
+  passiveSpdBonus      Int    @default(0)
+  passiveCritRateBonus Float  @default(0)
+  passiveCritDmgBonus  Float  @default(0)
+  passiveHpBonus       Int    @default(0)
   
   // 職業システム
   jobs            UserJob[]
@@ -99,8 +100,9 @@ model Item {
   rarity          String   // COMMON | UNIQUE | HIDDEN_UNIQUE
   atk             Int      @default(0)
   def             Int      @default(0)
-  matk            Int      @default(0)
-  mdef            Int      @default(0)
+  critRate        Float    @default(0.0)
+  critDmg         Float    @default(0.0)
+  spd             Int      @default(0)
   specialEffect   String?
   
   // 第一発見者システム
@@ -145,15 +147,14 @@ model Monster {
   tribe           String
   cost            Int
   hp              Int
-  mp              Int
   atk             Int
   def             Int
-  matk            Int
-  mdef            Int
-  agi             Int
-  luck            Int
-  tec             Int
-  
+  spd             Int
+  critRate        Float    @default(0.0)
+  critDmg         Float    @default(150.0)
+  effectHit       Float    @default(0.0)
+  effectRes       Float    @default(0.0)
+
   soulShardId     String?
   soulShard       SoulShard? @relation(fields: [soulShardId], references: [id])
   
@@ -166,7 +167,7 @@ model SoulShard {
   id              String   @id @default(uuid())
   originMonster   String
   atkBonus        Int      @default(0)
-  matkBonus       Int      @default(0)
+  elementDmgBoost Int      @default(0)
   specialAbility  String?
   monsters        Monster[]
 }
@@ -179,4 +180,3 @@ model SpiritCore {
   atkMultiplier   Float    @default(1.0)
   monsters        Monster[]
 }
-

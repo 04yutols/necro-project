@@ -1,9 +1,15 @@
 {
   "warrior": {
     "name": "Warrior",
+    "displayName": "剣士",
+    "nameEn": "WARRIOR",
+    "title": "誓剣の前衛",
     "tier": 1,
     "category": "PHYSICAL",
-    "mpCurve": { "baseMaxMP": 10, "mpGrowth": 1, "skillCost": 3 },
+    "role": "高HP・物理火力・耐久型",
+    "description": "勇者の力を最も素直に剣へ流す前衛職。高DEFと安定したATKで長いWAVEを押し切る。",
+    "statModifiers": { "hp": 1.14, "atk": 1.20, "def": 1.15, "spd": 0.98, "critRate": 0.95, "critDmg": 1.05, "effectHit": 0.80, "effectRes": 1.05 },
+    "energyCurve": { "baseMaxEnergy": 100, "energyRegen": 20, "ultimateCost": 100 },
     "levelBonuses": {
       "10": { "passiveAtkBonus": 5 },
       "20": { "passiveAtkBonus": 10 },
@@ -11,64 +17,252 @@
     },
     "skills": [
       { "level": 1, "skillId": "skill_warrior_1" },
-      { "level": 1, "skillId": "skill_warrior_2" }
+      { "level": 4, "skillId": "skill_warrior_thunder_slash" },
+      { "level": 8, "skillId": "skill_warrior_wind_slash" },
+      { "level": 12, "skillId": "skill_warrior_2" }
     ]
   },
   "mage": {
     "name": "Mage",
+    "displayName": "魔法使い",
+    "nameEn": "MAGE",
+    "title": "五属性の導師",
     "tier": 1,
     "category": "MAGICAL",
-    "mpCurve": { "baseMaxMP": 50, "mpGrowth": 10, "skillCost": 15 },
+    "role": "属性魔法・高会心ダメージ・範囲処理",
+    "description": "炎・水・雷・土・風を扱う魔法職。高い会心ダメージ修正で弱点を突いた際の瞬間火力が高い。",
+    "statModifiers": { "hp": 0.84, "atk": 0.90, "def": 0.78, "spd": 0.95, "critRate": 1.02, "critDmg": 1.38, "effectHit": 1.20, "effectRes": 0.90 },
+    "energyCurve": { "baseMaxEnergy": 80, "energyRegen": 15, "ultimateCost": 80 },
     "levelBonuses": {
-      "10": { "passiveMatkBonus": 5 },
-      "20": { "passiveMatkBonus": 10 },
-      "30": { "passiveMatkBonus": 15, "passiveMdefBonus": 5 }
+      "10": { "passiveCritDmgBonus": 8 },
+      "20": { "passiveCritDmgBonus": 15 },
+      "30": { "passiveCritDmgBonus": 20, "passiveCritRateBonus": 3 }
     },
     "skills": [
-      { "level": 1, "skillId": "skill_mage_1" }
+      { "level": 1, "skillId": "skill_mage_1" },
+      { "level": 3, "skillId": "skill_mage_water" },
+      { "level": 5, "skillId": "skill_mage_thunder" },
+      { "level": 7, "skillId": "skill_mage_earth" },
+      { "level": 9, "skillId": "skill_mage_wind" }
     ]
   },
   "dark_priest": {
     "name": "Dark Priest",
+    "displayName": "闇術師",
+    "nameEn": "DARK PRIEST",
+    "title": "反転した聖職者",
     "tier": 1,
     "category": "MAGICAL",
-    "mpCurve": { "baseMaxMP": 40, "mpGrowth": 8, "skillCost": 12 },
+    "role": "闇魔法・吸収・継戦",
+    "description": "勇者の癒やしを魔族の魔力で反転させた職。高い効果命中で状態異常を付与しやすい。",
+    "statModifiers": { "hp": 0.96, "atk": 0.72, "def": 0.90, "spd": 0.90, "critRate": 1.08, "critDmg": 1.22, "effectHit": 1.30, "effectRes": 1.10 },
+    "energyCurve": { "baseMaxEnergy": 80, "energyRegen": 18, "ultimateCost": 80 },
     "levelBonuses": {
-      "10": { "passiveMatkBonus": 3, "passiveMdefBonus": 2 },
-      "20": { "passiveMatkBonus": 6, "passiveMdefBonus": 4 },
-      "30": { "passiveMatkBonus": 9, "passiveMdefBonus": 6 }
+      "10": { "passiveCritRateBonus": 2 },
+      "20": { "passiveCritRateBonus": 4 },
+      "30": { "passiveCritRateBonus": 6, "passiveDefBonus": 5 }
     },
     "skills": [
-      { "level": 1, "skillId": "skill_darkpriest_1" }
+      { "level": 1, "skillId": "skill_darkpriest_1" },
+      { "level": 6, "skillId": "skill_darkpriest_curse_bind" }
     ]
   },
   "rogue": {
     "name": "Rogue",
+    "displayName": "盗賊",
+    "nameEn": "ROGUE",
+    "title": "影踏みの技巧者",
     "tier": 1,
     "category": "PHYSICAL",
-    "mpCurve": { "baseMaxMP": 15, "mpGrowth": 1.5, "skillCost": 4 },
+    "role": "高速・高会心率・低コスト",
+    "description": "SPDと会心率で手数を稼ぐ職。一撃は低めだが先手を取って高頻度で会心を狙える。",
+    "statModifiers": { "hp": 0.88, "atk": 1.15, "def": 0.85, "spd": 1.18, "critRate": 1.30, "critDmg": 1.25, "effectHit": 1.15, "effectRes": 1.00 },
+    "energyCurve": { "baseMaxEnergy": 90, "energyRegen": 22, "ultimateCost": 90 },
     "levelBonuses": {
-      "10": { "passiveAtkBonus": 3 },
-      "20": { "passiveAtkBonus": 6 },
-      "30": { "passiveAtkBonus": 9 }
+      "10": { "passiveCritRateBonus": 3 },
+      "20": { "passiveCritRateBonus": 6 },
+      "30": { "passiveCritRateBonus": 8, "passiveSpdBonus": 5 }
     },
     "skills": [
-      { "level": 1, "skillId": "skill_rogue_1" }
+      { "level": 1, "skillId": "skill_rogue_1" },
+      { "level": 8, "skillId": "skill_rogue_shadow_throw" }
+    ]
+  },
+  "dark_knight": {
+    "name": "Dark Knight",
+    "displayName": "魔剣士",
+    "nameEn": "DARK KNIGHT",
+    "title": "黒刃の継承者",
+    "tier": 2,
+    "category": "PHYSICAL",
+    "role": "物魔混合・高DEF・闇斬撃",
+    "description": "剣士の前衛性能に闇術師の呪力を重ねる二次職。高DEFと属性斬撃で硬い敵を崩す。",
+    "unlock": { "jobs": [{ "jobId": "warrior", "minLevel": 20 }, { "jobId": "dark_priest", "minLevel": 10 }] },
+    "statModifiers": { "hp": 1.08, "atk": 1.10, "def": 1.20, "spd": 0.92, "critRate": 0.90, "critDmg": 1.15, "effectHit": 0.85, "effectRes": 1.15 },
+    "energyCurve": { "baseMaxEnergy": 110, "energyRegen": 20, "ultimateCost": 110 },
+    "levelBonuses": {
+      "10": { "passiveDefBonus": 8 },
+      "20": { "passiveDefBonus": 15, "passiveAtkBonus": 5 },
+      "40": { "passiveDefBonus": 20, "passiveAtkBonus": 10, "passiveHpBonus": 200 }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_darkknight_shadow_edge" },
+      { "level": 8, "skillId": "skill_darkknight_grave_cross" }
+    ]
+  },
+  "berserker": {
+    "name": "Berserker",
+    "displayName": "ベルセルク",
+    "nameEn": "BERSERKER",
+    "title": "血戦の破砕者",
+    "tier": 2,
+    "category": "PHYSICAL",
+    "role": "超高ATK・会心特化・低DEF",
+    "description": "守りを削り攻撃力に全てを注いだ二次職。会心が炸裂すれば圧倒的な瞬間火力を発揮する。",
+    "unlock": { "jobs": [{ "jobId": "warrior", "minLevel": 20 }, { "jobId": "rogue", "minLevel": 10 }] },
+    "statModifiers": { "hp": 1.00, "atk": 1.45, "def": 0.85, "spd": 1.05, "critRate": 1.20, "critDmg": 1.30, "effectHit": 0.80, "effectRes": 0.90 },
+    "energyCurve": { "baseMaxEnergy": 120, "energyRegen": 25, "ultimateCost": 120 },
+    "levelBonuses": {
+      "10": { "passiveAtkBonus": 12, "passiveCritRateBonus": 2 },
+      "20": { "passiveAtkBonus": 20, "passiveCritDmgBonus": 10 },
+      "40": { "passiveAtkBonus": 28, "passiveCritRateBonus": 3, "passiveCritDmgBonus": 15 }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_berserker_blood_cleave" },
+      { "level": 10, "skillId": "skill_berserker_earth_breaker" }
+    ]
+  },
+  "archmage": {
+    "name": "Archmage",
+    "displayName": "アークメイジ",
+    "nameEn": "ARCHMAGE",
+    "title": "大系統の編纂者",
+    "tier": 2,
+    "category": "MAGICAL",
+    "role": "最高会心ダメージ・属性制圧",
+    "description": "魔法使いと闇術師の研究を統合する二次職。突出した会心ダメージ修正で弱点を粉砕する。",
+    "unlock": { "jobs": [{ "jobId": "mage", "minLevel": 20 }, { "jobId": "dark_priest", "minLevel": 10 }] },
+    "statModifiers": { "hp": 0.78, "atk": 0.85, "def": 0.72, "spd": 0.92, "critRate": 1.10, "critDmg": 1.60, "effectHit": 1.35, "effectRes": 0.85 },
+    "energyCurve": { "baseMaxEnergy": 100, "energyRegen": 15, "ultimateCost": 100 },
+    "levelBonuses": {
+      "10": { "passiveCritDmgBonus": 15 },
+      "20": { "passiveCritDmgBonus": 28 },
+      "40": { "passiveCritDmgBonus": 40, "passiveCritRateBonus": 5 }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_archmage_elemental_cascade" },
+      { "level": 12, "skillId": "skill_archmage_thunder_orbit" }
+    ]
+  },
+  "sorcerer": {
+    "name": "Sorcerer",
+    "displayName": "ソーサラー",
+    "nameEn": "SORCERER",
+    "title": "高速詠唱の放浪者",
+    "tier": 2,
+    "category": "MAGICAL",
+    "role": "高速魔法・属性会心",
+    "description": "魔法使いの属性術に盗賊の手数を足した二次職。SPDと会心のバランスが良い万能型。",
+    "unlock": { "jobs": [{ "jobId": "mage", "minLevel": 20 }, { "jobId": "rogue", "minLevel": 10 }] },
+    "statModifiers": { "hp": 0.82, "atk": 0.88, "def": 0.75, "spd": 0.98, "critRate": 1.15, "critDmg": 1.50, "effectHit": 1.40, "effectRes": 0.88 },
+    "energyCurve": { "baseMaxEnergy": 90, "energyRegen": 18, "ultimateCost": 90 },
+    "levelBonuses": {
+      "10": { "passiveCritDmgBonus": 12 },
+      "20": { "passiveCritDmgBonus": 22, "passiveCritRateBonus": 3 },
+      "40": { "passiveCritDmgBonus": 30, "passiveCritRateBonus": 5 }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_sorcerer_tempest_lance" },
+      { "level": 10, "skillId": "skill_sorcerer_mirror_spark" }
+    ]
+  },
+  "warlock": {
+    "name": "Warlock",
+    "displayName": "ウォーロック",
+    "nameEn": "WARLOCK",
+    "title": "深淵契約者",
+    "tier": 2,
+    "category": "MAGICAL",
+    "role": "闇魔法・高効果命中・弱体特化",
+    "description": "闇術師を攻撃魔法へ傾けた二次職。最高の効果命中で状態異常を確実に付与する。",
+    "unlock": { "jobs": [{ "jobId": "dark_priest", "minLevel": 20 }, { "jobId": "mage", "minLevel": 10 }] },
+    "statModifiers": { "hp": 0.90, "atk": 0.95, "def": 0.88, "spd": 0.95, "critRate": 1.25, "critDmg": 1.40, "effectHit": 1.50, "effectRes": 1.00 },
+    "energyCurve": { "baseMaxEnergy": 90, "energyRegen": 18, "ultimateCost": 90 },
+    "levelBonuses": {
+      "10": { "passiveCritRateBonus": 4 },
+      "20": { "passiveCritRateBonus": 7, "passiveCritDmgBonus": 12 },
+      "40": { "passiveCritRateBonus": 10, "passiveCritDmgBonus": 20 }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_warlock_abyss_hex" },
+      { "level": 12, "skillId": "skill_warlock_black_star" }
     ]
   },
   "necromancer": {
     "name": "Necromancer",
+    "displayName": "ネクロマンサー",
+    "nameEn": "NECROMANCER",
+    "title": "死霊王の候補",
     "tier": 2,
     "category": "MAGICAL",
-    "mpCurve": { "baseMaxMP": 60, "mpGrowth": 12, "skillCost": 18 },
+    "role": "死霊術強化・高会心ダメージ・闇射出",
+    "description": "職業と死霊術を接続する唯一の二次職。奥義エネルギーが最大で最強の単体魔法を放つ。",
+    "unlock": { "jobs": [{ "jobId": "dark_priest", "minLevel": 20 }, { "jobId": "warrior", "minLevel": 10 }] },
+    "statModifiers": { "hp": 0.92, "atk": 1.05, "def": 0.95, "spd": 0.88, "critRate": 1.00, "critDmg": 1.45, "effectHit": 1.20, "effectRes": 1.08 },
+    "energyCurve": { "baseMaxEnergy": 120, "energyRegen": 20, "ultimateCost": 120 },
     "levelBonuses": {
-      "10": { "passiveMatkBonus": 8 },
-      "20": { "passiveMatkBonus": 16 },
-      "30": { "passiveMatkBonus": 24 },
-      "40": { "passiveMatkBonus": 32, "passiveMdefBonus": 10 }
+      "10": { "passiveCritDmgBonus": 18 },
+      "20": { "passiveCritDmgBonus": 30 },
+      "30": { "passiveCritDmgBonus": 40 },
+      "40": { "passiveCritDmgBonus": 50, "passiveHpBonus": 300 }
     },
     "skills": [
-      { "level": 1, "skillId": "skill_necromancer_1" }
+      { "level": 1, "skillId": "skill_necromancer_1" },
+      { "level": 8, "skillId": "skill_necromancer_grave_command" }
+    ]
+  },
+  "assassin": {
+    "name": "Assassin",
+    "displayName": "アサシン",
+    "nameEn": "ASSASSIN",
+    "title": "処刑する影",
+    "tier": 2,
+    "category": "PHYSICAL",
+    "role": "最高速度・最高会心率・単体処刑",
+    "description": "盗賊の技巧に剣士の殺傷力を足した二次職。圧倒的なSPDで最初に行動し高確率で急所を刺す。",
+    "unlock": { "jobs": [{ "jobId": "rogue", "minLevel": 20 }, { "jobId": "warrior", "minLevel": 10 }] },
+    "statModifiers": { "hp": 0.80, "atk": 1.38, "def": 0.78, "spd": 1.25, "critRate": 1.50, "critDmg": 1.40, "effectHit": 1.10, "effectRes": 0.95 },
+    "energyCurve": { "baseMaxEnergy": 90, "energyRegen": 25, "ultimateCost": 90 },
+    "levelBonuses": {
+      "10": { "passiveCritRateBonus": 5, "passiveSpdBonus": 5 },
+      "20": { "passiveCritRateBonus": 8, "passiveSpdBonus": 8 },
+      "40": { "passiveCritRateBonus": 10, "passiveSpdBonus": 12, "passiveCritDmgBonus": 15 }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_assassin_void_step" },
+      { "level": 9, "skillId": "skill_assassin_thunder_kill" }
+    ]
+  },
+  "trickster": {
+    "name": "Trickster",
+    "displayName": "トリックスター",
+    "nameEn": "TRICKSTER",
+    "title": "虚実の手品師",
+    "tier": 2,
+    "category": "MAGICAL",
+    "role": "高速・会心・属性射出",
+    "description": "盗賊の悪知恵と魔法使いの属性術を混ぜる二次職。SPD・会心率・会心ダメージをバランスよく伸ばす。",
+    "unlock": { "jobs": [{ "jobId": "rogue", "minLevel": 20 }, { "jobId": "mage", "minLevel": 10 }] },
+    "statModifiers": { "hp": 0.85, "atk": 1.25, "def": 0.82, "spd": 1.20, "critRate": 1.35, "critDmg": 1.35, "effectHit": 1.25, "effectRes": 0.98 },
+    "energyCurve": { "baseMaxEnergy": 85, "energyRegen": 22, "ultimateCost": 85 },
+    "levelBonuses": {
+      "10": { "passiveSpdBonus": 6, "passiveCritRateBonus": 3 },
+      "20": { "passiveSpdBonus": 10, "passiveCritRateBonus": 5 },
+      "40": { "passiveSpdBonus": 15, "passiveCritRateBonus": 7, "passiveCritDmgBonus": 10 }
+    },
+    "skills": [
+      { "level": 1, "skillId": "skill_trickster_mirage_bolt" },
+      { "level": 10, "skillId": "skill_trickster_lucky_knife" }
     ]
   }
 }

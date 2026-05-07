@@ -1,15 +1,15 @@
-import { 
-  CharacterData, 
-  MonsterData, 
-  BattleState, 
-  BattleLog, 
-  BaseStats, 
-  PassiveBonuses,
-  ClassCategory,
+import {
+  CharacterData,
+  MonsterData,
+  BattleState,
+  BattleLog,
+  BaseStats,
   Resistances,
-  ElementType
+  ElementType,
+  SkillAttackType
 } from '../types/game';
 import { MasterDataService } from '../services/MasterDataService';
+import { calculateCharacterStatProfile, hasElementDmgBoosts } from './StatSystem';
 
 /**
  * Necromance Brave Battle Engine
@@ -54,52 +54,49 @@ export class BattleEngine {
   }
 
   /**
-   * ダメージ計算ロジック (GDD-003, GDD-006)
-   * TECがダメージ安定性に寄与するように設計。
+   * ダメージ計算ロジック（HSR互換式）
+   * baseDmg = ATK × power
+   * defMult  = 1 - DEF / (DEF + 200)
+   * finalDmg = baseDmg × defMult × (1 + elementBoost) × resMult
+   * 会心時:   × critDmg / 100
    */
   private calculateDamage(
-    attackerStats: BaseStats, 
-    defenderStats: BaseStats, 
+    attackerStats: BaseStats,
+    attackerElementBoosts: Partial<Record<ElementType, number>>,
+    defenderStats: BaseStats,
     defenderResistances: Resistances,
-    type: 'PHYSICAL' | 'MAGICAL',
     powerMultiplier: number = 1.0,
     element: ElementType = 'NONE'
   ): { damage: number; isCritical: boolean; isWeakness: boolean; isResisted: boolean } {
-    
-    // 会心判定 (LUCK)
-    const isCritical = Math.random() * 100 < attackerStats.luck;
-    
-    // 基礎計算: (Stat^2 / (Stat + CounterStat)) (GDD-006)
-    let damage: number;
-    if (type === 'PHYSICAL') {
-      damage = (Math.pow(attackerStats.atk, 2)) / (attackerStats.atk + defenderStats.def);
-    } else {
-      damage = (Math.pow(attackerStats.matk, 2)) / (attackerStats.matk + defenderStats.mdef);
-    }
 
-    // スキル威力倍率
-    damage *= powerMultiplier;
+    // 1. 基礎ダメージ
+    let damage = attackerStats.atk * powerMultiplier;
 
-    // 属性耐性計算
+    // 2. 防御軽減（HSR簡易版）
+    const defenderDef = Math.max(0, defenderStats.def);
+    const defMult = 1 - defenderDef / (defenderDef + 200);
+    damage *= defMult;
+
+    // 3. 属性ダメージ加成（装備・残滓から）
+    const elementBoost = (attackerElementBoosts[element] ?? 0) / 100;
+    damage *= (1 + elementBoost);
+
+    // 4. 属性耐性
     let isWeakness = false;
     let isResisted = false;
-    if (element !== 'NONE') {
-      const resistance = defenderResistances[element] || 0;
-      if (resistance < 0) isWeakness = true;
-      if (resistance > 0) isResisted = true;
-      damage *= (1 - (resistance / 100));
-    }
+    const resistance = defenderResistances[element] ?? 0;
+    if (resistance < 0) isWeakness = true;
+    if (resistance > 0) isResisted = true;
+    damage *= (1 - resistance / 100);
 
-    // TECの安定性と倍率寄与 (GDD-003)
-    damage *= (1 + attackerStats.tec / 100);
-
-    // 会心時はTECを威力倍率にさらに反映 (GDD-003)
+    // 5. 会心判定
+    const isCritical = Math.random() * 100 < attackerStats.critRate;
     if (isCritical) {
-      damage *= (1.5 + attackerStats.tec / 200); // 会心倍率 1.5x + TEC補正
+      damage *= attackerStats.critDmg / 100;
     }
 
-    return { 
-      damage: Math.max(1, Math.floor(damage)), // 最低ダメージ1を保証
+    return {
+      damage: Math.max(1, Math.floor(damage)),
       isCritical,
       isWeakness,
       isResisted
@@ -108,48 +105,54 @@ export class BattleEngine {
 
   private processPlayerAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: MonsterData, skillId?: string): void {
     const { player } = this.state;
-    const stats = this.getTotalStats(player);
-    
-    let cost = 0;
+    const profile = calculateCharacterStatProfile(player);
+    const stats = profile.total;
+    const elementBoosts = hasElementDmgBoosts(player.elementDmgBoosts)
+      ? player.elementDmgBoosts
+      : profile.elementDmgBoosts;
+
+    let energyCost = 0;
     let power = 1.0;
-    let type: 'PHYSICAL' | 'MAGICAL' = 'PHYSICAL';
     let actionName = '攻撃';
     let element: ElementType = 'NONE';
+    let attackType: SkillAttackType = 'SLASH';
+    let energyGain = 20; // 通常攻撃: +20
 
     if (actionType === 'PHYSICAL_ATTACK') {
-      cost = 0;
-      type = 'PHYSICAL';
+      energyCost = 0;
+      attackType = 'SLASH';
     } else if (actionType === 'MAGIC_SKILL' && skillId) {
       const skillData = this.masterData.getSkill(skillId);
       if (skillData) {
-        cost = skillData.mpCost;
+        energyCost = skillData.mpCost;
         power = skillData.power;
-        type = skillData.type === 'MAGICAL' ? 'MAGICAL' : 'PHYSICAL'; // HEAL等は簡略化のため省略
         actionName = skillData.name;
         if (skillData.element) element = skillData.element;
+        attackType = skillData.attackType ?? (skillData.type === 'MAGICAL' ? 'MAGIC' : 'SLASH');
+        energyGain = skillData.isUltimate ? 0 : 15; // 奥義ではエネルギー獲得なし
       }
     } else {
-      // フォールバック (旧ロジック互換)
-      cost = this.getMPCost(player.category, actionType);
-      type = player.category === 'MAGICAL' ? 'MAGICAL' : 'PHYSICAL';
+      // フォールバック
+      energyCost = 0;
+      attackType = 'SLASH';
     }
 
-    // MPコスト判定 (GDD-003)
-    if (player.stats.mp < cost) {
-      this.addLog('NO_MP', player.name, target.name, `MPが不足しています！（必要MP: ${cost}）`);
+    // エネルギーコスト判定
+    if (player.currentEnergy < energyCost) {
+      this.addLog('NO_ENERGY', player.name, target.name, `エネルギーが不足しています！（必要: ${energyCost}）`);
       return;
     }
 
-    // MP消費
-    player.stats.mp -= cost;
+    // エネルギー消費・獲得
+    player.currentEnergy = Math.min(player.maxEnergy, Math.max(0, player.currentEnergy - energyCost + energyGain));
 
-    const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(stats, target.stats, target.resistances, type, power, element);
+    const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(stats, elementBoosts, target.stats, target.resistances ?? {}, power, element);
 
     let desc = `${player.name}の${actionName}！`;
     if (isWeakness) desc += ` 弱点を突いた！`;
     else if (isResisted) desc += ` 効果はいまひとつのようだ。`;
 
-    this.addLog(actionType, player.name, target.name, desc, damage, isCritical, isWeakness, isResisted);
+    this.addLog(actionType, player.name, target.name, desc, damage, isCritical, isWeakness, isResisted, element, attackType);
   }
 
   private processMonsterActions(target: MonsterData): void {
@@ -158,48 +161,33 @@ export class BattleEngine {
     monsters.forEach(monster => {
       if (!monster) return;
 
-      // プレイヤー覚醒時のパッシブバフ (GDD-005)
+      // プレイヤー覚醒時のパッシブバフ (GDD-005) — ATKを1.5倍
       const monsterStats = { ...monster.stats };
       if (player.isAwakened) {
         monsterStats.atk = Math.floor(monsterStats.atk * 1.5);
-        monsterStats.matk = Math.floor(monsterStats.matk * 1.5);
       }
 
-      // 敵への追撃はとりあえず無属性とする
-      const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(monsterStats, target.stats, target.resistances, 'PHYSICAL', 1.0, 'NONE');
-      this.addLog('MONSTER_ATTACK', monster.name, target.name, `${monster.name}の追撃！`, damage, isCritical, isWeakness, isResisted);
+      const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(monsterStats, {}, target.stats, target.resistances, 1.0, 'NONE');
+      this.addLog('MONSTER_ATTACK', monster.name, target.name, `${monster.name}の追撃！`, damage, isCritical, isWeakness, isResisted, 'NONE', 'STRIKE');
     });
   }
 
   private processAreaGimmick(): void {
     const { areaGimmick, player } = this.state;
     if (areaGimmick === 'SLIP_DAMAGE') {
-      const damage = Math.floor(player.stats.hp * 0.05);
-      player.stats.hp -= damage;
+      const playerStats = this.getMutableStats(player);
+      const damage = Math.floor(playerStats.hp * 0.05);
+      playerStats.hp -= damage;
       this.addLog('GIMMICK', 'Area', player.name, `エリアギミック：スリップダメージにより${damage}ダメージ。`);
     }
   }
 
-  private getMPCost(category: ClassCategory, action: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL'): number {
-    // 物理職: 低コスト (GDD-003)
-    if (category === 'PHYSICAL') {
-      return action === 'PHYSICAL_ATTACK' ? 0 : 3;
-    } 
-    // 魔法職: 高コスト (GDD-003)
-    else {
-      return action === 'PHYSICAL_ATTACK' ? 0 : 15;
-    }
+  private getTotalStats(player: CharacterData): BaseStats {
+    return calculateCharacterStatProfile(player).total;
   }
 
-  private getTotalStats(player: CharacterData): BaseStats {
-    const total = { ...player.stats };
-    // パッシブ蓄積を反映 (GDD-004)
-    total.atk += player.passives.passiveAtkBonus;
-    total.def += player.passives.passiveDefBonus;
-    total.matk += player.passives.passiveMatkBonus;
-    total.mdef += player.passives.passiveMdefBonus;
-    
-    return total;
+  private getMutableStats(player: CharacterData): BaseStats {
+    return ((player as any).stats ?? (player as any).baseStats) as BaseStats;
   }
 
   private updateState(): void {
@@ -211,7 +199,18 @@ export class BattleEngine {
     }
   }
 
-  private addLog(action: string, actorName: string, targetName: string, description: string, damage?: number, isCritical?: boolean, isWeakness?: boolean, isResisted?: boolean): void {
+  private addLog(
+    action: string,
+    actorName: string,
+    targetName: string,
+    description: string,
+    damage?: number,
+    isCritical?: boolean,
+    isWeakness?: boolean,
+    isResisted?: boolean,
+    element: ElementType = 'NONE',
+    attackType: SkillAttackType = 'SLASH'
+  ): void {
     this.logs.push({
       turn: this.state.turn,
       wave: this.state.wave,
@@ -222,8 +221,11 @@ export class BattleEngine {
       isCritical,
       isWeakness,
       isResisted,
-      playerMP: this.state.player.stats.mp,
-      playerHP: this.state.player.stats.hp,
+      element,
+      attackType,
+      playerEnergy: this.state.player.currentEnergy,
+      playerMP: this.state.player.currentEnergy,
+      playerHP: this.getMutableStats(this.state.player).hp,
       description
     });
   }
