@@ -2,10 +2,10 @@
 
 import { useRef, useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Swords, Shield, Gem, Zap, Plus, Sparkles, ChevronRight, Home, X, Crown, Filter, Recycle, Star } from 'lucide-react';
+import { ChevronLeft, Swords, Zap, Plus, Sparkles, ChevronRight, Home, X, Crown, Filter, Recycle, Star } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import { useGothicSound } from '../necro/useGothicSound';
-import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats } from '../../types/game';
+import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats, WeaponMaterialData } from '../../types/game';
 import {
   calculateCharacterStatProfile,
   ELEMENT_DAMAGE_KEYS,
@@ -25,6 +25,25 @@ import {
   RESIDUE_SLOT_ORDER,
   type ResidueSlotId,
 } from '../../logic/ResidueScore';
+import {
+  calculateDismantleRewards,
+  calculateWeaponAttackBreakdown,
+  calculateWeaponBaseAttack,
+  collectWeaponAttackBonuses,
+  describeWeaponPassive,
+  getNextReforgeTargetIlv,
+  getRankUpCost,
+  getReforgeCost,
+  getWeaponArchetype,
+  getWeaponEffectiveSubOptions,
+  getWeaponIlv,
+  getWeaponRank,
+  getWeaponRarity,
+  getWeaponSortScore,
+  hasEnoughWeaponMaterials,
+  WEAPON_ARCHETYPE_LABEL,
+  WEAPON_RARITY_LABEL,
+} from '../../logic/WeaponSystem';
 
 /* ──────────────────────────────────────────
    HAPTIC
@@ -64,8 +83,20 @@ function getConf(mk: MemberKey, player: CharacterData | null, party: (MonsterDat
   return m ? (TRIBE[m.tribe] ?? TRIBE.HUMANOID) : VACANT_CONF;
 }
 
-const RARITY_COLOR: Record<string, string> = { COMMON: '#99AABC', RARE: '#55AAFF', EPIC: '#CC22FF', LEGENDARY: '#FFB84D', UNIQUE: '#FBBB30' };
-const RARITY_GLOW:  Record<string, string> = { COMMON: 'rgba(153,170,188,0.32)', RARE: 'rgba(85,170,255,0.38)', EPIC: 'rgba(204,34,255,0.48)', LEGENDARY: 'rgba(255,184,77,0.48)', UNIQUE: 'rgba(251,187,48,0.38)' };
+const RARITY_COLOR: Record<string, string> = {
+  COMMON: '#99AABC', R: '#99AABC',
+  RARE: '#55AAFF', SR: '#55AAFF',
+  EPIC: '#CC22FF', SSR: '#CC22FF',
+  LEGENDARY: '#FFB84D', UNIQUE: '#FBBB30',
+  HIDDEN_UNIQUE: '#FF224D', UR: '#FF224D', LR: '#FFB84D',
+};
+const RARITY_GLOW:  Record<string, string> = {
+  COMMON: 'rgba(153,170,188,0.32)', R: 'rgba(153,170,188,0.32)',
+  RARE: 'rgba(85,170,255,0.38)', SR: 'rgba(85,170,255,0.38)',
+  EPIC: 'rgba(204,34,255,0.48)', SSR: 'rgba(204,34,255,0.48)',
+  LEGENDARY: 'rgba(255,184,77,0.48)', UNIQUE: 'rgba(251,187,48,0.38)',
+  HIDDEN_UNIQUE: 'rgba(255,34,77,0.5)', UR: 'rgba(255,34,77,0.55)', LR: 'rgba(255,184,77,0.48)',
+};
 
 /* ──────────────────────────────────────────
    INLINED FROM NecroLab — stat formatting
@@ -92,7 +123,7 @@ interface MemberInfo {
   name: string; nameEn: string; sub: string; rank: string;
   lvl: number | null; cost: number | null;
   stats: CharacterData['stats'] | null;
-  weapon: ItemData | null; armor: ItemData | null; acc: ItemData | null;
+  weapon: ItemData | null;
   residues: (AbyssalResidueData | null)[];
   isVacant: boolean; isPlayer: boolean;
 }
@@ -111,15 +142,13 @@ function getMemberInfo(
       cost: null,
       stats: player?.stats ?? null,
       weapon: player?.equipment.weapon ?? null,
-      armor: player?.equipment.body ?? null,
-      acc: player?.equipment.acc1 ?? null,
       residues: equippedResidueSlots,
       isVacant: false, isPlayer: true,
     };
   }
   const i = parseInt(mk.replace('MONSTER_', ''));
   const m = party[i] ?? null;
-  if (!m) return { name: 'VACANT', nameEn: 'VACANT', sub: 'EMPTY', rank: '—', lvl: null, cost: null, stats: null, weapon: null, armor: null, acc: null, residues: [null, null, null, null, null], isVacant: true, isPlayer: false };
+  if (!m) return { name: 'VACANT', nameEn: 'VACANT', sub: 'EMPTY', rank: '—', lvl: null, cost: null, stats: null, weapon: null, residues: [null, null, null, null, null], isVacant: true, isPlayer: false };
   const fake: AbyssalResidueData | null = (() => {
     if (!m.equippedShardId) return null;
     const s = soulShards.find((x: SoulShardData) => x.id === m.equippedShardId);
@@ -129,7 +158,7 @@ function getMemberInfo(
     name: m.name, nameEn: m.name.toUpperCase(), sub: (TRIBE[m.tribe] ?? TRIBE.HUMANOID).label, rank: 'SR',
     lvl: null, cost: m.cost,
     stats: m.stats as CharacterData['stats'],
-    weapon: null, armor: null, acc: null,
+    weapon: null,
     residues: [fake, null, null, null, null],
     isVacant: false, isPlayer: false,
   };
@@ -311,7 +340,7 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
       {isSelected && (
         <div style={{
           position: 'absolute', inset: 0,
-          background: `linear-gradient(90deg, transparent, ${color}18, transparent)`,
+          backgroundImage: `linear-gradient(90deg, transparent, ${color}18, transparent)`,
           backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite', pointerEvents: 'none',
         }} />
       )}
@@ -975,22 +1004,253 @@ function VirtualResidueGrid({ items, selectedId, equippedIds, onSelect }: { item
 }
 
 /* ──────────────────────────────────────────
-   ITEM GRID (weapon / armor / acc)
+   WEAPON UI
 ────────────────────────────────────────── */
-function ItemGridCard({ item, isSelected, isEquipped, onSelect }: { item: ItemData; isSelected: boolean; isEquipped: boolean; onSelect: () => void }) {
-  const color = RARITY_COLOR[(item as any).rarity] ?? RARITY_COLOR.COMMON;
+function materialQty(materials: WeaponMaterialData[], type: string): number {
+  return materials.find((mat) => mat.type === type)?.quantity ?? 0;
+}
+
+function WeaponGridCard({ item, isSelected, isEquipped, onSelect }: { item: ItemData; isSelected: boolean; isEquipped: boolean; onSelect: () => void }) {
+  const rarity = getWeaponRarity(item);
+  const color = RARITY_COLOR[rarity] ?? RARITY_COLOR.R;
+  const baseAtk = calculateWeaponBaseAttack(item);
   return (
     <motion.button onClick={onSelect} whileTap={{ scale: 0.92 }}
-      className="rounded-xl flex flex-col items-center gap-1.5 py-3 px-2 relative overflow-hidden"
-      style={{ height: 104, background: isSelected ? `linear-gradient(160deg, ${RARITY_GLOW[(item as any).rarity] ?? RARITY_GLOW.COMMON}, rgba(12,5,28,0.92))` : 'rgba(12,6,28,0.7)', border: `1.5px solid ${isSelected ? color + 'BB' : 'rgba(130,70,200,0.35)'}`, boxShadow: isSelected ? `0 0 14px ${RARITY_GLOW[(item as any).rarity] ?? RARITY_GLOW.COMMON}` : 'none' }}>
-      <div className="absolute inset-0 pointer-events-none rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%)' }} />
-      {isEquipped && <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: '#00DD77', boxShadow: '0 0 5px #00DD77' }} />}
-      <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${color}18`, border: `1px solid ${color}44` }}>
-        <Swords size={16} style={{ color }} />
+      className="rounded-xl flex flex-col items-center gap-1.5 py-2.5 px-2 relative overflow-hidden"
+      style={{ minHeight: 126, background: isSelected ? `linear-gradient(160deg, ${RARITY_GLOW[rarity] ?? RARITY_GLOW.R}, rgba(12,5,28,0.94))` : 'rgba(12,6,28,0.72)', border: `1.5px solid ${isSelected ? color + 'BB' : 'rgba(130,70,200,0.35)'}`, boxShadow: isSelected ? `0 0 16px ${RARITY_GLOW[rarity] ?? RARITY_GLOW.R}` : 'none' }}>
+      <div className="absolute inset-0 pointer-events-none rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.065) 0%, transparent 50%)' }} />
+      {isEquipped && <div className="absolute top-1.5 right-1.5 text-[8px] font-black px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,221,119,0.16)', border: '1px solid rgba(0,221,119,0.48)', color: '#8DFFBF', fontFamily: 'monospace' }}>装備中</div>}
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `radial-gradient(circle at 35% 25%, ${color}34, rgba(0,0,0,0.82))`, border: `1px solid ${color}55`, boxShadow: `0 0 12px ${color}22` }}>
+        <Swords size={18} style={{ color }} />
       </div>
-      <span className="text-[10px] font-black text-center leading-tight max-w-full px-1 truncate" style={{ color: '#EDE8FF', fontFamily: 'monospace' }}>{(item as any).name}</span>
-      <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: `${color}22`, border: `1px solid ${color}44`, color }}>{(item as any).rarity}</span>
+      <span className="text-[10px] font-black text-center leading-tight max-w-full px-1" style={{ color: '#EDE8FF', fontFamily: "'Noto Sans JP', sans-serif", display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: 26 }}>{item.name}</span>
+      <div className="flex items-center gap-1">
+        <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: `${color}22`, border: `1px solid ${color}44`, color, fontFamily: 'monospace' }}>{rarity}</span>
+        <span className="text-[9px] font-black" style={{ color: '#8b7da8', fontFamily: 'monospace' }}>R{getWeaponRank(item)}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-1 w-full">
+        <span className="text-[8px] font-black rounded px-1 py-0.5" style={{ color: '#bca8df', background: 'rgba(255,255,255,0.04)', fontFamily: 'monospace' }}>ILv.{getWeaponIlv(item)}</span>
+        <span className="text-[8px] font-black rounded px-1 py-0.5 text-right" style={{ color, background: `${color}12`, fontFamily: 'monospace' }}>ATK {baseAtk}</span>
+      </div>
     </motion.button>
+  );
+}
+
+function WeaponPassiveLine({ passive, rank, color }: { passive: ItemData['passiveA']; rank: number; color: string }) {
+  if (!passive) return null;
+  return (
+    <div style={{ borderRadius: 11, border: `1px solid ${color}24`, background: 'rgba(0,0,0,0.24)', padding: '8px 9px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#F0EAFF', fontWeight: 900 }}>{passive.nameJa}</span>
+        {passive.systemTag && <span style={{ fontFamily: 'monospace', fontSize: 7, color, border: `1px solid ${color}44`, borderRadius: 999, padding: '1px 5px', flexShrink: 0 }}>{passive.systemTag}</span>}
+      </div>
+      <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 9, color: 'rgba(202,190,235,0.72)', marginTop: 4, lineHeight: 1.45 }}>{describeWeaponPassive(passive, rank)}</div>
+    </div>
+  );
+}
+
+function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip }: {
+  weapon: ItemData | null;
+  equipped: ItemData | null;
+  player: CharacterData | null;
+  residues: (AbyssalResidueData | null)[];
+  color: string;
+  onEquip: (weapon: ItemData) => void;
+}) {
+  if (!weapon) {
+    return (
+      <div className="gothic-panel rounded-2xl p-4 shrink-0 flex items-center justify-center opacity-40" style={{ minHeight: 144 }}>
+        <span className="text-[11px] tracking-widest font-bold" style={{ color: 'rgba(180,100,255,0.75)', fontFamily: 'monospace' }}>SELECT WEAPON</span>
+      </div>
+    );
+  }
+
+  const rarity = getWeaponRarity(weapon);
+  const rarityColor = RARITY_COLOR[rarity] ?? color;
+  const rank = getWeaponRank(weapon);
+  const baseAtk = calculateWeaponBaseAttack(weapon);
+  const residueOptions = residues.flatMap((residue) => residue ? [residue.mainStat, ...residue.subOptions] : []);
+  const attackBonuses = collectWeaponAttackBonuses([...getWeaponEffectiveSubOptions(weapon), ...residueOptions]);
+  const finalAtk = calculateWeaponAttackBreakdown(player?.stats.atk ?? 0, weapon, attackBonuses);
+  const equippedAtk = equipped ? calculateWeaponBaseAttack(equipped) : 0;
+  const diff = baseAtk - equippedAtk;
+  const isEquipped = equipped?.id === weapon.id;
+
+  return (
+    <div className="gothic-panel rounded-2xl overflow-hidden relative shrink-0" style={{ minHeight: 218, borderColor: `${rarityColor}44` }}>
+      <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${rarityColor}, transparent)` }} />
+      {rarity === 'UR' && <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 82% 18%, rgba(255,34,77,0.22), transparent 34%)' }} />}
+      <div className="p-3 flex flex-col gap-3">
+        <div className="flex items-start gap-3">
+          <motion.div
+            animate={rarity === 'UR' ? { boxShadow: [`0 0 12px ${rarityColor}28`, `0 0 24px ${rarityColor}70`, `0 0 12px ${rarityColor}28`] } : undefined}
+            transition={{ duration: 1.8, repeat: Infinity }}
+            className="shrink-0 w-[58px] h-[58px] rounded-2xl flex items-center justify-center"
+            style={{ background: `radial-gradient(circle at 35% 30%, ${rarityColor}38, rgba(0,0,0,0.86))`, border: `1.5px solid ${rarityColor}66` }}
+          >
+            <Swords size={30} style={{ color: rarityColor }} />
+          </motion.div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <span style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', serif", fontSize: 12, fontWeight: 900, lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weapon.name}</span>
+              <span style={{ color: rarityColor, background: `${rarityColor}1A`, border: `1px solid ${rarityColor}44`, borderRadius: 999, padding: '2px 6px', fontFamily: 'monospace', fontSize: 8, fontWeight: 900, flexShrink: 0 }}>{rarity}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+              <span style={{ color: rarityColor + 'CC', fontFamily: 'monospace', fontSize: 9 }}>{WEAPON_RARITY_LABEL[rarity]}</span>
+              <span style={{ color: '#7f7193', fontFamily: 'monospace', fontSize: 9 }}>{WEAPON_ARCHETYPE_LABEL[getWeaponArchetype(weapon)]}</span>
+              <span style={{ color: '#7f7193', fontFamily: 'monospace', fontSize: 9 }}>ILv.{getWeaponIlv(weapon)}/90</span>
+            </div>
+            <div className="flex items-baseline gap-2 mt-2">
+              <span style={{ color: rarityColor, fontFamily: "'Cinzel', serif", fontSize: 26, fontWeight: 900, lineHeight: 1, textShadow: `0 0 12px ${rarityColor}66` }}>{baseAtk}</span>
+              <span style={{ color: rarityColor + 'CC', fontFamily: 'monospace', fontSize: 10, fontWeight: 900 }}>WEAPON ATK</span>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>共鳴</div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 24, color: rarityColor, fontWeight: 900, lineHeight: 1 }}>R{rank}</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 7 }}>
+          <div style={{ borderRadius: 11, background: 'rgba(0,0,0,0.24)', border: '1px solid rgba(255,255,255,0.06)', padding: '8px 9px' }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>FINAL ATK</div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 16, color: '#F0EAFF', fontWeight: 900, marginTop: 2 }}>{finalAtk.finalAtk.toLocaleString()}</div>
+          </div>
+          <div style={{ borderRadius: 11, background: 'rgba(0,0,0,0.24)', border: '1px solid rgba(255,255,255,0.06)', padding: '8px 9px' }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>ATK BONUS</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 13, color: rarityColor, fontWeight: 900, marginTop: 3 }}>{finalAtk.atkBonusPercent.toFixed(1)}%</div>
+          </div>
+          <div style={{ borderRadius: 11, background: 'rgba(0,0,0,0.24)', border: '1px solid rgba(255,255,255,0.06)', padding: '8px 9px' }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>差分</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 13, color: diff >= 0 ? '#8DFFBF' : '#FF8888', fontWeight: 900, marginTop: 3 }}>{equipped ? `${diff >= 0 ? '+' : ''}${diff}` : 'EMPTY'}</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2">
+          <WeaponPassiveLine passive={weapon.passiveA} rank={rank} color={rarityColor} />
+          <WeaponPassiveLine passive={weapon.passiveB} rank={rank} color={rarityColor} />
+        </div>
+
+        <motion.button
+          type="button"
+          onClick={() => onEquip(weapon)}
+          whileTap={{ scale: 0.96 }}
+          disabled={isEquipped}
+          style={{
+            minHeight: 44,
+            borderRadius: 14,
+            background: isEquipped ? 'rgba(255,255,255,0.04)' : `linear-gradient(135deg, ${rarityColor}34, rgba(12,5,28,0.92))`,
+            border: `1.5px solid ${isEquipped ? 'rgba(255,255,255,0.08)' : rarityColor + '77'}`,
+            color: isEquipped ? '#5d5368' : rarityColor,
+            fontFamily: "'Noto Sans JP', sans-serif",
+            fontSize: 13,
+            fontWeight: 900,
+            letterSpacing: '0.18em',
+          }}
+        >
+          {isEquipped ? '装備中' : '装備'}
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+function WeaponEnhancementPanel({ weapon, materials, color, onRankUp, onReforge }: {
+  weapon: ItemData | null;
+  materials: WeaponMaterialData[];
+  color: string;
+  onRankUp: (weapon: ItemData) => void;
+  onReforge: (weapon: ItemData) => void;
+}) {
+  if (!weapon) {
+    return <div className="flex-1 flex items-center justify-center opacity-40"><span style={{ color: 'rgba(180,100,255,0.7)', fontFamily: 'monospace', fontSize: 12 }}>武器を選択</span></div>;
+  }
+  const rarity = getWeaponRarity(weapon);
+  const rarityColor = RARITY_COLOR[rarity] ?? color;
+  const rankCost = getRankUpCost(weapon);
+  const reforgeCosts = getReforgeCost(weapon);
+  const canRankUp = !!rankCost && hasEnoughWeaponMaterials(materials, [rankCost]);
+  const canReforge = reforgeCosts.length > 0 && hasEnoughWeaponMaterials(materials, reforgeCosts);
+  const targetIlv = getNextReforgeTargetIlv(weapon);
+
+  return (
+    <div className="absolute inset-0 flex flex-col overflow-y-auto custom-scrollbar px-3 pt-1 pb-3 gap-3" style={{ width: '100%' }}>
+      <WeaponDetailPanel weapon={weapon} equipped={weapon} player={null} residues={[]} color={color} onEquip={() => {}} />
+      <div className="grid grid-cols-2 gap-2 shrink-0">
+        <div className="gothic-panel rounded-2xl p-3">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span style={{ fontFamily: 'monospace', fontSize: 10, color: rarityColor, fontWeight: 900, letterSpacing: '0.12em' }}>魂の共鳴</span>
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 18, color: rarityColor, fontWeight: 900 }}>R{getWeaponRank(weapon)}/5</span>
+          </div>
+          <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#bcaee4', lineHeight: 1.5, minHeight: 46 }}>パッシブ効果量をランクVで2倍まで引き上げる。</div>
+          <div style={{ borderRadius: 10, background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.06)', padding: '8px', marginTop: 8 }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>必要素材</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 11, color: rankCost ? rarityColor : '#6a5f76', fontWeight: 900, marginTop: 3 }}>
+              {rankCost ? `${rankCost.name} ${materialQty(materials, rankCost.type)}/${rankCost.quantity}` : '最大共鳴'}
+            </div>
+          </div>
+          <button onClick={() => onRankUp(weapon)} disabled={!canRankUp} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canRankUp ? `linear-gradient(135deg, ${rarityColor}30, rgba(20,5,35,0.9))` : 'rgba(255,255,255,0.04)', border: `1px solid ${canRankUp ? rarityColor + '66' : 'rgba(255,255,255,0.08)'}`, color: canRankUp ? rarityColor : '#5d5368', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, fontWeight: 900 }}>共鳴</button>
+        </div>
+
+        <div className="gothic-panel rounded-2xl p-3">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#D4AF37', fontWeight: 900, letterSpacing: '0.12em' }}>打ち直し</span>
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: 18, color: '#D4AF37', fontWeight: 900 }}>ILv.{getWeaponIlv(weapon)}</span>
+          </div>
+          <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#bcaee4', lineHeight: 1.5, minHeight: 46 }}>基礎ATKだけを現行ダンジョン水準へ引き上げる。</div>
+          <div style={{ borderRadius: 10, background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.06)', padding: '8px', marginTop: 8 }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>必要素材</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 11, color: targetIlv ? '#D4AF37' : '#6a5f76', fontWeight: 900, marginTop: 3, lineHeight: 1.45 }}>
+              {targetIlv ? reforgeCosts.map((cost) => `${cost.name} ${materialQty(materials, cost.type)}/${cost.quantity}`).join(' / ') : '最大ILv'}
+            </div>
+          </div>
+          <button onClick={() => onReforge(weapon)} disabled={!canReforge} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canReforge ? 'linear-gradient(135deg, rgba(212,175,55,0.26), rgba(20,5,35,0.9))' : 'rgba(255,255,255,0.04)', border: `1px solid ${canReforge ? 'rgba(212,175,55,0.62)' : 'rgba(255,255,255,0.08)'}`, color: canReforge ? '#D4AF37' : '#5d5368', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, fontWeight: 900 }}>打ち直し</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WeaponDismantlePanel({ weapon, equipped, materials, color, onDismantle }: {
+  weapon: ItemData | null;
+  equipped: ItemData | null;
+  materials: WeaponMaterialData[];
+  color: string;
+  onDismantle: (weapon: ItemData) => void;
+}) {
+  if (!weapon) return <div className="flex-1 flex items-center justify-center opacity-40"><span style={{ color: 'rgba(180,100,255,0.7)', fontFamily: 'monospace', fontSize: 12 }}>武器を選択</span></div>;
+  const rarity = getWeaponRarity(weapon);
+  const rarityColor = RARITY_COLOR[rarity] ?? color;
+  const rewards = calculateDismantleRewards(weapon);
+  const blocked = equipped?.id === weapon.id || rewards.length === 0;
+
+  return (
+    <div className="absolute inset-0 flex flex-col overflow-y-auto custom-scrollbar px-3 pt-1 pb-3 gap-3" style={{ width: '100%' }}>
+      <div className="gothic-panel rounded-2xl p-4 shrink-0" style={{ borderColor: `${rarityColor}44` }}>
+        <div className="flex items-center gap-3">
+          <div style={{ width: 52, height: 52, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `radial-gradient(circle, ${rarityColor}28, rgba(0,0,0,0.8))`, border: `1px solid ${rarityColor}55` }}>
+            <Recycle size={24} style={{ color: rarityColor }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 12, color: '#F0EAFF', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weapon.name}</div>
+            <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#9b8abc', marginTop: 4 }}>不要な武器を魂のイデアへ変換する。URは怨念が固定化しているため分解不可。</div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginTop: 12 }}>
+          {rewards.length === 0 ? (
+            <div style={{ borderRadius: 12, background: 'rgba(255,34,77,0.08)', border: '1px solid rgba(255,34,77,0.22)', padding: 10, color: '#ff8ba1', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 11, fontWeight: 800 }}>この武器は分解できません</div>
+          ) : rewards.map((reward) => (
+            <div key={reward.type} style={{ borderRadius: 12, background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.06)', padding: 10, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ color: '#F0EAFF', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 11, fontWeight: 900 }}>{reward.name}</span>
+              <span style={{ color: rarityColor, fontFamily: 'monospace', fontSize: 11, fontWeight: 900 }}>{materialQty(materials, reward.type)} → {materialQty(materials, reward.type) + reward.quantity}</span>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => onDismantle(weapon)} disabled={blocked} style={{ width: '100%', minHeight: 44, marginTop: 12, borderRadius: 14, background: blocked ? 'rgba(255,255,255,0.04)' : 'linear-gradient(135deg, rgba(255,34,77,0.28), rgba(20,5,35,0.92))', border: `1.5px solid ${blocked ? 'rgba(255,255,255,0.08)' : 'rgba(255,34,77,0.58)'}`, color: blocked ? '#5d5368' : '#ff8ba1', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 13, fontWeight: 900, letterSpacing: '0.16em' }}>
+          {equipped?.id === weapon.id ? '装備中は分解不可' : rewards.length === 0 ? '分解不可' : '分解'}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -1099,8 +1359,6 @@ function PortraitCard({ mk, player, party, equippedResidueSlots, soulShards, dem
 
   const slotIcons: { icon: string; item: ItemData | AbyssalResidueData | null; label: string }[] = [
     { icon: '⚔', item: info.weapon, label: 'W' },
-    { icon: '🛡', item: info.armor, label: 'A' },
-    { icon: '💍', item: info.acc, label: 'C' },
     ...RESIDUE_SLOT_ORDER.map((slotId, index) => ({
       icon: getResidueSlotMeta(slotId).icon,
       item: info.residues[index] ?? null,
@@ -1160,7 +1418,7 @@ function PortraitCard({ mk, player, party, equippedResidueSlots, soulShards, dem
             </span>
           </div>
           {/* equipment micro-icons */}
-          <div className="grid grid-cols-4 gap-1">
+          <div className="grid grid-cols-3 gap-1">
             {slotIcons.map((s, idx) => {
               const hasItem = s.item !== null;
               const rc = hasItem && (s.item as any).rarity ? RARITY_COLOR[(s.item as any).rarity] : null;
@@ -1241,7 +1499,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
   equippedResidueSlots: (AbyssalResidueData | null)[];
   soulShards: SoulShardData[]; isDemonMode: boolean;
   onBack: () => void;
-  onOpenGear: (slotType: 'WEAPON' | 'ARMOR' | 'ACCESSORY' | 'RESIDUE', slotIndex: number) => void;
+  onOpenGear: (slotType: 'WEAPON' | 'RESIDUE', slotIndex: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const setCurrentTab = useGameStore(state => state.setCurrentTab);
@@ -1268,19 +1526,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
     {
       id: 'weapon', icon: '⚔', label: '武器', sublabel: info.weapon ? (info.weapon as any).name : '空',
       filled: !!info.weapon, level: null,
-      rarity: info.weapon ? (info.weapon as any).rarity : null,
-      locked: !info.isPlayer,
-    },
-    {
-      id: 'armor', icon: '🛡', label: '鎧', sublabel: info.armor ? (info.armor as any).name : '空',
-      filled: !!info.armor, level: null,
-      rarity: info.armor ? (info.armor as any).rarity : null,
-      locked: !info.isPlayer,
-    },
-    {
-      id: 'acc', icon: '💍', label: '装飾品', sublabel: info.acc ? (info.acc as any).name : '空',
-      filled: !!info.acc, level: null,
-      rarity: info.acc ? (info.acc as any).rarity : null,
+      rarity: info.weapon ? getWeaponRarity(info.weapon) : null,
       locked: !info.isPlayer,
     },
   ];
@@ -1302,8 +1548,6 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
   const handleLeftSelect = (id: string | null) => {
     setSelectedSlot(id);
     if (id === 'weapon') { haptic(8); onOpenGear('WEAPON', 0); }
-    else if (id === 'armor') { haptic(8); onOpenGear('ARMOR', 0); }
-    else if (id === 'acc') { haptic(8); onOpenGear('ACCESSORY', 0); }
   };
   const handleRightSelect = (id: string | null) => {
     setSelectedSlot(id);
@@ -1464,7 +1708,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
                 animation: 'glow-pulse 2.5s ease-in-out infinite',
                 position: 'relative', overflow: 'hidden',
               }}>
-              <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg, transparent, ${color}14, transparent)`, backgroundSize: '200% 100%', animation: 'shimmer 2s infinite', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(90deg, transparent, ${color}14, transparent)`, backgroundSize: '200% 100%', animation: 'shimmer 2s infinite', pointerEvents: 'none' }} />
               強化
             </div>
           </div>
@@ -1564,20 +1808,21 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
 /* ──────────────────────────────────────────
    GEAR HUB VIEW
 ────────────────────────────────────────── */
-type GearSlotType = 'WEAPON' | 'ARMOR' | 'ACCESSORY' | 'RESIDUE';
+type GearSlotType = 'WEAPON' | 'RESIDUE';
 interface GearCtx { mk: MemberKey; slotType: GearSlotType; slotIndex: number }
 
-function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResidues, residueMaterials, inventoryItems, transmutationPoints, onBack }: {
+function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResidues, residueMaterials, weaponMaterials, inventoryItems, transmutationPoints, onBack }: {
   gearCtx: GearCtx; player: CharacterData | null; party: (MonsterData | null)[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
   abyssalResidues: AbyssalResidueData[]; residueMaterials: ResidueMatData[];
+  weaponMaterials: WeaponMaterialData[];
   inventoryItems: ItemData[]; transmutationPoints: number; onBack: () => void;
 }) {
-  const { equipResidueToSlot, upgradeResidue, equipItem } = useGameStore();
+  const { equipResidueToSlot, upgradeResidue, equipItem, rankUpWeapon, reforgeWeapon, dismantleWeapon } = useGameStore();
   const sound = useGothicSound();
   const conf = getConf(gearCtx.mk, player, party);
   const color = conf.color;
-  const [tab, setTab] = useState<'EQUIP' | 'ENHANCE' | 'TRANSMUTE'>('EQUIP');
+  const [tab, setTab] = useState<'EQUIP' | 'ENHANCE' | 'TRANSMUTE' | 'DISMANTLE'>('EQUIP');
   const [activeResidueSlotIndex, setActiveResidueSlotIndex] = useState(gearCtx.slotIndex);
   const [selectedResidueId, setSelectedResidueId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -1588,7 +1833,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   const activeResidueSlotMeta = getResidueSlotMeta(activeResidueSlotId);
   const slotLabel = isResidueSlot
     ? activeResidueSlotMeta.nameJa
-    : { WEAPON: '武器', ARMOR: '鎧', ACCESSORY: '装飾品', RESIDUE: '残滓' }[gearCtx.slotType];
+    : '武器';
 
   const info = getMemberInfo(gearCtx.mk, player, party, equippedResidueSlots, []);
   const memberName = info.nameEn;
@@ -1609,15 +1854,24 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   );
 
   const filteredItems = useMemo(() => {
-    const typeMap: Record<string, string> = { WEAPON: 'WEAPON', ARMOR: 'BODY', ACCESSORY: 'ACC1' };
-    return inventoryItems.filter(i => (i as any).type === typeMap[gearCtx.slotType]);
-  }, [inventoryItems, gearCtx.slotType]);
+    return inventoryItems
+      .filter(i => i.type === 'WEAPON')
+      .sort((a, b) => getWeaponSortScore(b) - getWeaponSortScore(a));
+  }, [inventoryItems]);
+
+  const selectedItem = filteredItems.find((item) => item.id === selectedItemId) ?? null;
 
   useEffect(() => {
     if (!isResidueSlot) return;
     if (selectedResidueId && filteredResidues.some((r) => r.id === selectedResidueId)) return;
     setSelectedResidueId(activeEquippedResidue?.id ?? filteredResidues[0]?.id ?? null);
   }, [activeEquippedResidue?.id, filteredResidues, isResidueSlot, selectedResidueId]);
+
+  useEffect(() => {
+    if (isResidueSlot) return;
+    if (selectedItemId && filteredItems.some((item) => item.id === selectedItemId)) return;
+    setSelectedItemId(info.weapon?.id ?? filteredItems[0]?.id ?? null);
+  }, [filteredItems, info.weapon?.id, isResidueSlot, selectedItemId]);
 
   const handleEquipResidue = () => {
     if (!selectedResidue) return;
@@ -1628,8 +1882,23 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   const handleEquipItem = (item: ItemData) => {
     if (!player) return;
     sound.playEquip(); haptic([8, 4, 14]);
-    const slotMap: Record<string, any> = { WEAPON: 'weapon', ARMOR: 'body', ACCESSORY: 'acc1' };
-    equipItem(slotMap[gearCtx.slotType], item);
+    equipItem('weapon', item);
+  };
+
+  const handleRankUpWeapon = (item: ItemData) => {
+    sound.playEquip(); haptic([8, 4, 18]);
+    rankUpWeapon(item.id);
+  };
+
+  const handleReforgeWeapon = (item: ItemData) => {
+    sound.playEquip(); haptic([10, 6, 20]);
+    reforgeWeapon(item.id);
+  };
+
+  const handleDismantleWeapon = (item: ItemData) => {
+    sound.playEquip(); haptic([15, 8, 28]);
+    dismantleWeapon(item.id);
+    setSelectedItemId(null);
   };
 
   const handleEnhance = () => {
@@ -1705,11 +1974,11 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
 
       {/* Tab switcher */}
       <div className="shrink-0 flex mx-3 mt-2.5 rounded-xl overflow-hidden" style={{ background: 'rgba(7,3,18,0.88)', border: `1px solid ${color}20` }}>
-        {(isResidueSlot ? (['EQUIP', 'ENHANCE', 'TRANSMUTE'] as const) : (['EQUIP', 'ENHANCE'] as const)).map(t => (
+        {(isResidueSlot ? (['EQUIP', 'ENHANCE', 'TRANSMUTE'] as const) : (['EQUIP', 'ENHANCE', 'DISMANTLE'] as const)).map(t => (
           <button key={t} onClick={() => { haptic(5); setTab(t); }}
             className="flex-1 py-2.5 text-[12px] font-black tracking-[0.12em] relative transition-colors"
             style={{ color: tab === t ? '#F0EAFF' : 'rgba(185,165,230,0.36)', fontFamily: 'monospace', background: tab === t ? `linear-gradient(135deg, ${color}22, ${color}09)` : 'transparent' }}>
-            {t === 'EQUIP' ? '装備' : t === 'ENHANCE' ? '強化' : '錬成'}
+            {t === 'EQUIP' ? '装備' : t === 'ENHANCE' ? (isResidueSlot ? '強化' : '共鳴') : t === 'TRANSMUTE' ? '錬成' : '分解'}
             {tab === t && <motion.div layoutId="gear-tab-line" className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />}
           </button>
         ))}
@@ -1747,21 +2016,31 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
                 </>
               ) : (
                 <>
-                  {/* Weapon/Armor/Acc grid */}
-                  <div className="shrink-0 px-4 pb-2 flex items-center justify-between">
-                    <span className="text-[10px] font-black tracking-[0.18em]" style={{ color: 'rgba(185,110,255,0.9)', fontFamily: 'monospace' }}>⚔ {slotLabel}一覧 — {filteredItems.length}個</span>
+                  <div className="shrink-0 px-3 pb-2">
+                    <WeaponDetailPanel
+                      weapon={selectedItem}
+                      equipped={info.weapon}
+                      player={player}
+                      residues={equippedResidueSlots}
+                      color={color}
+                      onEquip={handleEquipItem}
+                    />
+                  </div>
+                  <div className="shrink-0 px-4 pb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] font-black tracking-[0.18em]" style={{ color: 'rgba(185,110,255,0.9)', fontFamily: 'monospace' }}>⚔ 武器庫 — {filteredItems.length}本</span>
+                    <span className="text-[9px] font-black" style={{ color: '#7f7193', fontFamily: 'monospace' }}>RARITY順</span>
                   </div>
                   {filteredItems.length === 0 ? (
                     <div className="flex-1 flex items-center justify-center opacity-30">
-                      <span className="text-[12px]" style={{ color: 'rgba(180,100,255,0.7)', fontFamily: 'monospace' }}>装備アイテムなし</span>
+                      <span className="text-[12px]" style={{ color: 'rgba(180,100,255,0.7)', fontFamily: 'monospace' }}>武器なし</span>
                     </div>
                   ) : (
                     <div className="flex-1 overflow-y-auto custom-scrollbar px-3">
                       <div className="grid grid-cols-2 gap-3 pb-4 pt-1">
                         {filteredItems.map(item => (
-                          <ItemGridCard key={item.id} item={item} isSelected={selectedItemId === item.id}
-                            isEquipped={info.weapon?.id === item.id || info.armor?.id === item.id || info.acc?.id === item.id}
-                            onSelect={() => { sound.playTap(); setSelectedItemId(item.id); handleEquipItem(item); }} />
+                          <WeaponGridCard key={item.id} item={item} isSelected={selectedItemId === item.id}
+                            isEquipped={info.weapon?.id === item.id}
+                            onSelect={() => { sound.playTap(); setSelectedItemId(item.id); }} />
                         ))}
                       </div>
                     </div>
@@ -1774,6 +2053,14 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
               activeSlotIndex={activeResidueSlotIndex}
               points={transmutationPoints}
               color={color}
+            />
+          ) : tab === 'DISMANTLE' ? (
+            <WeaponDismantlePanel
+              weapon={selectedItem}
+              equipped={info.weapon}
+              materials={weaponMaterials}
+              color={color}
+              onDismantle={handleDismantleWeapon}
             />
           ) : (
             <motion.div key="enhance" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.16 }} className="absolute inset-0 flex flex-col overflow-hidden px-3 pt-1 pb-3 gap-2" style={{ position: 'absolute', inset: 0, width: '100%' }}>
@@ -1832,11 +2119,13 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
                   </motion.button>
                 </>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-40">
-                  <span style={{ fontSize: 36 }}>🔒</span>
-                  <span className="text-[12px] font-black" style={{ color: 'rgba(180,100,255,0.7)', fontFamily: 'monospace' }}>強化不可</span>
-                  <span className="text-[10px]" style={{ color: 'rgba(160,100,230,0.5)', fontFamily: 'monospace' }}>残滓スロットのみ強化可能</span>
-                </div>
+                <WeaponEnhancementPanel
+                  weapon={selectedItem}
+                  materials={weaponMaterials}
+                  color={color}
+                  onRankUp={handleRankUpWeapon}
+                  onReforge={handleReforgeWeapon}
+                />
               )}
             </motion.div>
           )}
@@ -1929,7 +2218,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
    ROOT
 ────────────────────────────────────────── */
 export default function LegionHub() {
-  const { player, party, equippedResidueSlots, soulShards, abyssalResidues, residueMaterials, inventoryItems, transmutationPoints, demonGauge, isDemonMode, toggleDemonMode } = useGameStore();
+  const { player, party, equippedResidueSlots, soulShards, abyssalResidues, residueMaterials, weaponMaterials, inventoryItems, transmutationPoints, demonGauge, isDemonMode, toggleDemonMode } = useGameStore();
   const sound = useGothicSound();
   const [view, setView] = useState<'LIST' | 'DETAIL' | 'GEAR'>('DETAIL');
   const [selKey, setSelKey] = useState<MemberKey | null>('PLAYER');
@@ -1974,6 +2263,7 @@ export default function LegionHub() {
             player={player} party={party as (MonsterData | null)[]}
             equippedResidueSlots={equippedResidueSlots}
             abyssalResidues={abyssalResidues} residueMaterials={residueMaterials}
+            weaponMaterials={weaponMaterials}
             inventoryItems={inventoryItems as ItemData[]}
             transmutationPoints={transmutationPoints}
             onBack={goBackToDetail} />

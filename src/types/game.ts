@@ -93,14 +93,46 @@ export interface SubOption {
   value: number;
 }
 
+export type WeaponRarity = 'R' | 'SR' | 'SSR' | 'UR';
+export type WeaponArchetype = 'LOW' | 'MID' | 'HIGH' | 'MYTHIC';
+export type WeaponPassiveSystemTag =
+  | 'DEMON_MODE'
+  | 'SOUL_SHATTER'
+  | 'ACTION_VALUE'
+  | 'SHIELD_PIERCE'
+  | 'GIANT_KILLING';
+
+export interface WeaponPassive {
+  id?: string;
+  nameJa: string;
+  descTemplate: string;
+  values: number[];
+  condition?: string | null;
+  systemTag?: WeaponPassiveSystemTag;
+}
+
+export type WeaponMaterialType =
+  | 'IDEA_COMMON'
+  | 'IDEA_SR'
+  | 'IDEA_SSR'
+  | 'ABYSSAL_OBSIDIAN';
+
+export interface WeaponMaterialData {
+  type: WeaponMaterialType;
+  name: string;
+  quantity: number;
+}
+
 export interface ItemData {
   id: string;
   name: string;
   type: 'WEAPON' | 'SUB' | 'HEAD' | 'BODY' | 'ARMS' | 'LEGS' | 'ACC1' | 'ACC2';
-  rarity: 'COMMON' | 'UNIQUE' | 'HIDDEN_UNIQUE';
+  rarity: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'UNIQUE' | 'HIDDEN_UNIQUE' | 'R' | 'SR' | 'SSR' | 'UR' | 'LR';
   stats: Partial<BaseStats>;
   resistances?: Resistances;
   specialEffect?: string;
+  icon?: string;
+  flavor?: string;
   
   // 第一発見者システム (GDD-追加要件)
   isUnique: boolean;
@@ -111,6 +143,17 @@ export interface ItemData {
   
   // ランダムオプション
   subOptions?: SubOption[];
+
+  // 武器システム (docs/設計書/13_武器システム.md)
+  weaponRarity?: WeaponRarity;
+  archetype?: WeaponArchetype;
+  rank?: number; // 魂の共鳴 0〜5
+  ilv?: number;  // 打ち直しで上昇するアイテムレベル 1〜90
+  passiveA?: WeaponPassive;
+  passiveB?: WeaponPassive;
+  subStatCoefficient?: number;
+  isUR?: boolean;
+  isDecomposed?: boolean;
 }
 
 export interface EquipmentSlots {

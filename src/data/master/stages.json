@@ -23,7 +23,7 @@
       "baseExp": 80,
       "baseGold": 150,
       "dropTable": [
-        { "itemId": "leather_armor", "rate": 0.05 },
+        { "itemId": "bone_cleaver", "rate": 0.05 },
         { "monsterId": "skeleton", "rate": 0.1 }
       ]
     },

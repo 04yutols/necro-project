@@ -1,29 +1,54 @@
 {
-  "iron_sword": {
-    "name": "Iron Sword",
+  "bone_cleaver": {
+    "name": "骨砕きの短剣",
     "type": "WEAPON",
-    "rarity": "COMMON",
-    "stats": { "atk": 10 }
+    "rarity": "R",
+    "weaponRarity": "R",
+    "archetype": "MID",
+    "rank": 1,
+    "ilv": 40,
+    "stats": {},
+    "subOptions": [{ "type": "ATK%", "value": 6.2 }]
   },
-  "wooden_staff": {
-    "name": "Wooden Staff",
+  "bleed_reaver": {
+    "name": "血啜りの処刑剣",
     "type": "WEAPON",
-    "rarity": "COMMON",
-    "stats": { "atk": 8, "critDmg": 6 },
-    "subOptions": [{ "type": "WATER_DMG_BOOST", "value": 6 }]
+    "rarity": "SR",
+    "weaponRarity": "SR",
+    "archetype": "HIGH",
+    "rank": 3,
+    "ilv": 70,
+    "stats": {},
+    "subOptions": [{ "type": "CRIT_RATE", "value": 6.4 }]
   },
-  "leather_armor": {
-    "name": "Leather Armor",
-    "type": "BODY",
-    "rarity": "COMMON",
-    "stats": { "def": 5, "effectRes": 2 }
-  },
-  "hero_soul_blade": {
-    "name": "Hero Soul Blade",
+  "spirit_silver_saber": {
+    "name": "霊銀の斬骨刀",
     "type": "WEAPON",
-    "rarity": "UNIQUE",
-    "stats": { "atk": 50, "def": 10, "critDmg": 15 },
-    "subOptions": [{ "type": "DARK_DMG_BOOST", "value": 12 }],
+    "rarity": "SSR",
+    "weaponRarity": "SSR",
+    "archetype": "MID",
+    "rank": 2,
+    "ilv": 72,
+    "stats": {},
+    "subOptions": [
+      { "type": "DARK_DMG_BOOST", "value": 13 },
+      { "type": "CRIT_DMG", "value": 16 }
+    ],
     "specialEffect": "SOUL_RESONANCE"
+  },
+  "grudge_manifest": {
+    "name": "怨嗟顕現・喰魂",
+    "type": "WEAPON",
+    "rarity": "UR",
+    "weaponRarity": "UR",
+    "archetype": "MYTHIC",
+    "rank": 5,
+    "ilv": 90,
+    "stats": {},
+    "subOptions": [
+      { "type": "ATK%", "value": 19.5 },
+      { "type": "CRIT_RATE", "value": 12 }
+    ],
+    "specialEffect": "GRUDGE_SINGULARITY"
   }
 }

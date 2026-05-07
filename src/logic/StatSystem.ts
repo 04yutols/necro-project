@@ -8,6 +8,11 @@ import type {
   PassiveBonuses,
   SubOption,
 } from '../types/game';
+import {
+  getWeaponEffectiveStats,
+  getWeaponEffectiveSubOptions,
+  isWeaponSystemItem,
+} from './WeaponSystem';
 
 export const COMBAT_STAT_KEYS: (keyof BaseStats)[] = [
   'hp',
@@ -231,8 +236,9 @@ export function calculateEquipmentContribution(
 
   Object.values(equipment).forEach((item: ItemData | null) => {
     if (!item) return;
-    addInto(stats, item.stats ?? {});
-    item.subOptions?.forEach((option) => applyOption(stats, elementDmgBoosts, option, baseStats));
+    addInto(stats, isWeaponSystemItem(item) ? getWeaponEffectiveStats(item) : (item.stats ?? {}));
+    const options = isWeaponSystemItem(item) ? getWeaponEffectiveSubOptions(item) : (item.subOptions ?? []);
+    options.forEach((option) => applyOption(stats, elementDmgBoosts, option, baseStats));
   });
 
   return { stats: roundStatsForBonus(stats), elementDmgBoosts };
