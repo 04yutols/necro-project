@@ -1,5 +1,6 @@
 import jobs from '../data/master/jobs.json';
 import monsters from '../data/master/monsters.json';
+import enemies from '../data/master/enemies.json';
 import items from '../data/master/items.json';
 import stages from '../data/master/stages.json';
 import skills from '../data/master/skills.json';
@@ -24,6 +25,10 @@ export class MasterDataService {
     return (monsters as any)[id];
   }
 
+  public getEnemy(id: string) {
+    return (enemies as any)[id];
+  }
+
   public getItem(id: string) {
     return (items as any)[id];
   }
@@ -42,6 +47,10 @@ export class MasterDataService {
 
   public getAllMonsters() {
     return monsters;
+  }
+
+  public getAllEnemies() {
+    return enemies;
   }
 
   public getAllItems() {

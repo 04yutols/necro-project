@@ -98,4 +98,49 @@ describe('BattleEngine', () => {
 
     expect(boostedDamage).toBeGreaterThan(baseDamage);
   });
+
+  test('Spiritual shield heavily reduces non-weak attacks', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      stats: { ...mockPlayer.stats, critRate: 0 },
+      currentEnergy: 0,
+    };
+    const shieldedTarget: MonsterData = {
+      ...mockTarget,
+      shieldHp: 100,
+      maxShieldHp: 100,
+      weaknesses: ['FIRE'],
+    };
+
+    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', shieldedTarget);
+    const attackLog = logs.find(l => l.action === 'PHYSICAL_ATTACK');
+
+    expect(attackLog?.damage).toBeLessThan(20);
+    expect(attackLog?.description).toContain('霊的防壁に阻まれた');
+    expect(shieldedTarget.shieldHp).toBe(100);
+  });
+
+  test('Weak element breaks spiritual shield and grants extra energy', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      currentEnergy: 100,
+      maxEnergy: 150,
+      stats: { ...mockPlayer.stats, critRate: 0 },
+    };
+    const shieldedTarget: MonsterData = {
+      ...mockTarget,
+      shieldHp: 20,
+      maxShieldHp: 20,
+      weaknesses: ['FIRE'],
+      resistances: { FIRE: -30 },
+    };
+
+    const logs = new BattleEngine(player, []).simulateAction('MAGIC_SKILL', shieldedTarget, 'skill_mage_1');
+    const attackLog = logs.find(l => l.action === 'MAGIC_SKILL');
+
+    expect(shieldedTarget.shieldBroken).toBe(true);
+    expect(shieldedTarget.shieldHp).toBe(0);
+    expect(attackLog?.description).toContain('霊魂砕き');
+    expect(player.currentEnergy).toBe(133);
+  });
 });

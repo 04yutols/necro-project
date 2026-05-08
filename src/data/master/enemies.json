@@ -1,0 +1,120 @@
+{
+  "grave_soldier": {
+    "id": "grave_soldier",
+    "name": "Grave Soldier",
+    "nameJa": "墓荒らしの骸兵",
+    "nameEn": "GRAVE SOLDIER",
+    "tier": "MINION",
+    "tribe": "UNDEAD",
+    "stats": { "hp": 230, "atk": 56, "def": 28, "spd": 82, "critRate": 0, "critDmg": 150, "effectHit": 0, "effectRes": 0 },
+    "resistances": { "LIGHT": -30, "FIRE": -10, "DARK": 35 },
+    "weaknesses": ["LIGHT", "FIRE"],
+    "dropTable": [
+      { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.42 },
+      { "type": "MATERIAL", "itemId": "bone-chip", "rarity": "COMMON", "rate": 0.85 }
+    ],
+    "battle": { "color": "#9ca3af", "sprite": "WRAITH", "size": 0.72 },
+    "description": "WAVE1の露払い。通常攻撃で倒せるゲージの餌。"
+  },
+  "rot_hound": {
+    "id": "rot_hound",
+    "name": "Rot Hound",
+    "nameJa": "腐肉喰らい",
+    "nameEn": "ROT HOUND",
+    "tier": "MINION",
+    "tribe": "BEAST",
+    "stats": { "hp": 270, "atk": 64, "def": 22, "spd": 118, "critRate": 5, "critDmg": 150, "effectHit": 0, "effectRes": 0 },
+    "resistances": { "WIND": -20, "FIRE": -15, "EARTH": 20 },
+    "weaknesses": ["WIND", "FIRE"],
+    "dropTable": [
+      { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.35 },
+      { "type": "MATERIAL", "itemId": "beast-fang", "rarity": "COMMON", "rate": 0.72 }
+    ],
+    "battle": { "color": "#22c55e", "sprite": "WRAITH", "size": 0.68 },
+    "description": "速度が高い小型魔物。周回テンポを崩さない低HP設計。"
+  },
+  "abyss_warden": {
+    "id": "abyss_warden",
+    "name": "Abyss Warden",
+    "nameJa": "深淵の門番",
+    "nameEn": "ABYSS WARDEN",
+    "tier": "ELITE",
+    "tribe": "DEMON",
+    "stats": { "hp": 640, "atk": 116, "def": 62, "spd": 92, "critRate": 8, "critDmg": 155, "effectHit": 8, "effectRes": 15 },
+    "resistances": { "DARK": 35, "THUNDER": -25, "WATER": -25, "FIRE": 15 },
+    "weaknesses": ["THUNDER", "WATER"],
+    "shieldHp": 190,
+    "dropTable": [
+      { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.145 },
+      { "type": "RESIDUE", "rarity": "RARE", "rate": 1.0 }
+    ],
+    "battle": { "color": "#38bdf8", "sprite": "GIANT", "size": 0.86 },
+    "description": "霊的防壁を持つWAVE2の門番。弱点属性で霊魂砕きを狙う。"
+  },
+  "bone_colossus": {
+    "id": "bone_colossus",
+    "name": "Bone Colossus",
+    "nameJa": "骨巨人",
+    "nameEn": "BONE COLOSSUS",
+    "tier": "ELITE",
+    "tribe": "UNDEAD",
+    "stats": { "hp": 720, "atk": 124, "def": 78, "spd": 68, "critRate": 5, "critDmg": 150, "effectHit": 4, "effectRes": 20 },
+    "resistances": { "LIGHT": -30, "EARTH": -20, "DARK": 45, "WIND": 10 },
+    "weaknesses": ["LIGHT", "EARTH"],
+    "shieldHp": 220,
+    "dropTable": [
+      { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.12 },
+      { "type": "RESIDUE", "rarity": "RARE", "rate": 1.0 }
+    ],
+    "battle": { "color": "#a855f7", "sprite": "GIANT", "size": 0.9 },
+    "description": "高DEFの精鋭。防壁破壊後に一気に削ることを想定。"
+  },
+  "ossuary_wyrm_lord": {
+    "id": "ossuary_wyrm_lord",
+    "name": "Ossuary Wyrm Lord",
+    "nameJa": "死骨竜王オッサリウス",
+    "nameEn": "OSSUARY WYRM LORD",
+    "tier": "BOSS",
+    "tribe": "UNDEAD",
+    "stats": { "hp": 1120, "atk": 168, "def": 92, "spd": 76, "critRate": 12, "critDmg": 165, "effectHit": 12, "effectRes": 30 },
+    "resistances": { "LIGHT": -35, "THUNDER": -20, "FIRE": 15, "DARK": 55 },
+    "weaknesses": ["LIGHT", "THUNDER"],
+    "shieldHp": 310,
+    "gimmicks": [
+      { "trigger": "HP_BELOW_50", "effect": "ENRAGE", "value": 1.45 },
+      { "trigger": "TURN_3", "effect": "AV_DELAY", "value": 18 },
+      { "trigger": "ON_REVIVE", "effect": "REVIVE", "value": 0.35 }
+    ],
+    "dropTable": [
+      { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.008 },
+      { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.45 },
+      { "type": "MATERIAL", "itemId": "ossuary-memory", "rarity": "RARE", "rate": 0.26 },
+      { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
+    ],
+    "battle": { "color": "#ef4444", "sprite": "WYRM", "size": 1.0 },
+    "description": "章ボス。重装甲版の霊的防壁と大技で、魔神化の切りどころを試す。"
+  },
+  "blood_mire_queen": {
+    "id": "blood_mire_queen",
+    "name": "Bloodmire Queen",
+    "nameJa": "血沼の女王クリムゾン",
+    "nameEn": "BLOODMIRE QUEEN",
+    "tier": "BOSS",
+    "tribe": "DEMON",
+    "stats": { "hp": 1380, "atk": 188, "def": 88, "spd": 96, "critRate": 16, "critDmg": 175, "effectHit": 18, "effectRes": 28 },
+    "resistances": { "WATER": -35, "WIND": -20, "FIRE": 35, "DARK": 30 },
+    "weaknesses": ["WATER", "WIND"],
+    "shieldHp": 360,
+    "gimmicks": [
+      { "trigger": "HP_BELOW_50", "effect": "ENRAGE", "value": 1.55 },
+      { "trigger": "ON_SHIELD_BREAK", "effect": "SUMMON_MINIONS", "value": 2 }
+    ],
+    "dropTable": [
+      { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.01 },
+      { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.5 },
+      { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
+    ],
+    "battle": { "color": "#dc2626", "sprite": "WYRM", "size": 1.02 },
+    "description": "第1章後半のボス。水・風ビルドの適正を問う。"
+  }
+}

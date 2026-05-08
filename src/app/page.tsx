@@ -130,7 +130,7 @@ export default function Home() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'absolute', inset: 0, zIndex: 9999, display: 'flex', flexDirection: 'column', background: '#000', overflow: 'hidden' }}
           >
-            <BattleCanvas onEnd={() => {
+            <BattleCanvas stageId={activeStageId ?? undefined} onEnd={() => {
               setIsInBattle(false);
               if (activeStageId) addClearedStage(activeStageId);
               setCurrentTab('MAP');

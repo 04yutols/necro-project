@@ -1,17 +1,21 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/useGameStore';
 import ResultScreen from './ResultScreen';
 import jobsData from '../../data/master/jobs.json';
 import skillsData from '../../data/master/skills.json';
+import stagesData from '../../data/master/stages.json';
+import enemiesData from '../../data/master/enemies.json';
+import itemsData from '../../data/master/items.json';
 import { getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
 import { calculateCharacterStatProfile } from '../../logic/StatSystem';
-import type { ElementType, JobData, SkillAttackType, SkillData } from '../../types/game';
+import type { BossGimmick, DropEntry, ElementType, EnemyData, EnemyTier, JobData, SkillAttackType, SkillData, StageData } from '../../types/game';
 
 interface BattleCanvasProps {
+  stageId?: string;
   onEnd: () => void;
 }
 
@@ -39,11 +43,26 @@ interface ActiveSkillEffect {
 
 // ── ENEMY STATE ───────────────────────────────────────────────────────────────
 interface EnemyState {
-  id: number; name: string; nameEn: string;
+  id: number; sourceId?: string; name: string; nameEn: string;
   hp: number; maxHp: number; atk: number; color: string;
   pos: 'left' | 'center' | 'right'; size: number;
+  tier?: EnemyTier; weaknesses?: ElementType[];
+  shieldHp?: number; maxShieldHp?: number; shieldBroken?: boolean;
+  sprite?: 'WRAITH' | 'GIANT' | 'WYRM';
+  gimmicks?: BossGimmick[];
   targeted: boolean; hit?: boolean;
 }
+
+type BattleWave = {
+  title: string;
+  label: string;
+  role?: 'WARMUP' | 'SHIELD' | 'BOSS';
+  intent?: string;
+  isBoss?: boolean;
+  rewards: { exp: number; gold: number };
+  enemies: EnemyState[];
+};
+
 const INIT_ENEMIES: EnemyState[] = [
   { id: 0, name: '霊体騎士', nameEn: 'WRAITH KNIGHT', hp: 340, maxHp: 340, atk: 85,  color: '#06b6d4', pos: 'left',   size: 0.78, targeted: false },
   { id: 1, name: '骨巨人',   nameEn: 'BONE GIANT',    hp: 580, maxHp: 580, atk: 120, color: '#8A2BE2', pos: 'center', size: 0.88, targeted: true  },
@@ -79,13 +98,7 @@ const BATTLE_WAVES = [
       { ...INIT_ENEMIES[2], id: 2, name: '死骨竜王', nameEn: 'BONE WYRM LORD', hp: 720, maxHp: 720, atk: 148, targeted: true, pos: 'center' as const, size: 0.98 },
     ],
   },
-] satisfies Array<{
-  title: string;
-  label: string;
-  isBoss?: boolean;
-  rewards: { exp: number; gold: number };
-  enemies: EnemyState[];
-}>;
+] satisfies BattleWave[];
 
 // ── SKILLS / ITEMS ─────────────────────────────────────────────────────────────
 const SKILLS: BattleSkill[] = [
@@ -119,6 +132,9 @@ const ELEMENT_VFX: Record<ElementType, { label: string; color: string; glow: str
 
 const JOBS = jobsData as Record<string, JobData>;
 const MASTER_SKILLS = skillsData as Record<string, SkillData>;
+const STAGES = stagesData as Record<string, StageData>;
+const ENEMIES = enemiesData as Record<string, EnemyData>;
+const ITEMS_MASTER = itemsData as Record<string, { name?: string; rarity?: string; type?: string; subOptions?: Array<{ type: string; value: number }>; specialEffect?: string }>;
 
 const ELEMENT_ICON: Record<ElementType, string> = {
   FIRE: '🔥',
@@ -155,6 +171,153 @@ function toBattleSkill(skill: SkillData): BattleSkill {
     element,
     attackType,
   };
+}
+
+const POSITIONS_BY_COUNT: Record<number, EnemyState['pos'][]> = {
+  1: ['center'],
+  2: ['left', 'right'],
+  3: ['left', 'center', 'right'],
+};
+
+const WAVE_REWARD_WEIGHTS = [0.25, 0.32, 0.43];
+
+function getStageOrFallback(stageId?: string): StageData | null {
+  if (stageId && STAGES[stageId]) return STAGES[stageId];
+  return STAGES.area1_node1 ?? null;
+}
+
+function toEnemyState(enemy: EnemyData, index: number, count: number): EnemyState {
+  const positions = POSITIONS_BY_COUNT[Math.min(3, Math.max(1, count))] ?? POSITIONS_BY_COUNT[3];
+  const hp = Math.max(1, enemy.stats.hp);
+  const shieldHp = enemy.shieldHp ?? 0;
+  return {
+    id: index,
+    sourceId: enemy.id,
+    name: enemy.nameJa,
+    nameEn: enemy.nameEn,
+    hp,
+    maxHp: hp,
+    atk: enemy.stats.atk,
+    color: enemy.battle?.color ?? (enemy.tier === 'BOSS' ? '#ef4444' : '#8A2BE2'),
+    pos: positions[index] ?? 'center',
+    size: enemy.battle?.size ?? (enemy.tier === 'BOSS' ? 0.98 : enemy.tier === 'ELITE' ? 0.88 : 0.74),
+    tier: enemy.tier,
+    weaknesses: enemy.weaknesses,
+    shieldHp,
+    maxShieldHp: shieldHp,
+    shieldBroken: shieldHp <= 0,
+    sprite: enemy.battle?.sprite,
+    gimmicks: enemy.gimmicks,
+    targeted: index === 0,
+  };
+}
+
+function buildBattleWaves(stageId?: string): BattleWave[] {
+  const stage = getStageOrFallback(stageId);
+  if (!stage || stage.nodeType === 'SAFE' || stage.waves.length === 0) {
+    return BATTLE_WAVES.map(wave => ({
+      ...wave,
+      enemies: wave.enemies.map(enemy => ({ ...enemy })),
+    }));
+  }
+
+  const waves = stage.waves.map((wave, waveIndex) => {
+    const enemyMasters = wave.enemyIds.map(enemyId => ENEMIES[enemyId]).filter(Boolean);
+    const enemies = enemyMasters.map((enemy, index) => toEnemyState(enemy, index, enemyMasters.length));
+    const weight = WAVE_REWARD_WEIGHTS[waveIndex] ?? 1 / stage.waves.length;
+    return {
+      title: stage.nameJa,
+      label: wave.label,
+      role: wave.role,
+      intent: wave.intent,
+      isBoss: wave.role === 'BOSS',
+      rewards: {
+        exp: Math.max(0, Math.round(stage.rewards.baseExp * weight)),
+        gold: Math.max(0, Math.round(stage.rewards.baseGold * weight)),
+      },
+      enemies,
+    };
+  }).filter(wave => wave.enemies.length > 0);
+
+  return waves.length > 0 ? waves : BATTLE_WAVES.map(wave => ({ ...wave, enemies: wave.enemies.map(enemy => ({ ...enemy })) }));
+}
+
+function cloneEnemies(enemies: EnemyState[]): EnemyState[] {
+  return enemies.map(enemy => ({
+    ...enemy,
+    weaknesses: enemy.weaknesses ? [...enemy.weaknesses] : undefined,
+    gimmicks: enemy.gimmicks ? [...enemy.gimmicks] : undefined,
+  }));
+}
+
+function collectStageDrops(stageId?: string): DropEntry[] {
+  const stage = getStageOrFallback(stageId);
+  if (!stage) return [];
+  const byKey = new Map<string, DropEntry>();
+  const addDrop = (drop: DropEntry) => {
+    const key = `${drop.type ?? 'UNKNOWN'}:${drop.itemId ?? drop.monsterId ?? drop.rarity ?? 'ANY'}:${drop.isHidden ? 'H' : 'V'}`;
+    const current = byKey.get(key);
+    if (!current || drop.rate > current.rate) byKey.set(key, drop);
+  };
+  stage.rewards.dropTable.forEach(addDrop);
+  stage.waves.flatMap(wave => wave.enemyIds).forEach(enemyId => {
+    ENEMIES[enemyId]?.dropTable.forEach(addDrop);
+  });
+  return [...byKey.values()];
+}
+
+function normalizeResultRarity(rarity?: string): 'COMMON' | 'RARE' | 'SR' | 'SSR' | 'LR' | 'UR' {
+  if (rarity === 'UR') return 'UR';
+  if (rarity === 'LR') return 'LR';
+  if (rarity === 'SSR') return 'SSR';
+  if (rarity === 'SR') return 'SR';
+  if (rarity === 'R' || rarity === 'RARE') return 'RARE';
+  return 'COMMON';
+}
+
+function dropToResultItem(drop: DropEntry, playerName?: string) {
+  const master = drop.itemId ? ITEMS_MASTER[drop.itemId] : undefined;
+  const rarity = normalizeResultRarity(drop.rarity ?? master?.rarity);
+  const isUnique = rarity === 'UR' || Boolean(drop.isHidden);
+  const subStat = master?.subOptions?.[0];
+  return {
+    id: drop.itemId ?? `${drop.type ?? 'drop'}-${drop.rarity ?? 'common'}`,
+    name: drop.type === 'RESIDUE'
+      ? `${drop.rarity ?? 'RARE'} 深淵の残滓`
+      : master?.name ?? drop.itemId ?? '未知の戦利品',
+    type: drop.type === 'RESIDUE' ? undefined : 'WEAPON',
+    rarity: isUnique ? 'UR' : rarity,
+    icon: drop.type === 'RESIDUE' ? '◆' : isUnique ? '☠' : '⚔',
+    stats: subStat?.type.includes('CRIT')
+      ? { critRate: Math.round(subStat.value) }
+      : subStat?.type.includes('ATK')
+        ? { atk: Math.max(8, Math.round(subStat.value * 2)) }
+        : { atk: rarity === 'SSR' ? 46 : rarity === 'SR' ? 32 : 18 },
+    isUnique,
+    discovererName: isUnique ? (playerName ?? 'アルド') : undefined,
+    serialNo: isUnique ? 1 : undefined,
+    passive: isUnique
+      ? '魔神化中、怨念を燃料に与ダメージが上昇する。霊魂砕き発生時、魂ゲージを追加回復する。'
+      : master?.specialEffect ? '特殊効果を持つ武器。装備画面で詳細確認できる。' : undefined,
+    flavor: isUnique
+      ? '討たれた魔物たちの怨念が刃の奥で逆流している。握る者の魂に黒い脈動を刻み、勝利のたびに遠い哭き声を増やす異質な呪装。'
+      : undefined,
+  };
+}
+
+function buildResultDrops(stageId?: string, playerName?: string) {
+  const drops = collectStageDrops(stageId);
+  const hiddenDrops = drops.filter(drop => drop.isHidden);
+  const visibleDrops = drops
+    .filter(drop => !drop.isHidden && (drop.type === 'WEAPON' || drop.type === 'RESIDUE'))
+    .sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0))
+    .slice(0, 4);
+
+  return [
+    { id: 'bone-chip', name: '骨の欠片', rarity: 'COMMON', icon: '▣', isUnique: false, quantity: 4 },
+    ...visibleDrops.map(drop => dropToResultItem(drop, playerName)),
+    ...hiddenDrops.slice(0, 1).map(drop => dropToResultItem(drop, playerName)),
+  ];
 }
 
 // ── SVG ENEMIES ───────────────────────────────────────────────────────────────
@@ -702,6 +865,17 @@ function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShak
                 borderRadius: 3, boxShadow: '0 0 6px rgba(255,255,255,0.3)', transition: 'width 0.5s ease',
               }}/>
             </div>
+            {enemy.maxShieldHp ? (
+              <div style={{ width: '100%', height: 4, background: 'rgba(56,189,248,0.10)', borderRadius: 3, border: '1px solid rgba(56,189,248,0.22)', marginTop: -2, marginBottom: 3, overflow: 'hidden' }}>
+                <div style={{
+                  width: `${Math.max(0, ((enemy.shieldHp ?? 0) / enemy.maxShieldHp) * 100)}%`,
+                  height: '100%',
+                  background: enemy.shieldBroken ? 'rgba(148,163,184,0.28)' : 'linear-gradient(90deg,#0ea5e9,#67e8f9,#f0fdff)',
+                  boxShadow: enemy.shieldBroken ? 'none' : '0 0 8px rgba(56,189,248,0.55)',
+                  transition: 'width 0.35s ease',
+                }} />
+              </div>
+            ) : null}
             {/* Enemy name */}
             <div style={{
               textAlign: 'center', fontFamily: "'Cinzel', serif", fontSize: 8.5, fontWeight: 600,
@@ -710,15 +884,28 @@ function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShak
               textShadow: enemy.targeted ? `0 0 8px ${enemy.color}` : 'none',
               transition: 'color 0.2s',
             }}>{enemy.name}</div>
+            {(enemy.tier === 'ELITE' || enemy.tier === 'BOSS') && (
+              <div style={{
+                textAlign: 'center',
+                fontFamily: 'monospace',
+                fontSize: 7,
+                color: enemy.shieldBroken ? '#64748b' : '#67e8f9',
+                letterSpacing: '0.04em',
+                textShadow: enemy.shieldBroken ? 'none' : '0 0 7px rgba(56,189,248,0.72)',
+                marginTop: -2,
+              }}>
+                {enemy.shieldBroken ? 'SOUL BROKEN' : `SHIELD ${enemy.shieldHp ?? 0}`}
+              </div>
+            )}
             {/* Target marker */}
             {enemy.targeted && (
               <div style={{ position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)', fontSize: 14, animation: 'breathe 1s ease-in-out infinite' }}>▼</div>
             )}
             {/* SVG sprite */}
             <div style={{ width: '100%', aspectRatio: '1/1.15' }}>
-              {enemy.id === 0 && <WraithKnightSVG hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
-              {enemy.id === 1 && <BoneGiantSVG    hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
-              {enemy.id === 2 && <BoneDragonSVG   hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
+              {(enemy.sprite ?? (enemy.id === 2 ? 'WYRM' : enemy.id === 1 ? 'GIANT' : 'WRAITH')) === 'WRAITH' && <WraithKnightSVG hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
+              {(enemy.sprite ?? (enemy.id === 2 ? 'WYRM' : enemy.id === 1 ? 'GIANT' : 'WRAITH')) === 'GIANT' && <BoneGiantSVG hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
+              {(enemy.sprite ?? (enemy.id === 2 ? 'WYRM' : enemy.id === 1 ? 'GIANT' : 'WRAITH')) === 'WYRM' && <BoneDragonSVG hit={enemy.hit} targeted={enemy.targeted} color={enemy.color}/>}
             </div>
           </div>
         ))}
@@ -972,20 +1159,21 @@ function SystemBar({ auto, speed, onAuto, onSpeed, onEscape, canEscape }: {
 }
 
 // ── MAIN BATTLE CANVAS ────────────────────────────────────────────────────────
-export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
+export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const { player, party, equippedResidueSlots } = useGameStore();
   const playerProfile = player ? calculateCharacterStatProfile(player, equippedResidueSlots) : null;
   const playerStats = playerProfile?.total ?? player?.stats;
+  const battleWaves = useMemo(() => buildBattleWaves(stageId), [stageId]);
 
   const [waveIndex, setWaveIndex] = useState(0);
-  const [enemies, setEnemies] = useState<EnemyState[]>(() => BATTLE_WAVES[0].enemies.map(e => ({ ...e })));
+  const [enemies, setEnemies] = useState<EnemyState[]>(() => cloneEnemies(battleWaves[0].enemies));
   const [soul, setSoul] = useState(45);
   const [phase, setPhase] = useState<'playerTurn' | 'skillMenu' | 'itemMenu' | 'animating' | 'enemyTurn' | 'waveTransition'>('playerTurn');
   const [demonized, setDemonized] = useState(false);
   const [demonTurns, setDemonTurns] = useState(0);
   const [auto, setAuto] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [log, setLog] = useState(['戦闘開始！骸骨山脈の番人たちが立ちはだかる。', 'WAVE 1 開始。骸骨騎士のターン。']);
+  const [log, setLog] = useState([`戦闘開始！${battleWaves[0].title}へ侵攻する。`, `${battleWaves[0].label} 開始。骸骨騎士のターン。`]);
   const [floats, setFloats] = useState<FloatDmg[]>([]);
   const [flashColor, setFlashColor] = useState<string | null>(null);
   const [screenShake, setScreenShake] = useState(false);
@@ -1004,7 +1192,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     clearTime: number;
   } | null>(null);
   const waveIndexRef = useRef(0);
-  const enemiesRef = useRef<EnemyState[]>(BATTLE_WAVES[0].enemies.map(e => ({ ...e })));
+  const enemiesRef = useRef<EnemyState[]>(cloneEnemies(battleWaves[0].enemies));
   const waveResolvingRef = useRef(false);
   const battleTotalsRef = useRef({ exp: 0, gold: 0, waves: 0 });
   const effectIdRef = useRef(0);
@@ -1031,7 +1219,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   const speedMs = 900 / speed;
   const currentMp = battleParty[0]?.mp ?? 0;
   const soulFull = soul >= 100;
-  const currentWave = BATTLE_WAVES[waveIndex];
+  const currentWave = battleWaves[waveIndex] ?? battleWaves[0];
   const getElementBoostMultiplier = (element: ElementType) => {
     if (element === 'NONE') return 1;
     const boost = playerProfile?.elementDmgBoosts[element] ?? player?.elementDmgBoosts?.[element] ?? 0;
@@ -1039,6 +1227,24 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
   };
 
   const addLog = useCallback((line: string) => setLog(prev => [...prev, line]), []);
+
+  useEffect(() => {
+    const firstEnemies = cloneEnemies(battleWaves[0].enemies);
+    waveResolvingRef.current = false;
+    battleTotalsRef.current = { exp: 0, gold: 0, waves: 0 };
+    waveIndexRef.current = 0;
+    enemiesRef.current = firstEnemies;
+    setWaveIndex(0);
+    setEnemies(firstEnemies);
+    setSoul(45);
+    setPhase('playerTurn');
+    setDemonized(false);
+    setDemonTurns(0);
+    setAuto(false);
+    setShowResult(false);
+    setBattleResult(null);
+    setLog([`戦闘開始！${battleWaves[0].title}へ侵攻する。`, `${battleWaves[0].label} 開始。骸骨騎士のターン。`]);
+  }, [battleWaves]);
 
   useEffect(() => { waveIndexRef.current = waveIndex; }, [waveIndex]);
   useEffect(() => { enemiesRef.current = enemies; }, [enemies]);
@@ -1048,7 +1254,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     waveResolvingRef.current = true;
 
     const clearedIndex = waveIndexRef.current;
-    const clearedWave = BATTLE_WAVES[clearedIndex];
+    const clearedWave = battleWaves[clearedIndex] ?? battleWaves[0];
     battleTotalsRef.current = {
       exp: battleTotalsRef.current.exp + clearedWave.rewards.exp,
       gold: battleTotalsRef.current.gold + clearedWave.rewards.gold,
@@ -1061,79 +1267,24 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
 
     window.setTimeout(() => {
       const nextIndex = clearedIndex + 1;
-      if (nextIndex >= BATTLE_WAVES.length) {
+      if (nextIndex >= battleWaves.length) {
         setBattleResult({
           isVictory: true,
           expGained: battleTotalsRef.current.exp,
           goldGained: battleTotalsRef.current.gold,
-          itemsGained: [
-            { id: 'bone-chip', name: '骨の欠片', rarity: 'COMMON', icon: '▣', isUnique: false, quantity: 4 },
-            {
-              id: 'rusted-bone-sword',
-              name: '朽ちた骨剣',
-              type: 'WEAPON',
-              rarity: 'COMMON',
-              icon: '⚔',
-              stats: { atk: 12 },
-              isUnique: false,
-              flavor: '骸骨兵が握っていた古い剣。刃は欠けているが、まだ戦える。',
-            },
-            {
-              id: 'spirit-silver-saber',
-              name: '霊銀の斬骨刀',
-              type: 'WEAPON',
-              rarity: 'RARE',
-              icon: '⚔',
-              stats: { atk: 28, critDmg: 4 },
-              isUnique: false,
-              flavor: '死霊の冷気を帯びた軽い刀。骨を断つためだけに研がれている。',
-            },
-            {
-              id: 'nocturne-reaper',
-              name: '夜葬の大鎌',
-              type: 'WEAPON',
-              rarity: 'SSR',
-              icon: '☽',
-              stats: { atk: 46, critRate: 6 },
-              isUnique: false,
-              passive: '撃破時、低確率で追加の魂片を得る。',
-            },
-            {
-              id: 'wyrm-king-regalia',
-              name: '竜骨王の命剣',
-              type: 'WEAPON',
-              rarity: 'LR',
-              icon: '✦',
-              stats: { atk: 64, def: 14, critDmg: 15 },
-              isUnique: false,
-              passive: 'ボスWAVEで与える物理ダメージが上昇する。',
-            },
-            {
-              id: 'hidden-unique-necro-edge',
-              name: '冥王の黒刃',
-              type: 'WEAPON',
-              rarity: 'UR',
-              icon: '☠',
-              stats: { atk: 88, critRate: 12, critDmg: 20 },
-              isUnique: true,
-              discovererName: player?.name ?? 'アルド',
-              serialNo: 1,
-              passive: '魔神化中、与えるダメージが上昇する。撃破時、喰われた魂の残響が魂ゲージを追加回復する。',
-              flavor: '死骨竜王に喰われた魔物たちの怨念が、刃の内側で折り重なっている。握ると遠い悲鳴が脈拍に混ざり、黒い刃紋が持ち主の魂へ伸びる。',
-            },
-          ],
-          monstersGained: ['霊核: 死骨竜王'],
-          isPurplePillar: true,
-          wavesCleared: BATTLE_WAVES.length,
-          totalWaves: BATTLE_WAVES.length,
+          itemsGained: buildResultDrops(stageId, player?.name),
+          monstersGained: currentWave.isBoss ? [`霊核: ${currentWave.enemies[0]?.name ?? 'ボス'}`] : [],
+          isPurplePillar: collectStageDrops(stageId).some(drop => drop.rarity === 'SSR' || drop.rarity === 'UR' || drop.isHidden),
+          wavesCleared: battleWaves.length,
+          totalWaves: battleWaves.length,
           clearTime: 74 + Math.round(Math.random() * 18),
         });
         setShowResult(true);
         return;
       }
 
-      const nextWave = BATTLE_WAVES[nextIndex];
-      const nextEnemies = nextWave.enemies.map(e => ({ ...e }));
+      const nextWave = battleWaves[nextIndex];
+      const nextEnemies = cloneEnemies(nextWave.enemies);
       enemiesRef.current = nextEnemies;
       setWaveIndex(nextIndex);
       setEnemies(nextEnemies);
@@ -1145,7 +1296,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
         window.setTimeout(() => setFlashColor(null), 600);
       }
     }, 1200);
-  }, [addLog, player?.name]);
+  }, [addLog, battleWaves, currentWave.enemies, currentWave.isBoss, player?.name, stageId]);
 
   function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
     const id = ++floatId;
@@ -1173,15 +1324,48 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     setTimeout(() => setEnemies(prev => prev.map(e => ({ ...e, hit: false }))), 500);
   }
 
-  function damageEnemy(targetId: number, dmg: number, opts: { color?: string } = {}) {
+  function damageEnemy(targetId: number, dmg: number, opts: { color?: string; element?: ElementType } = {}) {
     const isCrit = Math.random() < 0.2;
-    const finalDmg = isCrit ? Math.round(dmg * 1.5) : dmg;
+    const target = enemiesRef.current.find(e => e.id === targetId);
+    let finalDmg = isCrit ? Math.round(dmg * 1.5) : dmg;
+    let nextShieldHp = target?.shieldHp ?? 0;
+    let shieldBroken = target?.shieldBroken ?? false;
+    const hasShield = target && (target.maxShieldHp ?? 0) > 0 && (target.shieldHp ?? 0) > 0 && !target.shieldBroken;
+
+    if (hasShield && target) {
+      const element = opts.element ?? 'NONE';
+      const isWeakShieldHit = element !== 'NONE' && Boolean(target.weaknesses?.includes(element));
+      if (isWeakShieldHit) {
+        const shieldDamage = Math.max(1, Math.round(finalDmg * 0.75));
+        nextShieldHp = Math.max(0, (target.shieldHp ?? 0) - shieldDamage);
+        if (nextShieldHp <= 0) {
+          shieldBroken = true;
+          finalDmg = Math.round(finalDmg * 1.45);
+          addLog(`◇ 霊魂砕き！ ${target.name}の防壁が崩れた。`);
+          setSoul(prev => Math.min(100, prev + 30));
+          setFlashColor('rgba(56,189,248,0.28)');
+          setTimeout(() => setFlashColor(null), 360);
+        } else {
+          finalDmg = Math.max(1, Math.round(finalDmg * 0.72));
+          addLog(`◇ 弱点属性が防壁を削った。残り ${nextShieldHp}`);
+        }
+      } else {
+        finalDmg = Math.max(1, Math.round(finalDmg * 0.22));
+        addLog(`◇ ${target.name}の霊的防壁がダメージを殺した。`);
+      }
+    }
+
     doEnemyHit(targetId);
     const positions: Record<number, { x: string; y: string }> = { 0: { x: '12%', y: '18%' }, 1: { x: '36%', y: '12%' }, 2: { x: '62%', y: '16%' } };
     const pos = positions[targetId] || { x: '40%', y: '15%' };
     spawnFloat(pos.x, pos.y, finalDmg, { crit: isCrit, color: opts.color || '#fff' });
     setEnemies(prev => {
-      const next = prev.map(e => e.id === targetId ? { ...e, hp: Math.max(0, e.hp - finalDmg) } : e);
+      const next = prev.map(e => e.id === targetId ? {
+        ...e,
+        hp: Math.max(0, e.hp - finalDmg),
+        shieldHp: nextShieldHp,
+        shieldBroken,
+      } : e);
       enemiesRef.current = next;
       if (next.every(e => e.hp <= 0)) {
         window.setTimeout(resolveWaveClear, 380);
@@ -1226,9 +1410,11 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     alive.forEach((enemy) => {
       delay += speedMs * 0.55;
       setTimeout(() => {
-        const dmg = Math.round(enemy.atk * (0.8 + Math.random() * 0.4));
+        const enrage = enemy.gimmicks?.find(gimmick => gimmick.trigger === 'HP_BELOW_50' && gimmick.effect === 'ENRAGE');
+        const enraged = Boolean(enrage && enemy.hp / enemy.maxHp <= 0.5);
+        const dmg = Math.round(enemy.atk * (enraged ? Number(enrage?.value ?? 1.35) : 1) * (0.8 + Math.random() * 0.4));
         spawnFloat('42%', '58%', dmg, { color: '#f87171' });
-        addLog(`${enemy.name}の攻撃！ 骸骨騎士に ${dmg}ダメージ！`);
+        addLog(`${enemy.name}${enraged ? 'の怒り' : ''}の攻撃！ 骸骨騎士に ${dmg}ダメージ！`);
         setFlashColor('rgba(239,68,68,0.25)');
         setTimeout(() => setFlashColor(null), 300);
         setScreenShake(true);
@@ -1255,10 +1441,10 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
     }, [tid]);
     addLog(demonized ? `殲滅！ ${enemy?.name}に圧倒的攻撃！` : `骸骨騎士の攻撃！ ${enemy?.name}を狙う！`);
     setTimeout(() => {
-      damageEnemy(tid, dmg, { color: demonized ? '#dc2626' : '#f0ebff' });
+      const actualDamage = damageEnemy(tid, dmg, { color: demonized ? '#dc2626' : '#f0ebff', element: demonized ? 'FIRE' : 'NONE' });
       if (demonized) { setFlashColor('rgba(220,38,38,0.3)'); setTimeout(() => setFlashColor(null), 350); }
       setTimeout(() => {
-        addLog(`${enemy?.name}に ${dmg}ダメージ！`);
+        addLog(`${enemy?.name}に ${actualDamage}ダメージ！`);
         setPhase('playerTurn');
         endPlayerTurn();
       }, speedMs * 0.4);
@@ -1277,8 +1463,8 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
       targets.forEach((tid, i) => {
         setTimeout(() => {
           const dmg = Math.round(skill.power * getElementBoostMultiplier(skill.element) * (0.85 + Math.random() * 0.3));
-          damageEnemy(tid, dmg, { color: vfxStyle.color });
-          addLog(`${enemies.find(e => e.id === tid)?.name}に ${dmg}ダメージ！`);
+          const actualDamage = damageEnemy(tid, dmg, { color: vfxStyle.color, element: skill.element });
+          addLog(`${enemies.find(e => e.id === tid)?.name}に ${actualDamage}ダメージ！`);
         }, i * 200);
       });
       setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, targets.length * 200 + speedMs * 0.3);
@@ -1369,7 +1555,7 @@ export default function BattleCanvas({ onEnd }: BattleCanvasProps) {
             letterSpacing: '0.12em',
             textShadow: demonized ? '0 0 12px #dc2626' : '0 0 8px #8A2BE2',
             transition: 'all 0.5s ease',
-          }}>{demonized ? '☠ 魔神化中' : currentWave.isBoss ? '⚠ BOSS' : `${currentWave.title} — ${currentWave.label}/${BATTLE_WAVES.length}`}</div>
+          }}>{demonized ? '☠ 魔神化中' : currentWave.isBoss ? `⚠ ${currentWave.title} BOSS` : `${currentWave.title} — ${currentWave.label}/${battleWaves.length}`}</div>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: phase === 'playerTurn' ? '#22c55e' : phase === 'enemyTurn' ? '#ef4444' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 5, height: 5, borderRadius: '50%', background: phase === 'playerTurn' ? '#22c55e' : phase === 'enemyTurn' ? '#ef4444' : '#f59e0b' }}/>
             {phase === 'playerTurn' ? '自ターン' : phase === 'enemyTurn' ? '敵ターン' : '行動中'}
