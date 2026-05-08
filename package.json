@@ -3,12 +3,17 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev -H 0.0.0.0",
     "build": "next build",
+    "dev": "next dev -H 0.0.0.0",
     "start": "next start -H 0.0.0.0",
-    "test": "jest"
+    "test": "jest",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.19.8",
     "@prisma/client": "^6.0.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
@@ -35,6 +40,7 @@
     "tailwindcss": "^4.2.2",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "wrangler": "^4.90.0"
   }
 }
