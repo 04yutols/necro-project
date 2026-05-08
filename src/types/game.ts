@@ -5,6 +5,8 @@ export type ClassCategory = 'PHYSICAL' | 'MAGICAL';
 export type Tribe = 'UNDEAD' | 'DEMON' | 'BEAST' | 'HUMANOID';
 export type ElementType = 'FIRE' | 'WATER' | 'THUNDER' | 'EARTH' | 'WIND' | 'ICE' | 'LIGHT' | 'DARK' | 'NONE';
 export type SkillAttackType = 'SLASH' | 'STRIKE' | 'PROJECTILE' | 'MAGIC' | 'SUMMON' | 'HEAL';
+export type EnemyTier = 'MINION' | 'ELITE' | 'BOSS';
+export type StageNodeType = 'SAFE' | 'DUNGEON' | 'BOSS';
 
 export interface BaseStats {
   hp:        number;  // 最大HP
@@ -237,8 +239,80 @@ export interface MonsterData {
   cost: number;
   stats: BaseStats;
   resistances: Resistances;
+  tier?: EnemyTier;
+  weaknesses?: ElementType[];
+  shieldHp?: number;
+  maxShieldHp?: number;
+  shieldBroken?: boolean;
   equippedShardId?: string;
   spiritCore?: SpiritCoreData; // 霊核 (GDD-追加要件)
+}
+
+export interface DropEntry {
+  type?: 'WEAPON' | 'RESIDUE' | 'MATERIAL' | 'MONSTER';
+  itemId?: string;
+  monsterId?: string;
+  rarity?: string;
+  rate: number;
+  isHidden?: boolean;
+}
+
+export interface BossGimmick {
+  trigger: 'HP_BELOW_50' | 'TURN_3' | 'ON_SHIELD_BREAK' | 'ON_REVIVE';
+  effect: 'ENRAGE' | 'AV_DELAY' | 'REVIVE' | 'SUMMON_MINIONS';
+  value?: number;
+}
+
+export interface EnemyData {
+  id: string;
+  name: string;
+  nameJa: string;
+  nameEn: string;
+  tier: EnemyTier;
+  tribe: Tribe;
+  stats: BaseStats;
+  resistances: Resistances;
+  weaknesses: ElementType[];
+  shieldHp?: number;
+  gimmicks?: BossGimmick[];
+  dropTable: DropEntry[];
+  battle?: {
+    color: string;
+    sprite: 'WRAITH' | 'GIANT' | 'WYRM';
+    size?: number;
+  };
+  description?: string;
+}
+
+export interface StageWaveData {
+  label: string;
+  role: 'WARMUP' | 'SHIELD' | 'BOSS';
+  enemyIds: string[];
+  intent: string;
+}
+
+export interface StageData {
+  id: string;
+  name: string;
+  nameJa: string;
+  nameEn: string;
+  chapter: number;
+  chapterName: string;
+  area: number;
+  nodeType: StageNodeType;
+  element: ElementType;
+  difficulty: number;
+  description: string;
+  waveCount: number;
+  unlockRequires: string[];
+  waves: StageWaveData[];
+  rewards: {
+    baseExp: number;
+    baseGold: number;
+    dropTable: DropEntry[];
+  };
+  position: { x: number; y: number };
+  isAreaBoss?: boolean;
 }
 
 export interface NecroStatus {

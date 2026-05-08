@@ -1,176 +1,312 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { Castle, ChevronLeft, Globe2, Home, Lock, MapPin, Skull, Sparkles, Swords } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
+import stagesData from '../../data/master/stages.json';
+import enemiesData from '../../data/master/enemies.json';
+import itemsData from '../../data/master/items.json';
+import {
+  getHiddenDropCount,
+  getNextAvailableStage,
+  getPrimaryWeaknesses,
+  getStageLineSegments,
+  getStageList,
+  getStageProgressState,
+  getStageWaveSummaries,
+  getVisibleDropTable,
+  type StageProgressState,
+} from '../../logic/DungeonSystem';
+import type { DropEntry, ElementType, EnemyData, StageData, StageNodeType } from '../../types/game';
 
 interface AreaMapProps {
   onStartStage: (stageId: string) => void;
 }
 
-// ── WORLD DATA ─────────────────────────────────────────────────────────────────
-const REGIONS = [
-  {
-    id: 'cradle', name: '亡者の揺り籠', nameEn: 'CRADLE OF THE DEAD',
-    x: 188, y: 438, state: 'conquered', element: '闇', difficulty: 1,
-    desc: '旅の始まりの地。かつて英雄が倒した死者たちが今や己の軍勢となった。',
-    enemies: ['白骨兵 ×8', '死霊犬 ×4'], reward: '骨片 ×20 / 冥石 ×5',
-    boss: null, color: '#6b5f7a',
-  },
-  {
-    id: 'rotwood', name: '腐敗の森', nameEn: 'ROTWOOD',
-    x: 115, y: 368, state: 'conquered', element: '毒', difficulty: 2,
-    desc: '毒の霧が立ち込める古代の森。腐敗した精霊が徘徊する。',
-    enemies: ['腐敗エルフ ×6', '毒蜘蛛 ×10'], reward: '毒牙 ×15 / 魔草 ×8',
-    boss: '蜘蛛女王 ヴェノム', color: '#22c55e',
-  },
-  {
-    id: 'bones', name: '骸骨山脈', nameEn: 'OSSUARY PEAKS',
-    x: 248, y: 300, state: 'current', element: '冥', difficulty: 3,
-    desc: '古代巨人の骨が山となった地。峰の頂に強力な骨竜が潜む。',
-    enemies: ['骨巨人 ×3', '死骨竜 ×2', '霊体騎士 ×5'], reward: '竜骨 ×5 / 冥結晶 ×12',
-    boss: '骨竜王 オッサリウス', color: '#8A2BE2',
-  },
-  {
-    id: 'marsh', name: '血の沼地', nameEn: 'BLOODMIRE',
-    x: 148, y: 225, state: 'available', element: '血', difficulty: 4,
-    desc: '赤黒い沼が広がる呪われた湿地帯。血の魔族が支配する。',
-    enemies: ['血の魔族 ×8', '沼の亡霊 ×6'], reward: '血晶石 ×10 / 呪符 ×6',
-    boss: '血女王 クリムゾン', color: '#ef4444',
-  },
-  {
-    id: 'ghostcity', name: '幽霊都市', nameEn: 'PHANTOM CITY',
-    x: 265, y: 175, state: 'locked', element: '霊', difficulty: 5,
-    desc: 'かつて繁栄した都市の成れの果て。無数の亡霊が彷徨う。',
-    enemies: ['???', '???'], reward: '???',
-    boss: '???', color: '#06b6d4',
-  },
-  {
-    id: 'tower', name: '死霊の塔', nameEn: 'NECRO SPIRE',
-    x: 195, y: 108, state: 'locked', element: '冥', difficulty: 7,
-    desc: '古代ネクロマンサーが建てた禁断の塔。強大な死霊が守護する。',
-    enemies: ['???', '???'], reward: '???',
-    boss: '???', color: '#a855f7',
-  },
-  {
-    id: 'demonking', name: '魔王城', nameEn: "DEMON KING'S KEEP",
-    x: 192, y: 42, state: 'locked', element: '魔', difficulty: 10,
-    desc: '世界の頂点に君臨する魔王の居城。全てを滅ぼす力が眠る。',
-    enemies: ['???'], reward: '魔王の冠',
-    boss: '魔王 ダークゾーン', color: '#f59e0b',
-  },
-] as const;
+const STAGES = stagesData as Record<string, StageData>;
+const ENEMIES = enemiesData as Record<string, EnemyData>;
+const ITEMS = itemsData as Record<string, { name?: string; rarity?: string }>;
 
-type Region = typeof REGIONS[number];
-type RegionState = Region['state'];
+const VIEWBOX = { width: 375, height: 620 };
 
-const PATHS: [string, string][] = [
-  ['cradle', 'rotwood'], ['cradle', 'bones'],
-  ['rotwood', 'marsh'], ['bones', 'marsh'],
-  ['marsh', 'ghostcity'], ['bones', 'ghostcity'],
-  ['ghostcity', 'tower'], ['tower', 'demonking'],
-];
+const ELEMENT_LABEL: Record<ElementType, string> = {
+  FIRE: '炎',
+  WATER: '水',
+  THUNDER: '雷',
+  EARTH: '土',
+  WIND: '風',
+  ICE: '氷',
+  LIGHT: '光',
+  DARK: '闇',
+  NONE: '無',
+};
 
-function diffStars(n: number) {
-  return '★'.repeat(Math.min(n, 5)) + '☆'.repeat(Math.max(0, 5 - n));
+const ELEMENT_COLOR: Record<ElementType, string> = {
+  FIRE: '#f97316',
+  WATER: '#38bdf8',
+  THUNDER: '#facc15',
+  EARTH: '#a16207',
+  WIND: '#7dd3fc',
+  ICE: '#93c5fd',
+  LIGHT: '#fde68a',
+  DARK: '#8A2BE2',
+  NONE: '#a5a9b4',
+};
+
+const RARITY_COLOR: Record<string, string> = {
+  COMMON: '#a5a9b4',
+  R: '#8bda8b',
+  RARE: '#38bdf8',
+  SR: '#38bdf8',
+  EPIC: '#c084fc',
+  SSR: '#f5d76e',
+  LR: '#fb7185',
+  UR: '#ef4444',
+};
+
+const MATERIAL_NAME: Record<string, string> = {
+  'bone-chip': '骨の欠片',
+  'beast-fang': '腐肉獣の牙',
+  'ossuary-memory': '竜王の記憶片',
+};
+
+type MapLayer = 'WORLD' | 'AREA';
+type WorldAreaState = 'CURRENT' | 'AVAILABLE' | 'LOCKED' | 'CLEARED';
+
+interface WorldArea {
+  area: number;
+  chapter: number;
+  nameJa: string;
+  nameEn: string;
+  description: string;
+  color: string;
+  position: { x: number; y: number };
+  state: WorldAreaState;
+  stages: StageData[];
+  nextStage: StageData | null;
+  clearedCount: number;
+  totalCount: number;
 }
 
-// ── TERRAIN ────────────────────────────────────────────────────────────────────
+const WORLD_VIEWBOX = { width: 375, height: 620 };
+
+const WORLD_AREA_META: Record<number, {
+  nameEn: string;
+  description: string;
+  color: string;
+  position: { x: number; y: number };
+}> = {
+  1: {
+    nameEn: 'FALLEN ROYAL CAPITAL',
+    description: '最初の侵攻領域。墓道、地下牢、竜骨祭壇を制圧し、亡国の中枢へ踏み込む。',
+    color: '#8A2BE2',
+    position: { x: 152, y: 438 },
+  },
+  2: {
+    nameEn: 'PHANTOM CITY',
+    description: '亡国の先に揺らめく幽霊都市。前章の全ノード制圧後に霧が晴れる。',
+    color: '#38bdf8',
+    position: { x: 250, y: 292 },
+  },
+};
+
+function buildWorldAreas(
+  stages: StageData[],
+  clearedStages: string[],
+  nextStage: StageData | null,
+  states: Record<string, StageProgressState>
+): WorldArea[] {
+  const grouped = new Map<number, StageData[]>();
+  stages.forEach(stage => {
+    const list = grouped.get(stage.area) ?? [];
+    list.push(stage);
+    grouped.set(stage.area, list);
+  });
+
+  return [...grouped.entries()].sort((a, b) => a[0] - b[0]).map(([area, areaStages]) => {
+    const first = areaStages.find(stage => stage.nodeType !== 'SAFE') ?? areaStages[0];
+    const totalStages = areaStages.filter(stage => stage.nodeType !== 'SAFE');
+    const clearedCount = totalStages.filter(stage => clearedStages.includes(stage.id)).length;
+    const hasAccessibleNode = areaStages.some(stage => states[stage.id] !== 'LOCKED');
+    const areaNextStage = nextStage?.area === area ? nextStage : areaStages.find(stage => states[stage.id] === 'AVAILABLE') ?? null;
+    const isCleared = totalStages.length > 0 && clearedCount === totalStages.length;
+    const meta = WORLD_AREA_META[area] ?? {
+      nameEn: `AREA ${area}`,
+      description: first.description,
+      color: getStageColor(first),
+      position: { x: 188, y: 440 - area * 86 },
+    };
+
+    let state: WorldAreaState = 'LOCKED';
+    if (isCleared) state = 'CLEARED';
+    else if (areaNextStage) state = 'CURRENT';
+    else if (hasAccessibleNode) state = 'AVAILABLE';
+
+    return {
+      area,
+      chapter: first.chapter,
+      nameJa: first.chapterName,
+      nameEn: meta.nameEn,
+      description: meta.description,
+      color: meta.color,
+      position: meta.position,
+      state,
+      stages: areaStages,
+      nextStage: areaNextStage,
+      clearedCount,
+      totalCount: totalStages.length,
+    };
+  });
+}
+
+function getStageColor(stage: StageData) {
+  if (stage.nodeType === 'SAFE') return '#a5a9b4';
+  if (stage.nodeType === 'BOSS') return '#ef4444';
+  return ELEMENT_COLOR[stage.element] ?? '#8A2BE2';
+}
+
+function getStateLabel(state: StageProgressState) {
+  if (state === 'SAFE') return '拠点';
+  if (state === 'CLEARED') return '制圧済み';
+  if (state === 'AVAILABLE') return '挑戦可能';
+  return '未解放';
+}
+
+function getDropName(drop: DropEntry) {
+  if (drop.type === 'RESIDUE') return `${drop.rarity ?? 'RARE'} 深淵の残滓`;
+  if (drop.itemId && MATERIAL_NAME[drop.itemId]) return MATERIAL_NAME[drop.itemId];
+  if (drop.itemId) return ITEMS[drop.itemId]?.name ?? drop.itemId;
+  if (drop.monsterId) return ENEMIES[drop.monsterId]?.nameJa ?? drop.monsterId;
+  return drop.rarity ? `${drop.rarity} 報酬` : '未知の報酬';
+}
+
+function getDropIcon(drop: DropEntry) {
+  if (drop.type === 'RESIDUE') return '◆';
+  if (drop.type === 'WEAPON') return '⚔';
+  if (drop.type === 'MONSTER') return '☠';
+  return '▣';
+}
+
+function formatRate(rate: number) {
+  if (rate >= 1) return '確定';
+  if (rate >= 0.01) return `${Math.round(rate * 1000) / 10}%`;
+  return '<0.1%';
+}
+
 function TerrainLayer() {
   return (
-    <g opacity="1">
-      <path d="M0 0 L375 0 L375 530 L0 530Z" fill="#05030f"/>
-      <path d="M30 480 Q60 420 80 380 Q120 320 100 260 Q85 200 120 160 Q160 110 200 80 Q240 50 300 90 Q340 120 340 180 Q345 230 310 270 Q280 300 290 350 Q300 400 270 440 Q240 470 200 490 Q160 510 120 500 Q70 510 30 480Z"
-        fill="#0a0618" opacity="1"/>
-      <path d="M120 460 Q150 440 170 420 Q200 400 210 370" stroke="#1a1030" strokeWidth="8" fill="none" opacity="0.8"/>
-      <path d="M200 80 Q205 120 215 160 Q220 200 200 230" stroke="#1a1030" strokeWidth="6" fill="none" opacity="0.6"/>
-      {([[85,395],[95,380],[72,388],[108,375],[78,402],[92,368],[68,395],[100,390],[82,375],[115,385]] as [number,number][]).map(([x,y],i) => (
-        <g key={i}>
-          <polygon points={`${x},${y-10} ${x-6},${y} ${x+6},${y}`} fill="#0d2212" opacity="0.9"/>
-          <polygon points={`${x},${y-14} ${x-5},${y-4} ${x+5},${y-4}`} fill="#102818" opacity="0.7"/>
-          <rect x={x-1.5} y={y} width={3} height={5} fill="#0a1a0a" opacity="0.8"/>
+    <g>
+      <rect width={VIEWBOX.width} height={VIEWBOX.height} fill="#05030f" />
+      <path
+        d="M34 564 Q74 514 91 454 Q110 385 83 327 Q63 279 105 228 Q149 175 188 126 Q225 80 286 112 Q338 139 324 212 Q310 284 271 327 Q233 369 243 426 Q253 491 205 542 Q155 596 94 582 Z"
+        fill="#0a0618"
+      />
+      <path d="M188 506 C178 458 180 425 188 390 C203 327 237 306 247 265" stroke="#1e1234" strokeWidth="9" strokeLinecap="round" fill="none" opacity="0.76" />
+      <path d="M102 326 C132 306 158 286 188 250 C210 225 229 205 140 182" stroke="#1a1030" strokeWidth="7" strokeLinecap="round" fill="none" opacity="0.64" />
+      <path d="M247 265 C244 204 226 151 254 94" stroke="#1a1030" strokeWidth="7" strokeLinecap="round" fill="none" opacity="0.52" />
+      <ellipse cx="145" cy="187" rx="58" ry="34" fill="#210809" opacity="0.72" />
+      <ellipse cx="135" cy="194" rx="31" ry="17" fill="#3a0c12" opacity="0.44" />
+      {[[226,281], [242,264], [260,282], [254,248], [229,250], [273,268]].map(([x, y], i) => (
+        <g key={`peak-${i}`}>
+          <polygon points={`${x},${y - 32} ${x - 20},${y} ${x + 20},${y}`} fill="#21142e" opacity="0.92" />
+          <polygon points={`${x},${y - 32} ${x - 7},${y - 14} ${x + 8},${y - 15}`} fill="#4c335e" opacity="0.45" />
         </g>
       ))}
-      {([[260,328],[275,310],[248,318],[288,325],[268,305],[282,298]] as [number,number][]).map(([x,y],i) => (
-        <g key={i}>
-          <polygon points={`${x},${y-22} ${x-14},${y} ${x+14},${y}`} fill="#1a1228" opacity="0.9"/>
-          <polygon points={`${x},${y-22} ${x-5},${y-10} ${x+8},${y-12}`} fill="#2a1a40" opacity="0.5"/>
-          <polygon points={`${x},${y-22} ${x-4},${y-14} ${x+4},${y-15}`} fill="#3a2a4e" opacity="0.6"/>
+      {[[80,376], [92,362], [70,358], [111,344], [95,333], [72,329], [121,319], [105,305]].map(([x, y], i) => (
+        <g key={`grave-${i}`} opacity="0.78">
+          <path d={`M${x - 5} ${y} L${x - 4} ${y - 12} Q${x} ${y - 18} ${x + 4} ${y - 12} L${x + 5} ${y}Z`} fill="#171221" stroke="#463353" strokeWidth="0.8" />
+          <line x1={x - 3} y1={y - 6} x2={x + 3} y2={y - 6} stroke="#6b5f7a" strokeWidth="0.5" opacity="0.4" />
         </g>
       ))}
-      <ellipse cx="148" cy="240" rx="45" ry="30" fill="#1a0808" opacity="0.7"/>
-      <ellipse cx="138" cy="245" rx="25" ry="15" fill="#2a0808" opacity="0.5"/>
-      {([0,1,2,3,4,5]).map(i => (
-        <circle key={i} cx={128+i*8} cy={238+Math.sin(i)*8} r={2+1} fill="#3a0808" opacity="0.6"/>
-      ))}
-      {([[252,185],[262,180],[272,188],[258,175],[268,178],[278,185]] as [number,number][]).map(([x,y],i) => (
-        <g key={i} opacity="0.5">
-          <rect x={x} y={y} width={8} height={14-i%3*3} fill="#0d1a1a"/>
-          <rect x={x+1} y={y+2} width={2} height={3} fill="#1a2a2a"/>
-          <rect x={x+5} y={y+2} width={2} height={3} fill="#1a2a2a"/>
+      {[[248,112], [259,105], [270,113], [238,96], [283,98]].map(([x, y], i) => (
+        <g key={`ghost-city-${i}`} opacity="0.4">
+          <rect x={x} y={y} width="9" height={22 - (i % 3) * 4} fill="#102025" />
+          <rect x={x + 2} y={y + 4} width="2" height="4" fill="#38bdf8" opacity="0.35" />
         </g>
       ))}
-      <rect x="190" y="120" width="10" height="30" fill="#1a0a30" opacity="0.7"/>
-      <polygon points="185,120 200,108 215,120" fill="#2a0a40" opacity="0.7"/>
-      <rect x="194" y="125" width="3" height="5" fill="#8A2BE2" opacity="0.4"/>
-      <rect x="175" y="55" width="34" height="24" fill="#1a0808" opacity="0.8"/>
-      <rect x="172" y="52" width="8" height="14" fill="#1a0808" opacity="0.8"/>
-      <rect x="202" y="52" width="8" height="14" fill="#1a0808" opacity="0.8"/>
-      <rect x="188" y="48" width="6" height="16" fill="#1a0808" opacity="0.8"/>
-      <polygon points="175,55 179,47 183,55" fill="#2a0808" opacity="0.7"/>
-      <polygon points="204,55 208,47 212,55" fill="#2a0808" opacity="0.7"/>
-      <rect x="183" y="60" width="4" height="5" fill="#f59e0b" opacity="0.5"/>
-      <rect x="193" y="60" width="4" height="5" fill="#f59e0b" opacity="0.5"/>
-      {([0,1,2,3,4,5,6,7]).map(i => (
-        <line key={`h${i}`} x1="0" y1={i*70} x2="375" y2={i*70} stroke="#ffffff" strokeWidth="0.3" opacity="0.04"/>
+      {Array.from({ length: 24 }, (_, i) => (
+        <circle
+          key={`star-${i}`}
+          cx={(i * 47 + 18) % VIEWBOX.width}
+          cy={(i * 31 + 20) % 250}
+          r={0.7 + (i % 3) * 0.45}
+          fill="#fff"
+          opacity={0.08 + (i % 5) * 0.035}
+        />
       ))}
-      {([0,1,2,3,4,5,6]).map(i => (
-        <line key={`v${i}`} x1={i*55} y1="0" x2={i*55} y2="530" stroke="#ffffff" strokeWidth="0.3" opacity="0.04"/>
-      ))}
+      <rect width={VIEWBOX.width} height={VIEWBOX.height} fill="url(#mapVignette)" />
     </g>
   );
 }
 
-// ── FOG ────────────────────────────────────────────────────────────────────────
-function FogLayer() {
+function ParticleLayer() {
   return (
-    <g>
-      <ellipse cx="195" cy="105" rx="100" ry="70" fill="#0d0520" opacity="0.82"
-        style={{ animation: 'fogDrift 9s ease-in-out infinite' }}/>
-      <ellipse cx="220" cy="90" rx="80" ry="55" fill="#120830" opacity="0.6"
-        style={{ animation: 'fogDrift 12s ease-in-out infinite 2s' }}/>
-      <ellipse cx="170" cy="115" rx="70" ry="45" fill="#0a0418" opacity="0.55"
-        style={{ animation: 'fogDrift 7s ease-in-out infinite 4s' }}/>
-      <ellipse cx="148" cy="200" rx="70" ry="50" fill="#0d0520" opacity="0.25"
-        style={{ animation: 'fogDrift 10s ease-in-out infinite 1s' }}/>
-    </g>
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+      {Array.from({ length: 18 }, (_, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: `${8 + ((i * 37 + 11) % 84)}%`,
+            top: `${8 + ((i * 53 + 7) % 78)}%`,
+            width: 1.6 + (i % 3),
+            height: 1.6 + (i % 3),
+            borderRadius: '50%',
+            background: i % 4 === 0 ? '#ef4444' : i % 3 === 0 ? '#8A2BE2' : '#c084fc',
+            opacity: 0.65,
+            animation: `particleRise ${3 + (i % 4)}s ease-out infinite`,
+            animationDelay: `${(i * 0.31) % 4}s`,
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
-// ── PATH LINES ─────────────────────────────────────────────────────────────────
-function PathLines({ activeId }: { activeId: string | null }) {
-  const regionMap = Object.fromEntries(REGIONS.map(r => [r.id, r]));
+function PathLines({ stages, activeStageId, states }: { stages: StageData[]; activeStageId: string | null; states: Record<string, StageProgressState> }) {
+  const segments = useMemo(() => {
+    const stageMap = Object.fromEntries(stages.map(stage => [stage.id, stage]));
+    const base = getStageLineSegments(stageMap);
+    const safe = stages.find(stage => stage.nodeType === 'SAFE');
+    const first = stages.find(stage => stage.nodeType !== 'SAFE' && stage.unlockRequires.length === 0);
+    return safe && first ? [{ from: safe, to: first }, ...base] : base;
+  }, [stages]);
+
   return (
     <g>
-      {PATHS.map(([fromId, toId], i) => {
-        const from = regionMap[fromId];
-        const to = regionMap[toId];
-        if (!from || !to) return null;
-        const bothClear = (from.state === 'conquered' || from.state === 'current') &&
-                          (to.state === 'conquered' || to.state === 'current' || to.state === 'available');
-        const isActive = activeId === fromId || activeId === toId;
+      {segments.map(({ from, to }) => {
+        const fromColor = getStageColor(from);
+        const toColor = getStageColor(to);
+        const fromDone = states[from.id] === 'CLEARED' || states[from.id] === 'SAFE';
+        const toAvailable = states[to.id] === 'AVAILABLE' || states[to.id] === 'CLEARED';
+        const isLive = fromDone && toAvailable;
+        const isActive = activeStageId === from.id || activeStageId === to.id;
         return (
-          <g key={i}>
-            <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="#000" strokeWidth="4" opacity="0.4"/>
-            <line x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-              stroke={bothClear ? (isActive ? '#c084fc' : '#4a3a6a') : '#1a1228'}
-              strokeWidth={isActive ? 2 : 1.5}
-              strokeDasharray={bothClear ? 'none' : '4 4'}
-              opacity={bothClear ? 0.8 : 0.35}/>
-            {bothClear && isActive && (
-              <line x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-                stroke="#c084fc" strokeWidth="3" opacity="0.4"
+          <g key={`${from.id}-${to.id}`}>
+            <line x1={from.position.x} y1={from.position.y} x2={to.position.x} y2={to.position.y} stroke="#000" strokeWidth="6" opacity="0.35" />
+            <line
+              x1={from.position.x}
+              y1={from.position.y}
+              x2={to.position.x}
+              y2={to.position.y}
+              stroke={isLive ? (isActive ? toColor : '#5b4a74') : '#21162c'}
+              strokeWidth={isActive ? 3 : 1.6}
+              strokeDasharray={isLive ? 'none' : '5 7'}
+              opacity={isLive ? 0.85 : 0.42}
+            />
+            {isLive && isActive && (
+              <line
+                x1={from.position.x}
+                y1={from.position.y}
+                x2={to.position.x}
+                y2={to.position.y}
+                stroke={fromColor}
+                strokeWidth="4"
+                opacity="0.28"
                 strokeDasharray="8 16"
-                style={{ animation: 'pathFlow 1.5s linear infinite' }}/>
+                style={{ animation: 'pathFlow 1.5s linear infinite' }}
+              />
             )}
           </g>
         );
@@ -179,68 +315,79 @@ function PathLines({ activeId }: { activeId: string | null }) {
   );
 }
 
-// ── MAP NODE ───────────────────────────────────────────────────────────────────
-function MapNode({ region, isActive, onClick }: {
-  region: Region; isActive: boolean; onClick: (r: Region) => void;
+function MapNode({
+  stage,
+  state,
+  isActive,
+  onClick,
+}: {
+  stage: StageData;
+  state: StageProgressState;
+  isActive: boolean;
+  onClick: (stage: StageData) => void;
 }) {
-  const { x, y, state, color, id } = region;
-  const isLocked = state === 'locked';
-  const isConquered = state === 'conquered';
-  const isCurrent = state === 'current';
-  const isAvailable = state === 'available';
-  const fillColor = isLocked ? '#1a1228' : isConquered ? '#2a1f3a' : color + '30';
-  const strokeColor = isLocked ? '#2a1a3a' : isConquered ? '#4a3a6a' : color;
-  const size = isCurrent ? 18 : isAvailable ? 16 : 14;
+  const color = getStageColor(stage);
+  const isLocked = state === 'LOCKED';
+  const isBoss = stage.nodeType === 'BOSS';
+  const size = stage.nodeType === 'SAFE' ? 15 : isBoss ? 20 : 17;
+  const fill = isLocked ? '#171020' : state === 'CLEARED' ? '#1f1730' : `${color}32`;
+  const stroke = isLocked ? '#35233d' : state === 'CLEARED' ? '#7b688d' : color;
+  const glyph = stage.nodeType === 'SAFE' ? '⌂' : isBoss ? '☠' : state === 'LOCKED' ? '×' : '⚔';
 
   return (
-    <g onClick={() => !isLocked && onClick(region)} style={{ cursor: isLocked ? 'default' : 'pointer' }}>
-      {(isCurrent || isAvailable) && (
-        <circle cx={x} cy={y} r={size + 8} fill="none" stroke={color} strokeWidth="1.5" opacity="0"
-          style={{ animation: `nodeRing ${isCurrent ? 1.8 : 2.5}s ease-out infinite` }}/>
+    <g onClick={() => onClick(stage)} style={{ cursor: 'pointer' }}>
+      {(state === 'AVAILABLE' || isActive) && !isLocked && (
+        <>
+          <circle cx={stage.position.x} cy={stage.position.y} r={size + 10} fill="none" stroke={color} strokeWidth="1.2" opacity="0" style={{ animation: 'nodeRing 2.2s ease-out infinite' }} />
+          <circle cx={stage.position.x} cy={stage.position.y} r={size + 5} fill="none" stroke={color} strokeWidth="1" opacity="0" style={{ animation: 'nodeRing 2.2s ease-out infinite 0.35s' }} />
+        </>
       )}
-      {(isCurrent || isAvailable) && (
-        <circle cx={x} cy={y} r={size + 4} fill="none" stroke={color} strokeWidth="1" opacity="0"
-          style={{ animation: `nodeRing ${isCurrent ? 1.8 : 2.5}s ease-out infinite 0.4s` }}/>
-      )}
-      {isActive && (
-        <circle cx={x} cy={y} r={size + 12} fill="none" stroke={color} strokeWidth="2" opacity="0.9"/>
-      )}
-      <circle cx={x} cy={y+3} r={size+2} fill="#000" opacity="0.3"/>
-      <circle cx={x} cy={y} r={size}
-        fill={fillColor} stroke={strokeColor}
-        strokeWidth={isActive ? 2.5 : isCurrent ? 2 : 1.5}
-        opacity={isLocked ? 0.5 : 1}/>
+      <circle cx={stage.position.x} cy={stage.position.y + 4} r={size + 3} fill="#000" opacity="0.36" />
+      <circle
+        cx={stage.position.x}
+        cy={stage.position.y}
+        r={size}
+        fill={fill}
+        stroke={isActive ? '#f0ebff' : stroke}
+        strokeWidth={isActive ? 2.6 : isBoss ? 2.2 : 1.6}
+        opacity={isLocked ? 0.58 : 1}
+      />
       {!isLocked && (
-        <circle cx={x-size*0.25} cy={y-size*0.25} r={size*0.35}
-          fill={color} opacity={isCurrent ? 0.3 : 0.12}/>
+        <circle cx={stage.position.x - size * 0.24} cy={stage.position.y - size * 0.25} r={size * 0.34} fill={color} opacity={state === 'CLEARED' ? 0.14 : 0.33} />
       )}
-      {isConquered && (
-        <text x={x} y={y+1} textAnchor="middle" dominantBaseline="middle" fontSize="10" fill={color} opacity="0.7">✓</text>
-      )}
-      {isCurrent && (
-        <g style={{ animation: 'currentMarker 2s ease-in-out infinite', transformOrigin: `${x}px ${y}px` }}>
-          <polygon points={`${x},${y-size-14} ${x-5},${y-size-6} ${x+5},${y-size-6}`} fill={color} opacity="0.95"/>
-          <circle cx={x} cy={y-size-16} r={5} fill={color}/>
-          <text x={x} y={y-size-16} textAnchor="middle" dominantBaseline="middle" fontSize="7" fill="#fff">N</text>
-        </g>
-      )}
-      {isLocked && (
-        <text x={x} y={y+1} textAnchor="middle" dominantBaseline="middle" fontSize="10" fill="#4a3a5a" opacity="0.6">🔒</text>
-      )}
-      <text x={x} y={y + size + 12} textAnchor="middle"
-        fontFamily="'Cinzel', serif" fontSize="8.5" fontWeight="600"
-        fill={isLocked ? '#3a2a4a' : isConquered ? '#8b7da8' : '#f0ebff'}
-        opacity={isLocked ? 0.5 : 1}>
-        {region.name}
+      <text
+        x={stage.position.x}
+        y={stage.position.y + 2}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={stage.nodeType === 'SAFE' ? 13 : isBoss ? 14 : 12}
+        fill={isLocked ? '#5d5069' : state === 'CLEARED' ? '#c7bde0' : '#fff'}
+      >
+        {state === 'CLEARED' ? '✓' : glyph}
       </text>
-      {!isLocked && (
+      <text
+        x={stage.position.x}
+        y={stage.position.y + size + 15}
+        textAnchor="middle"
+        fontFamily="'Cinzel', serif"
+        fontSize="8.2"
+        fontWeight="700"
+        fill={isLocked ? '#51445c' : '#f0ebff'}
+        opacity={isLocked ? 0.66 : 1}
+      >
+        {stage.nameJa}
+      </text>
+      {stage.difficulty > 0 && (
         <g>
-          {Array.from({ length: Math.min(region.difficulty, 5) }).map((_, i) => (
-            <circle key={i}
-              cx={x - (Math.min(region.difficulty,5)-1)*4 + i*8}
-              cy={y + size + 22} r={2}
-              fill={isConquered ? '#4a3a6a' : color}
-              opacity={isConquered ? 0.5 : 0.9}/>
+          {Array.from({ length: Math.min(stage.difficulty, 5) }, (_, i) => (
+            <circle
+              key={i}
+              cx={stage.position.x - (Math.min(stage.difficulty, 5) - 1) * 3.6 + i * 7.2}
+              cy={stage.position.y + size + 25}
+              r="1.8"
+              fill={isLocked ? '#51445c' : color}
+              opacity={state === 'CLEARED' ? 0.52 : 0.9}
+            />
           ))}
         </g>
       )}
@@ -248,401 +395,1044 @@ function MapNode({ region, isActive, onClick }: {
   );
 }
 
-// ── DETAIL SHEET ───────────────────────────────────────────────────────────────
-function DetailSheet({ region, onClose, onEnter }: {
-  region: Region; onClose: () => void; onEnter: () => void;
-}) {
-  const isConquered = region.state === 'conquered';
-  const isCurrent = region.state === 'current';
+function StageTypeIcon({ nodeType }: { nodeType: StageNodeType }) {
+  if (nodeType === 'SAFE') return <Home size={14} />;
+  if (nodeType === 'BOSS') return <Skull size={14} />;
+  return <Swords size={14} />;
+}
 
+function HeaderStat({ label, value, icon }: { label: string; value: string; icon: ReactNode }) {
   return (
     <div style={{
-      position: 'absolute', bottom: 0, left: 0, right: 0,
-      background: 'linear-gradient(180deg, rgba(10,5,24,0.96) 0%, #0a0518 100%)',
-      borderTop: `1px solid ${region.color}50`,
-      borderRadius: '24px 24px 0 0',
-      padding: '0 0 40px',
-      animation: 'sheetReveal 0.35s cubic-bezier(0.34,1.56,0.64,1)',
-      boxShadow: `0 -20px 60px ${region.color}20`,
-      backdropFilter: 'blur(20px)',
-      zIndex: 20,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 7,
+      padding: '7px 9px',
+      borderRadius: 10,
+      background: 'rgba(255,255,255,0.055)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      backdropFilter: 'blur(14px)',
+      minWidth: 0,
     }}>
-      <div style={{ width: 36, height: 4, borderRadius: 2, background: `${region.color}50`, margin: '12px auto 0' }}/>
-
-      <div style={{ padding: '14px 20px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: region.color, letterSpacing: '0.18em' }}>
-              {region.nameEn}
-            </div>
-            <div style={{
-              padding: '1px 7px', borderRadius: '4px',
-              background: `${region.color}20`, border: `1px solid ${region.color}40`,
-              fontFamily: "'Inter', sans-serif", fontSize: 8, color: region.color,
-            }}>{region.element}属性</div>
-          </div>
-          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 700, color: '#f0ebff', letterSpacing: '0.03em' }}>
-            {region.name}
-          </div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: region.color + '80', marginTop: 2 }}>
-            {diffStars(region.difficulty)} 難易度 {region.difficulty}
-          </div>
-        </div>
-        <div onClick={onClose} style={{
-          width: 32, height: 32, borderRadius: '50%',
-          background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', color: '#8b7da8', fontSize: 14, flexShrink: 0,
-        }}>×</div>
-      </div>
-
-      <div style={{ height: 1, margin: '12px 20px', background: `linear-gradient(90deg, ${region.color}40, transparent)` }}/>
-
-      <div style={{ padding: '0 20px', fontFamily: "'Inter', sans-serif", fontSize: 11, lineHeight: 1.7, color: '#a89ec8' }}>
-        {region.desc}
-      </div>
-
-      <div style={{ display: 'flex', gap: 10, padding: '12px 20px 0' }}>
-        <div style={{
-          flex: 1, padding: '10px 12px',
-          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '12px',
-        }}>
-          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 600, color: '#ef4444', letterSpacing: '0.12em', marginBottom: 6 }}>ENEMIES</div>
-          {region.enemies.map((e, i) => (
-            <div key={i} style={{
-              fontFamily: "'Inter', sans-serif", fontSize: 10,
-              color: region.state === 'locked' ? '#3a2a4a' : '#c4b8d8',
-              marginBottom: 3, display: 'flex', alignItems: 'center', gap: 5,
-            }}>
-              <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }}/>
-              {e}
-            </div>
-          ))}
-          {region.boss && (
-            <div style={{
-              marginTop: 6, padding: '5px 8px',
-              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)',
-              borderRadius: '6px', fontFamily: "'Cinzel', serif", fontSize: 8.5,
-              color: region.state === 'locked' ? '#3a2a4a' : '#fca5a5',
-            }}>⚠ {region.state === 'locked' ? '???' : region.boss}</div>
-          )}
-        </div>
-        <div style={{
-          flex: 1, padding: '10px 12px',
-          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '12px',
-        }}>
-          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 600, color: '#fbbf24', letterSpacing: '0.12em', marginBottom: 6 }}>REWARDS</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 10, color: region.state === 'locked' ? '#3a2a4a' : '#fde68a', lineHeight: 1.6 }}>
-            {region.reward}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding: '14px 20px 0' }}>
-        <div onClick={isConquered ? onClose : onEnter} style={{
-          padding: '15px',
-          background: isConquered
-            ? 'rgba(255,255,255,0.05)'
-            : `linear-gradient(135deg, ${region.color}40, ${region.color}20)`,
-          border: `1px solid ${isConquered ? 'rgba(255,255,255,0.1)' : region.color + '70'}`,
-          borderRadius: '14px', textAlign: 'center', cursor: 'pointer',
-          boxShadow: isConquered ? 'none' : `0 4px 24px ${region.color}30`,
-          position: 'relative', overflow: 'hidden',
-        }}>
-          {!isConquered && (
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: `linear-gradient(90deg, transparent, ${region.color}15, transparent)`,
-              backgroundSize: '200% 100%', animation: 'shimmer 2s infinite',
-              pointerEvents: 'none',
-            }}/>
-          )}
-          <div style={{
-            fontFamily: "'Cinzel', serif", fontSize: 13, fontWeight: 700,
-            color: isConquered ? '#6b5f7a' : '#f0ebff', letterSpacing: '0.1em',
-          }}>
-            {isConquered ? '制圧済み — 再挑戦' : isCurrent ? '⚔ 戦闘開始' : '⚔ 侵攻する'}
-          </div>
-          {!isConquered && (
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: region.color + '80', marginTop: 3 }}>
-              冥力 -20 消費
-            </div>
-          )}
-        </div>
+      <div style={{ color: '#c084fc', flexShrink: 0 }}>{icon}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 7, color: '#6b5f7a', letterSpacing: '0.13em', fontWeight: 800 }}>{label}</div>
+        <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, color: '#f0ebff', fontWeight: 800, whiteSpace: 'nowrap' }}>{value}</div>
       </div>
     </div>
   );
 }
 
-// ── PARTICLES ─────────────────────────────────────────────────────────────────
-const PARTICLE_DATA = Array.from({ length: 16 }, (_, i) => ({
-  left: 10 + ((i * 37 + 13) % 80),
-  top: 10 + ((i * 53 + 7) % 80),
-  size: 1.5 + (i % 3) * 1,
-  color: i % 3 === 0 ? '#8A2BE2' : i % 3 === 1 ? '#c084fc' : '#4a3a6a',
-  duration: 3 + (i % 4),
-  delay: (i * 0.37) % 5,
-}));
+function WorldTerrainLayer() {
+  return (
+    <g>
+      <rect width={WORLD_VIEWBOX.width} height={WORLD_VIEWBOX.height} fill="#05030f" />
+      <path
+        d="M24 532 C82 474 61 402 111 350 C162 296 138 237 186 187 C232 139 285 151 332 92 L375 0 L375 620 L0 620 Z"
+        fill="#090616"
+        opacity="0.95"
+      />
+      <path
+        d="M42 492 C93 438 88 387 132 343 C182 292 164 232 206 190 C246 150 281 141 318 105"
+        stroke="#211631"
+        strokeWidth="14"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.72"
+      />
+      <path
+        d="M152 438 C181 392 210 343 250 292"
+        stroke="#37224d"
+        strokeWidth="4"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.7"
+      />
+      <path
+        d="M250 292 C274 241 292 190 318 105"
+        stroke="#1c2d3a"
+        strokeWidth="4"
+        strokeDasharray="9 12"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.48"
+      />
+      <ellipse cx="152" cy="438" rx="84" ry="52" fill="#170726" opacity="0.76" />
+      <ellipse cx="250" cy="292" rx="72" ry="46" fill="#071a25" opacity="0.52" />
+      <ellipse cx="315" cy="105" rx="66" ry="42" fill="#25100d" opacity="0.34" />
+      {Array.from({ length: 32 }, (_, i) => (
+        <circle
+          key={`world-star-${i}`}
+          cx={(i * 43 + 18) % WORLD_VIEWBOX.width}
+          cy={(i * 67 + 24) % WORLD_VIEWBOX.height}
+          r={0.7 + (i % 3) * 0.42}
+          fill={i % 4 === 0 ? '#8A2BE2' : '#fff'}
+          opacity={0.08 + (i % 6) * 0.032}
+        />
+      ))}
+      <rect width={WORLD_VIEWBOX.width} height={WORLD_VIEWBOX.height} fill="url(#worldVignette)" />
+    </g>
+  );
+}
 
-// ── MAIN ───────────────────────────────────────────────────────────────────────
+function WorldAreaNode({
+  area,
+  isActive,
+  onClick,
+}: {
+  area: WorldArea;
+  isActive: boolean;
+  onClick: (area: WorldArea) => void;
+}) {
+  const locked = area.state === 'LOCKED';
+  const cleared = area.state === 'CLEARED';
+  const current = area.state === 'CURRENT';
+  const color = area.color;
+  const size = current ? 24 : 21;
+  const fill = locked ? '#15101c' : cleared ? '#1e1830' : `${color}2e`;
+  const stroke = locked ? '#3a3042' : cleared ? '#b6a4c9' : color;
+
+  return (
+    <g onClick={() => onClick(area)} style={{ cursor: 'pointer' }}>
+      {current && (
+        <>
+          <circle cx={area.position.x} cy={area.position.y} r={size + 15} fill="none" stroke={color} strokeWidth="1.4" opacity="0" style={{ animation: 'nodeRing 2.4s ease-out infinite' }} />
+          <circle cx={area.position.x} cy={area.position.y} r={size + 8} fill="none" stroke={color} strokeWidth="1" opacity="0" style={{ animation: 'nodeRing 2.4s ease-out infinite 0.42s' }} />
+        </>
+      )}
+      <circle cx={area.position.x} cy={area.position.y + 5} r={size + 4} fill="#000" opacity="0.42" />
+      <circle
+        cx={area.position.x}
+        cy={area.position.y}
+        r={size}
+        fill={fill}
+        stroke={isActive ? '#f0ebff' : stroke}
+        strokeWidth={isActive ? 2.8 : 2}
+        opacity={locked ? 0.62 : 1}
+      />
+      {!locked && (
+        <circle cx={area.position.x - 6} cy={area.position.y - 7} r="7" fill={color} opacity={current ? 0.36 : 0.18} />
+      )}
+      <text
+        x={area.position.x}
+        y={area.position.y + 2}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="15"
+        fill={locked ? '#5f5368' : '#fff'}
+      >
+        {locked ? '×' : cleared ? '✓' : '◆'}
+      </text>
+      <text
+        x={area.position.x}
+        y={area.position.y + size + 17}
+        textAnchor="middle"
+        fontFamily="'Cinzel', serif"
+        fontSize="9"
+        fontWeight="900"
+        fill={locked ? '#5b4f64' : '#f0ebff'}
+      >
+        第{area.chapter}章
+      </text>
+      <text
+        x={area.position.x}
+        y={area.position.y + size + 30}
+        textAnchor="middle"
+        fontFamily="'Noto Sans JP', sans-serif"
+        fontSize="10"
+        fontWeight="800"
+        fill={locked ? '#51445c' : color}
+      >
+        {area.nameJa}
+      </text>
+    </g>
+  );
+}
+
+function WorldAreaSheet({
+  area,
+  onClose,
+  onEnter,
+}: {
+  area: WorldArea;
+  onClose: () => void;
+  onEnter: () => void;
+}) {
+  const locked = area.state === 'LOCKED';
+  const label = area.state === 'CLEARED' ? '再訪する' : locked ? '未解放' : 'エリアマップへ';
+
+  return (
+    <div style={{
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      maxHeight: 'min(58dvh, 430px)',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'linear-gradient(180deg, rgba(10,5,24,0.97), #07030f 100%)',
+      borderTop: `1px solid ${area.color}55`,
+      borderRadius: '22px 22px 0 0',
+      boxShadow: `0 -22px 70px ${area.color}24`,
+      backdropFilter: 'blur(22px)',
+      animation: 'sheetReveal 0.32s cubic-bezier(0.34,1.18,0.64,1)',
+    }}>
+      <div style={{ width: 40, height: 4, borderRadius: 999, background: `${area.color}55`, margin: '10px auto 0', flexShrink: 0 }} />
+      <div style={{ padding: '14px 18px 10px', minHeight: 0, overflowY: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 7 }}>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                color: area.color,
+                fontFamily: "'Cinzel', serif",
+                fontSize: 8,
+                letterSpacing: '0.16em',
+                fontWeight: 900,
+              }}>
+                <Globe2 size={14} />
+                {area.nameEn}
+              </span>
+              <span style={{
+                padding: '2px 7px',
+                borderRadius: 999,
+                background: `${area.color}18`,
+                border: `1px solid ${area.color}40`,
+                color: area.color,
+                fontSize: 8,
+                fontWeight: 900,
+              }}>
+                {area.state === 'CURRENT' ? '侵攻中' : area.state === 'CLEARED' ? '制圧済み' : area.state === 'AVAILABLE' ? '解放済み' : '未解放'}
+              </span>
+            </div>
+            <div style={{
+              fontFamily: "'Cinzel', serif",
+              fontSize: 'clamp(21px, 6vw, 27px)',
+              lineHeight: 1.08,
+              color: '#f0ebff',
+              fontWeight: 900,
+              letterSpacing: '0.03em',
+              textShadow: `0 0 20px ${area.color}55`,
+            }}>
+              {area.nameJa}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 10.5, lineHeight: 1.6, color: '#a89ec8' }}>{area.description}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="閉じる"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.055)',
+              color: '#8b7da8',
+              display: 'grid',
+              placeItems: 'center',
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
+          <div style={infoPanelStyle}>
+            <div style={panelTitleStyle}>AREA PROGRESS</div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 20, color: area.color, fontWeight: 900 }}>
+              {area.clearedCount}<span style={{ color: '#5a4c66', fontSize: 12 }}> / {area.totalCount}</span>
+            </div>
+            <div style={{ marginTop: 3, fontSize: 9, color: '#7c708d' }}>DUNGEON NODES</div>
+          </div>
+          <div style={infoPanelStyle}>
+            <div style={panelTitleStyle}>NEXT OBJECTIVE</div>
+            <div style={{ fontSize: 10.5, color: '#ded6ef', lineHeight: 1.45 }}>
+              {area.nextStage ? area.nextStage.nameJa : locked ? '前章の霧を晴らす' : '全ノード制圧済み'}
+            </div>
+            <div style={{ marginTop: 4, fontSize: 8.5, color: area.color }}>{area.nextStage ? 'Layer 2で選択' : 'WORLD STATUS'}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{
+        padding: '10px 18px max(16px, env(safe-area-inset-bottom, 16px))',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        flexShrink: 0,
+      }}>
+        <button
+          type="button"
+          disabled={locked}
+          onClick={onEnter}
+          style={{
+            width: '100%',
+            minHeight: 48,
+            borderRadius: 14,
+            border: `1px solid ${locked ? 'rgba(255,255,255,0.09)' : `${area.color}72`}`,
+            background: locked
+              ? 'rgba(255,255,255,0.045)'
+              : `linear-gradient(135deg, ${area.color}42, rgba(6,3,16,0.94))`,
+            boxShadow: locked ? 'none' : `0 0 24px ${area.color}2f`,
+            color: locked ? '#52465e' : '#f0ebff',
+            fontFamily: "'Cinzel', serif",
+            fontSize: 13,
+            fontWeight: 900,
+            letterSpacing: '0.12em',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 9,
+            opacity: locked ? 0.65 : 1,
+          }}
+        >
+          {locked ? <Lock size={15} /> : <MapPin size={15} />}
+          {label}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function WavePreview({ stage }: { stage: StageData }) {
+  const waves = getStageWaveSummaries(stage, ENEMIES);
+  if (stage.nodeType === 'SAFE') {
+    return (
+      <div style={infoPanelStyle}>
+        <div style={panelTitleStyle}>CAMP</div>
+        <div style={{ fontSize: 10, color: '#a89ec8', lineHeight: 1.55 }}>戦闘なし。拠点で装備・転職・軍団編成を整える。</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={infoPanelStyle}>
+      <div style={panelTitleStyle}>WAVE STRUCTURE</div>
+      <div style={{ display: 'grid', gap: 7 }}>
+        {waves.map(wave => {
+          const color = wave.role === 'BOSS' ? '#ef4444' : wave.role === 'SHIELD' ? '#38bdf8' : '#8A2BE2';
+          return (
+            <div key={wave.label} style={{
+              display: 'grid',
+              gridTemplateColumns: '54px 1fr',
+              gap: 8,
+              alignItems: 'center',
+              padding: '7px 8px',
+              borderRadius: 8,
+              background: `${color}0f`,
+              border: `1px solid ${color}30`,
+            }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 8.5, color, fontWeight: 900 }}>{wave.label}</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {wave.enemies.map(enemy => (
+                    <span key={enemy.id} style={{
+                      fontSize: 9,
+                      color: '#ded6ef',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {enemy.tier === 'BOSS' ? '☠' : enemy.tier === 'ELITE' ? '◆' : '•'} {enemy.nameJa}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ marginTop: 2, fontSize: 8.5, color: '#6b5f7a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wave.intent}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const infoPanelStyle: CSSProperties = {
+  padding: '10px 11px',
+  borderRadius: 10,
+  background: 'rgba(255,255,255,0.045)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  minWidth: 0,
+};
+
+const panelTitleStyle: CSSProperties = {
+  fontFamily: "'Cinzel', serif",
+  fontSize: 8,
+  fontWeight: 900,
+  color: '#8A2BE2',
+  letterSpacing: '0.13em',
+  marginBottom: 7,
+};
+
+function WeaknessPreview({ stage }: { stage: StageData }) {
+  const weaknesses = getPrimaryWeaknesses(stage, ENEMIES);
+  return (
+    <div style={infoPanelStyle}>
+      <div style={panelTitleStyle}>WEAKNESS</div>
+      {weaknesses.length === 0 ? (
+        <div style={{ fontSize: 10, color: '#6b5f7a' }}>なし</div>
+      ) : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {weaknesses.map(element => (
+            <span key={element} style={{
+              padding: '5px 8px',
+              borderRadius: 999,
+              background: `${ELEMENT_COLOR[element]}18`,
+              border: `1px solid ${ELEMENT_COLOR[element]}55`,
+              color: ELEMENT_COLOR[element],
+              fontSize: 10,
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+            }}>
+              {ELEMENT_LABEL[element]}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DropPreview({ stage }: { stage: StageData }) {
+  const visibleDrops = getVisibleDropTable(stage, ENEMIES).slice(0, 5);
+  const hiddenCount = getHiddenDropCount(stage, ENEMIES);
+
+  return (
+    <div style={infoPanelStyle}>
+      <div style={panelTitleStyle}>DROPS</div>
+      <div style={{ display: 'grid', gap: 6 }}>
+        {visibleDrops.length === 0 ? (
+          <div style={{ fontSize: 10, color: '#6b5f7a' }}>報酬なし</div>
+        ) : visibleDrops.map(drop => {
+          const rarity = drop.rarity ?? 'COMMON';
+          const color = RARITY_COLOR[rarity] ?? '#a5a9b4';
+          return (
+            <div key={`${drop.itemId ?? drop.monsterId ?? drop.type}-${rarity}`} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              minWidth: 0,
+            }}>
+              <div style={{
+                width: 24,
+                height: 24,
+                borderRadius: 8,
+                display: 'grid',
+                placeItems: 'center',
+                color,
+                background: `${color}12`,
+                border: `1px solid ${color}35`,
+                flexShrink: 0,
+                fontSize: 12,
+              }}>{getDropIcon(drop)}</div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 10, color: '#ded6ef', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getDropName(drop)}</div>
+                <div style={{ fontSize: 8, color }}>{rarity} / {formatRate(drop.rate)}</div>
+              </div>
+            </div>
+          );
+        })}
+        {hiddenCount > 0 && (
+          <div style={{
+            marginTop: 2,
+            padding: '7px 9px',
+            borderRadius: 8,
+            background: 'linear-gradient(135deg, rgba(127,29,29,0.22), rgba(5,2,16,0.8))',
+            border: '1px solid rgba(239,68,68,0.32)',
+            color: '#fca5a5',
+            fontSize: 9,
+            lineHeight: 1.35,
+          }}>
+            ?? 理外の呪装が眠っている。通常プレビューでは詳細不明。
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DetailSheet({
+  stage,
+  state,
+  onClose,
+  onEnter,
+  onGoHome,
+}: {
+  stage: StageData;
+  state: StageProgressState;
+  onClose: () => void;
+  onEnter: () => void;
+  onGoHome: () => void;
+}) {
+  const color = getStageColor(stage);
+  const isLocked = state === 'LOCKED';
+  const isCleared = state === 'CLEARED';
+  const buttonLabel = stage.nodeType === 'SAFE' ? '拠点へ戻る' : isCleared ? '再挑戦' : isLocked ? '未解放' : '侵攻開始';
+
+  return (
+    <div style={{
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      maxHeight: 'min(72dvh, 560px)',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'linear-gradient(180deg, rgba(10,5,24,0.97), #080411 100%)',
+      borderTop: `1px solid ${color}55`,
+      borderRadius: '22px 22px 0 0',
+      boxShadow: `0 -22px 70px ${color}24`,
+      backdropFilter: 'blur(22px)',
+      animation: 'sheetReveal 0.32s cubic-bezier(0.34,1.18,0.64,1)',
+    }}>
+      <div style={{ width: 40, height: 4, borderRadius: 999, background: `${color}55`, margin: '10px auto 0', flexShrink: 0 }} />
+      <div style={{ padding: '12px 18px 10px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                color,
+                fontFamily: "'Cinzel', serif",
+                fontSize: 8,
+                letterSpacing: '0.16em',
+                fontWeight: 900,
+              }}>
+                <StageTypeIcon nodeType={stage.nodeType} />
+                {stage.nameEn}
+              </div>
+              <span style={{
+                padding: '2px 7px',
+                borderRadius: 999,
+                background: `${color}18`,
+                border: `1px solid ${color}40`,
+                color,
+                fontSize: 8,
+                fontWeight: 900,
+              }}>{getStateLabel(state)}</span>
+              {stage.nodeType !== 'SAFE' && (
+                <span style={{ fontSize: 8, color: '#6b5f7a', fontWeight: 800 }}>3 WAVE / STAMINA FREE</span>
+              )}
+            </div>
+            <div style={{
+              fontFamily: "'Cinzel', serif",
+              fontSize: 'clamp(18px, 5vw, 24px)',
+              lineHeight: 1.12,
+              color: '#f0ebff',
+              fontWeight: 900,
+              letterSpacing: '0.03em',
+              textShadow: `0 0 18px ${color}55`,
+            }}>{stage.nameJa}</div>
+            <div style={{ marginTop: 6, fontSize: 10.5, lineHeight: 1.55, color: '#a89ec8' }}>{stage.description}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="閉じる"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.055)',
+              color: '#8b7da8',
+              display: 'grid',
+              placeItems: 'center',
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      </div>
+
+      <div className="safe-scroll" style={{
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        padding: '0 18px 12px',
+        display: 'grid',
+        gap: 10,
+        minHeight: 0,
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <WeaknessPreview stage={stage} />
+          <DropPreview stage={stage} />
+        </div>
+        <WavePreview stage={stage} />
+      </div>
+
+      <div style={{
+        padding: '10px 18px max(16px, env(safe-area-inset-bottom, 16px))',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        flexShrink: 0,
+      }}>
+        <button
+          type="button"
+          disabled={isLocked}
+          onClick={stage.nodeType === 'SAFE' ? onGoHome : onEnter}
+          style={{
+            width: '100%',
+            minHeight: 48,
+            borderRadius: 14,
+            border: `1px solid ${isLocked ? 'rgba(255,255,255,0.09)' : `${color}72`}`,
+            background: isLocked
+              ? 'rgba(255,255,255,0.045)'
+              : `linear-gradient(135deg, ${color}42, rgba(6,3,16,0.94))`,
+            boxShadow: isLocked ? 'none' : `0 0 24px ${color}2f`,
+            color: isLocked ? '#52465e' : '#f0ebff',
+            fontFamily: "'Cinzel', serif",
+            fontSize: 13,
+            fontWeight: 900,
+            letterSpacing: '0.12em',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 9,
+            opacity: isLocked ? 0.65 : 1,
+          }}
+        >
+          {isLocked ? <Lock size={15} /> : stage.nodeType === 'SAFE' ? <Home size={15} /> : <Swords size={15} />}
+          {buttonLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AreaMap({ onStartStage }: AreaMapProps) {
-  const { player, setCurrentTab, party } = useGameStore();
-  const [activeRegion, setActiveRegion] = useState<Region | null>(null);
-  const [meiryoku, setMeiryoku] = useState(80);
+  const { player, party, setCurrentTab } = useGameStore();
+  const [layer, setLayer] = useState<MapLayer>('WORLD');
+  const [selectedArea, setSelectedArea] = useState<number | null>(null);
+  const [activeWorldAreaId, setActiveWorldAreaId] = useState<number | null>(null);
+  const [activeStageId, setActiveStageId] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const allStages = useMemo(() => getStageList(STAGES), []);
+  const clearedStages = player?.clearedStages ?? [];
+  const states = useMemo(() => Object.fromEntries(allStages.map(stage => [stage.id, getStageProgressState(stage, clearedStages)])), [clearedStages, allStages]);
+  const nextStage = useMemo(() => getNextAvailableStage(STAGES, clearedStages), [clearedStages]);
+  const worldAreas = useMemo(() => buildWorldAreas(allStages, clearedStages, nextStage, states), [allStages, clearedStages, nextStage, states]);
+  const activeWorldArea = activeWorldAreaId ? worldAreas.find(area => area.area === activeWorldAreaId) ?? null : null;
+  const selectedAreaId = selectedArea ?? nextStage?.area ?? worldAreas[0]?.area ?? 1;
+  const selectedWorldArea = worldAreas.find(area => area.area === selectedAreaId) ?? worldAreas[0] ?? null;
+  const areaStages = useMemo(() => allStages.filter(stage => stage.area === selectedAreaId), [allStages, selectedAreaId]);
+  const nextStageForArea = useMemo(() => areaStages.find(stage => states[stage.id] === 'AVAILABLE') ?? null, [areaStages, states]);
+  const activeStage = activeStageId ? STAGES[activeStageId] : null;
+  const currentStage = activeStage ?? nextStageForArea ?? areaStages.find(stage => stage.nodeType === 'SAFE') ?? areaStages[0] ?? STAGES.area1_safe;
 
   useEffect(() => { setIsMounted(true); }, []);
 
   useEffect(() => {
-    const t = setInterval(() => {
-      setMeiryoku(m => Math.min(100, m + 0.5));
-    }, 2000);
-    return () => clearInterval(t);
-  }, []);
-
-  // 初期スクロール: 骸骨山脈(SVG y=300)を画面中央付近に表示
-  useEffect(() => {
-    if (!isMounted || !scrollRef.current) return;
+    if (layer !== 'AREA' || !isMounted || !scrollRef.current || !currentStage) return;
     const el = scrollRef.current;
-    const svgH = el.clientWidth * (530 / 375);
-    // SVG y=300 → pixel位置、TOP_SPACER分オフセット
-    const nodeY = TOP_SPACER + (300 / 530) * svgH;
-    // 画面高さの40%に合わせる
-    const targetScroll = nodeY - el.clientHeight * 0.4;
+    const svgH = el.clientWidth * (VIEWBOX.height / VIEWBOX.width);
+    const nodeY = (currentStage.position.y / VIEWBOX.height) * svgH;
+    const targetScroll = nodeY - el.clientHeight * 0.42;
     el.scrollTop = Math.max(0, targetScroll);
-  }, [isMounted]);
-
-  function handleNodeClick(region: Region) {
-    setActiveRegion(prev => prev?.id === region.id ? null : region);
-  }
-
-  function handleEnter() {
-    if (!activeRegion) return;
-    const regionId = activeRegion.id;
-    setActiveRegion(null);
-    setMeiryoku(m => Math.max(0, m - 20));
-    onStartStage(regionId);
-  }
+  }, [currentStage, isMounted, layer]);
 
   if (!isMounted || !player) return null;
 
-  const meiryokuPct = Math.round(meiryoku);
-
   const partyDisplay = [
-    { icon: '💀', name: player.name, color: '#8A2BE2' },
-    ...party.slice(0, 2).map((m, i) => m
-      ? { icon: '🧟', name: m.name, color: '#22c55e' }
-      : { icon: '➕', name: '未配置', color: '#4a3a5a' }
+    { icon: '☠', name: player.name, color: '#8A2BE2' },
+    ...party.slice(0, 2).map((monster, i) => monster
+      ? { icon: monster.tribe === 'DEMON' ? '◆' : '☾', name: monster.name, color: ['#22c55e', '#38bdf8'][i] }
+      : { icon: '+', name: '未配置', color: '#4a3a5a' }
     ),
   ];
 
-  // TOP_SPACER: HUD高さ(ステータスバー54 + コンテンツ~70 + fades) に合わせた最小値
-  const TOP_SPACER = 20;
-  const BOTTOM_SPACER = 140;
+  if (layer === 'WORLD') {
+    const currentArea = worldAreas.find(area => area.state === 'CURRENT') ?? worldAreas.find(area => area.state === 'AVAILABLE') ?? worldAreas[0] ?? null;
+
+    return (
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: '#05030f',
+        fontFamily: "'Inter', sans-serif",
+        overflow: 'hidden',
+        color: '#f0ebff',
+      }}>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+          <svg
+            viewBox={`0 0 ${WORLD_VIEWBOX.width} ${WORLD_VIEWBOX.height}`}
+            preserveAspectRatio="xMidYMid slice"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+          >
+            <defs>
+              <radialGradient id="worldGlow" cx="50%" cy="52%" r="64%">
+                <stop offset="0%" stopColor="#1a0838" stopOpacity="0.74" />
+                <stop offset="100%" stopColor="#03020a" stopOpacity="1" />
+              </radialGradient>
+              <radialGradient id="worldVignette" cx="50%" cy="50%" r="72%">
+                <stop offset="0%" stopColor="transparent" />
+                <stop offset="100%" stopColor="#03020a" stopOpacity="0.84" />
+              </radialGradient>
+              <filter id="worldNodeGlow">
+                <feGaussianBlur stdDeviation="3.4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+            <rect width={WORLD_VIEWBOX.width} height={WORLD_VIEWBOX.height} fill="url(#worldGlow)" />
+            <WorldTerrainLayer />
+            <g filter="url(#worldNodeGlow)">
+              {worldAreas.map(area => (
+                <WorldAreaNode
+                  key={area.area}
+                  area={area}
+                  isActive={activeWorldAreaId === area.area}
+                  onClick={(clickedArea) => setActiveWorldAreaId(prev => prev === clickedArea.area ? null : clickedArea.area)}
+                />
+              ))}
+            </g>
+          </svg>
+          <ParticleLayer />
+        </div>
+
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 10,
+          padding: 'max(12px, env(safe-area-inset-top, 12px)) 14px 18px',
+          background: 'linear-gradient(180deg, rgba(5,2,16,0.98), rgba(5,2,16,0.78) 68%, transparent)',
+          display: 'grid',
+          gap: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <button
+                type="button"
+                onClick={() => setCurrentTab('HOME')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  color: '#8b7da8',
+                  fontSize: 11,
+                  marginBottom: 6,
+                  background: 'transparent',
+                  border: 0,
+                  padding: 0,
+                }}
+              >
+                <ChevronLeft size={15} />
+                ホーム
+              </button>
+              <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#8A2BE2', letterSpacing: '0.18em' }}>LAYER 1 / WORLD MAP</div>
+              <div style={{
+                fontFamily: "'Cinzel', serif",
+                fontSize: 'clamp(19px, 5.5vw, 25px)',
+                fontWeight: 900,
+                letterSpacing: '0.04em',
+                textShadow: '0 0 20px rgba(138,43,226,0.58)',
+                lineHeight: 1.1,
+              }}>ワールドマップ</div>
+            </div>
+            <div style={{ display: 'grid', gap: 7, justifyItems: 'end', flexShrink: 0 }}>
+              <HeaderStat label="FLOW" value="WORLD → AREA" icon={<Globe2 size={14} />} />
+              <HeaderStat label="BATTLE" value="NODE → 3 WAVE" icon={<Swords size={14} />} />
+            </div>
+          </div>
+        </div>
+
+        {!activeWorldArea && (
+          <div style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10,
+            padding: '24px 14px max(16px, env(safe-area-inset-bottom, 16px))',
+            background: 'linear-gradient(0deg, rgba(5,2,16,0.98), rgba(5,2,16,0.78) 66%, transparent)',
+            display: 'grid',
+            gap: 10,
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 12px',
+              borderRadius: 14,
+              background: 'rgba(5,2,16,0.86)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              backdropFilter: 'blur(14px)',
+            }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#8A2BE2', fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 900, letterSpacing: '0.14em' }}>
+                  <Castle size={14} />
+                  CURRENT FRONT
+                </div>
+                <div style={{ marginTop: 3, color: '#f0ebff', fontFamily: "'Cinzel', serif", fontSize: 14, fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {currentArea?.nameJa ?? '未選択'}
+                </div>
+                <div style={{ marginTop: 2, color: '#6b5f7a', fontSize: 9 }}>
+                  Layer 1で領域を選び、Layer 2のエリアマップへ進む
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={!currentArea || currentArea.state === 'LOCKED'}
+                onClick={() => currentArea && setActiveWorldAreaId(currentArea.area)}
+                style={{
+                  minHeight: 44,
+                  padding: '0 15px',
+                  borderRadius: 12,
+                  border: '1px solid rgba(138,43,226,0.68)',
+                  background: 'linear-gradient(135deg, rgba(138,43,226,0.42), rgba(6,3,16,0.92))',
+                  color: '#f0ebff',
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: '0.08em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  boxShadow: '0 0 18px rgba(138,43,226,0.32)',
+                }}
+              >
+                <MapPin size={15} />
+                領域選択
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeWorldArea && (
+          <>
+            <div
+              onClick={() => setActiveWorldAreaId(null)}
+              style={{ position: 'absolute', inset: 0, zIndex: 15, background: 'rgba(0,0,0,0.38)', animation: 'fadeIn 0.2s ease-out' }}
+            />
+            <div style={{ position: 'absolute', inset: 0, zIndex: 16, pointerEvents: 'none' }}>
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
+                <WorldAreaSheet
+                  area={activeWorldArea}
+                  onClose={() => setActiveWorldAreaId(null)}
+                  onEnter={() => {
+                    if (activeWorldArea.state === 'LOCKED') return;
+                    setSelectedArea(activeWorldArea.area);
+                    setActiveWorldAreaId(null);
+                    setActiveStageId(null);
+                    setLayer('AREA');
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  const topSpacer = 74;
+  const bottomSpacer = activeStage ? 420 : 170;
 
   return (
     <div style={{
-      position: 'absolute', inset: 0,
+      position: 'absolute',
+      inset: 0,
       background: '#05030f',
       fontFamily: "'Inter', sans-serif",
       overflow: 'hidden',
+      color: '#f0ebff',
     }}>
-      {/* ── スクロール可能なマップ領域 ── */}
-      <div ref={scrollRef} style={{
-        position: 'absolute', inset: 0,
-        overflowY: 'auto', overflowX: 'hidden',
-        WebkitOverflowScrolling: 'touch',
-      }}>
-        {/* Top spacer: HUD の下からマップが始まるように */}
-        <div style={{ height: TOP_SPACER }} />
-
-        {/* SVG コンテナ: aspect-ratio で 375:530 を維持 */}
-        <div style={{ position: 'relative', width: '100%', aspectRatio: '375 / 530' }}>
+      <div
+        ref={scrollRef}
+        className="safe-scroll"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        <div style={{ height: topSpacer }} />
+        <div style={{ position: 'relative', width: '100%', aspectRatio: `${VIEWBOX.width} / ${VIEWBOX.height}` }}>
           <svg
-            viewBox="0 0 375 530"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`}
             preserveAspectRatio="xMidYMid meet"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
           >
             <defs>
-              <radialGradient id="mapGlow" cx="52%" cy="55%" r="55%">
-                <stop offset="0%" stopColor="#1a0838" stopOpacity="0.8"/>
-                <stop offset="100%" stopColor="#03020a" stopOpacity="1"/>
+              <radialGradient id="mapGlow" cx="52%" cy="54%" r="62%">
+                <stop offset="0%" stopColor="#1a0838" stopOpacity="0.72" />
+                <stop offset="100%" stopColor="#03020a" stopOpacity="1" />
+              </radialGradient>
+              <radialGradient id="mapVignette" cx="50%" cy="50%" r="72%">
+                <stop offset="0%" stopColor="transparent" />
+                <stop offset="100%" stopColor="#03020a" stopOpacity="0.82" />
               </radialGradient>
               <filter id="nodeGlow">
-                <feGaussianBlur stdDeviation="3" result="blur"/>
-                <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
               </filter>
-              <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
-                <stop offset="0%" stopColor="transparent"/>
-                <stop offset="100%" stopColor="#03020a" stopOpacity="0.7"/>
-              </radialGradient>
             </defs>
-            <rect width="375" height="530" fill="url(#mapGlow)"/>
-            <TerrainLayer/>
-            <PathLines activeId={activeRegion?.id ?? null}/>
-            <FogLayer/>
+            <rect width={VIEWBOX.width} height={VIEWBOX.height} fill="url(#mapGlow)" />
+            <TerrainLayer />
+            <PathLines stages={areaStages} activeStageId={activeStageId} states={states} />
             <g filter="url(#nodeGlow)">
-              {REGIONS.map(r => (
-                <MapNode key={r.id} region={r} isActive={activeRegion?.id === r.id} onClick={handleNodeClick}/>
+              {areaStages.map(stage => (
+                <MapNode
+                  key={stage.id}
+                  stage={stage}
+                  state={states[stage.id]}
+                  isActive={activeStageId === stage.id}
+                  onClick={(clickedStage) => setActiveStageId(prev => prev === clickedStage.id ? null : clickedStage.id)}
+                />
               ))}
             </g>
-            <rect width="375" height="530" fill="url(#vignette)"/>
           </svg>
-
-          {/* Particles */}
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-            {PARTICLE_DATA.map((p, i) => (
-              <div key={i} style={{
-                position: 'absolute',
-                left: `${p.left}%`, top: `${p.top}%`,
-                width: `${p.size}px`, height: `${p.size}px`,
-                borderRadius: '50%', background: p.color,
-                animation: `particleRise ${p.duration}s ease-out infinite`,
-                animationDelay: `${p.delay}s`,
-              }}/>
-            ))}
-          </div>
+          <ParticleLayer />
         </div>
-
-        {/* Bottom spacer: bottom HUD の上にマップが見えるように */}
-        <div style={{ height: BOTTOM_SPACER }} />
+        <div style={{ height: bottomSpacer }} />
       </div>
 
-      {/* ── TOP HUD（スクロールしない）── */}
       <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0,
-        paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
-        paddingLeft: 14, paddingRight: 14, paddingBottom: 16,
-        background: 'linear-gradient(180deg, rgba(5,2,16,0.96) 0%, rgba(5,2,16,0.75) 65%, transparent 100%)',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
         zIndex: 10,
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+        padding: 'max(12px, env(safe-area-inset-top, 12px)) 14px 18px',
+        background: 'linear-gradient(180deg, rgba(5,2,16,0.98), rgba(5,2,16,0.78) 68%, transparent)',
+        display: 'grid',
+        gap: 10,
       }}>
-        <div>
-          <div onClick={() => setCurrentTab('HOME')} style={{
-            display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
-            fontFamily: "'Inter', sans-serif", fontSize: 11, color: '#8b7da8', marginBottom: 6,
-          }}>
-            <span style={{ fontSize: 14 }}>‹</span>
-            <span>ホーム</span>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveStageId(null);
+                setLayer('WORLD');
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                color: '#8b7da8',
+                fontSize: 11,
+                marginBottom: 6,
+                background: 'transparent',
+                border: 0,
+                padding: 0,
+              }}
+            >
+              <ChevronLeft size={15} />
+              ワールド
+            </button>
+            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#8A2BE2', letterSpacing: '0.18em' }}>LAYER 2 / AREA MAP</div>
+            <div style={{
+              fontFamily: "'Cinzel', serif",
+              fontSize: 'clamp(18px, 5vw, 23px)',
+              fontWeight: 900,
+              letterSpacing: '0.04em',
+              textShadow: '0 0 20px rgba(138,43,226,0.58)',
+              lineHeight: 1.1,
+            }}>{selectedWorldArea?.nameJa ?? 'エリアマップ'}</div>
           </div>
-          <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#8A2BE2', letterSpacing: '0.18em' }}>
-            WORLD MAP
+          <div style={{ display: 'grid', gap: 7, justifyItems: 'end', flexShrink: 0 }}>
+            <HeaderStat label="LAYER 3" value="DUNGEON NODE" icon={<Swords size={14} />} />
+            <HeaderStat label="RULE" value="STAMINA FREE" icon={<Sparkles size={14} />} />
           </div>
-          <div style={{
-            fontFamily: "'Cinzel', serif", fontSize: 18, fontWeight: 700,
-            color: '#f0ebff', letterSpacing: '0.04em',
-            textShadow: '0 0 20px rgba(138,43,226,0.6)',
-          }}>出撃・マップ</div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-          <div style={{
-            padding: '5px 10px', marginTop: 4,
-            background: 'rgba(138,43,226,0.2)', border: '1px solid rgba(138,43,226,0.4)',
-            borderRadius: '8px', backdropFilter: 'blur(8px)',
-          }}>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#8A2BE2', letterSpacing: '0.1em' }}>現在地</div>
-            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, color: '#c084fc' }}>骸骨山脈</div>
-          </div>
-          <div style={{
-            width: 34, height: 34, borderRadius: '10px',
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', fontSize: 14, backdropFilter: 'blur(8px)',
-          }}>🗺</div>
         </div>
       </div>
 
-      {/* ── BOTTOM HUD（スクロールしない）── */}
-      {!activeRegion && (
+      {!activeStage && (
         <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          paddingTop: 24, paddingLeft: 14, paddingRight: 14,
-          paddingBottom: 'max(16px, env(safe-area-inset-bottom, 16px))',
-          background: 'linear-gradient(0deg, rgba(5,2,16,0.98) 0%, rgba(5,2,16,0.8) 65%, transparent 100%)',
-          zIndex: 10, animation: 'fadeIn 0.3s ease-out',
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 10,
+          padding: '24px 14px max(16px, env(safe-area-inset-bottom, 16px))',
+          background: 'linear-gradient(0deg, rgba(5,2,16,0.98), rgba(5,2,16,0.78) 66%, transparent)',
+          display: 'grid',
+          gap: 10,
         }}>
-          {/* 冥力 bar */}
           <div style={{
-            marginBottom: 10, padding: '10px 14px',
-            background: 'rgba(5,2,16,0.85)', border: '1px solid rgba(138,43,226,0.3)',
-            borderRadius: '14px', backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '10px 12px',
+            borderRadius: 14,
+            background: 'rgba(5,2,16,0.86)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(14px)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ fontSize: 12 }}>💠</div>
-                <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600, color: '#c084fc', letterSpacing: '0.08em' }}>冥力</div>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#6b5f7a' }}>NECRO POWER</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
-                <div style={{
-                  fontFamily: "'Cinzel', serif", fontSize: 14, fontWeight: 700, color: '#c084fc',
-                  animation: 'stamRegen 2s ease-in-out infinite',
-                }}>{meiryokuPct}</div>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 10, color: '#4a3a5a' }}>/ 100</div>
-              </div>
-            </div>
-            <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(138,43,226,0.2)' }}>
-              <div style={{
-                width: `${meiryokuPct}%`, height: '100%',
-                background: 'linear-gradient(90deg, #4a0e8a, #8A2BE2, #c084fc)',
-                borderRadius: 4, boxShadow: '0 0 8px rgba(138,43,226,0.6)',
-                transition: 'width 1s ease',
-              }}/>
-            </div>
-          </div>
-
-          {/* Party + 侵攻ボタン */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-            background: 'rgba(5,2,16,0.85)', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '14px', backdropFilter: 'blur(12px)',
-          }}>
-            <div style={{ display: 'flex', gap: 8, flex: 1 }}>
-              {partyDisplay.map((m, i) => (
-                <div key={i} style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: `radial-gradient(circle, ${m.color}20, #0a0515)`,
-                  border: `1.5px solid ${m.color}60`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 16,
-                }}>{m.icon}</div>
+            <div style={{ display: 'flex', gap: 8, flex: 1, minWidth: 0 }}>
+              {partyDisplay.map((member, i) => (
+                <div key={`${member.name}-${i}`} title={member.name} style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: `radial-gradient(circle, ${member.color}24, #0a0515)`,
+                  border: `1.5px solid ${member.color}66`,
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: member.color,
+                  fontWeight: 900,
+                  flexShrink: 0,
+                }}>{member.icon}</div>
               ))}
             </div>
-            <div onClick={() => handleNodeClick(REGIONS.find(r => r.state === 'current')!)} style={{
-              padding: '10px 16px',
-              background: 'linear-gradient(135deg, rgba(138,43,226,0.4), rgba(88,28,135,0.3))',
-              border: '1px solid rgba(138,43,226,0.7)', borderRadius: '12px',
-              cursor: 'pointer', boxShadow: '0 0 16px rgba(138,43,226,0.35)',
-              flexShrink: 0, position: 'relative', overflow: 'hidden',
-            }}>
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(90deg, transparent, rgba(138,43,226,0.15), transparent)',
-                backgroundSize: '200% 100%', animation: 'shimmer 2s infinite',
-                pointerEvents: 'none',
-              }}/>
-              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, fontWeight: 700, color: '#f0ebff', letterSpacing: '0.06em' }}>侵攻</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: 'rgba(192,132,252,0.7)', marginTop: 1 }}>ADVANCE</div>
-            </div>
+            <button
+              type="button"
+              disabled={!nextStageForArea}
+              onClick={() => nextStageForArea && setActiveStageId(nextStageForArea.id)}
+              style={{
+                minHeight: 44,
+                padding: '0 15px',
+                borderRadius: 12,
+                border: '1px solid rgba(138,43,226,0.68)',
+                background: 'linear-gradient(135deg, rgba(138,43,226,0.42), rgba(6,3,16,0.92))',
+                color: '#f0ebff',
+                fontFamily: "'Cinzel', serif",
+                fontSize: 11,
+                fontWeight: 900,
+                letterSpacing: '0.08em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+                boxShadow: '0 0 18px rgba(138,43,226,0.32)',
+              }}
+            >
+              <MapPin size={15} />
+              次の侵攻
+            </button>
           </div>
         </div>
       )}
 
-      {/* ── DETAIL SHEET ── */}
-      {activeRegion && (
+      {activeStage && (
         <>
-          <div onClick={() => setActiveRegion(null)} style={{
-            position: 'absolute', inset: 0, zIndex: 15,
-            background: 'rgba(0,0,0,0.4)', animation: 'fadeIn 0.2s ease-out',
-          }}/>
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 16 }}>
-            <DetailSheet
-              region={activeRegion}
-              onClose={() => setActiveRegion(null)}
-              onEnter={handleEnter}/>
+          <div
+            onClick={() => setActiveStageId(null)}
+            style={{ position: 'absolute', inset: 0, zIndex: 15, background: 'rgba(0,0,0,0.38)', animation: 'fadeIn 0.2s ease-out' }}
+          />
+          <div style={{ position: 'absolute', inset: 0, zIndex: 16, pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
+              <DetailSheet
+                stage={activeStage}
+                state={states[activeStage.id]}
+                onClose={() => setActiveStageId(null)}
+                onEnter={() => {
+                  if (states[activeStage.id] === 'LOCKED') return;
+                  setActiveStageId(null);
+                  onStartStage(activeStage.id);
+                }}
+                onGoHome={() => {
+                  setActiveStageId(null);
+                  setCurrentTab('HOME');
+                }}
+              />
+            </div>
           </div>
         </>
       )}

@@ -147,12 +147,23 @@ export class BattleEngine {
     player.currentEnergy = Math.min(player.maxEnergy, Math.max(0, player.currentEnergy - energyCost + energyGain));
 
     const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(stats, elementBoosts, target.stats, target.resistances ?? {}, power, element);
+    const shieldResult = this.applySpiritualShield(target, damage, element);
+    if (shieldResult.didBreak) {
+      player.currentEnergy = Math.min(player.maxEnergy, player.currentEnergy + 30);
+    }
 
     let desc = `${player.name}の${actionName}！`;
     if (isWeakness) desc += ` 弱点を突いた！`;
     else if (isResisted) desc += ` 効果はいまひとつのようだ。`;
+    if (shieldResult.wasShielded) {
+      desc += shieldResult.didBreak
+        ? ` 霊魂砕きが発生し、防壁が崩壊した！`
+        : shieldResult.wasWeakShieldHit
+          ? ` 霊的防壁を削った。`
+          : ` 霊的防壁に阻まれた。`;
+    }
 
-    this.addLog(actionType, player.name, target.name, desc, damage, isCritical, isWeakness, isResisted, element, attackType);
+    this.addLog(actionType, player.name, target.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, element, attackType);
   }
 
   private processMonsterActions(target: MonsterData): void {
@@ -168,8 +179,59 @@ export class BattleEngine {
       }
 
       const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(monsterStats, {}, target.stats, target.resistances, 1.0, 'NONE');
-      this.addLog('MONSTER_ATTACK', monster.name, target.name, `${monster.name}の追撃！`, damage, isCritical, isWeakness, isResisted, 'NONE', 'STRIKE');
+      const shieldResult = this.applySpiritualShield(target, damage, 'NONE');
+      const desc = shieldResult.wasShielded
+        ? `${monster.name}の追撃！ 霊的防壁に阻まれた。`
+        : `${monster.name}の追撃！`;
+      this.addLog('MONSTER_ATTACK', monster.name, target.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, 'NONE', 'STRIKE');
     });
+  }
+
+  private applySpiritualShield(
+    target: MonsterData,
+    damage: number,
+    element: ElementType
+  ): { damage: number; wasShielded: boolean; wasWeakShieldHit: boolean; didBreak: boolean; remainingShield: number } {
+    const currentShield = target.shieldHp ?? 0;
+    const maxShield = target.maxShieldHp ?? target.shieldHp ?? 0;
+    if (maxShield <= 0 || currentShield <= 0 || target.shieldBroken) {
+      return { damage, wasShielded: false, wasWeakShieldHit: false, didBreak: false, remainingShield: 0 };
+    }
+
+    const wasWeakShieldHit = element !== 'NONE' && Boolean(target.weaknesses?.includes(element));
+    if (!wasWeakShieldHit) {
+      return {
+        damage: Math.max(1, Math.floor(damage * 0.22)),
+        wasShielded: true,
+        wasWeakShieldHit: false,
+        didBreak: false,
+        remainingShield: currentShield,
+      };
+    }
+
+    const shieldDamage = Math.max(1, Math.floor(damage * 0.75));
+    const remainingShield = Math.max(0, currentShield - shieldDamage);
+    target.shieldHp = remainingShield;
+    target.maxShieldHp = maxShield;
+
+    if (remainingShield <= 0) {
+      target.shieldBroken = true;
+      return {
+        damage: Math.max(1, Math.floor(damage * 1.45)),
+        wasShielded: true,
+        wasWeakShieldHit: true,
+        didBreak: true,
+        remainingShield,
+      };
+    }
+
+    return {
+      damage: Math.max(1, Math.floor(damage * 0.72)),
+      wasShielded: true,
+      wasWeakShieldHit: true,
+      didBreak: false,
+      remainingShield,
+    };
   }
 
   private processAreaGimmick(): void {

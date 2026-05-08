@@ -1,48 +1,252 @@
 {
-  "1-1": {
-    "name": "Beginner's Plain - Entrance",
+  "area1_safe": {
+    "id": "area1_safe",
+    "name": "Legion Camp",
+    "nameJa": "亡者の前哨陣",
+    "nameEn": "LEGION CAMP",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
     "area": 1,
-    "waves": 2,
-    "enemies": [["goblin"], ["goblin", "goblin"]],
+    "nodeType": "SAFE",
+    "element": "DARK",
+    "difficulty": 0,
+    "description": "亡国の王都へ侵攻するための拠点。ここでは戦闘は発生せず、軍団編成と装備確認に戻れる。",
+    "waveCount": 0,
+    "unlockRequires": [],
+    "waves": [],
     "rewards": {
-      "baseExp": 50,
-      "baseGold": 100,
-      "dropTable": [
-        { "itemId": "iron_sword", "rate": 0.05 },
-        { "monsterId": "goblin", "rate": 0.1 }
-      ]
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": []
     },
-    "position": { "x": -150, "y": 150 }
+    "position": { "x": 188, "y": 508 }
   },
-  "1-2": {
-    "name": "Beginner's Plain - Deep",
+  "area1_node1": {
+    "id": "area1_node1",
+    "name": "Grave Road Outside the Capital",
+    "nameJa": "王都外縁の墓道",
+    "nameEn": "GRAVE ROAD",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
     "area": 1,
-    "waves": 3,
-    "enemies": [["goblin"], ["skeleton"], ["goblin", "skeleton"]],
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 1,
+    "description": "英雄に滅ぼされた亡国の外縁。墓荒らしの骸兵と腐肉喰らいを倒し、魂ゲージを温める導入ダンジョン。",
+    "waveCount": 3,
+    "unlockRequires": [],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": ["grave_soldier", "rot_hound"],
+        "intent": "ミニオンで通常攻撃と魂ゲージ回収を体験させる。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": ["abyss_warden"],
+        "intent": "弱点属性で霊的防壁を割る最初のチュートリアル。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "BOSS",
+        "enemyIds": ["ossuary_wyrm_lord"],
+        "intent": "章ボスの簡易版。防壁破壊後に魔神化で押し切る。"
+      }
+    ],
     "rewards": {
-      "baseExp": 80,
-      "baseGold": 150,
+      "baseExp": 620,
+      "baseGold": 1180,
       "dropTable": [
-        { "itemId": "bone_cleaver", "rate": 0.05 },
-        { "monsterId": "skeleton", "rate": 0.1 }
+        { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.55 },
+        { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.12 },
+        { "type": "RESIDUE", "rarity": "RARE", "rate": 0.65 }
       ]
     },
-    "position": { "x": 0, "y": 0 }
+    "position": { "x": 188, "y": 422 }
   },
-  "boss-1": {
-    "name": "Goblin's Fortress",
+  "area1_node2": {
+    "id": "area1_node2",
+    "name": "Sooted Royal Dungeon",
+    "nameJa": "煤けた王城の地下牢",
+    "nameEn": "ROYAL DUNGEON",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
     "area": 1,
-    "waves": 1,
-    "enemies": [["boss_goblin", "goblin", "goblin"]],
+    "nodeType": "DUNGEON",
+    "element": "EARTH",
+    "difficulty": 2,
+    "description": "王城の地下に残る処刑場。骨巨人の高耐久と霊的防壁が、属性スキルの選択を要求する。",
+    "waveCount": 3,
+    "unlockRequires": ["area1_node1"],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": ["grave_soldier", "grave_soldier"],
+        "intent": "撃破テンポを上げ、AUTO戦闘での周回感を作る。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": ["bone_colossus"],
+        "intent": "光・土弱点の防壁を割り、ブレイク後の火力集中を促す。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "BOSS",
+        "enemyIds": ["ossuary_wyrm_lord"],
+        "intent": "竜王の怒りギミックを体験する。"
+      }
+    ],
     "rewards": {
-      "baseExp": 500,
-      "baseGold": 1000,
+      "baseExp": 780,
+      "baseGold": 1460,
       "dropTable": [
-        { "itemId": "hero_soul_blade", "rate": 0.01 },
-        { "monsterId": "boss_goblin", "rate": 0.05 }
+        { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.45 },
+        { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.145 },
+        { "type": "RESIDUE", "rarity": "RARE", "rate": 0.82 }
       ]
     },
-    "isAreaBoss": true,
-    "position": { "x": 180, "y": -180 }
+    "position": { "x": 102, "y": 326 }
+  },
+  "area1_boss": {
+    "id": "area1_boss",
+    "name": "Dragonbone Altar",
+    "nameJa": "竜骨祭壇",
+    "nameEn": "DRAGONBONE ALTAR",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "BOSS",
+    "element": "DARK",
+    "difficulty": 3,
+    "description": "骸骨山脈の頂。死骨竜王オッサリウスが霊的防壁と怒りを纏い、隠しURの可能性を抱えて待つ。",
+    "waveCount": 3,
+    "unlockRequires": ["area1_node2"],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": ["rot_hound", "grave_soldier", "rot_hound"],
+        "intent": "ボス前に魂ゲージと自動戦闘テンポを整える。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": ["abyss_warden", "bone_colossus"],
+        "intent": "複数弱点の精鋭を置き、編成の属性幅を確認する。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "BOSS",
+        "enemyIds": ["ossuary_wyrm_lord"],
+        "intent": "HP50%以下の怒りと霊的防壁を突破する章ボス戦。"
+      }
+    ],
+    "rewards": {
+      "baseExp": 1320,
+      "baseGold": 3600,
+      "dropTable": [
+        { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.62 },
+        { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.18 },
+        { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.012 },
+        { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.5 },
+        { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
+      ]
+    },
+    "position": { "x": 246, "y": 265 },
+    "isAreaBoss": true
+  },
+  "area1_node3": {
+    "id": "area1_node3",
+    "name": "Bloodmire Crossing",
+    "nameJa": "血沼の渡し",
+    "nameEn": "BLOODMIRE CROSSING",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "WATER",
+    "difficulty": 4,
+    "description": "竜骨祭壇の先に広がる赤黒い湿地。水・風弱点を持つ血沼の女王が、次章への門を閉ざす。",
+    "waveCount": 3,
+    "unlockRequires": ["area1_boss"],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": ["rot_hound", "rot_hound"],
+        "intent": "高速ミニオンで敵ターンの圧力を少し上げる。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": ["abyss_warden"],
+        "intent": "雷・水弱点の防壁で属性スキルを再確認する。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "BOSS",
+        "enemyIds": ["blood_mire_queen"],
+        "intent": "水・風弱点のボス。防壁破壊時の増援ギミックを想定する。"
+      }
+    ],
+    "rewards": {
+      "baseExp": 1560,
+      "baseGold": 4200,
+      "dropTable": [
+        { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.2 },
+        { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.014 },
+        { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.55 },
+        { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
+      ]
+    },
+    "position": { "x": 140, "y": 182 }
+  },
+  "area2_gate": {
+    "id": "area2_gate",
+    "name": "Phantom City Gate",
+    "nameJa": "幽霊都市の城門",
+    "nameEn": "PHANTOM CITY GATE",
+    "chapter": 2,
+    "chapterName": "幽霊都市",
+    "area": 2,
+    "nodeType": "DUNGEON",
+    "element": "WIND",
+    "difficulty": 5,
+    "description": "第二章の入り口。現行プロトタイプではロック表示のみを行い、後続エネミー追加時に解放する。",
+    "waveCount": 3,
+    "unlockRequires": ["area1_node3"],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": ["grave_soldier"],
+        "intent": "第二章用の仮データ。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": ["bone_colossus"],
+        "intent": "第二章用の仮データ。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "BOSS",
+        "enemyIds": ["blood_mire_queen"],
+        "intent": "第二章用の仮データ。"
+      }
+    ],
+    "rewards": {
+      "baseExp": 1880,
+      "baseGold": 5200,
+      "dropTable": [
+        { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.016 },
+        { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.6 }
+      ]
+    },
+    "position": { "x": 254, "y": 94 }
   }
 }
