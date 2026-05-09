@@ -1,0 +1,274 @@
+{
+  "warrior": {
+    "jobId": "warrior",
+    "formName": "黒翼の剣聖",
+    "tier": 1,
+    "concept": "勇者の剣術が死霊の翼に侵食され、堅実な前衛性能を闇の連撃へ反転させる。",
+    "effectA": {
+      "descJa": "基礎攻撃力+80%、防御力+40%。通常攻撃が闇属性を帯びる。",
+      "statBoosts": { "atk": 0.8, "def": 0.4 },
+      "flags": ["DARK_EDGE"]
+    },
+    "effectB": {
+      "descJa": "攻撃時に霊的防壁へ追加圧力を与える。リスクなし。",
+      "riskType": null,
+      "onAttackEffect": "SHIELD_REND"
+    },
+    "ultimateSkill": {
+      "nameJa": "黒聖十字断",
+      "damage": { "power": 3.2, "element": "DARK", "targetType": "SINGLE", "attackType": "SLASH", "flags": ["SHIELD_REND"] },
+      "lingering": { "type": "PARTY_BUFF", "descJa": "味方全体の防御力を3行動の間上昇させる黒翼の守りを残す。", "duration": 3 }
+    },
+    "visual": { "color": "#c084fc", "soft": "rgba(192,132,252,0.20)", "icon": "☾" }
+  },
+  "mage": {
+    "jobId": "mage",
+    "formName": "五葬の魔導王",
+    "tier": 1,
+    "concept": "五属性の秩序を葬送魔法に変換し、属性攻撃を一気に暴走させる。",
+    "effectA": {
+      "descJa": "基礎攻撃力+65%、会心ダメージ+45%。属性スキルの色彩が深淵化する。",
+      "statBoosts": { "atk": 0.65, "critDmg": 0.45 },
+      "flags": ["ELEMENT_SURGE"]
+    },
+    "effectB": {
+      "descJa": "属性スキル使用時、同属性の残響を発生させる。リスクなし。",
+      "riskType": null,
+      "onAttackEffect": "ELEMENT_ECHO"
+    },
+    "ultimateSkill": {
+      "nameJa": "ペンタグラム・ネクロシス",
+      "damage": { "power": 3.0, "element": "DARK", "targetType": "ALL", "attackType": "MAGIC", "flags": ["ELEMENT_SURGE"] },
+      "lingering": { "type": "FIELD", "descJa": "敵全体の属性耐性を3行動の間低下させる葬送陣を展開する。", "duration": 3 }
+    },
+    "visual": { "color": "#38bdf8", "soft": "rgba(56,189,248,0.18)", "icon": "✦" }
+  },
+  "dark_priest": {
+    "jobId": "dark_priest",
+    "formName": "反聖の黒司祭",
+    "tier": 1,
+    "concept": "癒やしの祈りが呪詛へ反転し、敵の生命を奪って味方を支える。",
+    "effectA": {
+      "descJa": "基礎攻撃力+55%、効果命中+60%、効果抵抗+25%。",
+      "statBoosts": { "atk": 0.55, "effectHit": 0.6, "effectRes": 0.25 },
+      "flags": ["CURSE_CHANNEL"]
+    },
+    "effectB": {
+      "descJa": "闇属性攻撃時に微量吸収を発生させる。リスクなし。",
+      "riskType": null,
+      "onAttackEffect": "LIFE_DRAIN"
+    },
+    "ultimateSkill": {
+      "nameJa": "逆十字の魂餐",
+      "damage": { "power": 3.1, "element": "DARK", "targetType": "ALL", "attackType": "MAGIC", "flags": ["LIFE_DRAIN"] },
+      "lingering": { "type": "ENEMY_DEBUFF", "descJa": "敵全体に被ダメージ上昇の呪印を3行動付与する。", "duration": 3 }
+    },
+    "visual": { "color": "#a855f7", "soft": "rgba(168,85,247,0.22)", "icon": "✚" }
+  },
+  "rogue": {
+    "jobId": "rogue",
+    "formName": "影喰いの夜王",
+    "tier": 1,
+    "concept": "盗賊の速度と急所狙いが影そのものになり、短時間で敵を削り切る。",
+    "effectA": {
+      "descJa": "基礎攻撃力+60%、速度+30%、会心率+25%。",
+      "statBoosts": { "atk": 0.6, "spd": 0.3, "critRate": 0.25 },
+      "flags": ["SHADOW_STEP"]
+    },
+    "effectB": {
+      "descJa": "単体攻撃時に影の追撃を発生させる。リスクなし。",
+      "riskType": null,
+      "onAttackEffect": "MIRAGE_CHAIN"
+    },
+    "ultimateSkill": {
+      "nameJa": "夜葬・千影裂き",
+      "damage": { "power": 3.4, "element": "WIND", "targetType": "SINGLE", "attackType": "SLASH", "flags": ["MIRAGE_CHAIN"] },
+      "lingering": { "type": "PARTY_BUFF", "descJa": "味方全体の会心率を3行動の間上昇させる影幕を残す。", "duration": 3 }
+    },
+    "visual": { "color": "#7dd3fc", "soft": "rgba(125,211,252,0.18)", "icon": "✧" }
+  },
+  "dark_knight": {
+    "jobId": "dark_knight",
+    "formName": "黒刃の堕天騎士",
+    "tier": 2,
+    "concept": "剣士の防衛力と闇術師の呪力が融合し、守るほど敵を削る魔剣へ堕ちる。",
+    "effectA": {
+      "descJa": "基礎攻撃力+110%、防御力+80%。闇斬撃が防壁を強く削る。",
+      "statBoosts": { "atk": 1.1, "def": 0.8 },
+      "flags": ["DARK_EDGE", "SHIELD_REND"]
+    },
+    "effectB": {
+      "descJa": "攻撃後に魂を鎧へ流し込むため、発動中の行動ごとにソウルが追加減衰する。",
+      "riskType": "ENERGY_DRAIN",
+      "riskValue": 15,
+      "onAttackEffect": "SHIELD_REND"
+    },
+    "ultimateSkill": {
+      "nameJa": "堕天黒刃・墓標裂き",
+      "damage": { "power": 4.1, "element": "DARK", "targetType": "SINGLE", "attackType": "SLASH", "flags": ["IGNORE_DEF", "SHIELD_REND"] },
+      "lingering": { "type": "ENEMY_DEBUFF", "descJa": "対象の防御力を3行動の間低下させる黒刃の墓標を刻む。", "duration": 3 }
+    },
+    "visual": { "color": "#ef4444", "soft": "rgba(239,68,68,0.20)", "icon": "☠" }
+  },
+  "berserker": {
+    "jobId": "berserker",
+    "formName": "血河の狂戦士",
+    "tier": 2,
+    "concept": "盗賊の手数が反動ダメージを伴って暴走した連撃特化。",
+    "effectA": {
+      "descJa": "基礎攻撃力+150%。",
+      "statBoosts": { "atk": 1.5 },
+      "flags": []
+    },
+    "effectB": {
+      "descJa": "全物理攻撃が確定3回ヒットに分裂するが、被ダメージが常時2倍になる。",
+      "riskType": "GLASS_CANNON",
+      "riskValue": 2.0,
+      "onAttackEffect": "TRIPLE_HIT"
+    },
+    "ultimateSkill": {
+      "nameJa": "絶禍の断頭台",
+      "damage": { "power": 4.5, "element": "DARK", "targetType": "SINGLE", "attackType": "SLASH", "flags": ["IGNORE_DEF"] },
+      "lingering": { "type": "PARTY_BUFF", "descJa": "与ダメージの10%吸血バフを味方全体に付与する。", "duration": 3 }
+    },
+    "visual": { "color": "#dc2626", "soft": "rgba(220,38,38,0.24)", "icon": "☠" }
+  },
+  "archmage": {
+    "jobId": "archmage",
+    "formName": "虚無の暴君",
+    "tier": 2,
+    "concept": "闇術師の命の搾取を取り入れた、味方の命を燃やす固定砲台。",
+    "effectA": {
+      "descJa": "魔法ダメージ+150%。敵の属性耐性を完全無視する。",
+      "statBoosts": { "atk": 1.5 },
+      "flags": ["MAGIC_OVERDRIVE", "IGNORE_RESISTANCE"]
+    },
+    "effectB": {
+      "descJa": "魔法スキルを撃つたびに、主人公以外の味方全員の現在HP20%を吸収する。",
+      "riskType": "SELF_DAMAGE",
+      "riskValue": 20,
+      "onAttackEffect": "VOID_CAST"
+    },
+    "ultimateSkill": {
+      "nameJa": "カタストロフィ・ゼロ",
+      "damage": { "power": 4.2, "element": "DARK", "targetType": "ALL", "attackType": "MAGIC", "flags": ["IGNORE_RESISTANCE"] },
+      "lingering": { "type": "FIELD", "descJa": "味方の魔法火力が上昇し続けるが、ターン終了時に味方全体がスリップダメージを受ける呪域を残す。", "duration": 3 }
+    },
+    "visual": { "color": "#a855f7", "soft": "rgba(168,85,247,0.24)", "icon": "✦" }
+  },
+  "sorcerer": {
+    "jobId": "sorcerer",
+    "formName": "星喰いの放浪魔",
+    "tier": 2,
+    "concept": "属性術と盗賊の速度が過剰循環し、連射するほど魂を焼く高速魔法形態。",
+    "effectA": {
+      "descJa": "基礎攻撃力+95%、速度+45%、会心ダメージ+45%。",
+      "statBoosts": { "atk": 0.95, "spd": 0.45, "critDmg": 0.45 },
+      "flags": ["ELEMENT_SURGE"]
+    },
+    "effectB": {
+      "descJa": "スキルの残響が増える代わりに、発動中の行動ごとにソウルが追加減衰する。",
+      "riskType": "ENERGY_DRAIN",
+      "riskValue": 20,
+      "onAttackEffect": "ENERGY_OVERFLOW"
+    },
+    "ultimateSkill": {
+      "nameJa": "流星葬列・アストラルレイン",
+      "damage": { "power": 3.8, "element": "THUNDER", "targetType": "ALL", "attackType": "MAGIC", "flags": ["ELEMENT_SURGE"] },
+      "lingering": { "type": "PARTY_BUFF", "descJa": "味方全体の速度を3行動の間上昇させる星屑の流れを残す。", "duration": 3 }
+    },
+    "visual": { "color": "#fde047", "soft": "rgba(253,224,71,0.18)", "icon": "✦" }
+  },
+  "warlock": {
+    "jobId": "warlock",
+    "formName": "契約破りの黒星",
+    "tier": 2,
+    "concept": "闇術師の呪詛と魔法使いの火力が、敵の弱体数に応じて破裂する契約形態。",
+    "effectA": {
+      "descJa": "基礎攻撃力+90%、効果命中+90%、会心率+25%。",
+      "statBoosts": { "atk": 0.9, "effectHit": 0.9, "critRate": 0.25 },
+      "flags": ["CURSE_MARK"]
+    },
+    "effectB": {
+      "descJa": "呪印がある敵への火力が跳ねるが、弱体が少ない相手には伸びにくい。",
+      "riskType": "SETUP_DEPENDENT",
+      "riskValue": 1.5,
+      "onAttackEffect": "CURSE_MARK"
+    },
+    "ultimateSkill": {
+      "nameJa": "黒星契約・魂印爆砕",
+      "damage": { "power": 4.0, "element": "DARK", "targetType": "ALL", "attackType": "MAGIC", "flags": ["CURSE_MARK"] },
+      "lingering": { "type": "ENEMY_DEBUFF", "descJa": "敵全体に被会心率上昇の黒星印を3行動付与する。", "duration": 3 }
+    },
+    "visual": { "color": "#8A2BE2", "soft": "rgba(138,43,226,0.24)", "icon": "☾" }
+  },
+  "necromancer": {
+    "jobId": "necromancer",
+    "formName": "屍王の戴冠者",
+    "tier": 2,
+    "concept": "死霊術そのものが王冠となり、使役魔の怨念を主人公の火力へ束ねる。",
+    "effectA": {
+      "descJa": "基礎攻撃力+105%、HP+60%、会心ダメージ+55%。",
+      "statBoosts": { "atk": 1.05, "hp": 0.6, "critDmg": 0.55 },
+      "flags": ["LEGION_ECHO"]
+    },
+    "effectB": {
+      "descJa": "軍団の怨念追撃が発生するが、攻撃のたびに味方全体へ反動が走る。",
+      "riskType": "SELF_DAMAGE",
+      "riskValue": 12,
+      "onAttackEffect": "LEGION_ECHO"
+    },
+    "ultimateSkill": {
+      "nameJa": "戴冠・百骸王命令",
+      "damage": { "power": 4.3, "element": "DARK", "targetType": "ALL", "attackType": "SUMMON", "flags": ["LEGION_ECHO"] },
+      "lingering": { "type": "PARTY_BUFF", "descJa": "使役魔の追撃発生率を3行動の間上昇させる屍王の号令を残す。", "duration": 3 }
+    },
+    "visual": { "color": "#c026d3", "soft": "rgba(192,38,211,0.22)", "icon": "♛" }
+  },
+  "assassin": {
+    "jobId": "assassin",
+    "formName": "終夜の処刑者",
+    "tier": 2,
+    "concept": "盗賊の速度と剣士の殺傷力が、被弾を許されない処刑形態へ反転する。",
+    "effectA": {
+      "descJa": "基礎攻撃力+130%、速度+70%、会心率+45%。",
+      "statBoosts": { "atk": 1.3, "spd": 0.7, "critRate": 0.45 },
+      "flags": ["EXECUTION"]
+    },
+    "effectB": {
+      "descJa": "単体攻撃が瀕死の敵を処刑するが、被ダメージが1.8倍になる。",
+      "riskType": "GLASS_CANNON",
+      "riskValue": 1.8,
+      "onAttackEffect": "EXECUTION"
+    },
+    "ultimateSkill": {
+      "nameJa": "終夜処刑・月無き首狩り",
+      "damage": { "power": 4.4, "element": "DARK", "targetType": "SINGLE", "attackType": "SLASH", "flags": ["EXECUTION"] },
+      "lingering": { "type": "PARTY_BUFF", "descJa": "味方全体の会心ダメージを3行動の間上昇させる夜幕を残す。", "duration": 3 }
+    },
+    "visual": { "color": "#f87171", "soft": "rgba(248,113,113,0.18)", "icon": "✧" }
+  },
+  "trickster": {
+    "jobId": "trickster",
+    "formName": "虚実反転の道化王",
+    "tier": 2,
+    "concept": "盗賊の欺きと魔法使いの属性術が、運と仕込みで爆発する幻惑形態。",
+    "effectA": {
+      "descJa": "基礎攻撃力+85%、速度+55%、会心率+35%、会心ダメージ+35%。",
+      "statBoosts": { "atk": 0.85, "spd": 0.55, "critRate": 0.35, "critDmg": 0.35 },
+      "flags": ["MIRAGE_CHAIN"]
+    },
+    "effectB": {
+      "descJa": "幻影追撃は敵に弱体や防壁破壊があるほど強くなる。仕込みなしでは伸びにくい。",
+      "riskType": "SETUP_DEPENDENT",
+      "riskValue": 1.35,
+      "onAttackEffect": "MIRAGE_CHAIN"
+    },
+    "ultimateSkill": {
+      "nameJa": "虚実劇場・亡霊カーテンコール",
+      "damage": { "power": 3.9, "element": "WIND", "targetType": "ALL", "attackType": "PROJECTILE", "flags": ["MIRAGE_CHAIN"] },
+      "lingering": { "type": "FIELD", "descJa": "味方の次の攻撃に幻影追撃を付与する虚実の舞台を3行動展開する。", "duration": 3 }
+    },
+    "visual": { "color": "#22d3ee", "soft": "rgba(34,211,238,0.18)", "icon": "✦" }
+  }
+}

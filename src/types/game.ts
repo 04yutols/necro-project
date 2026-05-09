@@ -90,6 +90,47 @@ export interface SkillData {
   description: string;
 }
 
+export type DemonRiskType = 'SELF_DAMAGE' | 'ENERGY_DRAIN' | 'GLASS_CANNON' | 'SETUP_DEPENDENT' | null;
+export type DemonLingeringType = 'FIELD' | 'PARTY_BUFF' | 'ENEMY_DEBUFF';
+
+export interface DemonFormData {
+  jobId: string;
+  formName: string;
+  tier: 1 | 2;
+  concept: string;
+  effectA: {
+    descJa: string;
+    statBoosts: Partial<Record<keyof BaseStats, number>>;
+    flags?: string[];
+  };
+  effectB: {
+    descJa: string;
+    riskType: DemonRiskType;
+    riskValue?: number;
+    onAttackEffect?: string | null;
+  };
+  ultimateSkill: {
+    nameJa: string;
+    damage: {
+      power: number;
+      element: ElementType;
+      targetType: 'SINGLE' | 'ALL';
+      attackType?: SkillAttackType;
+      flags?: string[];
+    };
+    lingering: {
+      type: DemonLingeringType;
+      descJa: string;
+      duration: number;
+    };
+  };
+  visual?: {
+    color: string;
+    soft: string;
+    icon: string;
+  };
+}
+
 export interface SubOption {
   type: string;
   value: number;

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import jobsData from '../data/master/jobs.json';
+import demonFormsData from '../data/master/demonForms.json';
 import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
+import { DEMON_ACTION_LIMIT, clampDemonGauge } from '../logic/DemonizationSystem';
 import { isResidueSlotCompatible } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
 import {
@@ -11,9 +13,10 @@ import {
   getReforgeCost,
   hasEnoughWeaponMaterials,
 } from '../logic/WeaponSystem';
-import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData, BaseStats, JobData, WeaponMaterialData, WeaponMaterialType } from '../types/game';
+import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData, BaseStats, JobData, WeaponMaterialData, WeaponMaterialType, DemonFormData, DemonRiskType } from '../types/game';
 
 const JOBS = jobsData as Record<string, JobData>;
+const DEMON_FORMS = demonFormsData as Record<string, DemonFormData>;
 
 const INITIAL_PLAYER_BASE_STATS: BaseStats = {
   hp:        7200,
@@ -204,7 +207,17 @@ interface GameState {
   // 魔神化システム
   demonGauge: number;
   isDemonMode: boolean;
+  demonActionsRemaining: number;
+  demonUltimateUsed: boolean;
+  demonFormJobId: string | null;
+  demonEffectBFlag: string | null;
+  demonRiskType: DemonRiskType;
+  demonRiskValue: number;
   fillDemonGauge: (amount: number) => void;
+  startDemonMode: (jobId?: string) => void;
+  consumeDemonAction: () => void;
+  endDemonMode: () => void;
+  markDemonUltimateUsed: () => void;
   toggleDemonMode: () => void;
 
   // 画面遷移管理
@@ -232,10 +245,77 @@ export const useGameStore = create<GameState>((set) => ({
   actionTrigger: null,
   demonGauge: 100,
   isDemonMode: false,
-  fillDemonGauge: (amount) => set((state) => ({ demonGauge: Math.min(100, Math.max(0, state.demonGauge + amount)) })),
+  demonActionsRemaining: 0,
+  demonUltimateUsed: false,
+  demonFormJobId: null,
+  demonEffectBFlag: null,
+  demonRiskType: null,
+  demonRiskValue: 0,
+  fillDemonGauge: (amount) => set((state) => ({ demonGauge: clampDemonGauge(state.demonGauge + amount) })),
+  startDemonMode: (jobId) => set((state) => {
+    if (state.isDemonMode || state.demonGauge < 100) return state;
+    const formJobId = jobId ?? state.player?.currentJobId ?? 'warrior';
+    const form = DEMON_FORMS[formJobId] ?? DEMON_FORMS.warrior;
+    return {
+      demonGauge: 0,
+      isDemonMode: true,
+      demonActionsRemaining: DEMON_ACTION_LIMIT,
+      demonUltimateUsed: false,
+      demonFormJobId: form.jobId,
+      demonEffectBFlag: form.effectB.onAttackEffect ?? null,
+      demonRiskType: form.effectB.riskType,
+      demonRiskValue: form.effectB.riskValue ?? 0,
+    };
+  }),
+  consumeDemonAction: () => set((state) => {
+    if (!state.isDemonMode) return state;
+    const nextActions = Math.max(0, state.demonActionsRemaining - 1);
+    if (nextActions > 0) return { demonActionsRemaining: nextActions };
+    return {
+      isDemonMode: false,
+      demonActionsRemaining: 0,
+      demonUltimateUsed: false,
+      demonFormJobId: null,
+      demonEffectBFlag: null,
+      demonRiskType: null,
+      demonRiskValue: 0,
+    };
+  }),
+  endDemonMode: () => set({
+    isDemonMode: false,
+    demonActionsRemaining: 0,
+    demonUltimateUsed: false,
+    demonFormJobId: null,
+    demonEffectBFlag: null,
+    demonRiskType: null,
+    demonRiskValue: 0,
+  }),
+  markDemonUltimateUsed: () => set((state) => state.isDemonMode ? { demonUltimateUsed: true } : state),
   toggleDemonMode: () => set((state) => {
-    if (!state.isDemonMode && state.demonGauge < 100) return state;
-    return { isDemonMode: !state.isDemonMode, demonGauge: state.isDemonMode ? 50 : state.demonGauge };
+    if (state.isDemonMode) {
+      return {
+        isDemonMode: false,
+        demonActionsRemaining: 0,
+        demonUltimateUsed: false,
+        demonFormJobId: null,
+        demonEffectBFlag: null,
+        demonRiskType: null,
+        demonRiskValue: 0,
+      };
+    }
+    if (state.demonGauge < 100) return state;
+    const formJobId = state.player?.currentJobId ?? 'warrior';
+    const form = DEMON_FORMS[formJobId] ?? DEMON_FORMS.warrior;
+    return {
+      demonGauge: 0,
+      isDemonMode: true,
+      demonActionsRemaining: DEMON_ACTION_LIMIT,
+      demonUltimateUsed: false,
+      demonFormJobId: form.jobId,
+      demonEffectBFlag: form.effectB.onAttackEffect ?? null,
+      demonRiskType: form.effectB.riskType,
+      demonRiskValue: form.effectB.riskValue ?? 0,
+    };
   }),
   currentTab: 'HOME',
 
@@ -548,5 +628,11 @@ export const useGameStore = create<GameState>((set) => ({
     currentTab: 'HOME',
     demonGauge: 100,
     isDemonMode: false,
+    demonActionsRemaining: 0,
+    demonUltimateUsed: false,
+    demonFormJobId: null,
+    demonEffectBFlag: null,
+    demonRiskType: null,
+    demonRiskValue: 0,
   })
 }));

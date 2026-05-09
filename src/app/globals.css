@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=IM+Fell+English:ital@0;1&family=Space+Grotesk:wght@400;700&family=Noto+Sans+JP:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cinzel+Decorative:wght@700;900&family=IM+Fell+English:ital@0;1&family=Space+Grotesk:wght@400;700&family=Noto+Sans+JP:wght@400;700;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -31,6 +31,11 @@
 
   /* Noise texture base64 (micro grain) */
   --noise-opacity: 0.04;
+
+  /* Font families — Vite dev 用に定義（Next.js は next/font/google が上書き） */
+  --font-cinzel: 'Cinzel', serif;
+  --font-noto-sans-jp: 'Noto Sans JP', sans-serif;
+  --font-space-grotesk: 'Space Grotesk', sans-serif;
 }
 
 *,

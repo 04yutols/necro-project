@@ -4,6 +4,7 @@ import enemies from '../data/master/enemies.json';
 import items from '../data/master/items.json';
 import stages from '../data/master/stages.json';
 import skills from '../data/master/skills.json';
+import demonForms from '../data/master/demonForms.json';
 
 export class MasterDataService {
   private static instance: MasterDataService;
@@ -41,6 +42,10 @@ export class MasterDataService {
     return (skills as any)[id];
   }
 
+  public getDemonForm(jobId: string) {
+    return (demonForms as any)[jobId];
+  }
+
   public getAllJobs() {
     return jobs;
   }
@@ -63,5 +68,9 @@ export class MasterDataService {
 
   public getAllSkills() {
     return skills;
+  }
+
+  public getAllDemonForms() {
+    return demonForms;
   }
 }
