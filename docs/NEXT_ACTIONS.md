@@ -55,7 +55,7 @@
 `BattleEngine` の `monsters` には `tribe` フィールドがあり接続待ち。
 
 **不足している設計**:
-- 4種族（UNDEAD / DEMON / BEAST / HUMANOID）の組み合わせシナジー一覧
+- 6種族（UNDEAD / DEMON / BEAST / HUMANOID　/ DRAGON / ORC）の組み合わせシナジー一覧
 - 発動条件（同一種族N体以上等）と効果の数値
 - パーティ編成画面でのシナジー表示UI
 - シナジーと魔神化Effectの相互作用ルール
