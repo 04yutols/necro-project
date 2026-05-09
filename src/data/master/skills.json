@@ -57,6 +57,8 @@
     "attackType": "MAGIC",
     "targetType": "SINGLE",
     "effectKey": "fire_magic",
+    "ailmentType": "BURN",
+    "ailmentBaseRate": 0.25,
     "description": "炎の弾を放つ。敵単体に炎属性魔法ダメージ。"
   },
   "skill_mage_water": {
@@ -81,6 +83,8 @@
     "attackType": "MAGIC",
     "targetType": "SINGLE",
     "effectKey": "thunder_magic",
+    "ailmentType": "PARALYSIS",
+    "ailmentBaseRate": 0.25,
     "description": "上空から雷撃を落とす。敵単体に雷属性魔法ダメージ。"
   },
   "skill_mage_earth": {
@@ -117,6 +121,8 @@
     "attackType": "MAGIC",
     "targetType": "SINGLE",
     "effectKey": "dark_magic",
+    "ailmentType": "POISON",
+    "ailmentBaseRate": 0.30,
     "description": "対象の生命力を吸収する。敵単体に魔法ダメージを与え、自身のHPを回復。"
   },
   "skill_darkpriest_curse_bind": {
@@ -129,6 +135,8 @@
     "attackType": "MAGIC",
     "targetType": "ALL_ENEMIES",
     "effectKey": "dark_magic",
+    "ailmentType": "WEAKEN",
+    "ailmentBaseRate": 0.35,
     "description": "黒い聖句で敵全体を縛る。闇属性魔法ダメージ。"
   },
   "skill_rogue_1": {
@@ -141,6 +149,8 @@
     "attackType": "STRIKE",
     "targetType": "SINGLE",
     "effectKey": "none_strike",
+    "ailmentType": "BLEED",
+    "ailmentBaseRate": 0.40,
     "description": "敵の急所を狙う。会心が発生しやすい物理ダメージ。"
   },
   "skill_rogue_shadow_throw": {
@@ -189,6 +199,8 @@
     "attackType": "SLASH",
     "targetType": "SINGLE",
     "effectKey": "fire_slash",
+    "ailmentType": "BURN",
+    "ailmentBaseRate": 0.28,
     "description": "血の熱を刃に乗せる高火力斬撃。敵単体に炎属性物理ダメージ。"
   },
   "skill_berserker_earth_breaker": {

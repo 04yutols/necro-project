@@ -6,10 +6,20 @@ import {
   BaseStats,
   Resistances,
   ElementType,
-  SkillAttackType
+  SkillAttackType,
+  AilmentType,
+  StatusEffect
 } from '../types/game';
 import { MasterDataService } from '../services/MasterDataService';
 import { calculateCharacterStatProfile, hasElementDmgBoosts } from './StatSystem';
+import {
+  applyStatusEffect,
+  calcAVDelay,
+  getAilmentAttackMultiplier,
+  getSkillAilment,
+  processStatusEffects,
+  tryApplyAilment,
+} from './StatusAilmentSystem';
 
 /**
  * Necromance Brave Battle Engine
@@ -37,17 +47,27 @@ export class BattleEngine {
    */
   public simulateAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: MonsterData, skillId?: string): BattleLog[] {
     this.logs = [];
+    const { player } = this.state;
 
     // 1. ターン開始時のエリアギミック判定 (GDD-006)
     this.processAreaGimmick();
 
-    // 2. プレイヤー行動 (GDD-003)
+    // 2. 状態異常のターン開始処理 (docs/設計書/17)
+    const playerStatus = this.processRuntimeStatus(player.name, player.stats, player.statusEffects);
+    player.statusEffects = playerStatus.effects;
+    if (playerStatus.skipAction) {
+      this.addLog('STATUS_SKIP', player.name, player.name, `${player.name}は状態異常で行動できない。`);
+      this.updateState();
+      return this.logs;
+    }
+
+    // 3. プレイヤー行動 (GDD-003)
     this.processPlayerAction(actionType, target, skillId);
 
-    // 3. 軍団の追撃・シナジー (GDD-005)
+    // 4. 軍団の追撃・シナジー (GDD-005)
     this.processMonsterActions(target);
 
-    // 4. ターン・WAVE更新 (GDD-002)
+    // 5. ターン・WAVE更新 (GDD-002)
     this.updateState();
 
     return this.logs;
@@ -106,7 +126,10 @@ export class BattleEngine {
   private processPlayerAction(actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', target: MonsterData, skillId?: string): void {
     const { player } = this.state;
     const profile = calculateCharacterStatProfile(player);
-    const stats = profile.total;
+    const stats = {
+      ...profile.total,
+      atk: Math.floor(profile.total.atk * getAilmentAttackMultiplier(player.statusEffects, Boolean((player as any).isDemonMode))),
+    };
     const elementBoosts = hasElementDmgBoosts(player.elementDmgBoosts)
       ? player.elementDmgBoosts
       : profile.elementDmgBoosts;
@@ -164,6 +187,52 @@ export class BattleEngine {
     }
 
     this.addLog(actionType, player.name, target.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, element, attackType);
+    this.tryApplyActionAilment(player, target, skillId, element, attackType);
+  }
+
+  private tryApplyActionAilment(
+    player: CharacterData,
+    target: MonsterData,
+    skillId: string | undefined,
+    element: ElementType,
+    attackType: SkillAttackType,
+  ): void {
+    const skillData = skillId ? this.masterData.getSkill(skillId) : null;
+    const ailmentType = skillData
+      ? getSkillAilment(skillData)
+      : getSkillAilment({ type: 'PHYSICAL', element, attackType });
+    if (!ailmentType) return;
+
+    const profile = calculateCharacterStatProfile(player);
+    const result = tryApplyAilment(
+      ailmentType,
+      { atk: profile.total.atk, effectHit: profile.total.effectHit },
+      { effectRes: target.stats.effectRes },
+      target.statusEffects,
+      {
+        baseRate: skillData?.ailmentBaseRate,
+        immune: false,
+      },
+    );
+    target.statusEffects = result.effects;
+
+    if (result.applied) {
+      this.addLog(
+        'AILMENT_APPLY',
+        player.name,
+        target.name,
+        `${target.name}に${this.getAilmentLabel(ailmentType)}を付与した。`,
+        undefined,
+        false,
+        false,
+        false,
+        element,
+        attackType,
+        { ailmentApplied: ailmentType },
+      );
+    } else if (result.resisted) {
+      this.addLog('AILMENT_RESIST', target.name, target.name, `${target.name}は${this.getAilmentLabel(ailmentType)}を抵抗した。`, undefined, false, false, true, element, attackType);
+    }
   }
 
   private processMonsterActions(target: MonsterData): void {
@@ -242,6 +311,14 @@ export class BattleEngine {
       playerStats.hp -= damage;
       this.addLog('GIMMICK', 'Area', player.name, `エリアギミック：スリップダメージにより${damage}ダメージ。`);
     }
+    if (areaGimmick === 'STATUS_AILMENT') {
+      if (Boolean((player as any).isDemonMode)) {
+        this.addLog('GIMMICK', 'Area', player.name, '瘴気が襲うが、魔神化により状態異常を無効化した。');
+        return;
+      }
+      player.statusEffects = applyStatusEffect(player.statusEffects, 'POISON', 0);
+      this.addLog('GIMMICK', 'Area', player.name, '瘴気の沼が毒を刻んだ。', undefined, false, false, false, 'DARK', 'MAGIC', { ailmentApplied: 'POISON' });
+    }
   }
 
   private getTotalStats(player: CharacterData): BaseStats {
@@ -261,6 +338,57 @@ export class BattleEngine {
     }
   }
 
+  private processRuntimeStatus(
+    targetName: string,
+    targetStats: BaseStats,
+    effects: StatusEffect[] | undefined,
+  ): { effects: StatusEffect[]; skipAction: boolean } {
+    const result = processStatusEffects(effects, { maxHp: targetStats.hp });
+    if (result.totalDamage > 0) {
+      targetStats.hp = Math.max(1, targetStats.hp - result.totalDamage);
+    }
+    result.ticks.forEach(tick => {
+      if (tick.damage) {
+        this.addLog(
+          'AILMENT_TICK',
+          targetName,
+          targetName,
+          `${targetName}は${this.getAilmentLabel(tick.type)}で${tick.damage}ダメージ。`,
+          tick.damage,
+          false,
+          false,
+          false,
+          'NONE',
+          'MAGIC',
+          { ailmentTick: tick.type },
+        );
+      }
+      if (tick.skipped) {
+        this.addLog('AILMENT_SKIP', targetName, targetName, `${targetName}は${this.getAilmentLabel(tick.type)}で行動を阻害された。`, undefined, false, false, false, 'NONE', 'MAGIC', { ailmentTick: tick.type });
+      }
+      if (tick.expired) {
+        this.addLog('AILMENT_CLEAR', targetName, targetName, `${targetName}の${this.getAilmentLabel(tick.type)}が解除された。`, undefined, false, false, false, 'NONE', 'MAGIC', { ailmentClearedBy: 'TURN_END' });
+      }
+    });
+    return { effects: result.effects, skipAction: result.skipAction };
+  }
+
+  public calculateAVDelay(baseAVDelay: number, targetEffectRes: number): number {
+    return calcAVDelay(baseAVDelay, targetEffectRes);
+  }
+
+  private getAilmentLabel(type: AilmentType): string {
+    const labels: Record<AilmentType, string> = {
+      BLEED: '出血',
+      POISON: '毒',
+      BURN: '燃焼',
+      FREEZE: '凍結',
+      PARALYSIS: '麻痺',
+      WEAKEN: '衰弱',
+    };
+    return labels[type];
+  }
+
   private addLog(
     action: string,
     actorName: string,
@@ -271,7 +399,8 @@ export class BattleEngine {
     isWeakness?: boolean,
     isResisted?: boolean,
     element: ElementType = 'NONE',
-    attackType: SkillAttackType = 'SLASH'
+    attackType: SkillAttackType = 'SLASH',
+    ailment?: Pick<BattleLog, 'ailmentApplied' | 'ailmentTick' | 'ailmentClearedBy'>
   ): void {
     this.logs.push({
       turn: this.state.turn,
@@ -285,6 +414,7 @@ export class BattleEngine {
       isResisted,
       element,
       attackType,
+      ...ailment,
       playerEnergy: this.state.player.currentEnergy,
       playerMP: this.state.player.currentEnergy,
       playerHP: this.getMutableStats(this.state.player).hp,

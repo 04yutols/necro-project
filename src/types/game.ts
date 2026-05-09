@@ -7,6 +7,7 @@ export type ElementType = 'FIRE' | 'WATER' | 'THUNDER' | 'EARTH' | 'WIND' | 'ICE
 export type SkillAttackType = 'SLASH' | 'STRIKE' | 'PROJECTILE' | 'MAGIC' | 'SUMMON' | 'HEAL';
 export type EnemyTier = 'MINION' | 'ELITE' | 'BOSS';
 export type StageNodeType = 'SAFE' | 'DUNGEON' | 'BOSS';
+export type AilmentType = 'BLEED' | 'POISON' | 'BURN' | 'FREEZE' | 'PARALYSIS' | 'WEAKEN';
 
 export interface BaseStats {
   hp:        number;  // 最大HP
@@ -76,6 +77,19 @@ export interface JobData {
   skills: JobSkillUnlock[];
 }
 
+export interface StatusEffectStack {
+  remainingTurns: number;
+  sourceAtk?: number;
+}
+
+export interface StatusEffect {
+  type: AilmentType;
+  remainingTurns: number;
+  stackCount: number;
+  sourceAtk?: number;
+  stacks?: StatusEffectStack[];
+}
+
 export interface SkillData {
   id: string;
   name: string;
@@ -87,6 +101,8 @@ export interface SkillData {
   targetType?: 'SINGLE' | 'ALL_ENEMIES' | 'SELF' | 'ALLY';
   effectKey?: string;
   isUltimate?: boolean; // 奥義フラグ — true のとき maxEnergy を全消費
+  ailmentType?: AilmentType;
+  ailmentBaseRate?: number;
   description: string;
 }
 
@@ -223,6 +239,7 @@ export interface CharacterData {
   jobs: UserJobState[];
   isAwakened: boolean;
   clearedStages: string[];
+  statusEffects?: StatusEffect[];
   // エネルギーシステム（ランタイム状態 — DB非保存）
   currentEnergy: number;
   maxEnergy:     number;
@@ -285,6 +302,7 @@ export interface MonsterData {
   shieldHp?: number;
   maxShieldHp?: number;
   shieldBroken?: boolean;
+  statusEffects?: StatusEffect[];
   equippedShardId?: string;
   spiritCore?: SpiritCoreData; // 霊核 (GDD-追加要件)
 }
@@ -383,6 +401,9 @@ export interface BattleLog {
   isResisted?: boolean;
   element?: ElementType;
   attackType?: SkillAttackType;
+  ailmentApplied?: AilmentType;
+  ailmentTick?: AilmentType;
+  ailmentClearedBy?: 'DEMONIZE' | 'TURN_END';
   playerEnergy: number;
   playerMP?: number; // legacy alias for older UI log readers
   playerHP: number;

@@ -22,7 +22,16 @@ import {
   getDemonRiskLabel,
   shouldBypassDefense,
 } from '../../logic/DemonizationSystem';
-import type { BossGimmick, DemonFormData, DropEntry, ElementType, EnemyData, EnemyTier, JobData, SkillAttackType, SkillData, StageData } from '../../types/game';
+import {
+  AILMENT_UI,
+  applyStatusEffect,
+  clearStatusEffectsByDemonize,
+  getAilmentAttackMultiplier,
+  getSkillAilment,
+  processStatusEffects,
+  tryApplyAilment,
+} from '../../logic/StatusAilmentSystem';
+import type { AilmentType, BossGimmick, DemonFormData, DropEntry, ElementType, EnemyData, EnemyTier, JobData, SkillAttackType, SkillData, StageData, StatusEffect } from '../../types/game';
 
 interface BattleCanvasProps {
   stageId?: string;
@@ -39,6 +48,8 @@ type BattleSkill = {
   aoe: boolean;
   element: ElementType;
   attackType: SkillAttackType;
+  ailmentType?: AilmentType;
+  ailmentBaseRate?: number;
 };
 
 interface ActiveSkillEffect {
@@ -54,9 +65,12 @@ interface ActiveSkillEffect {
 interface EnemyState {
   id: number; sourceId?: string; name: string; nameEn: string;
   hp: number; maxHp: number; atk: number; color: string;
+  effectHit?: number; effectRes?: number;
   pos: 'left' | 'center' | 'right'; size: number;
   tier?: EnemyTier; weaknesses?: ElementType[];
   shieldHp?: number; maxShieldHp?: number; shieldBroken?: boolean;
+  statusEffects?: StatusEffect[];
+  statusPulse?: AilmentType;
   sprite?: 'WRAITH' | 'GIANT' | 'WYRM';
   gimmicks?: BossGimmick[];
   targeted: boolean; hit?: boolean;
@@ -175,6 +189,8 @@ function toBattleSkill(skill: SkillData): BattleSkill {
     aoe: skill.targetType === 'ALL_ENEMIES',
     element,
     attackType,
+    ailmentType: skill.ailmentType,
+    ailmentBaseRate: skill.ailmentBaseRate,
   };
 }
 
@@ -217,6 +233,8 @@ function toEnemyState(enemy: EnemyData, index: number, count: number): EnemyStat
     hp,
     maxHp: hp,
     atk: enemy.stats.atk,
+    effectHit: enemy.stats.effectHit,
+    effectRes: enemy.stats.effectRes,
     color: enemy.battle?.color ?? (enemy.tier === 'BOSS' ? '#ef4444' : '#8A2BE2'),
     pos: positions[index] ?? 'center',
     size: enemy.battle?.size ?? (enemy.tier === 'BOSS' ? 0.98 : enemy.tier === 'ELITE' ? 0.88 : 0.74),
@@ -266,6 +284,11 @@ function cloneEnemies(enemies: EnemyState[]): EnemyState[] {
     ...enemy,
     weaknesses: enemy.weaknesses ? [...enemy.weaknesses] : undefined,
     gimmicks: enemy.gimmicks ? [...enemy.gimmicks] : undefined,
+    statusEffects: enemy.statusEffects?.map(effect => ({
+      ...effect,
+      stacks: effect.stacks?.map(stack => ({ ...stack })),
+    })),
+    statusPulse: undefined,
   }));
 }
 
@@ -784,6 +807,48 @@ const POSITIONS: Record<string, React.CSSProperties> = {
   right:  { left: '60%', width: '34%', alignSelf: 'flex-end', paddingBottom: 16 },
 };
 
+function StatusBadgeList({ effects, pulse }: { effects?: StatusEffect[]; pulse?: AilmentType }) {
+  if (!effects || effects.length === 0) return null;
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      gap: 3,
+      minHeight: 18,
+      marginBottom: 3,
+      flexWrap: 'wrap',
+    }}>
+      {effects.map(effect => {
+        const ui = AILMENT_UI[effect.type];
+        return (
+          <div key={effect.type} title={ui.label} style={{
+            minWidth: 18,
+            height: 18,
+            padding: '0 4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            borderRadius: 6,
+            background: `linear-gradient(135deg, ${ui.soft}, rgba(5,1,12,0.82))`,
+            border: `1px solid ${ui.color}88`,
+            boxShadow: pulse === effect.type ? `0 0 12px ${ui.color}` : `0 0 7px ${ui.color}44`,
+            color: '#fff',
+            fontFamily: "'Noto Sans JP', sans-serif",
+            fontSize: 8,
+            fontWeight: 900,
+            lineHeight: 1,
+            animation: pulse === effect.type ? 'demonPulse 0.8s ease-out both' : 'none',
+          }}>
+            <span>{ui.icon}</span>
+            {effect.stackCount > 1 && <span style={{ color: ui.color, fontFamily: 'monospace', fontSize: 8 }}>×{effect.stackCount}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShake, demonColor }: {
   enemies: EnemyState[];
   onTargetEnemy: (id: number) => void;
@@ -873,6 +938,7 @@ function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShak
               cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4,
               transform: `scale(${enemy.size * responsiveMult})`, transformOrigin: 'bottom center',
             }}>
+            <StatusBadgeList effects={enemy.statusEffects} pulse={enemy.statusPulse}/>
             {/* HP bar */}
             <div style={{ width: '100%', height: 5, background: 'rgba(0,0,0,0.5)', borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)', marginBottom: 4 }}>
               <div style={{
@@ -963,14 +1029,39 @@ interface BattlePartyMember {
   color: string; active: boolean;
 }
 
-function PartyStatusBar({ party, demonized }: { party: BattlePartyMember[]; demonized: boolean }) {
+function PartyStatusBar({ party, demonized, playerStatusEffects }: { party: BattlePartyMember[]; demonized: boolean; playerStatusEffects: StatusEffect[] }) {
   return (
     <div style={{
       padding: '6px 12px', display: 'flex', flexDirection: 'column', gap: 4,
       background: 'rgba(5,2,14,0.85)', borderTop: '1px solid rgba(255,255,255,0.06)',
     }}>
       {party.map(member => (
-        <div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: member.hp <= 0 ? 0.35 : 1 }}>
+        <div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: member.hp <= 0 ? 0.35 : 1, position: 'relative' }}>
+          {member.active && playerStatusEffects.length > 0 && (
+            <div style={{ position: 'absolute', top: -8, right: 4, display: 'flex', gap: 3, zIndex: 2 }}>
+              {playerStatusEffects.slice(0, 4).map(effect => {
+                const ui = AILMENT_UI[effect.type];
+                return (
+                  <div key={effect.type} style={{
+                    minWidth: 17,
+                    height: 17,
+                    padding: '0 3px',
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: `1px solid ${ui.color}88`,
+                    background: `linear-gradient(135deg, ${ui.soft}, rgba(5,1,12,0.9))`,
+                    color: '#fff',
+                    boxShadow: `0 0 8px ${ui.color}55`,
+                    fontSize: 7,
+                    fontFamily: "'Noto Sans JP', sans-serif",
+                    fontWeight: 900,
+                  }}>{ui.icon}</div>
+                );
+              })}
+            </div>
+          )}
           <div style={{
             width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
             background: member.active ? `radial-gradient(circle, ${member.color}30, #0a0515)` : 'rgba(255,255,255,0.04)',
@@ -1268,6 +1359,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const [demonized, setDemonized] = useState(false);
   const [demonActionsRemaining, setDemonActionsRemaining] = useState(0);
   const [demonUltimateUsed, setDemonUltimateUsed] = useState(false);
+  const [playerStatusEffects, setPlayerStatusEffects] = useState<StatusEffect[]>([]);
   const [auto, setAuto] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [log, setLog] = useState([`戦闘開始！${battleWaves[0].title}へ侵攻する。`, `${battleWaves[0].label} 開始。骸骨騎士のターン。`]);
@@ -1349,6 +1441,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setDemonized(false);
     setDemonActionsRemaining(0);
     setDemonUltimateUsed(false);
+    setPlayerStatusEffects([]);
     setAuto(false);
     setShowResult(false);
     setBattleResult(null);
@@ -1486,6 +1579,140 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     return finalDmg;
   }
 
+  function getSkillAilmentType(skill: Pick<BattleSkill, 'ailmentType' | 'element' | 'attackType'>): AilmentType | null {
+    return getSkillAilment({
+      ailmentType: skill.ailmentType,
+      element: skill.element,
+      attackType: skill.attackType,
+      type: skill.attackType === 'MAGIC' || skill.attackType === 'SUMMON' ? 'MAGICAL' : 'PHYSICAL',
+    });
+  }
+
+  function applyAilmentToEnemy(targetId: number, skill: Pick<BattleSkill, 'ailmentType' | 'ailmentBaseRate' | 'element' | 'attackType'>) {
+    const target = enemiesRef.current.find(enemy => enemy.id === targetId);
+    const ailmentType = getSkillAilmentType(skill);
+    if (!target || !ailmentType) return;
+    const result = tryApplyAilment(
+      ailmentType,
+      {
+        atk: playerStats?.atk ?? 1500,
+        effectHit: playerStats?.effectHit ?? 0,
+      },
+      {
+        effectRes: target.effectRes ?? 0,
+      },
+      target.statusEffects,
+      {
+        baseRate: skill.ailmentBaseRate,
+      },
+    );
+    if (!result.applied && !result.immune) return;
+
+    const next = enemiesRef.current.map(enemy =>
+      enemy.id === targetId
+        ? { ...enemy, statusEffects: result.effects, statusPulse: ailmentType }
+        : enemy
+    );
+    enemiesRef.current = next;
+    setEnemies(next);
+    if (result.applied) {
+      const ui = AILMENT_UI[ailmentType];
+      addLog(`${target.name}に${ui.label}を付与。`);
+      setTimeout(() => {
+        setEnemies(prev => prev.map(enemy => enemy.id === targetId ? { ...enemy, statusPulse: undefined } : enemy));
+      }, 900);
+    }
+  }
+
+  function applyEnemyAilmentToPlayer(enemy: EnemyState, activeDemonForm: DemonFormData | null) {
+    const ailmentType: AilmentType | null = enemy.tier === 'BOSS'
+      ? 'WEAKEN'
+      : enemy.tier === 'ELITE'
+      ? 'PARALYSIS'
+      : null;
+    if (!ailmentType) return;
+
+    const result = tryApplyAilment(
+      ailmentType,
+      { atk: enemy.atk, effectHit: enemy.effectHit ?? 0 },
+      { effectRes: playerStats?.effectRes ?? 5 },
+      playerStatusEffects,
+      {
+        baseRate: enemy.tier === 'BOSS' ? 0.28 : 0.22,
+        immune: Boolean(activeDemonForm),
+      },
+    );
+    if (result.immune) {
+      addLog('魔神化の免疫が状態異常を弾いた。');
+      return;
+    }
+    if (result.applied) {
+      setPlayerStatusEffects(result.effects);
+      addLog(`${enemy.name}の呪圧で${AILMENT_UI[ailmentType].label}を受けた。`);
+    }
+  }
+
+  function processEnemyStatusPhase(): { alive: EnemyState[]; skippedIds: Set<number> } {
+    const skippedIds = new Set<number>();
+    let nextEnemies = enemiesRef.current.map(enemy => {
+      if (enemy.hp <= 0 || !enemy.statusEffects?.length) return { ...enemy, statusPulse: undefined };
+      const result = processStatusEffects(enemy.statusEffects, { maxHp: enemy.maxHp });
+      const firstTick = result.ticks.find(tick => tick.damage || tick.skipped)?.type;
+      if (result.totalDamage > 0) {
+        const positions: Record<number, { x: string; y: string }> = { 0: { x: '12%', y: '18%' }, 1: { x: '36%', y: '12%' }, 2: { x: '62%', y: '16%' } };
+        const pos = positions[enemy.id] || { x: '40%', y: '15%' };
+        spawnFloat(pos.x, pos.y, result.totalDamage, { color: '#4ade80' });
+        const labels = result.ticks.filter(tick => tick.damage).map(tick => AILMENT_UI[tick.type].label).join('/');
+        addLog(`${enemy.name}に${labels}の継続ダメージ ${result.totalDamage}。`);
+      }
+      if (result.skipAction) {
+        skippedIds.add(enemy.id);
+        const control = result.ticks.find(tick => tick.skipped)?.type;
+        addLog(`${enemy.name}は${control ? AILMENT_UI[control].label : '状態異常'}で行動を阻害された。`);
+      }
+      result.ticks.filter(tick => tick.expired).forEach(tick => {
+        addLog(`${enemy.name}の${AILMENT_UI[tick.type].label}が解除された。`);
+      });
+      return {
+        ...enemy,
+        hp: Math.max(0, enemy.hp - result.totalDamage),
+        statusEffects: result.effects,
+        statusPulse: firstTick,
+      };
+    });
+
+    enemiesRef.current = nextEnemies;
+    setEnemies(nextEnemies);
+    window.setTimeout(() => {
+      setEnemies(prev => prev.map(enemy => ({ ...enemy, statusPulse: undefined })));
+    }, 800);
+
+    if (nextEnemies.every(enemy => enemy.hp <= 0)) {
+      window.setTimeout(resolveWaveClear, 380);
+    }
+    return { alive: nextEnemies.filter(enemy => enemy.hp > 0), skippedIds };
+  }
+
+  function resolvePlayerStatusBeforeAction(): boolean {
+    if (demonized || playerStatusEffects.length === 0) return false;
+    const result = processStatusEffects(playerStatusEffects, { maxHp: battleParty[0]?.maxHp ?? 1 });
+    setPlayerStatusEffects(result.effects);
+    if (result.totalDamage > 0) {
+      spawnFloat('42%', '58%', result.totalDamage, { color: '#4ade80' });
+      const labels = result.ticks.filter(tick => tick.damage).map(tick => AILMENT_UI[tick.type].label).join('/');
+      addLog(`骸骨騎士は${labels}で${result.totalDamage}ダメージ。`);
+    }
+    result.ticks.filter(tick => tick.expired).forEach(tick => {
+      addLog(`骸骨騎士の${AILMENT_UI[tick.type].label}が解除された。`);
+    });
+    if (!result.skipAction) return false;
+    const control = result.ticks.find(tick => tick.skipped)?.type;
+    addLog(`骸骨騎士は${control ? AILMENT_UI[control].label : '状態異常'}で行動できない。`);
+    setPhase('playerTurn');
+    endPlayerTurn();
+    return true;
+  }
+
   function getTargetId() {
     const t = enemies.find(e => e.targeted && e.hp > 0);
     return t ? t.id : (enemies.find(e => e.hp > 0)?.id ?? 0);
@@ -1523,17 +1750,25 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       resolveWaveClear();
       return;
     }
+    const statusPhase = processEnemyStatusPhase();
+    if (statusPhase.alive.length === 0) {
+      resolveWaveClear();
+      return;
+    }
     let delay = 0;
-    alive.forEach((enemy) => {
+    statusPhase.alive.forEach((enemy) => {
+      if (statusPhase.skippedIds.has(enemy.id)) return;
       delay += speedMs * 0.55;
       setTimeout(() => {
         if (turnToken !== enemyTurnSerialRef.current) return;
         const enrage = enemy.gimmicks?.find(gimmick => gimmick.trigger === 'HP_BELOW_50' && gimmick.effect === 'ENRAGE');
         const enraged = Boolean(enrage && enemy.hp / enemy.maxHp <= 0.5);
         const incomingMult = getDemonIncomingDamageMultiplier(activeDemonForm);
-        const dmg = Math.round(enemy.atk * incomingMult * (enraged ? Number(enrage?.value ?? 1.35) : 1) * (0.8 + Math.random() * 0.4));
+        const effectiveAtk = enemy.atk * getAilmentAttackMultiplier(enemy.statusEffects);
+        const dmg = Math.round(effectiveAtk * incomingMult * (enraged ? Number(enrage?.value ?? 1.35) : 1) * (0.8 + Math.random() * 0.4));
         spawnFloat('42%', '58%', dmg, { color: '#f87171' });
         addLog(`${enemy.name}${enraged ? 'の怒り' : ''}の攻撃！ 骸骨騎士に ${dmg}ダメージ！${incomingMult > 1 ? ' 紙装甲の代償で被害が増幅。' : ''}`);
+        applyEnemyAilmentToPlayer(enemy, activeDemonForm);
         setFlashColor('rgba(239,68,68,0.25)');
         setTimeout(() => setFlashColor(null), 300);
         setScreenShake(true);
@@ -1549,13 +1784,15 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   function handleAttack() {
     if (phase !== 'playerTurn') return;
+    if (resolvePlayerStatusBeforeAction()) return;
     setPhase('animating');
     const tid = getTargetId();
     const enemy = enemies.find(e => e.id === tid);
     const attackElement = demonized ? demonForm.ultimateSkill.damage.element : 'NONE';
     const hitCount = demonized ? getDemonActionHitCount(demonForm, 'SLASH') : 1;
     const demonMult = demonized ? getDemonDamageMultiplier(demonForm, 'SLASH') : 1;
-    const dmg = Math.round(1500 * demonMult * (hitCount > 1 ? 0.62 : 1) * (0.75 + Math.random() * 0.25));
+    const ailmentMult = getAilmentAttackMultiplier(playerStatusEffects, demonized);
+    const dmg = Math.round(1500 * demonMult * ailmentMult * (hitCount > 1 ? 0.62 : 1) * (0.75 + Math.random() * 0.25));
     triggerSkillEffect({
       name: demonized ? demonForm.formName : '攻撃',
       element: attackElement,
@@ -1573,6 +1810,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       if (demonized) { setFlashColor(demonForm.visual?.soft ?? 'rgba(220,38,38,0.3)'); setTimeout(() => setFlashColor(null), 350); }
       setTimeout(() => {
         addLog(`${enemy?.name}に 合計${totalDamage}ダメージ！`);
+        applyAilmentToEnemy(tid, { element: attackElement, attackType: 'SLASH' });
         if (demonized) {
           applyDemonRiskFeedback('SLASH');
         }
@@ -1602,11 +1840,13 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   }
 
   function handleSkill(skill: BattleSkill) {
+    if (resolvePlayerStatusBeforeAction()) return;
     setPhase('animating');
     const targets = skill.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[skill.element];
     const hitCount = demonized ? getDemonActionHitCount(demonForm, skill.attackType) : 1;
     const demonMult = demonized ? getDemonDamageMultiplier(demonForm, skill.attackType) : 1;
+    const ailmentMult = getAilmentAttackMultiplier(playerStatusEffects, demonized);
     triggerSkillEffect(skill, targets);
     addLog(`${demonized ? `魔神化『${demonForm.formName}』` : '術'}発動！ ${skill.name}！ ${vfxStyle.label}属性/${ATTACK_TYPE_LABEL[skill.attackType]}`);
     setFlashColor(vfxStyle.soft);
@@ -1617,12 +1857,13 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           let totalDamage = 0;
           Array.from({ length: hitCount }).forEach((_, hitIndex) => {
             setTimeout(() => {
-              const dmg = Math.round(skill.power * getElementBoostMultiplier(skill.element) * demonMult * (hitCount > 1 ? 0.6 : 1) * (0.85 + Math.random() * 0.3));
+              const dmg = Math.round(skill.power * getElementBoostMultiplier(skill.element) * demonMult * ailmentMult * (hitCount > 1 ? 0.6 : 1) * (0.85 + Math.random() * 0.3));
               totalDamage += damageEnemy(tid, dmg, { color: vfxStyle.color, element: skill.element });
             }, hitIndex * 110);
           });
           setTimeout(() => {
             addLog(`${enemies.find(e => e.id === tid)?.name}に 合計${totalDamage}ダメージ！`);
+            applyAilmentToEnemy(tid, skill);
           }, hitCount * 120);
         }, i * 200);
       });
@@ -1634,6 +1875,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   }
 
   function handleItem(item: typeof ITEMS[0]) {
+    if (resolvePlayerStatusBeforeAction()) return;
     setPhase('animating');
     if (item.effect === 'heal') {
       spawnFloat('42%', '52%', item.value, { heal: true, color: '#4ade80' });
@@ -1646,12 +1888,13 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   function handleDemonUltimate() {
     if (!demonized || demonUltimateUsed || phase !== 'playerTurn') return;
+    if (resolvePlayerStatusBeforeAction()) return;
     setDemonUltimateUsed(true);
     setPhase('animating');
     const ultimate = demonUltimateSkill;
     const targets = ultimate.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[ultimate.element];
-    const damageMultiplier = getDemonDamageMultiplier(demonForm, ultimate.attackType);
+    const damageMultiplier = getDemonDamageMultiplier(demonForm, ultimate.attackType) * getAilmentAttackMultiplier(playerStatusEffects, demonized);
     const ignoreShield = shouldBypassDefense(demonForm);
     triggerSkillEffect(ultimate, targets);
     addLog(`魔神技『${ultimate.name}』解放！ ${demonForm.formName}が戦場の理を塗り替える。`);
@@ -1664,6 +1907,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           const dmg = Math.round(ultimate.power * damageMultiplier * (0.9 + Math.random() * 0.22));
           const actualDamage = damageEnemy(tid, dmg, { color: demonColor, element: ultimate.element, ignoreShield });
           addLog(`${enemies.find(e => e.id === tid)?.name}に ${actualDamage}ダメージ！`);
+          applyAilmentToEnemy(tid, ultimate);
         }, i * 180);
       });
       addLog(`残留効果: ${demonForm.ultimateSkill.lingering.descJa}`);
@@ -1679,6 +1923,11 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setDemonActionsRemaining(DEMON_ACTION_LIMIT);
     setDemonUltimateUsed(false);
     setSoul(0);
+    const cleared = clearStatusEffectsByDemonize(playerStatusEffects);
+    if (cleared.cleared.length > 0) {
+      setPlayerStatusEffects(cleared.effects);
+      addLog(`魔神化の閃光で状態異常を${cleared.cleared.length}件解除。`);
+    }
     setFlashColor(demonForm.visual?.soft ?? 'rgba(180,0,0,0.5)');
     setTimeout(() => setFlashColor(null), 800);
     addLog(`☠ 魔神化『${demonForm.formName}』発動！ ${demonForm.concept}`);
@@ -1773,7 +2022,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       <BattleLog lines={log}/>
 
       {/* ── PARTY STATUS ── */}
-      <PartyStatusBar party={battleParty} demonized={demonized}/>
+      <PartyStatusBar party={battleParty} demonized={demonized} playerStatusEffects={playerStatusEffects}/>
 
       {/* ── SOUL GAUGE ── */}
       <SoulGauge value={soul} demonized={demonized} demonColor={demonColor} actionsRemaining={demonActionsRemaining}/>

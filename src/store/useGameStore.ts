@@ -561,6 +561,7 @@ export const useGameStore = create<GameState>((set) => ({
       ],
       isAwakened: false,
       clearedStages: [],
+      statusEffects: [],
       currentEnergy: 0,
       maxEnergy: 100,
       elementDmgBoosts: {},
