@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
+import { StoryOrchestrator } from '../components/story/StoryOrchestrator';
+import { useStoryTrigger } from '../hooks/useStoryTrigger';
 
 const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').then((mod) => mod.default), { 
   ssr: false,
@@ -21,12 +23,14 @@ import { ResponsiveFrame } from '../components/layout/ResponsiveFrame';
 import { NecroLog } from '../components/ui/NecroLog';
 import { Home as HomeIcon } from 'lucide-react';
 
-export default function Home() {
-  const { 
-    player, party, equippingMonsterId, inventoryMonsters, 
-    setEquippingMonsterId, addClearedStage, battleLogs, initialize, 
+function GameContent() {
+  const {
+    player, party, equippingMonsterId, inventoryMonsters,
+    setEquippingMonsterId, addClearedStage, battleLogs, initialize,
     currentTab, setCurrentTab
   } = useGameStore();
+
+  useStoryTrigger();
 
   const [isInBattle, setIsInBattle] = useState(false);
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
@@ -122,51 +126,57 @@ export default function Home() {
   const isFullscreen = isInBattle || currentTab === 'MAP';
 
   return (
-    <div className="h-[100dvh] w-full bg-[#050505] selection:bg-secondary/30 overflow-hidden">
-      <AnimatePresence mode="wait">
-        {isInBattle ? (
-          <motion.div
-            key="battle-active"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'absolute', inset: 0, zIndex: 9999, display: 'flex', flexDirection: 'column', background: '#000', overflow: 'hidden' }}
-          >
-            <BattleCanvas stageId={activeStageId ?? undefined} onEnd={() => {
-              setIsInBattle(false);
-              if (activeStageId) addClearedStage(activeStageId);
-              setCurrentTab('MAP');
-            }} />
-          </motion.div>
-        ) : currentTab === 'MAP' ? (
-          <motion.div
-            key="map-fullscreen"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'absolute', inset: 0, zIndex: 9999 }}
-          >
-            <AreaMap onStartStage={(stageId) => {
-              setActiveStageId(stageId);
-              setIsInBattle(true);
-              setCurrentTab('BATTLE');
-            }} />
-          </motion.div>
-        ) : (
-          <ResponsiveFrame
-            leftSidebar={emptySidebar}
-            mainMonitor={
-              <AnimatePresence mode="wait">
-                {renderMainContent()}
-              </AnimatePresence>
-            }
-            rightSidebar={emptySidebar}
+    <StoryOrchestrator>
+      <div className="h-[100dvh] w-full bg-[#050505] selection:bg-secondary/30 overflow-hidden">
+        <AnimatePresence mode="wait">
+          {isInBattle ? (
+            <motion.div
+              key="battle-active"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: 'absolute', inset: 0, zIndex: 9999, display: 'flex', flexDirection: 'column', background: '#000', overflow: 'hidden' }}
+            >
+              <BattleCanvas stageId={activeStageId ?? undefined} onEnd={() => {
+                setIsInBattle(false);
+                if (activeStageId) addClearedStage(activeStageId);
+                setCurrentTab('MAP');
+              }} />
+            </motion.div>
+          ) : currentTab === 'MAP' ? (
+            <motion.div
+              key="map-fullscreen"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: 'absolute', inset: 0, zIndex: 9999 }}
+            >
+              <AreaMap onStartStage={(stageId) => {
+                setActiveStageId(stageId);
+                setIsInBattle(true);
+                setCurrentTab('BATTLE');
+              }} />
+            </motion.div>
+          ) : (
+            <ResponsiveFrame
+              leftSidebar={emptySidebar}
+              mainMonitor={
+                <AnimatePresence mode="wait">
+                  {renderMainContent()}
+                </AnimatePresence>
+              }
+              rightSidebar={emptySidebar}
+            />
+          )}
+        </AnimatePresence>
+
+        {equippingMonster && (
+          <ShardEquipModal
+            monster={equippingMonster}
+            onClose={() => setEquippingMonsterId(null)}
           />
         )}
-      </AnimatePresence>
-
-      {equippingMonster && (
-        <ShardEquipModal
-          monster={equippingMonster}
-          onClose={() => setEquippingMonsterId(null)}
-        />
-      )}
-    </div>
+      </div>
+    </StoryOrchestrator>
   );
+}
+
+export default function Home() {
+  return <GameContent />;
 }

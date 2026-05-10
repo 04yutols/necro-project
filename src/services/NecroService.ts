@@ -1,36 +1,44 @@
 import { PrismaClient } from '@prisma/client';
-import { 
-  MonsterData, 
-  SoulShardData, 
-  NecroStatus, 
-  Tribe 
+import {
+  MonsterData,
+  SoulShardData,
+  NecroStatus,
+  Tribe
 } from '../types/game';
 import { MasterDataService } from './MasterDataService';
 
-/**
- * 死霊術システム (GDD-005) に関するビジネスロジックを担当するサービス
- * Prisma を用いた永続化に対応。
- */
 export class NecroService {
   private masterData: MasterDataService;
 
-  constructor(private prisma: PrismaClient) {
+  constructor(private prisma?: PrismaClient) {
     this.masterData = MasterDataService.getInstance();
   }
 
-  /**
-   * 魂石化 (Soul Stoning): モンスターを魂の欠片に変換し DB に保存する
-   */
-  public async createSoulShard(monsterId: string): Promise<SoulShardData> {
-    return await this.prisma.$transaction(async (tx: any) => {
-      const monster = await tx.monster.findUnique({
-        where: { id: monsterId },
-      });
+  // ── インメモリ版: MonsterData から直接生成 ─────────────────────────────────
 
-      if (!monster) throw new Error("Monster not found");
+  public createSoulShard(monster: MonsterData): SoulShardData;
+  public createSoulShard(monsterId: string): Promise<SoulShardData>;
+  public createSoulShard(arg: MonsterData | string): SoulShardData | Promise<SoulShardData> {
+    if (typeof arg !== 'string') {
+      const monster = arg;
+      return {
+        id: `shard-${monster.id}`,
+        originMonsterName: monster.name,
+        effect: {
+          atkBonus: Math.floor(monster.stats.atk * 0.1),
+          elementDmgBoost: Math.floor((monster.stats.effectHit ?? 0) * 0.1),
+          specialAbility: this.deriveSpecialAbility(monster.tribe),
+        },
+      };
+    }
 
-      // 本来は MonsterMaster から成長限界などを加味すべきだが、
-      // ここでは簡略化して現在のステータスから生成
+    // DB版
+    if (!this.prisma) throw new Error('PrismaClient is required for DB createSoulShard.');
+    const monsterId = arg;
+    return this.prisma.$transaction(async (tx: any) => {
+      const monster = await tx.monster.findUnique({ where: { id: monsterId } });
+      if (!monster) throw new Error('Monster not found');
+
       const atkBonus = Math.floor(monster.atk * 0.1);
       const elementDmgBoost = Math.floor((monster.effectHit ?? 0) * 0.1);
 
@@ -43,10 +51,7 @@ export class NecroService {
         },
       });
 
-      // 魂石化したモンスターを削除 (GDD-005)
-      await tx.monster.delete({
-        where: { id: monsterId },
-      });
+      await tx.monster.delete({ where: { id: monsterId } });
 
       return {
         id: soulShard.id,
@@ -60,22 +65,45 @@ export class NecroService {
     });
   }
 
-  /**
-   * ランクアップ (Reincarnation): Lv.99到達後の転生
-   * Character モデルの necroXxx フィールドを更新する。
-   */
-  public async performRankUp(characterId: string, isTrialCompleted: boolean): Promise<void> {
-    await this.prisma.$transaction(async (tx: any) => {
-      const character = await tx.character.findUnique({
-        where: { id: characterId },
-      });
+  // ── パーティ編成バリデーション（インメモリのみ）────────────────────────────
 
-      if (!character) throw new Error("Character not found");
-      if (character.necroLevel < 99) throw new Error("ランクアップにはLv.99到達が必要です。");
-      if (!isTrialCompleted) throw new Error("ランクアップには試練のクリアが必要です。");
+  public validatePartyFormation(necroStatus: NecroStatus, slots: (MonsterData | null)[]): true {
+    if (slots.length !== 3) throw new Error('パーティ編成は3枠固定です。');
+    const totalCost = slots.reduce((sum, m) => sum + (m?.cost ?? 0), 0);
+    if (totalCost > necroStatus.maxCost) throw new Error('コスト超過です');
+    return true;
+  }
+
+  // ── ランクアップ ──────────────────────────────────────────────────────────
+
+  public performRankUp(status: NecroStatus, isTrialCompleted: boolean): NecroStatus;
+  public performRankUp(characterId: string, isTrialCompleted: boolean): Promise<void>;
+  public performRankUp(
+    arg: NecroStatus | string,
+    isTrialCompleted: boolean,
+  ): NecroStatus | Promise<void> {
+    if (typeof arg !== 'string') {
+      const status = arg;
+      if (status.level < 99) throw new Error('Lv.99到達が必要です。');
+      if (!isTrialCompleted) throw new Error('試練のクリアが必要です。');
+      return {
+        level: 1,
+        rank: Math.min(10, status.rank + 1),
+        maxCost: status.maxCost + 5,
+        baseStatsBonus: status.baseStatsBonus + 0.5,
+      };
+    }
+
+    // DB版
+    if (!this.prisma) throw new Error('PrismaClient is required for DB performRankUp.');
+    const characterId = arg;
+    return this.prisma.$transaction(async (tx: any) => {
+      const character = await tx.character.findUnique({ where: { id: characterId } });
+      if (!character) throw new Error('Character not found');
+      if (character.necroLevel < 99) throw new Error('ランクアップにはLv.99到達が必要です。');
+      if (!isTrialCompleted) throw new Error('ランクアップには試練のクリアが必要です。');
 
       const nextRank = Math.min(10, character.necroRank + 1);
-
       await tx.character.update({
         where: { id: characterId },
         data: {
@@ -88,32 +116,25 @@ export class NecroService {
     });
   }
 
-  /**
-   * 魂の欠片 (SoulShard) をモンスターに装備する
-   */
+  // ── ソウルシャード装備（DB のみ）─────────────────────────────────────────
+
   public async equipSoulShard(monsterId: string, shardId: string): Promise<void> {
+    if (!this.prisma) throw new Error('PrismaClient is required for equipSoulShard.');
     await this.prisma.$transaction(async (tx: any) => {
       const monster = await tx.monster.findUnique({ where: { id: monsterId } });
       const shard = await tx.soulShard.findUnique({ where: { id: shardId } });
-
-      if (!monster) throw new Error("Monster not found");
-      if (!shard) throw new Error("SoulShard not found");
-
-      // すでに他のモンスターに装備されているか等のチェックは将来的に必要
-
-      await tx.monster.update({
-        where: { id: monsterId },
-        data: { soulShardId: shardId }
-      });
+      if (!monster) throw new Error('Monster not found');
+      if (!shard) throw new Error('SoulShard not found');
+      await tx.monster.update({ where: { id: monsterId }, data: { soulShardId: shardId } });
     });
   }
 
   private deriveSpecialAbility(tribe: Tribe): string | undefined {
     switch (tribe) {
-      case 'UNDEAD':   return "REGENERATE_SOUL";
-      case 'DEMON':    return "BANE_OF_LIGHT";
-      case 'DRAGON':   return "ELEMENTAL_SURGE";
-      case 'ORC':      return "IRON_HIDE";
+      case 'UNDEAD':   return 'REGENERATE_SOUL';
+      case 'DEMON':    return 'BANE_OF_LIGHT';
+      case 'DRAGON':   return 'ELEMENTAL_SURGE';
+      case 'ORC':      return 'IRON_HIDE';
       default:         return undefined;
     }
   }

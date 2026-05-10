@@ -32,7 +32,7 @@
 - [x] DB連携バトル結合（BattleCanvas → processStageResultAction → GameManager → Prisma）
 
 ### テスト
-- [ ] `DemonizationSystem.test.ts` — AV割り込み・魔神技ダメージ計算
+- [x] `DemonizationSystem.test.ts` — AV割り込み・魔神技ダメージ計算
 - [x] `WeaponPassive.test.ts` — SOUL_SHATTER / ACTION_VALUE 発動判定（6ケース）
 
 ---

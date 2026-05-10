@@ -10,6 +10,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // @/* → src/* (tsconfig の paths と同期)
+      '@': path.resolve(__dirname, 'src'),
       // next/dynamic → Vite 互換の React.lazy ベース shim に差し替え
       'next/dynamic': path.resolve(__dirname, 'src/shims/next-dynamic.tsx'),
     },
