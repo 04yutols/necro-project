@@ -11,7 +11,7 @@
     "weaknesses": ["LIGHT", "FIRE"],
     "dropTable": [
       { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.42 },
-      { "type": "MATERIAL", "itemId": "bone-chip", "rarity": "COMMON", "rate": 0.85 }
+      { "type": "MATERIAL", "itemId": "bone_chip", "rarity": "COMMON", "rate": 0.85 }
     ],
     "battle": { "color": "#9ca3af", "sprite": "WRAITH", "size": 0.72 },
     "description": "WAVE1の露払い。通常攻撃で倒せるゲージの餌。"
@@ -28,10 +28,61 @@
     "weaknesses": ["WIND", "FIRE"],
     "dropTable": [
       { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.35 },
-      { "type": "MATERIAL", "itemId": "beast-fang", "rarity": "COMMON", "rate": 0.72 }
+      { "type": "MATERIAL", "itemId": "beast_fang", "rarity": "COMMON", "rate": 0.72 }
     ],
     "battle": { "color": "#22c55e", "sprite": "WRAITH", "size": 0.68 },
     "description": "速度が高い小型魔物。周回テンポを崩さない低HP設計。"
+  },
+  "hollow_handmaid": {
+    "id": "hollow_handmaid",
+    "name": "Hollow Handmaid",
+    "nameJa": "廃城の侍女",
+    "nameEn": "HOLLOW HANDMAID",
+    "tier": "MINION",
+    "tribe": "HUMANOID",
+    "stats": { "hp": 285, "atk": 62, "def": 32, "spd": 76, "critRate": 3, "critDmg": 150, "effectHit": 12, "effectRes": 5 },
+    "resistances": { "EARTH": 25, "THUNDER": -20, "WIND": -15, "LIGHT": 10 },
+    "weaknesses": ["THUNDER", "WIND"],
+    "dropTable": [
+      { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.38 },
+      { "type": "MATERIAL", "itemId": "ash_scroll", "rarity": "COMMON", "rate": 0.80 }
+    ],
+    "battle": { "color": "#d8b4fe", "sprite": "WRAITH", "size": 0.70 },
+    "description": "node2 初登場。高effectHitで毒を刺しやすく、雷・風スキルの使用を促す。"
+  },
+  "earthbound_grudge": {
+    "id": "earthbound_grudge",
+    "name": "Earthbound Grudge",
+    "nameJa": "地縛りの怨霊",
+    "nameEn": "EARTHBOUND GRUDGE",
+    "tier": "MINION",
+    "tribe": "UNDEAD",
+    "stats": { "hp": 320, "atk": 68, "def": 38, "spd": 58, "critRate": 0, "critDmg": 150, "effectHit": 5, "effectRes": 15 },
+    "resistances": { "ICE": -28, "LIGHT": -20, "DARK": 35, "EARTH": 15, "FIRE": 10 },
+    "weaknesses": ["ICE", "LIGHT"],
+    "dropTable": [
+      { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.08 },
+      { "type": "MATERIAL", "itemId": "grave_crystal", "rarity": "COMMON", "rate": 0.82 }
+    ],
+    "battle": { "color": "#818cf8", "sprite": "WRAITH", "size": 0.75 },
+    "description": "ボス前の重い壁。低SPDで高DEF。第1章で初のICE弱点を持つ。魂ゲージ蓄積にちょうどよい。"
+  },
+  "bloodmire_leech": {
+    "id": "bloodmire_leech",
+    "name": "Bloodmire Leech",
+    "nameJa": "血沼の蛭",
+    "nameEn": "BLOODMIRE LEECH",
+    "tier": "MINION",
+    "tribe": "BEAST",
+    "stats": { "hp": 295, "atk": 76, "def": 18, "spd": 108, "critRate": 5, "critDmg": 155, "effectHit": 0, "effectRes": 5 },
+    "resistances": { "WATER": 22, "FIRE": -22, "THUNDER": -15, "DARK": 10 },
+    "weaknesses": ["FIRE", "THUNDER"],
+    "dropTable": [
+      { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.30 },
+      { "type": "MATERIAL", "itemId": "leech_fang", "rarity": "COMMON", "rate": 0.75 }
+    ],
+    "battle": { "color": "#f43f5e", "sprite": "WRAITH", "size": 0.65 },
+    "description": "node3 の圧力要員。高ATKと高SPDで先攻し、fire・thunder で迅速処理を促す。"
   },
   "abyss_warden": {
     "id": "abyss_warden",
@@ -44,6 +95,7 @@
     "resistances": { "DARK": 35, "THUNDER": -25, "WATER": -25, "FIRE": 15 },
     "weaknesses": ["THUNDER", "WATER"],
     "shieldHp": 190,
+    "maxShieldHp": 190,
     "dropTable": [
       { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.145 },
       { "type": "RESIDUE", "rarity": "RARE", "rate": 1.0 }
@@ -62,6 +114,7 @@
     "resistances": { "LIGHT": -30, "EARTH": -20, "DARK": 45, "WIND": 10 },
     "weaknesses": ["LIGHT", "EARTH"],
     "shieldHp": 220,
+    "maxShieldHp": 220,
     "dropTable": [
       { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.12 },
       { "type": "RESIDUE", "rarity": "RARE", "rate": 1.0 }
@@ -80,19 +133,20 @@
     "resistances": { "LIGHT": -35, "THUNDER": -20, "FIRE": 15, "DARK": 55 },
     "weaknesses": ["LIGHT", "THUNDER"],
     "shieldHp": 310,
+    "maxShieldHp": 310,
     "gimmicks": [
-      { "trigger": "HP_BELOW_50", "effect": "ENRAGE", "value": 1.45 },
-      { "trigger": "TURN_3", "effect": "AV_DELAY", "value": 18 },
-      { "trigger": "ON_REVIVE", "effect": "REVIVE", "value": 0.35 }
+      { "trigger": "HP_BELOW_50", "effect": "ENRAGE", "value": 1 },
+      { "trigger": "TURN_3", "effect": "AV_DELAY", "value": 1 },
+      { "trigger": "HP_BELOW_50", "effect": "REVIVE", "value": 1 }
     ],
     "dropTable": [
       { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.008 },
       { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.45 },
-      { "type": "MATERIAL", "itemId": "ossuary-memory", "rarity": "RARE", "rate": 0.26 },
+      { "type": "MATERIAL", "itemId": "ossuary_memory", "rarity": "RARE", "rate": 0.26 },
       { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
     ],
     "battle": { "color": "#ef4444", "sprite": "WYRM", "size": 1.0 },
-    "description": "章ボス。重装甲版の霊的防壁と大技で、魔神化の切りどころを試す。"
+    "description": "章ボス。重装甲版の霊的防壁と大技で、魔神化の切りどころを試す。HP50%でENRAGE、HP0でREVIVE。"
   },
   "blood_mire_queen": {
     "id": "blood_mire_queen",
@@ -105,16 +159,18 @@
     "resistances": { "WATER": -35, "WIND": -20, "FIRE": 35, "DARK": 30 },
     "weaknesses": ["WATER", "WIND"],
     "shieldHp": 360,
+    "maxShieldHp": 360,
     "gimmicks": [
-      { "trigger": "HP_BELOW_50", "effect": "ENRAGE", "value": 1.55 },
+      { "trigger": "HP_BELOW_50", "effect": "ENRAGE", "value": 1 },
       { "trigger": "ON_SHIELD_BREAK", "effect": "SUMMON_MINIONS", "value": 2 }
     ],
     "dropTable": [
       { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.01 },
       { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.5 },
+      { "type": "MATERIAL", "itemId": "bloodmire_essence", "rarity": "RARE", "rate": 0.30 },
       { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
     ],
     "battle": { "color": "#dc2626", "sprite": "WYRM", "size": 1.02 },
-    "description": "第1章後半のボス。水・風ビルドの適正を問う。"
+    "description": "第1章後半のボス。水・風ビルドの適正を問う。防壁破壊で増援召喚。"
   }
 }

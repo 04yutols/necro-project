@@ -121,7 +121,7 @@ export class GameManager {
     // 1. 経験値と報酬の計算
     const playerConverted = this.convertToCharacterData(char);
     const expGain = this.rewardService.calculateExp(stage.rewards.baseExp, playerConverted);
-    const rewards = this.rewardService.calculateDrops(stage.rewards.dropTable, char.critRate ?? 5);
+    const rewards = this.rewardService.processDropTable(stage.rewards.dropTable, char.critRate ?? 5);
 
     // 2. DBへの反映 (トランザクション)
     await this.prisma.$transaction(async (tx: any) => {
@@ -140,15 +140,14 @@ export class GameManager {
         // 本来は JobService を tx 内で呼ぶべき
       }
 
-      // ドロップモンスターの追加
-      for (const mId of rewards.monsters) {
-        const mMaster = this.masterData.getMonster(mId);
+      // ドロップモンスターの追加（第1章では発生しない — 将来拡張用）
+      for (const m of rewards.monsters) {
         await tx.monster.create({
           data: {
-            name: mMaster.name,
-            tribe: mMaster.tribe,
-            cost: mMaster.cost,
-            ...mMaster.stats
+            name: m.name,
+            tribe: m.tribe,
+            cost: m.cost,
+            ...m.stats,
           }
         });
       }

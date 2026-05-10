@@ -10,18 +10,21 @@
 これがないと動かない。最優先。
 
 ### コアロジック
-- [ ] `src/logic/BattleEngine.ts` — 隊列ヘイト分散（slot 0=50% / 1=30% / 2=20%）
-- [ ] `src/logic/BattleEngine.ts` — ボスギミック（ENRAGE / REVIVE / SUMMON_MINIONS）
-- [ ] `src/logic/DemonizationSystem.ts` — フルオートAI統合・魔神技ダメージ計算
-- [ ] `src/logic/WeaponPassive.ts` — 第1章出現パッシブ（SOUL_SHATTER / ACTION_VALUE / DEMON_MODE）
+- [x] `src/logic/BattleEngine.ts` — 隊列ヘイト分散（slot 0=50% / 1=30% / 2=20%）
+- [x] `src/logic/BattleEngine.ts` — ボスギミック（ENRAGE / REVIVE / SUMMON_MINIONS）
+- [x] `src/logic/DemonizationSystem.ts` — フルオートAI統合・魔神技ダメージ計算
+- [x] `src/logic/WeaponPassive.ts` — 第1章出現パッシブ（SOUL_SHATTER / ACTION_VALUE / DEMON_MODE）
 
 ### マスターデータ
-- [ ] `src/data/master/enemies.json` — 第1章エネミー（MINION×5 + ELITE×2 + BOSS×1）stats / resistances / dropTable
-- [ ] `src/data/master/demonForms.json` — Tier1フォーム4職業分（warrior / mage / dark_priest / rogue）
+- [x] `src/data/master/enemies.json` — 第1章エネミー（MINION×5 + ELITE×2 + BOSS×2）stats / resistances / dropTable
+- [x] `src/data/master/demonForms.json` — Tier1フォーム4職業分（warrior / mage / dark_priest / rogue）実装済み確認
+- [x] `src/data/master/items.json` — 武器4種 passiveA/B / id / isUnique 追加
+- [x] `src/data/master/materials.json` — 素材7種（新規ファイル）+ MasterDataService に getMaterial() 追加
+- [x] `src/data/master/stages.json` — 3ノードのWAVE1に新規MINIONを配置
 
 ### サービス・ストア
-- [ ] `src/services/RewardService.ts` — ドロップ処理（R/SR/SSR武器 + 残滓 + モンスタードロップ）
-- [ ] `src/store/useGameStore.ts` — `demonActionsRemaining` / `monsterCurrentHp` / `swapPartySlots` 追加
+- [x] `src/services/RewardService.ts` — ドロップ処理（R/SR/SSR武器 + 残滓 + モンスタードロップ）
+- [x] `src/store/useGameStore.ts` — `demonActionsRemaining` / `monsterCurrentHp` / `swapPartySlots` 追加
 
 ### DB・認証・結合
 - [ ] `prisma/schema.prisma` — Item に rank / archetype / ilv / passiveA / passiveB 追加
@@ -30,7 +33,7 @@
 
 ### テスト
 - [ ] `DemonizationSystem.test.ts` — AV割り込み・魔神技ダメージ計算
-- [ ] `WeaponPassive.test.ts` — SOUL_SHATTER / ACTION_VALUE 発動判定
+- [x] `WeaponPassive.test.ts` — SOUL_SHATTER / ACTION_VALUE 発動判定（6ケース）
 
 ---
 

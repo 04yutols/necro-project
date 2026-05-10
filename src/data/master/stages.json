@@ -84,8 +84,8 @@
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["grave_soldier", "grave_soldier"],
-        "intent": "撃破テンポを上げ、AUTO戦闘での周回感を作る。"
+        "enemyIds": ["hollow_handmaid", "grave_soldier"],
+        "intent": "HUMANOID初登場。高effectHitの脅威を感じつつ、雷・風スキルを使う場面。"
       },
       {
         "label": "WAVE 2",
@@ -129,8 +129,8 @@
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["rot_hound", "grave_soldier", "rot_hound"],
-        "intent": "ボス前に魂ゲージと自動戦闘テンポを整える。"
+        "enemyIds": ["earthbound_grudge", "earthbound_grudge", "rot_hound"],
+        "intent": "第1章初のICE弱点を持つ怨霊2体。低SPDで重いが、倒す間に魂ゲージを満タンにできる。"
       },
       {
         "label": "WAVE 2",
@@ -177,8 +177,8 @@
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["rot_hound", "rot_hound"],
-        "intent": "高速ミニオンで敵ターンの圧力を少し上げる。"
+        "enemyIds": ["bloodmire_leech", "bloodmire_leech"],
+        "intent": "高ATK・高SPDの蛭2体が先攻を取る。火・雷での迅速処理を促す圧力WAVEとして機能する。"
       },
       {
         "label": "WAVE 2",

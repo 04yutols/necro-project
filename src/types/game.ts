@@ -309,6 +309,7 @@ export interface MonsterData {
   maxShieldHp?: number;
   shieldBroken?: boolean;
   statusEffects?: StatusEffect[];
+  gimmicks?: BossGimmick[];
 }
 
 export interface DropEntry {
@@ -391,6 +392,7 @@ export interface BattleState {
   wave: number;
   turn: number;
   areaGimmick?: 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE';
+  monsterCurrentHp: Record<string, number>;
 }
 
 export interface BattleLog {
