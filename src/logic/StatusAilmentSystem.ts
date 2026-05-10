@@ -132,6 +132,7 @@ export function tryApplyAilment(
     baseRate?: number;
     immune?: boolean;
     duration?: number;
+    durationBonus?: number;
   } = {},
 ): AilmentApplyResult {
   const baseRate = options.baseRate ?? BASE_DEBUFF_RATES[ailmentId];
@@ -143,8 +144,10 @@ export function tryApplyAilment(
   if (roll >= chance) {
     return { effects: cloneEffects(currentEffects), applied: false, chance, resisted: true, immune: false };
   }
+  const baseDuration = options.duration ?? DEFAULT_AILMENT_DURATIONS[ailmentId];
+  const finalDuration = baseDuration + (options.durationBonus ?? 0);
   return {
-    effects: applyStatusEffect(currentEffects, ailmentId, attackerStats.atk, options.duration),
+    effects: applyStatusEffect(currentEffects, ailmentId, attackerStats.atk, finalDuration),
     applied: true,
     chance,
     resisted: false,
@@ -156,6 +159,7 @@ export function processStatusEffects(
   effects: StatusEffect[] | undefined,
   target: { maxHp: number },
   rng: () => number = Math.random,
+  options?: { immuneTypes?: AilmentType[] },
 ): StatusProcessResult {
   const ticks: StatusTick[] = [];
   let totalDamage = 0;
@@ -167,7 +171,8 @@ export function processStatusEffects(
       const stacks = (effect.stacks ?? [{ remainingTurns: effect.remainingTurns, sourceAtk: effect.sourceAtk ?? 0 }])
         .map(stack => ({ ...stack, remainingTurns: stack.remainingTurns - 1 }))
         .filter(stack => stack.remainingTurns > 0);
-      const damage = Math.floor((effect.stacks ?? [{ remainingTurns: effect.remainingTurns, sourceAtk: effect.sourceAtk ?? 0 }])
+      const isImmune = options?.immuneTypes?.includes('BLEED');
+      const damage = isImmune ? 0 : Math.floor((effect.stacks ?? [{ remainingTurns: effect.remainingTurns, sourceAtk: effect.sourceAtk ?? 0 }])
         .reduce((sum, stack) => sum + (stack.sourceAtk ?? 0) * 0.05, 0));
       if (damage > 0) {
         totalDamage += damage;
@@ -188,7 +193,11 @@ export function processStatusEffects(
     }
 
     let damage = 0;
-    if (effect.type === 'POISON') damage = Math.floor(target.maxHp * 0.03);
+    if (effect.type === 'POISON') {
+      damage = options?.immuneTypes?.includes('POISON')
+        ? 0
+        : Math.floor(target.maxHp * 0.03);
+    }
     if (effect.type === 'BURN') damage = Math.floor(target.maxHp * 0.05);
     if (effect.type === 'FREEZE') {
       skipAction = true;

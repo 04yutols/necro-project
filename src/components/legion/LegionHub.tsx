@@ -6,6 +6,7 @@ import { ChevronLeft, Swords, Zap, Plus, Sparkles, ChevronRight, Home, X, Crown,
 import { useGameStore } from '../../store/useGameStore';
 import { useGothicSound } from '../necro/useGothicSound';
 import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats, WeaponMaterialData } from '../../types/game';
+import { getActiveSynergies, type ActiveSynergy } from '../../logic/TribeSynergySystem';
 import {
   calculateCharacterStatProfile,
   ELEMENT_DAMAGE_KEYS,
@@ -65,6 +66,8 @@ const TRIBE: Record<string, Conf> = {
   DEMON:    { color: '#FF7878', glow: 'rgba(255,120,120,0.45)', darkBg: 'rgba(42,8,8,0.97)',   emoji: '😈', label: 'DEMON',    particle: 'rgba(255,120,120,0.6)', accent: '#ffa0a0' },
   BEAST:    { color: '#FBBB30', glow: 'rgba(251,187,48,0.45)',  darkBg: 'rgba(42,28,4,0.97)',  emoji: '🐺', label: 'BEAST',    particle: 'rgba(251,187,48,0.6)',  accent: '#fcd060' },
   HUMANOID: { color: '#78C97C', glow: 'rgba(120,201,124,0.45)', darkBg: 'rgba(4,30,8,0.97)',   emoji: '👹', label: 'HUMANOID', particle: 'rgba(120,201,124,0.6)', accent: '#9adaa0' },
+  DRAGON:   { color: '#00C896', glow: 'rgba(0,200,150,0.45)',   darkBg: 'rgba(0,24,18,0.97)',  emoji: '🐉', label: 'DRAGON',   particle: 'rgba(0,200,150,0.6)',   accent: '#33e0b8' },
+  ORC:      { color: '#5C9E6A', glow: 'rgba(92,158,106,0.45)', darkBg: 'rgba(6,18,8,0.97)',   emoji: '🛡️', label: 'ORC',      particle: 'rgba(92,158,106,0.6)',  accent: '#7dbe8c' },
 };
 const JOB: Record<string, Conf> = {
   warrior:     { color: '#FF9955', glow: 'rgba(255,153,85,0.45)',  darkBg: 'rgba(42,18,4,0.97)',  emoji: '⚔️', label: 'WARRIOR',     particle: 'rgba(255,153,85,0.6)',  accent: '#ffb878' },
@@ -2137,6 +2140,269 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
 }
 
 /* ──────────────────────────────────────────
+   SYNERGY BANNER  (Star Rail style)
+────────────────────────────────────────── */
+function SynergyNodeRow({ party }: { party: (MonsterData | null)[] }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, marginBottom: 8 }}>
+      {party.map((m, i) => {
+        const conf = m ? (TRIBE[m.tribe] ?? TRIBE.HUMANOID) : VACANT_CONF;
+        const nextM = i < party.length - 1 ? party[i + 1] : null;
+        const sameAsNext = m && nextM && m.tribe === nextM.tribe;
+        return (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', flex: i < party.length - 1 ? 1 : undefined }}>
+            {/* 種族ノード */}
+            <motion.div
+              animate={m ? {
+                boxShadow: [
+                  `0 0 8px ${conf.color}55, 0 0 16px ${conf.color}22`,
+                  `0 0 14px ${conf.color}88, 0 0 26px ${conf.color}44`,
+                  `0 0 8px ${conf.color}55, 0 0 16px ${conf.color}22`,
+                ],
+              } : {}}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+              style={{
+                width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                background: m
+                  ? `radial-gradient(circle at 38% 30%, ${conf.color}30, rgba(0,0,0,0.88))`
+                  : 'rgba(40,30,60,0.5)',
+                border: `1.5px solid ${m ? conf.color + '66' : 'rgba(100,70,160,0.25)'}`,
+                position: 'relative',
+              }}
+            >
+              {m && (
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: '50%', pointerEvents: 'none',
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 52%)',
+                }} />
+              )}
+              <span style={{
+                fontSize: 20, lineHeight: 1,
+                filter: m ? `drop-shadow(0 0 6px ${conf.color})` : 'none',
+                opacity: m ? 1 : 0.25,
+              }}>
+                {m ? conf.emoji : '+'}
+              </span>
+              {m && (
+                <span style={{
+                  fontSize: 7, fontFamily: 'monospace', fontWeight: 900,
+                  color: conf.color, letterSpacing: '0.05em', marginTop: 1,
+                  textShadow: `0 0 4px ${conf.color}`,
+                }}>
+                  {conf.label}
+                </span>
+              )}
+            </motion.div>
+            {/* 接続線 */}
+            {i < party.length - 1 && (
+              <motion.div
+                animate={sameAsNext ? {
+                  opacity: [0.6, 1, 0.6],
+                } : {}}
+                transition={{ duration: 1.8, repeat: Infinity }}
+                style={{
+                  flex: 1, height: 2, margin: '0 4px',
+                  background: sameAsNext
+                    ? `linear-gradient(90deg, ${conf.color}55, ${conf.color}CC, ${conf.color}55)`
+                    : 'rgba(80,60,120,0.2)',
+                  boxShadow: sameAsNext ? `0 0 6px ${conf.color}88` : 'none',
+                  borderRadius: 1,
+                  transition: 'background 0.4s, box-shadow 0.4s',
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SynergyPanel({ synergy }: { synergy: ActiveSynergy }) {
+  const isLayer2 = synergy.layer === 2;
+  const isLayer3 = synergy.layer === 3;
+
+  const borderColor = isLayer2
+    ? 'rgba(255,210,0,0.55)'
+    : isLayer3
+      ? 'rgba(180,100,255,0.50)'
+      : 'rgba(160,140,220,0.32)';
+  const bgGrad = isLayer2
+    ? 'linear-gradient(135deg, rgba(255,200,0,0.09) 0%, rgba(0,0,0,0) 60%)'
+    : isLayer3
+      ? 'linear-gradient(135deg, rgba(160,80,255,0.09) 0%, rgba(0,0,0,0) 60%)'
+      : 'linear-gradient(135deg, rgba(120,100,200,0.06) 0%, rgba(0,0,0,0) 60%)';
+  const badge = isLayer2 ? '★ FULL' : isLayer3 ? '◆ CROSS' : '◇ PART';
+  const badgeColor = isLayer2 ? '#FFD700' : isLayer3 ? '#C080FF' : '#9090C0';
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -6, scale: 0.96 }}
+      transition={{ duration: 0.22 }}
+      style={{
+        background: bgGrad,
+        border: `1px solid ${borderColor}`,
+        borderRadius: 10,
+        padding: '7px 10px',
+        marginBottom: 5,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* 背景グロー */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: `radial-gradient(ellipse at 0% 50%, ${synergy.color}12 0%, transparent 55%)`,
+      }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+        {/* 種族カラーライン */}
+        <div style={{
+          width: 3, height: 34, borderRadius: 2, flexShrink: 0,
+          background: `linear-gradient(180deg, ${synergy.color}, ${synergy.accentColor})`,
+          boxShadow: `0 0 6px ${synergy.color}88`,
+        }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <span style={{
+              fontSize: 12, fontFamily: "'Cinzel Decorative', serif", fontWeight: 900,
+              color: synergy.color, textShadow: `0 0 10px ${synergy.color}88`,
+              letterSpacing: '0.05em',
+            }}>
+              {synergy.name}
+            </span>
+            <span style={{
+              fontSize: 8, fontFamily: 'monospace', color: 'rgba(160,140,210,0.55)',
+              letterSpacing: '0.1em', whiteSpace: 'nowrap',
+            }}>
+              {synergy.nameEn}
+            </span>
+          </div>
+          <div style={{
+            fontSize: 9, fontFamily: 'monospace',
+            color: 'rgba(210,200,240,0.72)',
+            marginTop: 2, letterSpacing: '0.04em',
+          }}>
+            {synergy.effectDesc}
+          </div>
+        </div>
+        {/* バッジ */}
+        <motion.span
+          animate={{ textShadow: [
+            `0 0 5px ${badgeColor}55`,
+            `0 0 10px ${badgeColor}99`,
+            `0 0 5px ${badgeColor}55`,
+          ]}}
+          transition={{ duration: 2, repeat: Infinity }}
+          style={{
+            fontSize: 8, fontWeight: 900, fontFamily: 'monospace',
+            color: badgeColor, letterSpacing: '0.15em',
+            whiteSpace: 'nowrap', flexShrink: 0,
+          }}
+        >
+          {badge}
+        </motion.span>
+      </div>
+    </motion.div>
+  );
+}
+
+function SynergyBanner({ party }: { party: (MonsterData | null)[] }) {
+  const [expanded, setExpanded] = useState(true);
+  const monsters = (party as (MonsterData | null)[]).filter(Boolean) as MonsterData[];
+  const synergies = getActiveSynergies(monsters);
+  const hasAny = synergies.length > 0;
+  const hasLayer2 = synergies.some(s => s.layer === 2);
+
+  const outerBorder = hasLayer2
+    ? 'rgba(255,200,0,0.22)'
+    : hasAny
+      ? 'rgba(140,100,220,0.22)'
+      : 'rgba(80,60,120,0.18)';
+
+  return (
+    <motion.div
+      layout
+      style={{
+        background: 'rgba(4,2,16,0.72)',
+        border: `1px solid ${outerBorder}`,
+        borderRadius: 14,
+        padding: '8px 10px 6px',
+        backdropFilter: 'blur(8px)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* 上部ヘッダー */}
+      <button
+        type="button"
+        onClick={() => setExpanded(e => !e)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', background: 'transparent', border: 0, padding: 0,
+          marginBottom: 8, cursor: 'pointer',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {hasLayer2 && (
+            <motion.span
+              animate={{ opacity: [0.6, 1, 0.6] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              style={{ fontSize: 9, color: '#FFD700' }}
+            >
+              ✦
+            </motion.span>
+          )}
+          <span style={{
+            fontSize: 9, fontFamily: 'monospace', fontWeight: 900,
+            color: hasAny ? 'rgba(200,180,255,0.75)' : 'rgba(100,80,140,0.5)',
+            letterSpacing: '0.25em',
+          }}>
+            SYNERGY FORMATION
+          </span>
+        </div>
+        <span style={{
+          fontSize: 9, color: 'rgba(130,100,180,0.5)',
+          fontFamily: 'monospace', transform: expanded ? 'rotate(180deg)' : 'none',
+          transition: 'transform 0.2s',
+        }}>
+          ▾
+        </span>
+      </button>
+
+      {/* 種族ノード行 */}
+      <SynergyNodeRow party={party as (MonsterData | null)[]} />
+
+      {/* シナジーパネル */}
+      <AnimatePresence mode="sync">
+        {expanded && hasAny && synergies.map(s => (
+          <SynergyPanel key={s.key} synergy={s} />
+        ))}
+        {expanded && !hasAny && (
+          <motion.div
+            key="none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              textAlign: 'center',
+              color: 'rgba(100,80,140,0.45)',
+              fontSize: 9, fontFamily: 'monospace',
+              padding: '4px 0', letterSpacing: '0.15em',
+            }}
+          >
+            SYNERGY: NONE
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+/* ──────────────────────────────────────────
    LEGION LIST VIEW
 ────────────────────────────────────────── */
 function LegionListView({ player, party, equippedResidueSlots, soulShards, demonGauge, isDemonMode, onSelect, onToggleDemon, onBack }: {
@@ -2189,6 +2455,11 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
           </div>
         </div>
         <div className="mt-2.5 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(196,28,250,0.32), transparent)' }} />
+      </div>
+
+      {/* Synergy Banner */}
+      <div className="px-3 pb-2 shrink-0 relative z-10">
+        <SynergyBanner party={party as (MonsterData | null)[]} />
       </div>
 
       {/* 2×2 portrait grid */}

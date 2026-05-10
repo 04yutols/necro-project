@@ -110,9 +110,11 @@ export class NecroService {
 
   private deriveSpecialAbility(tribe: Tribe): string | undefined {
     switch (tribe) {
-      case 'UNDEAD': return "REGENERATE_SOUL";
-      case 'DEMON': return "BANE_OF_LIGHT";
-      default: return undefined;
+      case 'UNDEAD':   return "REGENERATE_SOUL";
+      case 'DEMON':    return "BANE_OF_LIGHT";
+      case 'DRAGON':   return "ELEMENTAL_SURGE";
+      case 'ORC':      return "IRON_HIDE";
+      default:         return undefined;
     }
   }
 }

@@ -20,6 +20,7 @@ import {
   processStatusEffects,
   tryApplyAilment,
 } from './StatusAilmentSystem';
+import { calculatePartyTribeSynergy, type SynergyBonus } from './TribeSynergySystem';
 
 /**
  * Necromance Brave Battle Engine
@@ -29,6 +30,8 @@ export class BattleEngine {
   private state: BattleState;
   private logs: BattleLog[] = [];
   private masterData: MasterDataService;
+  private synergyBonus: SynergyBonus;
+  private playerInitialMaxHp: number;
 
   constructor(player: CharacterData, monsters: (MonsterData | null)[], areaGimmick: BattleState['areaGimmick'] = 'NONE') {
     this.state = {
@@ -39,6 +42,10 @@ export class BattleEngine {
       areaGimmick
     };
     this.masterData = MasterDataService.getInstance();
+    this.synergyBonus = calculatePartyTribeSynergy(
+      monsters.filter(Boolean) as MonsterData[]
+    );
+    this.playerInitialMaxHp = player.stats.hp;
   }
 
   /**
@@ -51,6 +58,9 @@ export class BattleEngine {
 
     // 1. ターン開始時のエリアギミック判定 (GDD-006)
     this.processAreaGimmick();
+
+    // 1.5. 種族シナジー: ターン開始時効果 (docs/設計書/18)
+    this.applyTurnStartSynergy();
 
     // 2. 状態異常のターン開始処理 (docs/設計書/17)
     const playerStatus = this.processRuntimeStatus(player.name, player.stats, player.statusEffects);
@@ -97,9 +107,13 @@ export class BattleEngine {
     const defMult = 1 - defenderDef / (defenderDef + 200);
     damage *= defMult;
 
-    // 3. 属性ダメージ加成（装備・残滓から）
-    const elementBoost = (attackerElementBoosts[element] ?? 0) / 100;
-    damage *= (1 + elementBoost);
+    // 3. 属性ダメージ加成（装備・残滓 + 種族シナジー）
+    const equipElementBoost = (attackerElementBoosts[element] ?? 0) / 100;
+    const sb = this.synergyBonus;
+    let synergyElementPct = sb.elementDmgBonus ?? 0;
+    if (element === 'DARK') synergyElementPct += sb.darkDmgBonus ?? 0;
+    if (element === 'FIRE' || element === 'DARK') synergyElementPct += sb.fireDarkDmgBonus ?? 0;
+    damage *= (1 + equipElementBoost + synergyElementPct / 100);
 
     // 4. 属性耐性
     let isWeakness = false;
@@ -109,10 +123,11 @@ export class BattleEngine {
     if (resistance > 0) isResisted = true;
     damage *= (1 - resistance / 100);
 
-    // 5. 会心判定
-    const isCritical = Math.random() * 100 < attackerStats.critRate;
+    // 5. 会心判定（種族シナジーの critRate/critDmg ボーナスを加算）
+    const effectiveCritRate = attackerStats.critRate + (sb.critRateBonus ?? 0);
+    const isCritical = Math.random() * 100 < effectiveCritRate;
     if (isCritical) {
-      damage *= attackerStats.critDmg / 100;
+      damage *= (attackerStats.critDmg + (sb.critDmgBonus ?? 0)) / 100;
     }
 
     return {
@@ -206,12 +221,16 @@ export class BattleEngine {
     const profile = calculateCharacterStatProfile(player);
     const result = tryApplyAilment(
       ailmentType,
-      { atk: profile.total.atk, effectHit: profile.total.effectHit },
+      {
+        atk: profile.total.atk,
+        effectHit: profile.total.effectHit + (this.synergyBonus.effectHitBonus ?? 0),
+      },
       { effectRes: target.stats.effectRes },
       target.statusEffects,
       {
         baseRate: skillData?.ailmentBaseRate,
         immune: false,
+        durationBonus: this.synergyBonus.ailmentDurationBonus,
       },
     );
     target.statusEffects = result.effects;
@@ -307,7 +326,8 @@ export class BattleEngine {
     const { areaGimmick, player } = this.state;
     if (areaGimmick === 'SLIP_DAMAGE') {
       const playerStats = this.getMutableStats(player);
-      const damage = Math.floor(playerStats.hp * 0.05);
+      const rawDamage = Math.floor(playerStats.hp * 0.05);
+      const damage = Math.floor(rawDamage * (1 - (this.synergyBonus.defenseReducePct ?? 0) / 100));
       playerStats.hp -= damage;
       this.addLog('GIMMICK', 'Area', player.name, `エリアギミック：スリップダメージにより${damage}ダメージ。`);
     }
@@ -318,6 +338,26 @@ export class BattleEngine {
       }
       player.statusEffects = applyStatusEffect(player.statusEffects, 'POISON', 0);
       this.addLog('GIMMICK', 'Area', player.name, '瘴気の沼が毒を刻んだ。', undefined, false, false, false, 'DARK', 'MAGIC', { ailmentApplied: 'POISON' });
+    }
+  }
+
+  private applyTurnStartSynergy(): void {
+    const { player } = this.state;
+    const sb = this.synergyBonus;
+    if (sb.hpRegenPct) {
+      const regen = Math.floor(this.playerInitialMaxHp * sb.hpRegenPct / 100);
+      const ms = this.getMutableStats(player);
+      ms.hp = Math.min(this.playerInitialMaxHp, ms.hp + regen);
+      this.addLog('SYNERGY_REGEN', 'SYNERGY', player.name,
+        `種族シナジー：HP +${regen} 回復。`);
+    }
+    if (sb.energyPerTurn) {
+      player.currentEnergy = Math.min(player.maxEnergy,
+        player.currentEnergy + sb.energyPerTurn);
+    }
+    if (sb.demonGaugePerTurn) {
+      this.addLog('SYNERGY_GAUGE', 'SYNERGY', player.name,
+        `DRAGONシナジー：魔神化ゲージ +${sb.demonGaugePerTurn}。`);
     }
   }
 
@@ -343,7 +383,13 @@ export class BattleEngine {
     targetStats: BaseStats,
     effects: StatusEffect[] | undefined,
   ): { effects: StatusEffect[]; skipAction: boolean } {
-    const result = processStatusEffects(effects, { maxHp: targetStats.hp });
+    const isPlayer = targetName === this.state.player.name;
+    const result = processStatusEffects(
+      effects,
+      { maxHp: targetStats.hp },
+      Math.random,
+      isPlayer ? { immuneTypes: this.synergyBonus.ailmentImmune as AilmentType[] } : undefined,
+    );
     if (result.totalDamage > 0) {
       targetStats.hp = Math.max(1, targetStats.hp - result.totalDamage);
     }

@@ -91,7 +91,7 @@ elementMultiplier = 1 - (resistance / 100)          // resistance < 0 → weakne
 ```typescript
 BaseStats: { hp, mp, atk, def, matk, mdef, agi, luck, tec: number }
 CharacterData: { id, name, currentJobId, category, stats, passives, equipment (8 slots), baseResistances, jobs, isAwakened, clearedStages }
-MonsterData: { id, name, tribe: Tribe, cost, stats, resistances, equippedShardId?, spiritCore?: SpiritCoreData }
+MonsterData: { id, name, tribe: Tribe, cost, stats, resistances, equipment: EquipmentSlots, equippedResidues: (AbyssalResidueData|null)[], equippedShardId?, spiritCore?: SpiritCoreData }
 ItemData: { id, name, type (8 slots), rarity, stats, isUnique, subOptions?, specialEffect? }
 SoulShardData: { id, originMonsterName, effect: { atkBonus, matkBonus, specialAbility? } }
 AbyssalResidueData: { id, name, itemId, rarity, mainStat: {type,value}, subOptions, level (1-20), exp, maxExp }
@@ -99,7 +99,7 @@ ResidueMatData: { id, name, quantity, expValue, rarity }
 SpiritCoreData: { id, name, element?, skillChangeId?, atkMultiplier }
 SkillData: { id, name, mpCost, power, type, element?, attackType?, targetType?, effectKey?, description }
 ElementType: 'FIRE'|'WATER'|'THUNDER'|'EARTH'|'WIND'|'LIGHT'|'DARK'|'ICE'|'NONE'
-Tribe: 'UNDEAD'|'DEMON'|'BEAST'|'HUMANOID'
+Tribe: 'UNDEAD'|'DEMON'|'BEAST'|'HUMANOID'|'DRAGON'|'ORC'
 ```
 
 ### Database (Prisma + PostgreSQL)
@@ -109,6 +109,7 @@ Schema is at `prisma/schema.prisma`. Key models: `Character` (9 stats + 8 equipm
 ## Coding Rules
 
 - Keep PixiJS at 60fps — avoid heavy JS in the render loop; prefer pre-computed values.
+- Battle party = **Aldo (CharacterData, player-controlled) + 3 monster slots (`(MonsterData | null)[]`)**. No human companion characters exist in Part 1. Monsters are necromancer-raised undead/beasts, not independent party members.
 - Party always has exactly 3 slots (`(MonsterData | null)[]`); validate cost against `NecroStatus.maxCost` before deploying.
 - GDD references (e.g., `GDD-003`, `GDD-005`) in comments refer to `docs/requirements.md` sections.
 - All UI text for actions uses direct Japanese verbs: 装備, 強化, 攻撃, 術, 魔神化.
