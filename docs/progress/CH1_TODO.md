@@ -27,9 +27,9 @@
 - [x] `src/store/useGameStore.ts` — `demonActionsRemaining` / `monsterCurrentHp` / `swapPartySlots` 追加
 
 ### DB・認証・結合
-- [ ] `prisma/schema.prisma` — Item に rank / archetype / ilv / passiveA / passiveB 追加
-- [ ] NextAuth.js v5 セットアップ（Google/Discord OAuth + PrismaAdapter）→ 詳細: `25_オンラインゲーム設計.md §2`
-- [ ] DB連携バトル結合（GameManager.startStage → BattleCanvas → processStageResult）
+- [x] `prisma/schema.prisma` — Item に rank / archetype / ilv / passiveA / passiveB 追加、AbyssalResidue 修正、NextAuth テーブル追加
+- [x] NextAuth.js v5 セットアップ（Google/Discord OAuth + PrismaAdapter）→ `src/auth.ts` / `src/lib/prisma.ts` / `middleware.ts` 実装済み
+- [x] DB連携バトル結合（BattleCanvas → processStageResultAction → GameManager → Prisma）
 
 ### テスト
 - [ ] `DemonizationSystem.test.ts` — AV割り込み・魔神技ダメージ計算

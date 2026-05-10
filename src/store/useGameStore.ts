@@ -458,9 +458,9 @@ export const useGameStore = create<GameState>((set) => ({
     });
     return { player: { ...state.player, jobs: newJobs } };
   }),
-  addGold: (amount) => set((state) => ({
-    // 本来はGoldフィールドが必要
-  })),
+  addGold: (_amount) => {
+    // CharacterData に gold フィールドなし — Phase D で DB 追加後に実装
+  },
   addClearedStage: (stageId) => set((state) => {
     if (!state.player) return { player: null };
     if (state.player.clearedStages.includes(stageId)) return state;
