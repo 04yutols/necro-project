@@ -1,5 +1,6 @@
 {
   "bone_cleaver": {
+    "id": "bone_cleaver",
     "name": "骨砕きの短剣",
     "type": "WEAPON",
     "rarity": "R",
@@ -7,10 +8,23 @@
     "archetype": "MID",
     "rank": 1,
     "ilv": 40,
+    "isUnique": false,
     "stats": {},
-    "subOptions": [{ "type": "ATK%", "value": 6.2 }]
+    "subOptions": [{ "type": "ATK%", "value": 6.2 }],
+    "passiveA": {
+      "nameJa": "粗削りの刃",
+      "descTemplate": "敵を倒した時、自身のHPを{value}%回復する。",
+      "values": [4, 5, 6, 7, 8]
+    },
+    "passiveB": {
+      "nameJa": "戦場勘",
+      "descTemplate": "通常攻撃の与ダメージが{value}%上昇する。",
+      "values": [3, 4, 5, 6, 7]
+    },
+    "flavor": "粗削りだが、戦場で骨を砕いてきた実績がある。"
   },
   "bleed_reaver": {
+    "id": "bleed_reaver",
     "name": "血啜りの処刑剣",
     "type": "WEAPON",
     "rarity": "SR",
@@ -18,10 +32,27 @@
     "archetype": "HIGH",
     "rank": 3,
     "ilv": 70,
+    "isUnique": false,
     "stats": {},
-    "subOptions": [{ "type": "CRIT_RATE", "value": 6.4 }]
+    "subOptions": [{ "type": "CRIT_RATE", "value": 6.4 }],
+    "passiveA": {
+      "nameJa": "出血追討",
+      "descTemplate": "出血状態の敵に対する会心率が{value}%上昇する。",
+      "values": [15, 19, 22, 26, 30],
+      "condition": "BLEED",
+      "systemTag": "GIANT_KILLING"
+    },
+    "passiveB": {
+      "nameJa": "早駆けの殺意",
+      "descTemplate": "会心時、次の行動が{value}ターン早まる。",
+      "values": [1, 1, 1, 2, 2],
+      "condition": "BLEED",
+      "systemTag": "ACTION_VALUE"
+    },
+    "flavor": "処刑場の血を吸い続け、刃が赤黒く変色している。"
   },
   "spirit_silver_saber": {
+    "id": "spirit_silver_saber",
     "name": "霊銀の斬骨刀",
     "type": "WEAPON",
     "rarity": "SSR",
@@ -29,14 +60,28 @@
     "archetype": "MID",
     "rank": 2,
     "ilv": 72,
+    "isUnique": false,
     "stats": {},
     "subOptions": [
       { "type": "DARK_DMG_BOOST", "value": 13 },
       { "type": "CRIT_DMG", "value": 16 }
     ],
-    "specialEffect": "SOUL_RESONANCE"
+    "passiveA": {
+      "nameJa": "残響蓄積",
+      "descTemplate": "霊的防壁を破壊した時、ATKの{value}倍の追加闇属性ダメージを与える。",
+      "values": [0.18, 0.23, 0.27, 0.32, 0.36],
+      "systemTag": "SOUL_SHATTER"
+    },
+    "passiveB": {
+      "nameJa": "魔神呼応",
+      "descTemplate": "攻撃時、魔神化ゲージを{value}%回復する。",
+      "values": [5, 6, 7, 9, 10],
+      "systemTag": "DEMON_MODE"
+    },
+    "flavor": "死霊の冷気を帯びた刀。刃紋に骸の白光が走る。"
   },
   "grudge_manifest": {
+    "id": "grudge_manifest",
     "name": "怨嗟顕現・喰魂",
     "type": "WEAPON",
     "rarity": "UR",
@@ -44,11 +89,25 @@
     "archetype": "MYTHIC",
     "rank": 5,
     "ilv": 90,
+    "isUnique": true,
     "stats": {},
     "subOptions": [
       { "type": "ATK%", "value": 19.5 },
       { "type": "CRIT_RATE", "value": 12 }
     ],
-    "specialEffect": "GRUDGE_SINGULARITY"
+    "passiveA": {
+      "nameJa": "怨念の特異点",
+      "descTemplate": "攻撃時、魔神化ゲージを{value}%回復する。魔神化中は全ダメージ+30%。",
+      "values": [8, 9, 10, 12, 15],
+      "condition": "DEMON_ACTIVE",
+      "systemTag": "DEMON_MODE"
+    },
+    "passiveB": {
+      "nameJa": "霊的防壁破断",
+      "descTemplate": "攻撃が防御干渉を{value}%無視する。",
+      "values": [25, 32, 38, 44, 50],
+      "systemTag": "SHIELD_PIERCE"
+    },
+    "flavor": "周回で屠られた魔物たちの怨念が刃の内側で折り重なり、握る者の魂へ黒い刃紋を伸ばす。"
   }
 }

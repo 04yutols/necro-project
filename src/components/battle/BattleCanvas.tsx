@@ -12,6 +12,8 @@ import enemiesData from '../../data/master/enemies.json';
 import itemsData from '../../data/master/items.json';
 import demonFormsData from '../../data/master/demonForms.json';
 import { getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
+import { processStageResultAction } from '../../app/actions';
+import type { StageDropResult } from '../../services/RewardService';
 import { calculateCharacterStatProfile } from '../../logic/StatSystem';
 import {
   DEMON_ACTION_LIMIT,
@@ -360,6 +362,34 @@ function buildResultDrops(stageId?: string, playerName?: string) {
     ...visibleDrops.map(drop => dropToResultItem(drop, playerName)),
     ...hiddenDrops.slice(0, 1).map(drop => dropToResultItem(drop, playerName)),
   ];
+}
+
+function convertDropToResultItems(drop: StageDropResult, playerName?: string) {
+  const weapons = drop.weapons.map(w => ({
+    id:       w.id,
+    name:     w.name,
+    type:     w.type as any,
+    rarity:   normalizeResultRarity(w.rarity) as any,
+    icon:     '⚔',
+    isUnique: w.isUnique,
+    flavor:   w.flavor,
+  }));
+  const residues = drop.residues.map(r => ({
+    id:       r.id,
+    name:     r.name,
+    rarity:   (r.rarity === 'EPIC' ? 'SSR' : r.rarity === 'RARE' ? 'SR' : 'COMMON') as any,
+    icon:     '◆',
+    isUnique: false,
+  }));
+  const materials = drop.materials.map(m => ({
+    id:       m.id,
+    name:     m.name,
+    rarity:   'COMMON' as any,
+    icon:     '▣',
+    isUnique: false,
+    quantity: m.quantity,
+  }));
+  return [...weapons, ...residues, ...materials];
 }
 
 // ── SVG ENEMIES ───────────────────────────────────────────────────────────────
@@ -1347,7 +1377,11 @@ function SystemBar({ auto, speed, onAuto, onSpeed, onEscape, canEscape }: {
 
 // ── MAIN BATTLE CANVAS ────────────────────────────────────────────────────────
 export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
-  const { player, party, equippedResidueSlots } = useGameStore();
+  const {
+    player, party, equippedResidueSlots,
+    addExp, addGold, addClearedStage,
+    addInventoryItems, addAbyssalResidues, addResidueMaterials,
+  } = useGameStore();
   const playerProfile = player ? calculateCharacterStatProfile(player, equippedResidueSlots) : null;
   const playerStats = playerProfile?.total ?? player?.stats;
   const battleWaves = useMemo(() => buildBattleWaves(stageId), [stageId]);
@@ -1470,18 +1504,41 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     window.setTimeout(() => {
       const nextIndex = clearedIndex + 1;
       if (nextIndex >= battleWaves.length) {
-        setBattleResult({
-          isVictory: true,
-          expGained: battleTotalsRef.current.exp,
-          goldGained: battleTotalsRef.current.gold,
-          itemsGained: buildResultDrops(stageId, player?.name),
-          monstersGained: currentWave.isBoss ? [`霊核: ${currentWave.enemies[0]?.name ?? 'ボス'}`] : [],
-          isPurplePillar: collectStageDrops(stageId).some(drop => drop.rarity === 'SSR' || drop.rarity === 'UR' || drop.isHidden),
-          wavesCleared: battleWaves.length,
-          totalWaves: battleWaves.length,
-          clearTime: 74 + Math.round(Math.random() * 18),
+        const isBoss      = currentWave.isBoss;
+        const bossName    = currentWave.enemies[0]?.name ?? 'ボス';
+        const clearTime   = 74 + Math.round(Math.random() * 18);
+        const totalWaves  = battleWaves.length;
+
+        processStageResultAction(stageId ?? '').then(({ dropResult, expGain, goldGain }) => {
+          // ストア更新（DB保存も完了済み）
+          addInventoryItems(dropResult.weapons);
+          addAbyssalResidues(dropResult.residues);
+          addResidueMaterials(dropResult.materials);
+          addExp(expGain);
+          addGold(goldGain);
+          if (stageId) addClearedStage(stageId);
+
+          setBattleResult({
+            isVictory:      true,
+            expGained:      expGain,
+            goldGained:     goldGain,
+            itemsGained:    convertDropToResultItems(dropResult, player?.name),
+            monstersGained: isBoss ? [`霊核: ${bossName}`] : [],
+            isPurplePillar: dropResult.weapons.some((w: { rarity: string }) => w.rarity === 'SSR' || w.rarity === 'UR'),
+            wavesCleared:   totalWaves,
+            totalWaves,
+            clearTime,
+          });
+          setShowResult(true);
+        }).catch(() => {
+          // ネットワーク失敗時フォールバック
+          setBattleResult({
+            isVictory: true, expGained: 0, goldGained: 0,
+            itemsGained: [], monstersGained: [], isPurplePillar: false,
+            wavesCleared: totalWaves, totalWaves, clearTime,
+          });
+          setShowResult(true);
         });
-        setShowResult(true);
         return;
       }
 
@@ -1498,7 +1555,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         window.setTimeout(() => setFlashColor(null), 600);
       }
     }, 1200);
-  }, [addLog, battleWaves, currentWave.enemies, currentWave.isBoss, player?.name, stageId]);
+  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, addAbyssalResidues, addResidueMaterials, battleWaves, currentWave.enemies, currentWave.isBoss, player?.name, stageId]);
 
   function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
     const id = ++floatId;

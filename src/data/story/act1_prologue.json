@@ -1,0 +1,139 @@
+{
+  "scenes": [
+    {
+      "id": "PROLOGUE_00",
+      "type": "MONOLOGUE",
+      "trigger": { "type": "GAME_START" },
+      "background": "DARK",
+      "isSkippable": false,
+      "archiveTitle": "開幕の暗闇",
+      "archiveChapter": 0,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "暗い。",
+          "textEn": "Dark."
+        },
+        {
+          "speaker": "narrator",
+          "text": "ここは、記憶の底。",
+          "textEn": "This is the bottom of memory."
+        }
+      ]
+    },
+    {
+      "id": "PROLOGUE_01",
+      "type": "DIALOGUE",
+      "trigger": { "type": "GAME_START" },
+      "background": "SEPIA",
+      "isSkippable": false,
+      "archiveTitle": "二人の少年",
+      "archiveChapter": 0,
+      "lines": [
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「アルド、俺たちって変な組み合わせだよな。\n 魔族の奴と勇者の末裔が仲良くしてるなんて」",
+          "textEn": "\"We're a strange pair, aren't we, Aldo.\n A demon-kind and a hero's descendant, getting along like this.\"",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "default" },
+            { "characterId": "line", "position": "RIGHT", "expression": "smile" }
+          ]
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「うるさい。お前が勝手についてきたんだろ」",
+          "textEn": "\"Shut up. You're the one who decided to follow me around.\"",
+          "expression": "smile"
+        },
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「それでも……もし俺になにかあったときは、\n この力を使ってくれ。俺の代わりに」",
+          "textEn": "\"Even so... if something happens to me,\n use this power. In my place.\"",
+          "expression": "sad"
+        }
+      ]
+    },
+    {
+      "id": "PROLOGUE_02",
+      "type": "DIALOGUE",
+      "trigger": { "type": "GAME_START" },
+      "background": "BLOOD_RED",
+      "isSkippable": false,
+      "archiveTitle": "その日",
+      "archiveChapter": 0,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "その日は、突然訪れた。",
+          "textEn": "That day came without warning."
+        },
+        {
+          "speaker": "demon_king",
+          "speakerJa": "魔王",
+          "text": "「勇者の末裔よ。貴様の時代は終わりだ」",
+          "textEn": "\"Descendant of heroes. Your era is over.\"",
+          "portraits": [
+            { "characterId": "line", "position": "CENTER", "expression": "dying" },
+            { "characterId": "demon_king", "position": "RIGHT", "expression": "contempt" }
+          ],
+          "vfx": "cursedPillarBreath"
+        },
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「アルド……」",
+          "textEn": "\"Aldo...\"",
+          "expression": "dying"
+        }
+      ]
+    },
+    {
+      "id": "PROLOGUE_03",
+      "type": "DIALOGUE",
+      "trigger": { "type": "GAME_START" },
+      "background": "RUIN_LIGHT",
+      "isSkippable": false,
+      "archiveTitle": "継承",
+      "archiveChapter": 0,
+      "onComplete": {
+        "setFlag": "LINE_DEATH_SEEN",
+        "navigateTo": "HOME"
+      },
+      "lines": [
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「俺の……力を……使ってくれ……」",
+          "textEn": "\"Use my... power...\"",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "shocked" },
+            { "characterId": "line", "position": "CENTER", "expression": "dying" }
+          ],
+          "vfx": "soulChain"
+        },
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「お前ならきっと、うまくやれる」",
+          "textEn": "\"I know you can do it.\"",
+          "expression": "smile"
+        },
+        {
+          "speaker": "narrator",
+          "text": "───勇者の力が、魔族の少年へと宿った。",
+          "textEn": "The hero's power took root within the demon-born boy."
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「絶対に……終わらせてやる」",
+          "textEn": "\"I will... end this. For certain.\"",
+          "expression": "determined"
+        }
+      ]
+    }
+  ]
+}

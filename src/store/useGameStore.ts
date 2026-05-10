@@ -161,6 +161,9 @@ interface GameState {
   setSoulShards: (shards: SoulShardData[]) => void;
   setInventoryItems: (items: ItemData[]) => void;
   setAbyssalResidues: (residues: AbyssalResidueData[]) => void;
+  addInventoryItems: (items: ItemData[]) => void;
+  addAbyssalResidues: (residues: AbyssalResidueData[]) => void;
+  addResidueMaterials: (mats: ResidueMatData[]) => void;
   equipResidueToSlot: (slotIndex: number, residue: AbyssalResidueData | null) => void;
   upgradeResidue: (residueId: string, matIds: string[]) => void;
   rankUpWeapon: (weaponId: string) => void;
@@ -177,6 +180,14 @@ interface GameState {
 
   // パーティ編成の更新
   updatePartySlot: (index: number, monster: MonsterData | null) => void;
+
+  // パーティスロットの入れ替え
+  swapPartySlots: (i: number, j: number) => void;
+
+  // モンスターの現在HP（バトルランタイム用）
+  monsterCurrentHp: Record<string, number>;
+  damageMonster: (monsterId: string, dmg: number) => void;
+  resetMonsterHp: () => void;
 
   // モンスターの削除（魂石化後など）
   removeMonster: (monsterId: string) => void;
@@ -232,6 +243,7 @@ export const useGameStore = create<GameState>((set) => ({
   player: null,
   necroStatus: null,
   party: [null, null, null],
+  monsterCurrentHp: {},
   inventoryMonsters: [],
   soulShards: [],
   inventoryItems: [],
@@ -326,6 +338,15 @@ export const useGameStore = create<GameState>((set) => ({
   setSoulShards: (shards) => set({ soulShards: shards }),
   setInventoryItems: (items) => set({ inventoryItems: items }),
   setAbyssalResidues: (residues) => set({ abyssalResidues: residues }),
+  addInventoryItems: (items) => set((state) => ({
+    inventoryItems: [...state.inventoryItems, ...items],
+  })),
+  addAbyssalResidues: (residues) => set((state) => ({
+    abyssalResidues: [...state.abyssalResidues, ...residues],
+  })),
+  addResidueMaterials: (mats) => set((state) => ({
+    residueMaterials: [...state.residueMaterials, ...mats],
+  })),
   equipResidueToSlot: (slotIndex, residue) => set((state) => {
     if (residue && !isResidueSlotCompatible(residue, slotIndex)) return state;
     const slots = [...state.equippedResidueSlots] as (AbyssalResidueData | null)[];
@@ -437,9 +458,9 @@ export const useGameStore = create<GameState>((set) => ({
     });
     return { player: { ...state.player, jobs: newJobs } };
   }),
-  addGold: (amount) => set((state) => ({
-    // 本来はGoldフィールドが必要
-  })),
+  addGold: (_amount) => {
+    // CharacterData に gold フィールドなし — Phase D で DB 追加後に実装
+  },
   addClearedStage: (stageId) => set((state) => {
     if (!state.player) return { player: null };
     if (state.player.clearedStages.includes(stageId)) return state;
@@ -489,7 +510,26 @@ export const useGameStore = create<GameState>((set) => ({
     newParty[index] = monster;
     return { party: newParty as [MonsterData | null, MonsterData | null, MonsterData | null] };
   }),
-  
+
+  swapPartySlots: (i, j) => set((state) => {
+    const p = [...state.party] as (MonsterData | null)[];
+    [p[i], p[j]] = [p[j], p[i]];
+    return { party: p as [MonsterData | null, MonsterData | null, MonsterData | null] };
+  }),
+
+  damageMonster: (monsterId, dmg) => set((state) => ({
+    monsterCurrentHp: {
+      ...state.monsterCurrentHp,
+      [monsterId]: Math.max(0, (state.monsterCurrentHp[monsterId] ?? 0) - dmg),
+    },
+  })),
+
+  resetMonsterHp: () => set((state) => ({
+    monsterCurrentHp: Object.fromEntries(
+      state.party.filter(Boolean).map((m) => [m!.id, m!.stats.hp])
+    ),
+  })),
+
   removeMonster: (monsterId) => set((state) => ({
     inventoryMonsters: state.inventoryMonsters.filter(m => m.id !== monsterId),
     party: state.party.map(m => m?.id === monsterId ? null : m) as [MonsterData | null, MonsterData | null, MonsterData | null]

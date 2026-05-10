@@ -1,25 +1,23 @@
-import { PrismaClient } from '@prisma/client';
 import { JobService } from '../services/JobService';
 import { NecroService } from '../services/NecroService';
 import { RewardService } from '../services/RewardService';
 import { MasterDataService } from '../services/MasterDataService';
 import { BattleEngine } from './BattleEngine';
+import { prisma } from '../lib/prisma';
 import { CharacterData, MonsterData } from '../types/game';
 
 /**
  * ゲーム全体の進行とループを管理するクラス (GDD-002)
  */
 export class GameManager {
-  private prisma: PrismaClient;
   private jobService: JobService;
   private necroService: NecroService;
   private rewardService: RewardService;
   private masterData: MasterDataService;
 
   constructor() {
-    this.prisma = new PrismaClient();
-    this.jobService = new JobService(this.prisma);
-    this.necroService = new NecroService(this.prisma);
+    this.jobService = new JobService(prisma);
+    this.necroService = new NecroService(prisma);
     this.rewardService = new RewardService();
     this.masterData = MasterDataService.getInstance();
   }
@@ -42,14 +40,14 @@ export class GameManager {
    */
   public async startStage(characterId: string, partyMonsterIds: string[], stageId: string): Promise<{ engine: BattleEngine, stageData: any }> {
     // DB から最新のキャラクターとモンスターを取得
-    const char = await this.prisma.character.findUnique({
+    const char = await prisma.character.findUnique({
       where: { id: characterId },
       include: { jobs: true },
     });
 
     if (!char) throw new Error("Character not found");
 
-    const monsterData = await this.prisma.monster.findMany({
+    const monsterData = await prisma.monster.findMany({
       where: { id: { in: partyMonsterIds } },
     });
 
@@ -112,7 +110,7 @@ export class GameManager {
     const stage = this.masterData.getStage(stageId);
     if (!stage) throw new Error("Stage not found");
 
-    const char = await this.prisma.character.findUnique({
+    const char = await prisma.character.findUnique({
       where: { id: characterId },
       include: { jobs: true }
     });
@@ -121,10 +119,10 @@ export class GameManager {
     // 1. 経験値と報酬の計算
     const playerConverted = this.convertToCharacterData(char);
     const expGain = this.rewardService.calculateExp(stage.rewards.baseExp, playerConverted);
-    const rewards = this.rewardService.calculateDrops(stage.rewards.dropTable, char.critRate ?? 5);
+    const rewards = this.rewardService.processDropTable(stage.rewards.dropTable, char.critRate ?? 5);
 
     // 2. DBへの反映 (トランザクション)
-    await this.prisma.$transaction(async (tx: any) => {
+    await prisma.$transaction(async (tx: any) => {
       // 経験値加算
       const currentJob = char.jobs.find((j: any) => j.jobId === char.currentJobId);
       if (currentJob) {
@@ -140,15 +138,14 @@ export class GameManager {
         // 本来は JobService を tx 内で呼ぶべき
       }
 
-      // ドロップモンスターの追加
-      for (const mId of rewards.monsters) {
-        const mMaster = this.masterData.getMonster(mId);
+      // ドロップモンスターの追加（第1章では発生しない — 将来拡張用）
+      for (const m of rewards.monsters) {
         await tx.monster.create({
           data: {
-            name: mMaster.name,
-            tribe: mMaster.tribe,
-            cost: mMaster.cost,
-            ...mMaster.stats
+            name: m.name,
+            tribe: m.tribe,
+            cost: m.cost,
+            ...m.stats,
           }
         });
       }
@@ -202,13 +199,13 @@ export class GameManager {
     // 3枠固定のバリデーション
     if (monsterIds.length !== 3) throw new Error("Party must have 3 slots.");
 
-    const char = await this.prisma.character.findUnique({
+    const char = await prisma.character.findUnique({
       where: { id: characterId }
     });
     if (!char) throw new Error("Character not found.");
 
     // コスト計算
-    const monsters = await this.prisma.monster.findMany({
+    const monsters = await prisma.monster.findMany({
       where: { id: { in: monsterIds.filter(id => id !== null) as string[] } }
     });
     const totalCost = monsters.reduce((acc: any, m: any) => acc + m.cost, 0);
@@ -254,7 +251,7 @@ export class GameManager {
     const dbField = fieldMap[slot];
     if (!dbField) throw new Error("Invalid equipment slot");
 
-    await this.prisma.character.update({
+    await prisma.character.update({
       where: { id: characterId },
       data: { [dbField]: itemId }
     });
@@ -278,13 +275,13 @@ export class GameManager {
     const dbField = fieldMap[slot];
     if (!dbField) throw new Error("Invalid equipment slot");
 
-    await this.prisma.character.update({
+    await prisma.character.update({
       where: { id: characterId },
       data: { [dbField]: null }
     });
   }
 
   public async close(): Promise<void> {
-    await this.prisma.$disconnect();
+    // singleton のため disconnect しない（開発時のホットリロードで接続維持）
   }
 }

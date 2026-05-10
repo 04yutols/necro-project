@@ -1,0 +1,51 @@
+{
+  "bone_chip": {
+    "id": "bone_chip",
+    "name": "骸の欠片",
+    "quantity": 1,
+    "expValue": 120,
+    "rarity": "COMMON"
+  },
+  "beast_fang": {
+    "id": "beast_fang",
+    "name": "腐肉の牙",
+    "quantity": 1,
+    "expValue": 140,
+    "rarity": "COMMON"
+  },
+  "ash_scroll": {
+    "id": "ash_scroll",
+    "name": "灰の巻物",
+    "quantity": 1,
+    "expValue": 130,
+    "rarity": "COMMON"
+  },
+  "grave_crystal": {
+    "id": "grave_crystal",
+    "name": "墓晶石",
+    "quantity": 1,
+    "expValue": 160,
+    "rarity": "COMMON"
+  },
+  "leech_fang": {
+    "id": "leech_fang",
+    "name": "蛭の毒牙",
+    "quantity": 1,
+    "expValue": 150,
+    "rarity": "COMMON"
+  },
+  "ossuary_memory": {
+    "id": "ossuary_memory",
+    "name": "竜骨の記憶片",
+    "quantity": 1,
+    "expValue": 600,
+    "rarity": "RARE"
+  },
+  "bloodmire_essence": {
+    "id": "bloodmire_essence",
+    "name": "血沼の精",
+    "quantity": 1,
+    "expValue": 800,
+    "rarity": "RARE"
+  }
+}

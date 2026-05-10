@@ -1,0 +1,201 @@
+{
+  "scenes": [
+    {
+      "id": "CH1_TITLE",
+      "type": "CHAPTER_TITLE",
+      "title": "亡 国 の 王 都",
+      "titleEn": "FALLEN ROYAL CAPITAL",
+      "description": "魔王に滅ぼされた王国の外縁へ踏み込んだアルドは、かつての友が愛した世界の残骸を見た。",
+      "trigger": { "type": "GAME_START" },
+      "background": "DARK",
+      "isSkippable": true,
+      "archiveTitle": "第1章「亡国の王都」",
+      "archiveChapter": 1,
+      "onComplete": {
+        "setFlag": "CH1_STARTED"
+      },
+      "lines": []
+    },
+    {
+      "id": "CH1_OPEN",
+      "type": "ENVIRONMENT",
+      "trigger": { "type": "STAGE_ENTER", "stageId": "area1_node1" },
+      "isSkippable": true,
+      "archiveTitle": "王都外縁に立つ",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "亡国の外縁。\n かつて栄えた王都の名残が、廃墟となって広がっている。\n 墓道には、静かに眠れない死者たちが満ちていた。",
+          "textEn": "The outer edge of the fallen kingdom.\n The remnants of a once-thriving capital stretch out in ruins.\n The burial passages were filled with those who could not rest in peace."
+        }
+      ]
+    },
+    {
+      "id": "CH1_NODE1_AFTER",
+      "type": "DIALOGUE",
+      "trigger": { "type": "STAGE_CLEAR", "stageId": "area1_node1" },
+      "background": "BLUR_MAP",
+      "isSkippable": true,
+      "archiveTitle": "初戦の手応え",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「……動いた。ライン、お前の力が動いてる」",
+          "textEn": "\"...It moved. Line, your power is moving.\"",
+          "portraits": [
+            { "characterId": "aldo", "position": "CENTER", "expression": "determined" }
+          ]
+        },
+        {
+          "speaker": "narrator",
+          "text": "アルドは手のひらを見つめ、静かに拳を握った。",
+          "textEn": "Aldo stared at his palm and quietly clenched his fist."
+        }
+      ]
+    },
+    {
+      "id": "CH1_NODE2_ENTER",
+      "type": "ENVIRONMENT",
+      "trigger": { "type": "STAGE_ENTER", "stageId": "area1_node2" },
+      "isSkippable": true,
+      "archiveTitle": "骸骨の大群",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "地下牢の奥。アンデッドの大群が道を塞いでいた。\n 数が多い。だが、退くつもりはなかった。",
+          "textEn": "Deep in the dungeon. A horde of undead blocked the path.\n Many in number. But there was no intention to retreat."
+        }
+      ]
+    },
+    {
+      "id": "CH1_BOSS_ENTER",
+      "type": "DIALOGUE",
+      "trigger": { "type": "STAGE_ENTER", "stageId": "area1_boss" },
+      "background": "STAGE_DARK",
+      "isSkippable": true,
+      "archiveTitle": "王都の守護者",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "亡国の中枢。そこに「それ」はいた。",
+          "textEn": "At the heart of the fallen kingdom. \"It\" stood there.",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "determined" }
+          ],
+          "vfx": "demonRingConverge"
+        },
+        {
+          "speaker": "narrator",
+          "text": "魔王の置き土産。かつての守護者が、怨念に縛られた姿で。",
+          "textEn": "The Demon King's parting gift.\n A former guardian, now bound by malice."
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「……倒す。それしかない」",
+          "textEn": "\"...I'll defeat it. That's all there is to it.\"",
+          "expression": "determined"
+        }
+      ]
+    },
+    {
+      "id": "CH1_BOSS_AFTER",
+      "type": "DIALOGUE",
+      "trigger": { "type": "BOSS_CLEAR", "bossStageId": "area1_boss" },
+      "background": "RUIN_LIGHT",
+      "isSkippable": true,
+      "archiveTitle": "亡国の解放",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "守護者が崩れ落ちた瞬間、王都に静寂が戻った。",
+          "textEn": "The moment the guardian crumbled, silence returned to the royal capital.",
+          "portraits": [
+            { "characterId": "aldo", "position": "CENTER", "expression": "sad" }
+          ],
+          "vfx": "ssrGoldPillar"
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「……ライン、俺はここまで来たぞ」",
+          "textEn": "\"...Line. I've come this far.\"",
+          "expression": "sad"
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「まだ終わらない。次は……幽霊都市だ」",
+          "textEn": "\"It's not over yet. Next... the Phantom City.\"",
+          "expression": "determined"
+        }
+      ]
+    },
+    {
+      "id": "CH1_CLEAR",
+      "type": "CHAPTER_TITLE",
+      "title": "第1章　完",
+      "titleEn": "END OF CHAPTER 1",
+      "trigger": { "type": "GAME_START" },
+      "background": "DARK",
+      "isSkippable": true,
+      "archiveTitle": "第1章 完結",
+      "archiveChapter": 1,
+      "onComplete": {
+        "setFlag": "CH1_CLEARED",
+        "unlockArea": "area2"
+      },
+      "lines": []
+    },
+    {
+      "id": "CH1_AREA2_UNLOCK",
+      "type": "ENVIRONMENT",
+      "trigger": { "type": "AREA_UNLOCK", "areaId": "area2" },
+      "isSkippable": true,
+      "archiveTitle": "幽霊都市の扉",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "亡国の先に、霧が晴れた。\n そこには、もう一つの世界が揺らいでいた。",
+          "textEn": "Beyond the fallen kingdom, the mist cleared.\n There, another world wavered into sight."
+        }
+      ]
+    },
+    {
+      "id": "CH1_DEMONIZE_FIRST",
+      "type": "MONOLOGUE",
+      "trigger": { "type": "STAGE_CLEAR", "stageId": "area1_node1" },
+      "background": "DARK",
+      "isSkippable": true,
+      "archiveTitle": "初めての魔神化",
+      "archiveChapter": 1,
+      "onComplete": {
+        "setFlag": "DEMONIZE_STORY_SEEN"
+      },
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "「……なんだ、これは」",
+          "textEn": "\"...What is this?\""
+        },
+        {
+          "speaker": "narrator",
+          "text": "魔族の血が、勇者の力に呼応した。\n 2つの力が、一瞬だけ重なった。",
+          "textEn": "The demon blood resonated with the hero's power.\n For just a moment, the two forces overlapped."
+        },
+        {
+          "speaker": "narrator",
+          "text": "これが、魔神化。",
+          "textEn": "This is Demonization."
+        }
+      ]
+    }
+  ]
+}

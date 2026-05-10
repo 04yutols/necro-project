@@ -2,7 +2,7 @@
 // docs/TDD.md の Prisma スキーマと整合性を取った定義
 
 export type ClassCategory = 'PHYSICAL' | 'MAGICAL';
-export type Tribe = 'UNDEAD' | 'DEMON' | 'BEAST' | 'HUMANOID';
+export type Tribe = 'UNDEAD' | 'DEMON' | 'BEAST' | 'HUMANOID' | 'DRAGON' | 'ORC';
 export type ElementType = 'FIRE' | 'WATER' | 'THUNDER' | 'EARTH' | 'WIND' | 'ICE' | 'LIGHT' | 'DARK' | 'NONE';
 export type SkillAttackType = 'SLASH' | 'STRIKE' | 'PROJECTILE' | 'MAGIC' | 'SUMMON' | 'HEAL';
 export type EnemyTier = 'MINION' | 'ELITE' | 'BOSS';
@@ -297,14 +297,19 @@ export interface MonsterData {
   cost: number;
   stats: BaseStats;
   resistances: Resistances;
+  // キャラと同じ装備体系 (GDD-007) — 未装備時は undefined（空扱い）
+  equipment?: EquipmentSlots;                          // 武器スロット（weapon のみ使用）
+  equippedResidues?: (AbyssalResidueData | null)[];    // 深淵の残滓 5スロット
+  equippedShardId?: string;                            // SoulShard（魂の欠片）
+  spiritCore?: SpiritCoreData;                        // 霊核 (GDD-追加要件)
+  // バトルランタイム専用（DB非保存）
   tier?: EnemyTier;
   weaknesses?: ElementType[];
   shieldHp?: number;
   maxShieldHp?: number;
   shieldBroken?: boolean;
   statusEffects?: StatusEffect[];
-  equippedShardId?: string;
-  spiritCore?: SpiritCoreData; // 霊核 (GDD-追加要件)
+  gimmicks?: BossGimmick[];
 }
 
 export interface DropEntry {
@@ -387,6 +392,7 @@ export interface BattleState {
   wave: number;
   turn: number;
   areaGimmick?: 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE';
+  monsterCurrentHp: Record<string, number>;
 }
 
 export interface BattleLog {

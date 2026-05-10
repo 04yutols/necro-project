@@ -1,27 +1,35 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { JobService } from '../services/JobService';
 
+// Neon コールドスタートを考慮して長めに設定
+jest.setTimeout(30000);
+
 describe('Integration Test: Job Persistence', () => {
-  let prisma: PrismaClient;
   let jobService: JobService;
 
-  beforeAll(async () => {
-    prisma = new PrismaClient();
-    jobService = new JobService(prisma);
-  });
-
-  afterAll(async () => {
-    await prisma.$disconnect();
+  beforeAll(() => {
+    jobService = new JobService(prisma as any);
   });
 
   test('Permanent passives should be maintained across job changes', async () => {
-    // 1. テストデータの作成
     const characterId = 'test-char-001';
-    
-    // DB に直接データを投入 (本来は CharacterService 等で行う)
+
+    // Job レコードを先に用意（UserJob の外部キー制約）
+    await prisma.job.upsert({
+      where: { id: 'warrior' },
+      update: {},
+      create: { id: 'warrior', name: 'Warrior', tier: 1, category: 'PHYSICAL' }
+    });
+    await prisma.job.upsert({
+      where: { id: 'mage' },
+      update: {},
+      create: { id: 'mage', name: 'Mage', tier: 1, category: 'MAGICAL' }
+    });
+
+    // Character を用意（passiveAtkBonus を確実に 0 にリセット）
     await prisma.character.upsert({
       where: { id: characterId },
-      update: {},
+      update: { passiveAtkBonus: 0, currentJobId: 'warrior' },
       create: {
         id: characterId,
         name: 'Test Hero',
@@ -37,25 +45,20 @@ describe('Integration Test: Job Persistence', () => {
       }
     });
 
-    await prisma.job.upsert({
-      where: { id: 'warrior' },
-      update: {},
-      create: { id: 'warrior', name: 'Warrior', tier: 1, category: 'PHYSICAL' }
-    });
-
+    // warrior Lv9 UserJob を用意
     await prisma.userJob.upsert({
       where: { characterId_jobId: { characterId, jobId: 'warrior' } },
-      update: { level: 9 }, // Lv9 にセット
+      update: { level: 9 },
       create: { characterId, jobId: 'warrior', level: 9 }
     });
 
-    // 2. レベルアップさせてパッシブを獲得 (Lv9 -> Lv10)
+    // Lv9 → Lv10 でパッシブを獲得
     await jobService.onLevelUp(characterId, 'warrior', 10);
 
-    // 3. 転職を実行
+    // 転職
     await jobService.changeJob(characterId, 'mage');
 
-    // 4. 検証: 転職後もパッシブボーナスが維持されていること
+    // 検証: 転職後もパッシブボーナスが維持されていること
     const updatedChar = await prisma.character.findUnique({
       where: { id: characterId }
     });
