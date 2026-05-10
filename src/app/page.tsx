@@ -8,6 +8,7 @@ import { StoryOrchestrator } from '../components/story/StoryOrchestrator';
 import { StoryArchive } from '../components/story/StoryArchive';
 import { useStoryTrigger } from '../hooks/useStoryTrigger';
 import { useStoryStore } from '../store/useStoryStore';
+import { TutorialOrchestrator } from '../components/tutorial/TutorialOrchestrator';
 
 const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').then((mod) => mod.default), {
   ssr: false,
@@ -166,7 +167,9 @@ function GameContent() {
   const isFullscreen = isInBattle || currentTab === 'MAP';
 
   return (
-    <StoryOrchestrator>
+    <>
+      <TutorialOrchestrator />
+      <StoryOrchestrator>
       <div className="h-[100dvh] w-full bg-[#050505] selection:bg-secondary/30 overflow-hidden">
         <AnimatePresence mode="wait">
           {isInBattle ? (
@@ -211,7 +214,8 @@ function GameContent() {
           />
         )}
       </div>
-    </StoryOrchestrator>
+      </StoryOrchestrator>
+    </>
   );
 }
 

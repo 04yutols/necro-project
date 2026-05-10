@@ -7,18 +7,27 @@ import { PHASE_STEPS } from '../../data/tutorial/phases';
 import { SpotlightOverlay } from './SpotlightOverlay';
 import { TutorialBanner } from './TutorialBanner';
 
+/**
+ * page.tsx 内に配置する最上位チュートリアル制御コンポーネント。
+ * ゲーム状態の監視（useTutorialTrigger）と UI 表示（SpotlightOverlay / TutorialBanner）を担う。
+ * z-index: 9400〜9503 で固定表示。StoryOrchestrator（z:10000）より下なので、
+ * ストーリーシーン再生中はストーリーが前面に来る。
+ */
 export function TutorialOrchestrator() {
-  const { activePhase, activeStepIndex, tutorialCompleted, nextStep, skipPhase } = useTutorialStore();
+  const activePhase = useTutorialStore(s => s.activePhase);
+  const activeStepIndex = useTutorialStore(s => s.activeStepIndex);
+  const tutorialCompleted = useTutorialStore(s => s.tutorialCompleted);
+  const nextStep = useTutorialStore(s => s.nextStep);
+  const skipPhase = useTutorialStore(s => s.skipPhase);
+
+  // ゲーム状態を監視してフェーズを自動発火
   useTutorialTrigger();
 
   const step = activePhase ? PHASE_STEPS[activePhase][activeStepIndex] : null;
 
   return (
     <>
-      {/* 新機能解放バナー */}
       <TutorialBanner />
-
-      {/* スポットライトチュートリアル */}
       <AnimatePresence>
         {!tutorialCompleted && step && (
           <SpotlightOverlay

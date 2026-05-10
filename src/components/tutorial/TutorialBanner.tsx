@@ -3,19 +3,20 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTutorialStore } from '../../store/useTutorialStore';
-import { BANNER_LABELS } from '../../hooks/useTutorialTrigger';
+import { BANNER_LABELS } from '../../data/tutorial/phases';
 
 const AUTO_DISMISS_MS = 3000;
 
 export function TutorialBanner() {
-  const { bannerQueue, dismissBanner } = useTutorialStore();
+  const bannerQueue = useTutorialStore(s => s.bannerQueue);
+  const dismissBanner = useTutorialStore(s => s.dismissBanner);
   const current = bannerQueue[0];
 
   useEffect(() => {
     if (!current) return;
     const timer = setTimeout(dismissBanner, AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [current]);
+  }, [current, dismissBanner]);
 
   return (
     <AnimatePresence>
@@ -32,7 +33,7 @@ export function TutorialBanner() {
             top: 'max(0px, env(safe-area-inset-top, 0px))',
             left: 0,
             right: 0,
-            zIndex: 8500,
+            zIndex: 9400,
             background: 'linear-gradient(90deg, #8B00FF, #4400AA)',
             padding: '10px 20px',
             cursor: 'pointer',
@@ -43,13 +44,14 @@ export function TutorialBanner() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 16 }}>✦</span>
+            <span style={{ fontSize: 14, color: '#fff' }}>✦</span>
             <p style={{
               fontFamily: "'Noto Sans JP', sans-serif",
               fontSize: 13,
               color: '#fff',
               fontWeight: 'bold',
               letterSpacing: '0.04em',
+              margin: 0,
             }}>
               {BANNER_LABELS[current]}
             </p>
@@ -57,9 +59,10 @@ export function TutorialBanner() {
           <p style={{
             fontFamily: "'Cinzel', serif",
             fontSize: 9,
-            color: 'rgba(255,255,255,0.6)',
+            color: 'rgba(255,255,255,0.55)',
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
+            margin: 0,
           }}>
             TAP TO CLOSE
           </p>

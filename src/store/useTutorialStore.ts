@@ -8,8 +8,8 @@ interface TutorialState {
   activeStepIndex: number;
   tutorialCompleted: boolean;
   viewedHints: string[];
-  /** 新機能バナーのキュー（フェーズID） */
   bannerQueue: TutorialPhase[];
+  hasHydrated: boolean;
 
   startPhase: (phase: TutorialPhase) => void;
   nextStep: () => void;
@@ -20,6 +20,7 @@ interface TutorialState {
   dismissBanner: () => void;
   completeTutorial: () => void;
   resetTutorial: () => void;
+  setHasHydrated: (value: boolean) => void;
 }
 
 export const useTutorialStore = create<TutorialState>()(
@@ -31,6 +32,7 @@ export const useTutorialStore = create<TutorialState>()(
       tutorialCompleted: false,
       viewedHints: [],
       bannerQueue: [],
+      hasHydrated: false,
 
       startPhase: (phase) => {
         const { completedPhases, activePhase } = get();
@@ -42,15 +44,13 @@ export const useTutorialStore = create<TutorialState>()(
         const { activePhase, activeStepIndex } = get();
         if (!activePhase) return;
         const steps = PHASE_STEPS[activePhase];
-        const isLastStep = activeStepIndex + 1 >= steps.length;
-        if (isLastStep) {
+        if (activeStepIndex + 1 >= steps.length) {
           const newCompleted = [...get().completedPhases, activePhase];
-          const allDone = ALL_PHASES.every(p => newCompleted.includes(p));
           set({
             completedPhases: newCompleted,
             activePhase: null,
             activeStepIndex: 0,
-            tutorialCompleted: allDone,
+            tutorialCompleted: ALL_PHASES.every(p => newCompleted.includes(p)),
           });
         } else {
           set({ activeStepIndex: activeStepIndex + 1 });
@@ -61,12 +61,11 @@ export const useTutorialStore = create<TutorialState>()(
         const { activePhase } = get();
         if (!activePhase) return;
         const newCompleted = [...get().completedPhases, activePhase];
-        const allDone = ALL_PHASES.every(p => newCompleted.includes(p));
         set({
           completedPhases: newCompleted,
           activePhase: null,
           activeStepIndex: 0,
-          tutorialCompleted: allDone,
+          tutorialCompleted: ALL_PHASES.every(p => newCompleted.includes(p)),
         });
       },
 
@@ -82,8 +81,7 @@ export const useTutorialStore = create<TutorialState>()(
           bannerQueue: s.bannerQueue.includes(phase) ? s.bannerQueue : [...s.bannerQueue, phase],
         })),
 
-      dismissBanner: () =>
-        set(s => ({ bannerQueue: s.bannerQueue.slice(1) })),
+      dismissBanner: () => set(s => ({ bannerQueue: s.bannerQueue.slice(1) })),
 
       completeTutorial: () => set({ tutorialCompleted: true }),
 
@@ -96,7 +94,19 @@ export const useTutorialStore = create<TutorialState>()(
           viewedHints: [],
           bannerQueue: [],
         }),
+
+      setHasHydrated: (value) => set({ hasHydrated: value }),
     }),
-    { name: 'tutorial-store' }
+    {
+      name: 'necro-tutorial-store-v1',
+      partialize: s => ({
+        completedPhases: s.completedPhases,
+        tutorialCompleted: s.tutorialCompleted,
+        viewedHints: s.viewedHints,
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    }
   )
 );

@@ -1,99 +1,104 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
+import { useStoryStore } from '../store/useStoryStore';
 import { useTutorialStore } from '../store/useTutorialStore';
-import { type TutorialPhase, ALL_PHASES } from '../data/tutorial/phases';
 
 export function useTutorialTrigger() {
+  const tutorialHydrated = useTutorialStore(s => s.hasHydrated);
+  const storyHydrated = useStoryStore(s => s.hasHydrated);
+  const completedPhases = useTutorialStore(s => s.completedPhases);
+  const tutorialCompleted = useTutorialStore(s => s.tutorialCompleted);
+
   const clearedStages = useGameStore(s => s.player?.clearedStages ?? []);
-  const inventoryMonsters = useGameStore(s => s.inventoryMonsters);
-  const { completedPhases, tutorialCompleted, startPhase, enqueueBanner } = useTutorialStore();
-  const prevClearedRef = useRef<string[]>([]);
+  const monsterCount = useGameStore(s => s.inventoryMonsters.length);
+  const isDemonMode = useGameStore(s => s.isDemonMode);
+
+  // ストーリーフラグでプロローグ完了を検出
+  const lineDeathSeen = useStoryStore(s => s.storyFlags['LINE_DEATH_SEEN'] === true);
 
   useEffect(() => {
+    if (!tutorialHydrated || !storyHydrated) return;
     if (tutorialCompleted) return;
 
-    // PHASE 1: プロローグ完了後（storyフラグで制御）→ バトル基礎は BattleCanvas 側から直接 startPhase
-    // ここでは NECRO_LAB 以降を監視する
+    const { startPhase, enqueueBanner } = useTutorialStore.getState();
 
-    // PHASE 2: チュートリアルバトル01クリア後 → 死霊術フェーズ
+    // PHASE 1: プロローグ完了後（LINE_DEATH_SEEN）→ バトル基礎
+    // 注: ステップはバトル開始時に BattleCanvas → startTutorialBattlePhase() で発火
+    //     ここでは「フェーズ解放済みとして初期化」はしない
+    //     BATTLE_BASICS は BattleCanvas 単独で管理する
+
+    // PHASE 2: tutorial_battle_01 クリア → 死霊術ラボ
     if (
+      lineDeathSeen &&
       clearedStages.includes('tutorial_battle_01') &&
-      !completedPhases.includes('NECRO_LAB') &&
-      completedPhases.includes('BATTLE_BASICS')
+      !completedPhases.includes('NECRO_LAB')
     ) {
       enqueueBanner('NECRO_LAB');
       startPhase('NECRO_LAB');
     }
 
-    // PHASE 3: モンスター2体以上 + チュートリアルバトル02クリア → 編成フェーズ
+    // PHASE 3: tutorial_battle_02 クリア + モンスター2体以上 → パーティ編成
     if (
-      inventoryMonsters.length >= 2 &&
       clearedStages.includes('tutorial_battle_02') &&
-      !completedPhases.includes('PARTY_FORMATION') &&
-      completedPhases.includes('NECRO_LAB')
+      monsterCount >= 2 &&
+      !completedPhases.includes('PARTY_FORMATION')
     ) {
       enqueueBanner('PARTY_FORMATION');
       startPhase('PARTY_FORMATION');
     }
 
-    // PHASE 4: モンスター3体以上 + 編成完了後 → 転職フェーズ
+    // PHASE 4: モンスター3体以上 → 職業転職
     if (
-      inventoryMonsters.length >= 3 &&
-      completedPhases.includes('PARTY_FORMATION') &&
+      monsterCount >= 3 &&
       !completedPhases.includes('JOB_CHANGE')
     ) {
       enqueueBanner('JOB_CHANGE');
       startPhase('JOB_CHANGE');
     }
 
-    // PHASE 5: AREA1全ステージクリア → 残滓フェーズ
-    const area1Stages = ['area1_node1', 'area1_node2', 'area1_node3'];
+    // PHASE 5: AREA1 全3ノードクリア → 深淵の残滓
+    const area1Done = ['area1_node1', 'area1_node2', 'area1_node3'].every(s => clearedStages.includes(s));
     if (
-      area1Stages.every(s => clearedStages.includes(s)) &&
-      completedPhases.includes('JOB_CHANGE') &&
+      area1Done &&
       !completedPhases.includes('ABYSSAL_RESIDUE')
     ) {
       enqueueBanner('ABYSSAL_RESIDUE');
       startPhase('ABYSSAL_RESIDUE');
     }
 
-    // PHASE 6: 第1章ボス撃破後 → 魔神化フェーズ
+    // PHASE 6: 第1章ボス撃破 → 魔神化
     if (
       clearedStages.includes('area1_boss') &&
-      completedPhases.includes('ABYSSAL_RESIDUE') &&
       !completedPhases.includes('DEMONIZATION')
     ) {
       enqueueBanner('DEMONIZATION');
       startPhase('DEMONIZATION');
     }
+  }, [
+    tutorialHydrated, storyHydrated, tutorialCompleted,
+    lineDeathSeen, clearedStages, monsterCount, completedPhases,
+  ]);
 
-    // 全フェーズ完了チェック
-    if (ALL_PHASES.every(p => completedPhases.includes(p))) {
-      useTutorialStore.getState().completeTutorial();
-    }
-  }, [clearedStages, inventoryMonsters.length, completedPhases, tutorialCompleted]);
-
-  // ステージクリアの差分検出（不要な重複発火防止）
+  // 魔神化ゲージ100%→発動時は DEMONIZATION フェーズのステップ2へジャンプ
   useEffect(() => {
-    prevClearedRef.current = clearedStages;
-  }, [clearedStages]);
+    if (!tutorialHydrated || tutorialCompleted) return;
+    const { activePhase, activeStepIndex, nextStep } = useTutorialStore.getState();
+    if (isDemonMode && activePhase === 'DEMONIZATION' && activeStepIndex === 1) {
+      nextStep();
+    }
+  }, [isDemonMode, tutorialHydrated, tutorialCompleted]);
 }
 
-/** バトル開始時に PHASE 1 を発火する（BattleCanvas から呼ぶ） */
-export function triggerBattleBasicsPhase() {
+/**
+ * バトル開始時に BattleCanvas から呼ぶ。
+ * tutorial_battle_01 入場時のみ BATTLE_BASICS フェーズを発火する。
+ */
+export function startTutorialBattlePhase(stageId: string) {
+  if (stageId !== 'tutorial_battle_01') return;
   const { completedPhases, startPhase } = useTutorialStore.getState();
   if (!completedPhases.includes('BATTLE_BASICS')) {
     startPhase('BATTLE_BASICS');
   }
 }
-
-export const BANNER_LABELS: Record<TutorialPhase, string> = {
-  BATTLE_BASICS:    'バトル基礎を解放',
-  NECRO_LAB:        'ネクロラボが解放されました',
-  PARTY_FORMATION:  '軍団編成が解放されました',
-  JOB_CHANGE:       '職業転職が解放されました',
-  ABYSSAL_RESIDUE:  '深淵の残滓が解放されました',
-  DEMONIZATION:     '魔神化システムが解放されました',
-};

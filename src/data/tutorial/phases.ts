@@ -27,7 +27,7 @@ export const PHASE_STEPS: Record<TutorialPhase, TutorialStep[]> = {
       id: 'TUT_B_02',
       targetId: 'energy-gauge',
       title: 'エネルギーゲージ',
-      body: '攻撃するとENが溜まる。ENが溜まるとスキルが使えるようになる。',
+      body: '攻撃するとENが溜まる。ENが一定以上になるとスキルが使えるようになる。',
       position: 'above',
     },
     {
@@ -40,8 +40,8 @@ export const PHASE_STEPS: Record<TutorialPhase, TutorialStep[]> = {
     {
       id: 'TUT_B_04',
       targetId: 'damage-popup',
-      title: 'ダメージ表示',
-      body: 'スキルの威力が数字で表示される。会心が出ると黄色で光る！',
+      title: 'ダメージ',
+      body: 'スキルの威力が数字で表示される。会心が出ると黄色く光る！',
       position: 'below',
     },
     {
@@ -65,7 +65,7 @@ export const PHASE_STEPS: Record<TutorialPhase, TutorialStep[]> = {
       id: 'TUT_N_02',
       targetId: 'monster-inventory',
       title: 'モンスター召喚',
-      body: '「スケルトン」をタップして召喚の儀式を行おう。',
+      body: 'リストをタップして召喚の儀式を行おう。',
       position: 'above',
     },
     {
@@ -79,7 +79,7 @@ export const PHASE_STEPS: Record<TutorialPhase, TutorialStep[]> = {
       id: 'TUT_N_04',
       targetId: 'monster-inventory',
       title: 'インベントリ',
-      body: '獲得したモンスターはここに並ぶ。EQUIP タブで戦闘パーティに組み込もう。',
+      body: '獲得したモンスターはここに並ぶ。EQUIPタブで戦闘パーティに組み込もう。',
       position: 'above',
     },
   ],
@@ -210,3 +210,13 @@ export const ALL_PHASES: TutorialPhase[] = [
   'ABYSSAL_RESIDUE',
   'DEMONIZATION',
 ];
+
+/** 新機能解放バナーのラベル */
+export const BANNER_LABELS: Record<TutorialPhase, string> = {
+  BATTLE_BASICS:   'バトル基礎が解放されました',
+  NECRO_LAB:       'ネクロラボが解放されました',
+  PARTY_FORMATION: '軍団編成が解放されました',
+  JOB_CHANGE:      '職業転職が解放されました',
+  ABYSSAL_RESIDUE: '深淵の残滓が解放されました',
+  DEMONIZATION:    '魔神化システムが解放されました',
+};
