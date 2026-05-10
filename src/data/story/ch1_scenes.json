@@ -1,0 +1,445 @@
+{
+  "scenes": [
+    {
+      "id": "PROLOGUE_00",
+      "type": "MONOLOGUE",
+      "sequence": 0,
+      "trigger": { "type": "GAME_START" },
+      "background": "DARK",
+      "isSkippable": false,
+      "archiveTitle": "開幕の暗闇",
+      "archiveChapter": 0,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "暗い。",
+          "textEn": "Dark."
+        },
+        {
+          "speaker": "narrator",
+          "text": "ここは、記憶の底。",
+          "textEn": "This is the bottom of memory."
+        }
+      ]
+    },
+    {
+      "id": "PROLOGUE_01",
+      "type": "DIALOGUE",
+      "sequence": 1,
+      "trigger": { "type": "GAME_START" },
+      "background": "SEPIA",
+      "isSkippable": false,
+      "archiveTitle": "二人の少年",
+      "archiveChapter": 0,
+      "lines": [
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「アルド、俺たちって変な組み合わせだよな。\n 魔族の奴と勇者の末裔が仲良くしてるなんて」",
+          "textEn": "\"We're a strange pair, aren't we, Aldo.\n A demon-kind and a hero's descendant, getting along like this.\"",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "default" },
+            { "characterId": "line", "position": "RIGHT", "expression": "smile" }
+          ]
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「うるさい。お前が勝手についてきたんだろ」",
+          "textEn": "\"Shut up. You're the one who decided to follow me around.\"",
+          "expression": "default"
+        },
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「それでも……もし俺になにかあったときは、\n この力を使ってくれ。俺の代わりに」",
+          "textEn": "\"Even so... if something happens to me,\n use this power. In my place.\"",
+          "expression": "sad"
+        }
+      ]
+    },
+    {
+      "id": "PROLOGUE_02",
+      "type": "DIALOGUE",
+      "sequence": 2,
+      "trigger": { "type": "GAME_START" },
+      "background": "BLOOD_RED",
+      "isSkippable": false,
+      "archiveTitle": "その日",
+      "archiveChapter": 0,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "その日は、突然訪れた。",
+          "textEn": "That day came without warning."
+        },
+        {
+          "speaker": "demon_king",
+          "speakerJa": "魔王",
+          "text": "「勇者の末裔よ。貴様の時代は終わりだ」",
+          "textEn": "\"Descendant of heroes. Your era is over.\"",
+          "portraits": [
+            { "characterId": "line", "position": "CENTER", "expression": "dying" },
+            { "characterId": "demon_king", "position": "RIGHT", "expression": "contempt" }
+          ],
+          "vfx": "cursedPillarBreath"
+        },
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「アルド……」",
+          "textEn": "\"Aldo...\"",
+          "expression": "dying"
+        }
+      ]
+    },
+    {
+      "id": "PROLOGUE_03",
+      "type": "DIALOGUE",
+      "sequence": 3,
+      "trigger": { "type": "GAME_START" },
+      "background": "RUIN_LIGHT",
+      "isSkippable": false,
+      "archiveTitle": "継承",
+      "archiveChapter": 0,
+      "onComplete": {
+        "setFlag": "LINE_DEATH_SEEN",
+        "navigateTo": "HOME"
+      },
+      "lines": [
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「俺の……力を……使ってくれ……」",
+          "textEn": "\"Use my... power...\"",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "shocked" },
+            { "characterId": "line", "position": "CENTER", "expression": "dying" }
+          ],
+          "vfx": "soulChain"
+        },
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「お前ならきっと、うまくやれる」",
+          "textEn": "\"I know you can do it.\"",
+          "expression": "smile"
+        },
+        {
+          "speaker": "narrator",
+          "text": "──勇者の力が、魔族の少年へと宿った。",
+          "textEn": "The hero's power took root within the demon-born boy."
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「絶対に……終わらせてやる」",
+          "textEn": "\"I will... end this. For certain.\"",
+          "expression": "determined"
+        }
+      ]
+    },
+    {
+      "id": "CH1_TITLE",
+      "type": "CHAPTER_TITLE",
+      "sequence": 10,
+      "title": "亡 国 の 王 都",
+      "titleEn": "FALLEN ROYAL CAPITAL",
+      "description": "魔王に滅ぼされた王国の外縁へ踏み込んだアルドは、かつての友が愛した世界の残骸を見た。",
+      "trigger": { "type": "FLAG_SET", "flagKey": "LINE_DEATH_SEEN" },
+      "background": "DARK",
+      "isSkippable": true,
+      "archiveTitle": "第1章「亡国の王都」",
+      "archiveChapter": 1,
+      "onComplete": {
+        "setFlag": "CH1_STARTED"
+      },
+      "lines": []
+    },
+    {
+      "id": "CH1_SAFE_INTRO",
+      "type": "ENVIRONMENT",
+      "sequence": 11,
+      "trigger": { "type": "FLAG_SET", "flagKey": "CH1_STARTED" },
+      "background": "BLUR_MAP",
+      "isSkippable": true,
+      "archiveTitle": "亡者の前哨陣",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "亡者の前哨陣。\n死霊たちは無言で膝を折り、アルドの進軍を待っていた。",
+          "textEn": "The undead vanguard knelt in silence, waiting for Aldo's march."
+        }
+      ]
+    },
+    {
+      "id": "CH1_OPEN",
+      "type": "ENVIRONMENT",
+      "sequence": 12,
+      "trigger": { "type": "STAGE_ENTER", "stageId": "area1_node1" },
+      "background": "BLUR_MAP",
+      "isSkippable": true,
+      "archiveTitle": "王都外縁に立つ",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "亡国の外縁。\nかつて栄えた王都の名残が、廃墟となって広がっている。\n墓道には、静かに眠れない死者たちが満ちていた。",
+          "textEn": "The outer edge of the fallen kingdom. The burial passages were filled with those who could not rest."
+        }
+      ]
+    },
+    {
+      "id": "CH1_NODE1_AFTER",
+      "type": "DIALOGUE",
+      "sequence": 13,
+      "trigger": { "type": "STAGE_CLEAR", "stageId": "area1_node1" },
+      "background": "BLUR_MAP",
+      "isSkippable": true,
+      "archiveTitle": "初戦の手応え",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「……動いた。ライン、お前の力が動いてる」",
+          "textEn": "\"...It moved. Line, your power is moving.\"",
+          "portraits": [
+            { "characterId": "aldo", "position": "CENTER", "expression": "determined" }
+          ]
+        },
+        {
+          "speaker": "narrator",
+          "text": "アルドは手のひらを見つめ、静かに拳を握った。",
+          "textEn": "Aldo stared at his palm and quietly clenched his fist."
+        }
+      ]
+    },
+    {
+      "id": "CH1_NODE2_ENTER",
+      "type": "ENVIRONMENT",
+      "sequence": 14,
+      "trigger": { "type": "STAGE_ENTER", "stageId": "area1_node2" },
+      "background": "DARK",
+      "isSkippable": true,
+      "archiveTitle": "骸骨の大群",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "煤けた王城の地下牢。\nアンデッドの大群が道を塞いでいた。\n数が多い。だが、退くつもりはなかった。",
+          "textEn": "Deep in the royal dungeon, a horde of undead blocked the road."
+        }
+      ]
+    },
+    {
+      "id": "CH1_NODE2_AFTER",
+      "type": "DIALOGUE",
+      "sequence": 15,
+      "trigger": { "type": "STAGE_CLEAR", "stageId": "area1_node2" },
+      "background": "BLUR_MAP",
+      "isSkippable": true,
+      "archiveTitle": "地下牢の残響",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "地下牢の鎖が、誰もいない暗がりで鳴った。",
+          "textEn": "Chains rang in the empty dark of the dungeon.",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "determined" }
+          ]
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「守るための城が、死者を閉じ込める檻になったのか」",
+          "textEn": "\"A castle built to protect became a cage for the dead.\"",
+          "expression": "sad"
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「……行こう。王都の中枢は近い」",
+          "textEn": "\"Let's go. The heart of the capital is close.\"",
+          "expression": "determined"
+        }
+      ]
+    },
+    {
+      "id": "CH1_BOSS_ENTER",
+      "type": "DIALOGUE",
+      "sequence": 16,
+      "trigger": { "type": "STAGE_ENTER", "stageId": "area1_boss" },
+      "background": "STAGE_DARK",
+      "isSkippable": true,
+      "archiveTitle": "王都の守護者",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "亡国の中枢。そこに「それ」はいた。",
+          "textEn": "At the heart of the fallen kingdom. It stood there.",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "determined" }
+          ],
+          "vfx": "demonRingConverge"
+        },
+        {
+          "speaker": "narrator",
+          "text": "魔王の置き土産。かつての守護者が、怨念に縛られた姿で。",
+          "textEn": "The Demon King's parting gift. A former guardian, now bound by malice."
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「……倒す。それしかない」",
+          "textEn": "\"...I'll defeat it. That's all there is to it.\"",
+          "expression": "determined"
+        }
+      ]
+    },
+    {
+      "id": "CH1_BOSS_AFTER",
+      "type": "DIALOGUE",
+      "sequence": 17,
+      "trigger": { "type": "BOSS_CLEAR", "bossStageId": "area1_boss" },
+      "background": "RUIN_LIGHT",
+      "isSkippable": true,
+      "archiveTitle": "竜骨祭壇の静寂",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "守護者が崩れ落ちた瞬間、王都に静寂が戻った。",
+          "textEn": "The moment the guardian crumbled, silence returned to the royal capital.",
+          "portraits": [
+            { "characterId": "aldo", "position": "CENTER", "expression": "sad" }
+          ],
+          "vfx": "ssrGoldPillar"
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「……ライン、俺はここまで来たぞ」",
+          "textEn": "\"...Line. I've come this far.\"",
+          "expression": "sad"
+        },
+        {
+          "speaker": "narrator",
+          "text": "祭壇の奥、血のような沼へ続く道が口を開けた。",
+          "textEn": "Beyond the altar, a road opened toward a mire like blood."
+        }
+      ]
+    },
+    {
+      "id": "CH1_NODE3_ENTER",
+      "type": "ENVIRONMENT",
+      "sequence": 18,
+      "trigger": { "type": "STAGE_ENTER", "stageId": "area1_node3" },
+      "background": "BLOOD_RED",
+      "isSkippable": true,
+      "archiveTitle": "血沼の渡し",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "血沼の渡し。\n赤黒い水面に、王都で流された命の名残が揺れている。\n次の扉を開くには、この怨念を越えねばならない。",
+          "textEn": "The bloodmire rippled with the remains of lives lost in the capital."
+        }
+      ]
+    },
+    {
+      "id": "CH1_DEMONIZE_FIRST",
+      "type": "MONOLOGUE",
+      "sequence": 19,
+      "trigger": { "type": "DEMONIZE_FIRST" },
+      "background": "DARK",
+      "isSkippable": true,
+      "archiveTitle": "初めての魔神化",
+      "archiveChapter": 1,
+      "onComplete": {
+        "setFlag": "DEMONIZE_STORY_SEEN"
+      },
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "「……なんだ、これは」",
+          "textEn": "\"...What is this?\""
+        },
+        {
+          "speaker": "narrator",
+          "text": "魔族の血が、勇者の力に呼応した。\n2つの力が、一瞬だけ重なった。",
+          "textEn": "The demon blood resonated with the hero's power. For just a moment, the two forces overlapped."
+        },
+        {
+          "speaker": "narrator",
+          "text": "これが、魔神化。",
+          "textEn": "This is Demonization."
+        }
+      ]
+    },
+    {
+      "id": "CH1_NODE3_AFTER",
+      "type": "DIALOGUE",
+      "sequence": 20,
+      "trigger": { "type": "STAGE_CLEAR", "stageId": "area1_node3" },
+      "background": "RUIN_LIGHT",
+      "isSkippable": true,
+      "archiveTitle": "亡国の解放",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "血沼が静まり、王都を覆っていた霧がゆっくりと退いた。",
+          "textEn": "The bloodmire fell silent, and the mist over the capital withdrew.",
+          "portraits": [
+            { "characterId": "aldo", "position": "CENTER", "expression": "determined" }
+          ]
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「まだ終わらない。次は……幽霊都市だ」",
+          "textEn": "\"It's not over yet. Next... the Phantom City.\"",
+          "expression": "determined"
+        }
+      ]
+    },
+    {
+      "id": "CH1_CLEAR",
+      "type": "CHAPTER_TITLE",
+      "sequence": 21,
+      "title": "第1章　完",
+      "titleEn": "END OF CHAPTER 1",
+      "trigger": { "type": "STAGE_CLEAR", "stageId": "area1_node3" },
+      "background": "DARK",
+      "isSkippable": true,
+      "archiveTitle": "第1章 完結",
+      "archiveChapter": 1,
+      "onComplete": {
+        "setFlag": "CH1_CLEARED",
+        "unlockArea": "area2"
+      },
+      "lines": []
+    },
+    {
+      "id": "CH1_AREA2_UNLOCK",
+      "type": "ENVIRONMENT",
+      "sequence": 22,
+      "trigger": { "type": "AREA_UNLOCK", "areaId": "area2" },
+      "background": "BLUR_MAP",
+      "isSkippable": true,
+      "archiveTitle": "幽霊都市の扉",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "亡国の先に、霧が晴れた。\nそこには、もう一つの世界が揺らいでいた。",
+          "textEn": "Beyond the fallen kingdom, the mist cleared. Another world wavered into sight."
+        }
+      ]
+    }
+  ]
+}

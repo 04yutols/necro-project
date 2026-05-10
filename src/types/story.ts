@@ -7,10 +7,12 @@ export type SceneType =
 
 export type SceneTrigger =
   | { type: 'GAME_START' }
+  | { type: 'FLAG_SET'; flagKey: string }
   | { type: 'STAGE_CLEAR'; stageId: string }
   | { type: 'STAGE_ENTER'; stageId: string }
   | { type: 'AREA_UNLOCK'; areaId: string }
   | { type: 'BOSS_CLEAR'; bossStageId: string }
+  | { type: 'DEMONIZE_FIRST' }
   | { type: 'MANUAL'; sceneId: string };
 
 export interface CharacterPortrait {
@@ -39,6 +41,7 @@ export interface StoryScene {
   title?: string;
   titleEn?: string;
   description?: string;
+  sequence?: number;
   trigger: SceneTrigger;
   background?: string;
   lines: DialogueLine[];
