@@ -9,6 +9,7 @@ interface TutorialState {
   tutorialCompleted: boolean;
   viewedHints: string[];
   bannerQueue: TutorialPhase[];
+  visitedTabs: string[];
   hasHydrated: boolean;
 
   startPhase: (phase: TutorialPhase) => void;
@@ -18,6 +19,7 @@ interface TutorialState {
   isHintViewed: (hintId: string) => boolean;
   enqueueBanner: (phase: TutorialPhase) => void;
   dismissBanner: () => void;
+  markTabVisited: (tab: string) => void;
   completeTutorial: () => void;
   resetTutorial: () => void;
   setHasHydrated: (value: boolean) => void;
@@ -32,6 +34,7 @@ export const useTutorialStore = create<TutorialState>()(
       tutorialCompleted: false,
       viewedHints: [],
       bannerQueue: [],
+      visitedTabs: [],
       hasHydrated: false,
 
       startPhase: (phase) => {
@@ -83,6 +86,11 @@ export const useTutorialStore = create<TutorialState>()(
 
       dismissBanner: () => set(s => ({ bannerQueue: s.bannerQueue.slice(1) })),
 
+      markTabVisited: (tab) =>
+        set(s => ({
+          visitedTabs: s.visitedTabs.includes(tab) ? s.visitedTabs : [...s.visitedTabs, tab],
+        })),
+
       completeTutorial: () => set({ tutorialCompleted: true }),
 
       resetTutorial: () =>
@@ -93,6 +101,7 @@ export const useTutorialStore = create<TutorialState>()(
           tutorialCompleted: false,
           viewedHints: [],
           bannerQueue: [],
+          visitedTabs: [],
         }),
 
       setHasHydrated: (value) => set({ hasHydrated: value }),
@@ -103,6 +112,7 @@ export const useTutorialStore = create<TutorialState>()(
         completedPhases: s.completedPhases,
         tutorialCompleted: s.tutorialCompleted,
         viewedHints: s.viewedHints,
+        visitedTabs: s.visitedTabs,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

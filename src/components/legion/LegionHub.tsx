@@ -1349,11 +1349,11 @@ function MaterialCard({ mat, isSelected, onToggle }: { mat: ResidueMatData; isSe
 /* ──────────────────────────────────────────
    PORTRAIT CARD (list view)
 ────────────────────────────────────────── */
-function PortraitCard({ mk, player, party, equippedResidueSlots, soulShards, demonGauge, isDemonMode, onSelect, onToggleDemon }: {
+function PortraitCard({ mk, player, party, equippedResidueSlots, soulShards, demonGauge, isDemonMode, onSelect, onToggleDemon, id }: {
   mk: MemberKey; player: CharacterData | null; party: (MonsterData | null)[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
   soulShards: SoulShardData[]; demonGauge: number; isDemonMode: boolean;
-  onSelect: () => void; onToggleDemon: () => void;
+  onSelect: () => void; onToggleDemon: () => void; id?: string;
 }) {
   const conf = getConf(mk, player, party);
   const info = getMemberInfo(mk, player, party, equippedResidueSlots, soulShards);
@@ -1372,7 +1372,7 @@ function PortraitCard({ mk, player, party, equippedResidueSlots, soulShards, dem
   const showDemonBadge = mk === 'PLAYER' && demonGauge >= 100;
 
   return (
-    <motion.button onClick={isVacant ? undefined : onSelect} whileTap={!isVacant ? { scale: 0.96 } : undefined}
+    <motion.button id={id} onClick={isVacant ? undefined : onSelect} whileTap={!isVacant ? { scale: 0.96 } : undefined}
       className="relative rounded-[20px] overflow-hidden flex flex-col select-none"
       style={{
         background: isDemonMode && mk === 'PLAYER'
@@ -2446,7 +2446,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
               <ChevronLeft size={13} />
               <span className="text-[10px] font-black tracking-wider" style={{ fontFamily: 'monospace' }}>DETAIL</span>
             </motion.button>
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl" style={{ background: 'rgba(136,0,228,0.14)', border: '1px solid rgba(148,0,238,0.32)' }}>
+            <div id="tut-cost-display" className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl" style={{ background: 'rgba(136,0,228,0.14)', border: '1px solid rgba(148,0,238,0.32)' }}>
               <span className="text-[12px] font-black" style={{ color: '#E090FF', fontFamily: 'monospace' }}>COST {totalCost}/{maxCost}</span>
             </div>
             <div className="w-[100px] h-[5px] rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.42)', border: '1px solid rgba(136,0,228,0.2)' }}>
@@ -2458,7 +2458,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
       </div>
 
       {/* Synergy Banner */}
-      <div className="px-3 pb-2 shrink-0 relative z-10">
+      <div id="tut-synergy-banner" className="px-3 pb-2 shrink-0 relative z-10">
         <SynergyBanner party={party as (MonsterData | null)[]} />
       </div>
 
@@ -2466,7 +2466,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
       <div className="flex-1 px-3 pb-3 relative z-10 overflow-hidden min-h-0">
         <div className="grid grid-cols-2 gap-3 h-full">
           {MEMBER_KEYS.map(k => (
-            <PortraitCard key={k} mk={k} player={player} party={party as (MonsterData | null)[]}
+            <PortraitCard key={k} id={k === 'MONSTER_0' ? 'tut-party-slot-0' : undefined} mk={k} player={player} party={party as (MonsterData | null)[]}
               equippedResidueSlots={equippedResidueSlots} soulShards={soulShards}
               demonGauge={demonGauge} isDemonMode={isDemonMode}
               onSelect={() => {

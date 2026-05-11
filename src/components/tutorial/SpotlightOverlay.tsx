@@ -9,6 +9,7 @@ interface Props {
   onNext: () => void;
   onSkip: () => void;
   canSkip: boolean;
+  zBase?: number;
 }
 
 interface Rect {
@@ -21,7 +22,7 @@ const BUBBLE_W = 230;
 const BUBBLE_GAP = 18;
 const BUBBLE_ESTIMATED_H = 110;
 
-export function SpotlightOverlay({ step, onNext, onSkip, canSkip }: Props) {
+export function SpotlightOverlay({ step, onNext, onSkip, canSkip, zBase = 9500 }: Props) {
   const [rect, setRect] = useState<Rect | null>(null);
   const [vp, setVp] = useState({ w: 0, h: 0 });
   const [bubbleReady, setBubbleReady] = useState(false);
@@ -91,7 +92,7 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip }: Props) {
       {/* ── Dark overlay (SVG clipPath) ── */}
       {/* iOS Safari: SVG は transform なし、クリックハンドラのみ */}
       <svg
-        style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: 9500, pointerEvents: 'all' }}
+        style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: zBase, pointerEvents: 'all' }}
         onClick={onNext}
       >
         <defs>
@@ -121,7 +122,7 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip }: Props) {
           borderRadius: '50%',
           border: '3px solid rgba(139,0,255,0.65)',
           boxShadow: '0 0 18px rgba(139,0,255,0.35)',
-          zIndex: 9501,
+          zIndex: zBase + 1,
           pointerEvents: 'none',
         }}
         initial={{ scale: 1.8, opacity: 0 }}
@@ -143,7 +144,7 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip }: Props) {
               left: bubbleX,
               top: bubbleY,
               width: BUBBLE_W,
-              zIndex: 9502,
+              zIndex: zBase + 2,
               pointerEvents: 'none',
             }}
           >
@@ -228,7 +229,7 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip }: Props) {
             position: 'fixed',
             top: 'max(16px, env(safe-area-inset-top, 16px))',
             right: 16,
-            zIndex: 9503,
+            zIndex: zBase + 3,
             background: 'rgba(120,100,160,0.5)',
             border: '1px solid rgba(139,0,255,0.25)',
             borderRadius: 4,

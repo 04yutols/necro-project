@@ -322,6 +322,7 @@ export default function JobChangeScreen() {
 
             <section style={{ marginTop: 12, width: '100%', minWidth: 0, overflow: 'hidden' }}>
               <div
+                id="tut-job-rail"
                 className="safe-scroll job-rail-scroll"
                 style={{
                   display: 'flex',
@@ -384,7 +385,7 @@ export default function JobChangeScreen() {
               </div>
             </section>
 
-            <section style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+            <section id="tut-stat-change" style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
               <div
                 style={{
                   width: '100%',
@@ -522,6 +523,7 @@ export default function JobChangeScreen() {
                 戻る
               </button>
               <button
+                id="tut-job-confirm"
                 type="button"
                 disabled={isCurrent || !unlock.unlocked}
                 onClick={() => changeJob(selectedJobId)}

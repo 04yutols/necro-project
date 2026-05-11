@@ -29,19 +29,18 @@ export function useTutorialTrigger() {
     //     ここでは「フェーズ解放済みとして初期化」はしない
     //     BATTLE_BASICS は BattleCanvas 単独で管理する
 
-    // PHASE 2: tutorial_battle_01 クリア → 死霊術ラボ
+    // PHASE 2: プロローグ完了 + 1ステージ以上クリア → 死霊術ラボ
     if (
       lineDeathSeen &&
-      clearedStages.includes('tutorial_battle_01') &&
+      clearedStages.length >= 1 &&
       !completedPhases.includes('NECRO_LAB')
     ) {
       enqueueBanner('NECRO_LAB');
       startPhase('NECRO_LAB');
     }
 
-    // PHASE 3: tutorial_battle_02 クリア + モンスター2体以上 → パーティ編成
+    // PHASE 3: モンスター2体以上 → パーティ編成
     if (
-      clearedStages.includes('tutorial_battle_02') &&
       monsterCount >= 2 &&
       !completedPhases.includes('PARTY_FORMATION')
     ) {

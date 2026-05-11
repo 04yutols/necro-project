@@ -1154,7 +1154,7 @@ function SoulGauge({ value, demonized, demonColor, actionsRemaining }: { value: 
     : Math.min(100, Math.max(0, value));
   const full = !demonized && pct >= 100;
   return (
-    <div style={{
+    <div id="tut-soul-gauge" style={{
       padding: '5px 14px', display: 'flex', alignItems: 'center', gap: 10,
       background: demonized ? 'rgba(30,4,4,0.9)' : 'rgba(4,2,14,0.9)',
       borderTop: '1px solid rgba(255,255,255,0.05)',
@@ -1264,13 +1264,14 @@ function DemonStatusRibbon({ form, actionsRemaining, ultimateUsed }: {
 }
 
 // ── COMMAND BUTTON ─────────────────────────────────────────────────────────────
-function CommandButton({ label, sublabel, icon, enabled, color, onClick, glow, demonized }: {
+function CommandButton({ label, sublabel, icon, enabled, color, onClick, glow, demonized, id }: {
   label: string; sublabel?: string; icon: string; enabled: boolean;
-  color: string; onClick: () => void; glow?: boolean; demonized?: boolean;
+  color: string; onClick: () => void; glow?: boolean; demonized?: boolean; id?: string;
 }) {
   const [pressed, setPressed] = useState(false);
   return (
     <div
+      id={id}
       onClick={() => { if (!enabled) return; setPressed(true); setTimeout(() => setPressed(false), 150); onClick(); }}
       style={{
         flex: 1, padding: '10px 6px',
@@ -2161,11 +2162,13 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
             )}
             <div style={{ display: 'flex', gap: 8, animation: 'commandReveal 0.3s ease-out' }}>
               <CommandButton
+                id="tut-attack-btn"
                 icon={demonized ? demonForm.visual?.icon ?? '☠' : '⚔'} label={demonized ? '魔撃' : '攻撃'}
                 sublabel={demonized ? 'DEMON' : 'ATTACK'}
                 enabled={phase === 'playerTurn'} color={demonized ? demonColor : '#8A2BE2'}
                 demonized={demonized} onClick={handleAttack}/>
               <CommandButton
+                id="tut-skill-btn"
                 icon={demonized ? '✦' : '🔮'} label="術"
                 sublabel={demonized ? 'DISTORT' : 'SKILL'}
                 enabled={phase === 'playerTurn'} color={demonized ? demonColor : '#8A2BE2'}
@@ -2175,6 +2178,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
                 enabled={phase === 'playerTurn'} color="#f59e0b"
                 onClick={() => setPhase('itemMenu')}/>
               <CommandButton
+                id="tut-demon-btn"
                 icon="☠" label={demonized ? '魔神技' : '魔神化'}
                 sublabel={demonized ? (demonUltimateUsed ? 'USED' : demonUltimateSkill.name) : soulFull ? 'INTERRUPT' : `SOUL ${Math.round(soul)}%`}
                 enabled={demonized ? phase === 'playerTurn' && !demonUltimateUsed : soulFull && !demonized && (phase === 'playerTurn' || phase === 'enemyTurn')}
