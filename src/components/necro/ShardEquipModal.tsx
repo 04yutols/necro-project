@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { MonsterData, SoulShardData } from '../../types/game';
-import { equipShardAction } from '../../app/actions';
 import { Sparkles, X, ArrowRight } from 'lucide-react';
 
 interface ShardEquipModalProps {
@@ -23,11 +22,8 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
     if (!selectedShard) return;
     setIsProcessing(true);
     try {
-      const result = await equipShardAction(monster.id, selectedShard.id);
-      if (result.success) {
-        equipShard(monster.id, selectedShard.id);
-        onClose();
-      }
+      equipShard(monster.id, selectedShard.id);
+      onClose();
     } catch (e) {
       console.error(e);
     } finally {

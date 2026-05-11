@@ -56,14 +56,14 @@ export function TypewriterText({ text, isAuto = false, onComplete, flush }: Prop
 
     timerRef.current = setTimeout(tick, 0);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [text]);
+  }, [text, isAuto]);
 
   useEffect(() => {
     if (flush && indexRef.current < text.length) {
       if (timerRef.current) clearTimeout(timerRef.current);
       finish();
     }
-  }, [flush]);
+  }, [flush, text]);
 
   return (
     <span style={{ whiteSpace: 'pre-wrap' }}>{displayed}</span>

@@ -1,36 +1,76 @@
-import type { StoryScene } from '../../types/story';
+import type { SceneTrigger, StoryScene } from '../../types/story';
+import ch1ScenesData from './ch1_scenes.json';
 
-// Viteは同ディレクトリへの変数パス動的importを解析できないため静的importで解決
-import prologueData from './act1_prologue.json';
-import ch1Data from './act1_ch1_royal_capital.json';
+const storyData = ch1ScenesData as { scenes: StoryScene[] };
 
-const CHAPTER_DATA: Record<string, { scenes: StoryScene[] }> = {
-  'act1_prologue': prologueData as { scenes: StoryScene[] },
-  'act1_ch1_royal_capital': ch1Data as { scenes: StoryScene[] },
-};
+export const STORY_SCENES: StoryScene[] = [...storyData.scenes].sort((a, b) => {
+  const aSeq = a.sequence ?? Number.MAX_SAFE_INTEGER;
+  const bSeq = b.sequence ?? Number.MAX_SAFE_INTEGER;
+  return aSeq - bSeq;
+});
 
-const SCENE_CHAPTER_MAP: Record<string, string> = {
-  PROLOGUE_00: 'act1_prologue',
-  PROLOGUE_01: 'act1_prologue',
-  PROLOGUE_02: 'act1_prologue',
-  PROLOGUE_03: 'act1_prologue',
-  CH1_TITLE:          'act1_ch1_royal_capital',
-  CH1_OPEN:           'act1_ch1_royal_capital',
-  CH1_NODE1_AFTER:    'act1_ch1_royal_capital',
-  CH1_NODE2_ENTER:    'act1_ch1_royal_capital',
-  CH1_BOSS_ENTER:     'act1_ch1_royal_capital',
-  CH1_BOSS_AFTER:     'act1_ch1_royal_capital',
-  CH1_CLEAR:          'act1_ch1_royal_capital',
-  CH1_AREA2_UNLOCK:   'act1_ch1_royal_capital',
-  CH1_DEMONIZE_FIRST: 'act1_ch1_royal_capital',
-};
+const SCENE_BY_ID = new Map(STORY_SCENES.map(scene => [scene.id, scene]));
+
+function sameTrigger(a: SceneTrigger, b: SceneTrigger): boolean {
+  if (a.type !== b.type) return false;
+  switch (a.type) {
+    case 'GAME_START':
+    case 'DEMONIZE_FIRST':
+      return true;
+    case 'FLAG_SET':
+      return b.type === 'FLAG_SET' && a.flagKey === b.flagKey;
+    case 'STAGE_CLEAR':
+      return b.type === 'STAGE_CLEAR' && a.stageId === b.stageId;
+    case 'STAGE_ENTER':
+      return b.type === 'STAGE_ENTER' && a.stageId === b.stageId;
+    case 'AREA_UNLOCK':
+      return b.type === 'AREA_UNLOCK' && a.areaId === b.areaId;
+    case 'BOSS_CLEAR':
+      return b.type === 'BOSS_CLEAR' && a.bossStageId === b.bossStageId;
+    case 'MANUAL':
+      return b.type === 'MANUAL' && a.sceneId === b.sceneId;
+    default:
+      return false;
+  }
+}
 
 export function findScene(sceneId: string): StoryScene | null {
-  const chapter = SCENE_CHAPTER_MAP[sceneId];
-  if (!chapter) return null;
-  return CHAPTER_DATA[chapter]?.scenes.find(s => s.id === sceneId) ?? null;
+  return SCENE_BY_ID.get(sceneId) ?? null;
 }
 
 export function getAllSceneIds(): string[] {
-  return Object.keys(SCENE_CHAPTER_MAP);
+  return STORY_SCENES.map(scene => scene.id);
+}
+
+export function findScenesByTrigger(trigger: SceneTrigger): StoryScene[] {
+  return STORY_SCENES.filter(scene => sameTrigger(scene.trigger, trigger));
+}
+
+export function getSceneIdsByTrigger(trigger: SceneTrigger): string[] {
+  return findScenesByTrigger(trigger).map(scene => scene.id);
+}
+
+export function getPrologueSceneIds(): string[] {
+  return ['PROLOGUE_00', 'PROLOGUE_01', 'PROLOGUE_02', 'PROLOGUE_03'];
+}
+
+export function getStageEnterSceneIds(stageId: string): string[] {
+  return getSceneIdsByTrigger({ type: 'STAGE_ENTER', stageId });
+}
+
+export function getStageClearSceneIds(stageId: string): string[] {
+  const regularScenes = getSceneIdsByTrigger({ type: 'STAGE_CLEAR', stageId });
+  const bossScenes = getSceneIdsByTrigger({ type: 'BOSS_CLEAR', bossStageId: stageId });
+  const areaUnlockScenes = stageId === 'area1_node3'
+    ? getSceneIdsByTrigger({ type: 'AREA_UNLOCK', areaId: 'area2' })
+    : [];
+  return [...regularScenes, ...bossScenes, ...areaUnlockScenes];
+}
+
+export function getFlagSceneIds(flagKey: string): string[] {
+  return getSceneIdsByTrigger({ type: 'FLAG_SET', flagKey });
+}
+
+export function getDemonizeFirstSceneIds(): string[] {
+  return getSceneIdsByTrigger({ type: 'DEMONIZE_FIRST' });
 }

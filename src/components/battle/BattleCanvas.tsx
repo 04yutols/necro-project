@@ -12,8 +12,7 @@ import enemiesData from '../../data/master/enemies.json';
 import itemsData from '../../data/master/items.json';
 import demonFormsData from '../../data/master/demonForms.json';
 import { getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
-import { processStageResultAction } from '../../app/actions';
-import type { StageDropResult } from '../../services/RewardService';
+import { RewardService, type StageDropResult } from '../../services/RewardService';
 import { calculateCharacterStatProfile } from '../../logic/StatSystem';
 import {
   DEMON_ACTION_LIMIT,
@@ -155,6 +154,7 @@ const MASTER_SKILLS = skillsData as Record<string, SkillData>;
 const STAGES = stagesData as Record<string, StageData>;
 const ENEMIES = enemiesData as Record<string, EnemyData>;
 const DEMON_FORMS = demonFormsData as Record<string, DemonFormData>;
+const REWARD_SERVICE = new RewardService();
 const ITEMS_MASTER = itemsData as Record<string, { name?: string; rarity?: string; type?: string; subOptions?: Array<{ type: string; value: number }>; specialEffect?: string }>;
 
 const ELEMENT_ICON: Record<ElementType, string> = {
@@ -390,6 +390,16 @@ function convertDropToResultItems(drop: StageDropResult, playerName?: string) {
     quantity: m.quantity,
   }));
   return [...weapons, ...residues, ...materials];
+}
+
+function processStageResultLocal(stageId?: string) {
+  const stage = stageId ? STAGES[stageId] : undefined;
+  const dropResult = REWARD_SERVICE.processDropTable(stage?.rewards.dropTable ?? []);
+  return Promise.resolve({
+    dropResult,
+    expGain: stage?.rewards.baseExp ?? 0,
+    goldGain: stage?.rewards.baseGold ?? 0,
+  });
 }
 
 // ── SVG ENEMIES ───────────────────────────────────────────────────────────────
@@ -1509,8 +1519,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         const clearTime   = 74 + Math.round(Math.random() * 18);
         const totalWaves  = battleWaves.length;
 
-        processStageResultAction(stageId ?? '').then(({ dropResult, expGain, goldGain }) => {
-          // ストア更新（DB保存も完了済み）
+        processStageResultLocal(stageId).then(({ dropResult, expGain, goldGain }) => {
+          // ローカル実行時のストア更新
           addInventoryItems(dropResult.weapons);
           addAbyssalResidues(dropResult.residues);
           addResidueMaterials(dropResult.materials);

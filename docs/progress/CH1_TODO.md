@@ -42,12 +42,13 @@
 バトルが動いた後に並行実装。
 
 ### ストーリーシステム
-- [ ] `src/data/story/ch1_scenes.json` — 第1章17シーン（PROLOGUE 4 + CH1 13）JSONデータ作成 → 台詞: `22_ストーリー進行システム.md §6`
-- [ ] `src/components/story/DialogueScene.tsx` — 原神スタイル会話UI
-- [ ] `src/components/story/MonologueOverlay.tsx` — 全画面モノローグ
-- [ ] `src/components/story/ChapterTitleCard.tsx` — スタレスタイル章タイトル
-- [ ] `src/store/useStoryStore.ts` — Zustand persist 進行管理
-- [ ] `src/hooks/useStoryTrigger.ts` — ステージクリア後・画面遷移時の自動起動
+- [x] `src/data/story/ch1_scenes.json` — 第1章17シーン（PROLOGUE 4 + CH1 13）JSONデータ作成 → 台詞: `22_ストーリー進行システム.md §6`
+- [x] `src/components/story/DialogueScene.tsx` — 原神スタイル会話UI
+- [x] `src/components/story/MonologueOverlay.tsx` — 全画面モノローグ
+- [x] `src/components/story/ChapterTitleCard.tsx` — スタレスタイル章タイトル
+- [x] `src/store/useStoryStore.ts` — Zustand persist 進行管理
+- [x] `src/hooks/useStoryTrigger.ts` — ステージクリア後・画面遷移時の自動起動
+  - 再設計メモ: `docs/設計書/32_ストーリーシステム再設計実装.md`
 
 ### チュートリアルシステム
 - [ ] `src/store/useTutorialStore.ts` — Zustand persist 進行管理

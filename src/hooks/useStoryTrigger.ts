@@ -1,53 +1,81 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { useStoryStore } from '../store/useStoryStore';
+import {
+  getDemonizeFirstSceneIds,
+  getFlagSceneIds,
+  getPrologueSceneIds,
+  getStageClearSceneIds,
+  getStageEnterSceneIds,
+} from '../data/story';
+
+function enqueueUnviewed(sceneIds: string[]) {
+  const store = useStoryStore.getState();
+  return store.enqueueScenes(sceneIds.filter(id => !store.isViewed(id)));
+}
 
 export function useStoryTrigger() {
-  const clearedStages = useGameStore(s => s.player?.clearedStages ?? []);
-  const currentTab = useGameStore(s => s.currentTab);
-  const { enqueueScene, isViewed, hasFlag } = useStoryStore();
+  const clearedStages = useGameStore(state => state.player?.clearedStages ?? []);
+  const currentTab = useGameStore(state => state.currentTab);
+  const isDemonMode = useGameStore(state => state.isDemonMode);
+  const hasHydrated = useStoryStore(state => state.hasHydrated);
+  const storyFlags = useStoryStore(state => state.storyFlags);
   const prevClearedRef = useRef<string[]>([]);
+  const prevFlagsRef = useRef<Record<string, boolean>>({});
+  const demonSeenRef = useRef(false);
 
-  // 初回起動: プロローグ未読なら発火（同期findSceneになったのでawait不要）
   useEffect(() => {
-    if (!isViewed('PROLOGUE_00')) {
-      enqueueScene('PROLOGUE_00');
-      enqueueScene('PROLOGUE_01');
-      enqueueScene('PROLOGUE_02');
-      enqueueScene('PROLOGUE_03');
-    } else if (!isViewed('CH1_TITLE') && hasFlag('LINE_DEATH_SEEN')) {
-      enqueueScene('CH1_TITLE');
+    if (!hasHydrated) return;
+    const store = useStoryStore.getState();
+    if (!store.isViewed('PROLOGUE_00')) {
+      store.enqueueScenes(getPrologueSceneIds());
+      return;
     }
+    if (store.hasFlag('LINE_DEATH_SEEN')) {
+      enqueueUnviewed(getFlagSceneIds('LINE_DEATH_SEEN'));
+    }
+    if (store.hasFlag('CH1_STARTED')) {
+      enqueueUnviewed(getFlagSceneIds('CH1_STARTED'));
+    }
+  }, [hasHydrated]);
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+    const previous = prevFlagsRef.current;
+    prevFlagsRef.current = storyFlags;
+
+    Object.entries(storyFlags).forEach(([flagKey, enabled]) => {
+      if (!enabled || previous[flagKey]) return;
+      enqueueUnviewed(getFlagSceneIds(flagKey));
+    });
+  }, [hasHydrated, storyFlags]);
+
+  useEffect(() => {
+    if (!hasHydrated || currentTab === 'BATTLE') return;
+    const previous = prevClearedRef.current;
+    const nextCleared = clearedStages.filter(stageId => !previous.includes(stageId));
+    prevClearedRef.current = clearedStages;
+    if (nextCleared.length === 0) return;
+
+    nextCleared.forEach(stageId => {
+      enqueueUnviewed(getStageClearSceneIds(stageId));
+    });
+  }, [clearedStages, currentTab, hasHydrated]);
+
+  useEffect(() => {
+    if (!hasHydrated || !isDemonMode || demonSeenRef.current) return;
+    const store = useStoryStore.getState();
+    if (store.hasFlag('DEMONIZE_STORY_SEEN') || store.isViewed('CH1_DEMONIZE_FIRST')) return;
+    demonSeenRef.current = true;
+    store.enqueueScenes(getDemonizeFirstSceneIds());
+  }, [hasHydrated, isDemonMode]);
+
+  const triggerStageEnter = useCallback((stageId: string) => {
+    if (!useStoryStore.getState().hasHydrated) return false;
+    return enqueueUnviewed(getStageEnterSceneIds(stageId)).length > 0;
   }, []);
 
-  // ステージクリア監視
-  useEffect(() => {
-    const prev = prevClearedRef.current;
-    const newStages = clearedStages.filter(s => !prev.includes(s));
-    prevClearedRef.current = clearedStages;
-
-    if (newStages.length === 0) return;
-    if (currentTab === 'BATTLE') return; // バトル中は保留
-
-    const STAGE_CLEAR_MAP: Record<string, string[]> = {
-      'area1_node1': ['CH1_NODE1_AFTER'],
-    };
-
-    const BOSS_CLEAR_MAP: Record<string, string[]> = {
-      'area1_boss': ['CH1_BOSS_AFTER', 'CH1_CLEAR'],
-    };
-
-    for (const stageId of newStages) {
-      const scenes = STAGE_CLEAR_MAP[stageId] ?? [];
-      for (const id of scenes) {
-        if (!isViewed(id)) enqueueScene(id);
-      }
-      const bossScenes = BOSS_CLEAR_MAP[stageId] ?? [];
-      for (const id of bossScenes) {
-        if (!isViewed(id)) enqueueScene(id);
-      }
-    }
-  }, [clearedStages, currentTab]);
+  return { triggerStageEnter };
 }

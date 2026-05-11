@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { StoryOrchestrator } from '../components/story/StoryOrchestrator';
+import { StoryArchive } from '../components/story/StoryArchive';
 import { useStoryTrigger } from '../hooks/useStoryTrigger';
+import { useStoryStore } from '../store/useStoryStore';
 
 const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').then((mod) => mod.default), { 
   ssr: false,
@@ -14,7 +16,6 @@ const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').t
 
 import NecroLab from '../components/necro/NecroLab';
 import LegionHub from '../components/legion/LegionHub';
-import EquipmentManager from '../components/character/EquipmentManager';
 import JobChangeScreen from '../components/job/JobChangeScreen';
 import AreaMap from '../components/map/AreaMap';
 import ShardEquipModal from '../components/necro/ShardEquipModal';
@@ -30,16 +31,41 @@ function GameContent() {
     currentTab, setCurrentTab
   } = useGameStore();
 
-  useStoryTrigger();
+  const { triggerStageEnter } = useStoryTrigger();
+  const activeStoryScene = useStoryStore(s => s.activeScene);
+  const storyQueueLength = useStoryStore(s => s.sceneQueue.length);
 
   const [isInBattle, setIsInBattle] = useState(false);
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  const [pendingStageId, setPendingStageId] = useState<string | null>(null);
+  const [logPanel, setLogPanel] = useState<'STORY' | 'BATTLE'>('STORY');
   
   const equippingMonster = equippingMonsterId ? inventoryMonsters.find(m => m.id === equippingMonsterId) : null;
 
   useEffect(() => {
     if (!player) initialize();
   }, [player, initialize]);
+
+  const startStageNow = useCallback((stageId: string) => {
+    setActiveStageId(stageId);
+    setIsInBattle(true);
+    setCurrentTab('BATTLE');
+  }, [setCurrentTab]);
+
+  const requestStageStart = useCallback((stageId: string) => {
+    if (triggerStageEnter(stageId)) {
+      setPendingStageId(stageId);
+      return;
+    }
+    startStageNow(stageId);
+  }, [startStageNow, triggerStageEnter]);
+
+  useEffect(() => {
+    if (!pendingStageId || activeStoryScene || storyQueueLength > 0) return;
+    const stageId = pendingStageId;
+    setPendingStageId(null);
+    startStageNow(stageId);
+  }, [activeStoryScene, pendingStageId, startStageNow, storyQueueLength]);
 
   if (!player) return <div className="p-8 text-center bg-[#050505] min-h-screen font-serif text-gray-500">Loading...</div>;
 
@@ -56,9 +82,7 @@ function GameContent() {
         return (
           <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
             <AreaMap onStartStage={(stageId) => {
-              setActiveStageId(stageId);
-              setIsInBattle(true);
-              setCurrentTab('BATTLE');
+              requestStageStart(stageId);
             }} />
           </motion.div>
         );
@@ -97,7 +121,7 @@ function GameContent() {
       case 'LOGS':
         return (
           <motion.div key="logs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col p-2 pt-4">
-            <div className="flex items-center mb-3">
+            <div className="flex items-center justify-between gap-2 mb-3">
               <button
                 onClick={() => setCurrentTab('HOME')}
                 className="flex items-center gap-2 text-gray-400 hover:text-primary transition-colors text-[10px] font-black tracking-widest uppercase bg-black/40 border border-[#1A1A1A] px-3 py-1.5 rounded-md backdrop-blur-sm shadow-md"
@@ -105,9 +129,25 @@ function GameContent() {
                 <HomeIcon size={14} />
                 <span>RETURN TO HUB</span>
               </button>
+              <div className="flex rounded-md overflow-hidden border border-[#2C2C2C] bg-black/40">
+                {(['STORY', 'BATTLE'] as const).map(panel => (
+                  <button
+                    key={panel}
+                    type="button"
+                    onClick={() => setLogPanel(panel)}
+                    className="px-3 py-1.5 text-[9px] font-black tracking-widest uppercase transition-colors"
+                    style={{
+                      color: logPanel === panel ? '#F0EAFF' : '#6b5f7a',
+                      background: logPanel === panel ? 'rgba(139,0,255,0.22)' : 'transparent',
+                    }}
+                  >
+                    {panel === 'STORY' ? '物語' : '戦歴'}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex-1 border border-[#1A1A1A] bg-[#0D0D0D] overflow-hidden">
-              <NecroLog logs={battleLogs} />
+              {logPanel === 'STORY' ? <StoryArchive /> : <NecroLog logs={battleLogs} />}
             </div>
           </motion.div>
         );
@@ -148,9 +188,7 @@ function GameContent() {
               style={{ position: 'absolute', inset: 0, zIndex: 9999 }}
             >
               <AreaMap onStartStage={(stageId) => {
-                setActiveStageId(stageId);
-                setIsInBattle(true);
-                setCurrentTab('BATTLE');
+                requestStageStart(stageId);
               }} />
             </motion.div>
           ) : (
