@@ -18,6 +18,16 @@ interface Props {
 
 const BUBBLE_W = 210;
 const BUBBLE_GAP = 12;
+const BUBBLE_H = 104;
+const PAD = 10;
+
+function getViewportSize() {
+  const vv = window.visualViewport;
+  return {
+    w: Math.round(vv?.width ?? window.innerWidth),
+    h: Math.round(vv?.height ?? window.innerHeight),
+  };
+}
 
 export function BubbleHint({ hint }: Props) {
   const { isHintViewed, markHintViewed } = useTutorialStore();
@@ -26,24 +36,65 @@ export function BubbleHint({ hint }: Props) {
 
   useEffect(() => {
     if (isHintViewed(hint.id)) return;
-    const el = document.getElementById(hint.targetId);
-    if (!el) return;
-    const b = el.getBoundingClientRect();
-    const cx = b.left + b.width / 2;
-    let x = cx - BUBBLE_W / 2;
-    let y: number;
-    switch (hint.position) {
-      case 'above': y = b.top - BUBBLE_GAP - 90; break;
-      case 'below': y = b.bottom + BUBBLE_GAP; break;
-      case 'left':  x = b.left - BUBBLE_W - BUBBLE_GAP; y = b.top + b.height / 2 - 40; break;
-      case 'right': x = b.right + BUBBLE_GAP; y = b.top + b.height / 2 - 40; break;
-      default: y = b.bottom + BUBBLE_GAP;
+    let raf = 0;
+    let timer = 0;
+    let resizeObserver: ResizeObserver | null = null;
+    let cancelled = false;
+
+    const measure = () => {
+      if (cancelled) return;
+      const el = document.getElementById(hint.targetId);
+      if (!el) return;
+
+      const { w, h } = getViewportSize();
+      const b = el.getBoundingClientRect();
+      const cx = b.left + b.width / 2;
+      const cy = b.top + b.height / 2;
+      const bubbleW = Math.min(BUBBLE_W, w - PAD * 2);
+      let x = cx - bubbleW / 2;
+      let y = b.bottom + BUBBLE_GAP;
+
+      if (hint.position === 'above') {
+        y = b.top - BUBBLE_GAP - BUBBLE_H;
+      } else if (hint.position === 'left') {
+        x = b.left - bubbleW - BUBBLE_GAP;
+        y = cy - BUBBLE_H / 2;
+      } else if (hint.position === 'right') {
+        x = b.right + BUBBLE_GAP;
+        y = cy - BUBBLE_H / 2;
+      }
+
+      x = Math.max(PAD, Math.min(x, w - bubbleW - PAD));
+      y = Math.max(PAD, Math.min(y, h - BUBBLE_H - PAD));
+      setPos({ x, y });
+      setShow(true);
+
+      if (!resizeObserver && 'ResizeObserver' in window) {
+        resizeObserver = new ResizeObserver(scheduleMeasure);
+        resizeObserver.observe(el);
+      }
+    };
+
+    function scheduleMeasure() {
+      window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(measure);
     }
-    x = Math.max(8, Math.min(x, window.innerWidth - BUBBLE_W - 8));
-    y = Math.max(8, Math.min(y, window.innerHeight - 100));
-    setPos({ x, y });
-    setShow(true);
-  }, [hint.id]);
+
+    scheduleMeasure();
+    timer = window.setTimeout(scheduleMeasure, 260);
+    window.addEventListener('resize', scheduleMeasure);
+    window.visualViewport?.addEventListener('resize', scheduleMeasure);
+    window.visualViewport?.addEventListener('scroll', scheduleMeasure);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', scheduleMeasure);
+      window.visualViewport?.removeEventListener('resize', scheduleMeasure);
+      window.visualViewport?.removeEventListener('scroll', scheduleMeasure);
+    };
+  }, [hint.id, hint.position, hint.targetId, isHintViewed]);
 
   const dismiss = () => {
     setShow(false);
@@ -66,7 +117,7 @@ export function BubbleHint({ hint }: Props) {
             position: 'fixed',
             left: pos.x,
             top: pos.y,
-            width: BUBBLE_W,
+            width: `min(${BUBBLE_W}px, calc(100vw - ${PAD * 2}px))`,
             zIndex: 8000,
             background: 'rgba(12,6,24,0.92)',
             border: '1px solid rgba(139,0,255,0.4)',

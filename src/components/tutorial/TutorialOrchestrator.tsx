@@ -8,6 +8,7 @@ import { PHASE_STEPS } from '../../data/tutorial/phases';
 import { SpotlightOverlay } from './SpotlightOverlay';
 import { TutorialBanner } from './TutorialBanner';
 import { useGameStore } from '../../store/useGameStore';
+import { useStoryStore } from '../../store/useStoryStore';
 
 /**
  * page.tsx 内に配置する最上位チュートリアル制御コンポーネント。
@@ -25,6 +26,7 @@ export function TutorialOrchestrator() {
   const markTabVisited = useTutorialStore(s => s.markTabVisited);
 
   const currentTab = useGameStore(s => s.currentTab);
+  const activeStoryScene = useStoryStore(s => s.activeScene);
 
   // ゲーム状態を監視してフェーズを自動発火
   useTutorialTrigger();
@@ -42,12 +44,13 @@ export function TutorialOrchestrator() {
 
   // requiredTab が指定されているときは、そのタブにいるときだけ表示
   const tabMatch = !step?.requiredTab || step.requiredTab === currentTab;
+  const storyBlocking = Boolean(activeStoryScene);
 
   return (
     <>
       <TutorialBanner />
       <AnimatePresence>
-        {!tutorialCompleted && step && tabMatch && (
+        {!tutorialCompleted && !storyBlocking && step && tabMatch && (
           <SpotlightOverlay
             key={step.id}
             step={step}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { TutorialStep } from '../../data/tutorial/phases';
 
@@ -18,9 +18,18 @@ interface Rect {
 }
 
 const SPOTLIGHT_PAD = 24;
-const BUBBLE_W = 230;
+const BUBBLE_MAX_W = 260;
 const BUBBLE_GAP = 18;
-const BUBBLE_ESTIMATED_H = 110;
+const BUBBLE_ESTIMATED_H = 126;
+const VIEWPORT_PAD = 12;
+
+function getViewportSize() {
+  const vv = window.visualViewport;
+  return {
+    w: Math.round(vv?.width ?? window.innerWidth),
+    h: Math.round(vv?.height ?? window.innerHeight),
+  };
+}
 
 export function SpotlightOverlay({ step, onNext, onSkip, canSkip, zBase = 9500 }: Props) {
   const [rect, setRect] = useState<Rect | null>(null);
@@ -28,25 +37,58 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip, zBase = 9500 }
   const [bubbleReady, setBubbleReady] = useState(false);
 
   useEffect(() => {
+    let raf = 0;
+    let bubbleTimer = 0;
+    let resizeObserver: ResizeObserver | null = null;
+    const retryTimers: number[] = [];
+    let cancelled = false;
+
     setBubbleReady(false);
     const measure = () => {
+      if (cancelled) return;
       const el = document.getElementById(step.targetId);
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+      const { w, h } = getViewportSize();
       setVp({ w, h });
       if (!el) {
         // 要素が見つからない場合は画面中央にスポットライト
         setRect({ cx: w / 2, cy: h / 2, r: 60, top: h/2-60, left: w/2-60, width: 120, height: 120 });
       } else {
         const b = el.getBoundingClientRect();
-        const r = Math.max(b.width, b.height) / 2 + SPOTLIGHT_PAD;
+        const r = Math.max(44, Math.max(b.width, b.height) / 2 + SPOTLIGHT_PAD);
         setRect({ cx: b.left + b.width / 2, cy: b.top + b.height / 2, r, top: b.top, left: b.left, width: b.width, height: b.height });
+        if (!resizeObserver && 'ResizeObserver' in window) {
+          resizeObserver = new ResizeObserver(scheduleMeasure);
+          resizeObserver.observe(el);
+        }
       }
-      setTimeout(() => setBubbleReady(true), 500);
     };
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+
+    function scheduleMeasure() {
+      window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(measure);
+    }
+
+    scheduleMeasure();
+    [90, 240, 520].forEach(delay => {
+      retryTimers.push(window.setTimeout(scheduleMeasure, delay));
+    });
+    bubbleTimer = window.setTimeout(() => {
+      if (!cancelled) setBubbleReady(true);
+    }, 460);
+
+    window.addEventListener('resize', scheduleMeasure);
+    window.visualViewport?.addEventListener('resize', scheduleMeasure);
+    window.visualViewport?.addEventListener('scroll', scheduleMeasure);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(bubbleTimer);
+      retryTimers.forEach(window.clearTimeout);
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', scheduleMeasure);
+      window.visualViewport?.removeEventListener('resize', scheduleMeasure);
+      window.visualViewport?.removeEventListener('scroll', scheduleMeasure);
+    };
   }, [step.targetId, step.id]);
 
   if (!rect || vp.w === 0) return null;
@@ -63,29 +105,39 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip, zBase = 9500 }
 
   // バブル位置計算
   const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
-  const bubbleX = clamp(cx - BUBBLE_W / 2, 8, W - BUBBLE_W - 8);
-  let bubbleY: number;
-  switch (step.position) {
-    case 'above':
-      bubbleY = cy - r - BUBBLE_GAP - BUBBLE_ESTIMATED_H;
-      break;
-    case 'below':
-      bubbleY = cy + r + BUBBLE_GAP;
-      break;
-    case 'left':
-      bubbleY = cy - BUBBLE_ESTIMATED_H / 2;
-      break;
-    case 'right':
-      bubbleY = cy - BUBBLE_ESTIMATED_H / 2;
-      break;
-    default:
-      bubbleY = cy + r + BUBBLE_GAP;
+  const bubbleW = Math.min(BUBBLE_MAX_W, Math.max(188, W - VIEWPORT_PAD * 2));
+  const fitsAbove = rect.top - BUBBLE_GAP - BUBBLE_ESTIMATED_H > VIEWPORT_PAD;
+  const fitsBelow = rect.top + rect.height + BUBBLE_GAP + BUBBLE_ESTIMATED_H < H - VIEWPORT_PAD;
+  const fitsLeft = rect.left - BUBBLE_GAP - bubbleW > VIEWPORT_PAD;
+  const fitsRight = rect.left + rect.width + BUBBLE_GAP + bubbleW < W - VIEWPORT_PAD;
+  let placement = step.position;
+  if (placement === 'left' && !fitsLeft) placement = fitsRight ? 'right' : (fitsBelow || !fitsAbove ? 'below' : 'above');
+  if (placement === 'right' && !fitsRight) placement = fitsLeft ? 'left' : (fitsBelow || !fitsAbove ? 'below' : 'above');
+  if (placement === 'above' && !fitsAbove) placement = fitsBelow ? 'below' : 'above';
+  if (placement === 'below' && !fitsBelow) placement = fitsAbove ? 'above' : 'below';
+
+  let bubbleX = cx - bubbleW / 2;
+  let bubbleY = cy + r + BUBBLE_GAP;
+  if (placement === 'above') {
+    bubbleY = cy - r - BUBBLE_GAP - BUBBLE_ESTIMATED_H;
+  } else if (placement === 'left') {
+    bubbleX = rect.left - bubbleW - BUBBLE_GAP;
+    bubbleY = cy - BUBBLE_ESTIMATED_H / 2;
+  } else if (placement === 'right') {
+    bubbleX = rect.left + rect.width + BUBBLE_GAP;
+    bubbleY = cy - BUBBLE_ESTIMATED_H / 2;
   }
-  bubbleY = clamp(bubbleY, 8, H - BUBBLE_ESTIMATED_H - 8);
+  bubbleX = clamp(bubbleX, VIEWPORT_PAD, W - bubbleW - VIEWPORT_PAD);
+  bubbleY = clamp(bubbleY, VIEWPORT_PAD, H - BUBBLE_ESTIMATED_H - VIEWPORT_PAD);
 
   // 三角矢印方向
-  const arrowOnTop = step.position === 'below'; // バブルが下→矢印は上向き（バブル上端に）
-  const arrowOnBottom = step.position === 'above';
+  const arrowOnTop = placement === 'below'; // バブルが下→矢印は上向き（バブル上端に）
+  const arrowOnBottom = placement === 'above';
+  const arrowOnLeft = placement === 'right';
+  const arrowOnRight = placement === 'left';
+  const arrowX = clamp(cx - bubbleX - 8, 10, bubbleW - 26);
+  const arrowY = clamp(cy - bubbleY - 8, 14, BUBBLE_ESTIMATED_H - 24);
+  const clipId = `tut-spotlight-clip-${step.id}`;
 
   return (
     <>
@@ -96,14 +148,14 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip, zBase = 9500 }
         onClick={onNext}
       >
         <defs>
-          <clipPath id="tut-spotlight-clip" clipPathUnits="userSpaceOnUse">
+          <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
             <path fillRule="evenodd" d={clipPath} />
           </clipPath>
         </defs>
         <motion.rect
           x={0} y={0} width={W} height={H}
           fill="rgba(0,0,0,0.72)"
-          clipPath="url(#tut-spotlight-clip)"
+          clipPath={`url(#${clipId})`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
@@ -135,15 +187,19 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip, zBase = 9500 }
         {bubbleReady && (
           <motion.div
             key={step.id}
-            initial={{ opacity: 0, y: step.position === 'above' ? -8 : 8 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{
+              opacity: 0,
+              x: placement === 'left' ? -8 : placement === 'right' ? 8 : 0,
+              y: placement === 'above' ? -8 : placement === 'below' ? 8 : 0,
+            }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             style={{
               position: 'fixed',
               left: bubbleX,
               top: bubbleY,
-              width: BUBBLE_W,
+              width: bubbleW,
               zIndex: zBase + 2,
               pointerEvents: 'none',
             }}
@@ -152,7 +208,7 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip, zBase = 9500 }
             {arrowOnTop && (
               <div style={{
                 width: 0, height: 0,
-                marginLeft: clamp(cx - bubbleX - 8, 8, BUBBLE_W - 24),
+                marginLeft: arrowX,
                 borderLeft: '8px solid transparent',
                 borderRight: '8px solid transparent',
                 borderBottom: '8px solid rgba(139,0,255,0.5)',
@@ -161,12 +217,37 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip, zBase = 9500 }
 
             {/* バブル本体 */}
             <div style={{
+              position: 'relative',
               background: 'rgba(12,6,24,0.95)',
               border: '1px solid rgba(139,0,255,0.5)',
               borderRadius: 6,
               padding: '12px 14px',
               backdropFilter: 'blur(10px)',
             }}>
+              {arrowOnRight && (
+                <div style={{
+                  position: 'absolute',
+                  right: -8,
+                  top: arrowY,
+                  width: 0,
+                  height: 0,
+                  borderTop: '8px solid transparent',
+                  borderBottom: '8px solid transparent',
+                  borderLeft: '8px solid rgba(139,0,255,0.5)',
+                }} />
+              )}
+              {arrowOnLeft && (
+                <div style={{
+                  position: 'absolute',
+                  left: -8,
+                  top: arrowY,
+                  width: 0,
+                  height: 0,
+                  borderTop: '8px solid transparent',
+                  borderBottom: '8px solid transparent',
+                  borderRight: '8px solid rgba(139,0,255,0.5)',
+                }} />
+              )}
               <p style={{
                 fontFamily: "'Cinzel', serif",
                 fontSize: 11,
@@ -208,7 +289,7 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip, zBase = 9500 }
             {arrowOnBottom && (
               <div style={{
                 width: 0, height: 0,
-                marginLeft: clamp(cx - bubbleX - 8, 8, BUBBLE_W - 24),
+                marginLeft: arrowX,
                 borderLeft: '8px solid transparent',
                 borderRight: '8px solid transparent',
                 borderTop: '8px solid rgba(139,0,255,0.5)',

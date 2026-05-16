@@ -12,6 +12,7 @@ import enemiesData from '../../data/master/enemies.json';
 import itemsData from '../../data/master/items.json';
 import demonFormsData from '../../data/master/demonForms.json';
 import { getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
+import { startTutorialBattlePhase } from '../../hooks/useTutorialTrigger';
 import { RewardService, type StageDropResult } from '../../services/RewardService';
 import { calculateCharacterStatProfile } from '../../logic/StatSystem';
 import {
@@ -1472,6 +1473,10 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   };
 
   const addLog = useCallback((line: string) => setLog(prev => [...prev, line]), []);
+
+  useEffect(() => {
+    if (stageId) startTutorialBattlePhase(stageId);
+  }, [stageId]);
 
   useEffect(() => {
     const firstEnemies = cloneEnemies(battleWaves[0].enemies);

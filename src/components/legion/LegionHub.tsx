@@ -4,6 +4,7 @@ import { useRef, useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Swords, Zap, Plus, Sparkles, ChevronRight, Home, X, Crown, Filter, Recycle, Star } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
+import { useTutorialStore } from '../../store/useTutorialStore';
 import { useGothicSound } from '../necro/useGothicSound';
 import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats, WeaponMaterialData } from '../../types/game';
 import { getActiveSynergies, type ActiveSynergy } from '../../logic/TribeSynergySystem';
@@ -2412,8 +2413,9 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
   onSelect: (k: MemberKey) => void; onToggleDemon: () => void; onBack: () => void;
 }) {
   const setCurrentTab = useGameStore(state => state.setCurrentTab);
+  const necroStatus = useGameStore(state => state.necroStatus);
   const totalCost = (party as (MonsterData | null)[]).reduce((s, m) => s + (m?.cost ?? 0), 0);
-  const maxCost = 12;
+  const maxCost = necroStatus?.maxCost ?? 10;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.2 }}
       className="absolute inset-0 flex flex-col"
@@ -2490,6 +2492,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
 ────────────────────────────────────────── */
 export default function LegionHub() {
   const { player, party, equippedResidueSlots, soulShards, abyssalResidues, residueMaterials, weaponMaterials, inventoryItems, transmutationPoints, demonGauge, isDemonMode, toggleDemonMode } = useGameStore();
+  const activeTutorialPhase = useTutorialStore(s => s.activePhase);
   const sound = useGothicSound();
   const [view, setView] = useState<'LIST' | 'DETAIL' | 'GEAR'>('DETAIL');
   const [selKey, setSelKey] = useState<MemberKey | null>('PLAYER');
@@ -2499,6 +2502,12 @@ export default function LegionHub() {
   const goBackToList = useCallback(() => { haptic(5); sound.playTap(); setView('LIST'); }, [sound]);
   const goBackToDetail = useCallback(() => { haptic(5); sound.playTap(); setView('DETAIL'); setGearCtx(null); }, [sound]);
   const goBackFromList = useCallback(() => { haptic(5); sound.playTap(); if (selKey) setView('DETAIL'); }, [sound, selKey]);
+
+  useEffect(() => {
+    if (activeTutorialPhase === 'PARTY_FORMATION') {
+      setView('LIST');
+    }
+  }, [activeTutorialPhase]);
 
   const openGear = useCallback((slotType: GearSlotType, slotIndex: number) => {
     if (!selKey) return;

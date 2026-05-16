@@ -51,10 +51,11 @@
   - 再設計メモ: `docs/設計書/32_ストーリーシステム再設計実装.md`
 
 ### チュートリアルシステム
-- [ ] `src/store/useTutorialStore.ts` — Zustand persist 進行管理
-- [ ] `src/components/tutorial/SpotlightOverlay.tsx` — SVG clipPath スポットライト
-- [ ] `src/components/tutorial/BubbleHint.tsx` — 吹き出しヒント
-- [ ] `src/hooks/useTutorialTrigger.ts` — 6フェーズ自動起動フック
+- [x] `src/store/useTutorialStore.ts` — Zustand persist 進行管理
+- [x] `src/components/tutorial/SpotlightOverlay.tsx` — SVG clipPath スポットライト
+- [x] `src/components/tutorial/BubbleHint.tsx` — 吹き出しヒント
+- [x] `src/hooks/useTutorialTrigger.ts` — 6フェーズ自動起動フック
+  - 実装メモ: フェーズは `BATTLE_BASICS → NECRO_LAB → PARTY_FORMATION → JOB_CHANGE → ABYSSAL_RESIDUE → DEMONIZATION` の順で排他起動。現行第1章の初回バトル `area1_node1` でも PHASE 1 を発火する。
 
 ### LegionHub 編成UI
 - [ ] ドラッグ並び替え（Framer Motion drag + long press 400ms + iOS Safari 分離ルール） → 詳細: `24_パーティ編成システム詳細.md`

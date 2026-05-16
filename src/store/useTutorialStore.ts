@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { type TutorialPhase, ALL_PHASES, PHASE_STEPS } from '../data/tutorial/phases';
 
 interface TutorialState {
@@ -12,7 +12,7 @@ interface TutorialState {
   visitedTabs: string[];
   hasHydrated: boolean;
 
-  startPhase: (phase: TutorialPhase) => void;
+  startPhase: (phase: TutorialPhase) => boolean;
   nextStep: () => void;
   skipPhase: () => void;
   markHintViewed: (hintId: string) => void;
@@ -24,6 +24,26 @@ interface TutorialState {
   resetTutorial: () => void;
   setHasHydrated: (value: boolean) => void;
 }
+
+const memoryStorage: StateStorage = (() => {
+  const storage = new Map<string, string>();
+  return {
+    getItem: (name) => storage.get(name) ?? null,
+    setItem: (name, value) => {
+      storage.set(name, value);
+    },
+    removeItem: (name) => {
+      storage.delete(name);
+    },
+  };
+})();
+
+const getTutorialStorage = (): StateStorage => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    return window.localStorage;
+  }
+  return memoryStorage;
+};
 
 export const useTutorialStore = create<TutorialState>()(
   persist(
@@ -38,9 +58,10 @@ export const useTutorialStore = create<TutorialState>()(
       hasHydrated: false,
 
       startPhase: (phase) => {
-        const { completedPhases, activePhase } = get();
-        if (completedPhases.includes(phase) || activePhase === phase) return;
+        const { completedPhases, activePhase, tutorialCompleted } = get();
+        if (tutorialCompleted || completedPhases.includes(phase) || activePhase) return false;
         set({ activePhase: phase, activeStepIndex: 0 });
+        return true;
       },
 
       nextStep: () => {
@@ -48,7 +69,9 @@ export const useTutorialStore = create<TutorialState>()(
         if (!activePhase) return;
         const steps = PHASE_STEPS[activePhase];
         if (activeStepIndex + 1 >= steps.length) {
-          const newCompleted = [...get().completedPhases, activePhase];
+          const newCompleted = get().completedPhases.includes(activePhase)
+            ? get().completedPhases
+            : [...get().completedPhases, activePhase];
           set({
             completedPhases: newCompleted,
             activePhase: null,
@@ -63,7 +86,9 @@ export const useTutorialStore = create<TutorialState>()(
       skipPhase: () => {
         const { activePhase } = get();
         if (!activePhase) return;
-        const newCompleted = [...get().completedPhases, activePhase];
+        const newCompleted = get().completedPhases.includes(activePhase)
+          ? get().completedPhases
+          : [...get().completedPhases, activePhase];
         set({
           completedPhases: newCompleted,
           activePhase: null,
@@ -91,7 +116,13 @@ export const useTutorialStore = create<TutorialState>()(
           visitedTabs: s.visitedTabs.includes(tab) ? s.visitedTabs : [...s.visitedTabs, tab],
         })),
 
-      completeTutorial: () => set({ tutorialCompleted: true }),
+      completeTutorial: () => set({
+        completedPhases: ALL_PHASES,
+        activePhase: null,
+        activeStepIndex: 0,
+        bannerQueue: [],
+        tutorialCompleted: true,
+      }),
 
       resetTutorial: () =>
         set({
@@ -108,6 +139,7 @@ export const useTutorialStore = create<TutorialState>()(
     }),
     {
       name: 'necro-tutorial-store-v1',
+      storage: createJSONStorage(getTutorialStorage),
       partialize: s => ({
         completedPhases: s.completedPhases,
         tutorialCompleted: s.tutorialCompleted,

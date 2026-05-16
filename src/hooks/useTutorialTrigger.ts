@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { useStoryStore } from '../store/useStoryStore';
 import { useTutorialStore } from '../store/useTutorialStore';
+import { ALL_PHASES, type TutorialPhase } from '../data/tutorial/phases';
 
 export function useTutorialTrigger() {
   const tutorialHydrated = useTutorialStore(s => s.hasHydrated);
@@ -22,58 +23,73 @@ export function useTutorialTrigger() {
     if (!tutorialHydrated || !storyHydrated) return;
     if (tutorialCompleted) return;
 
-    const { startPhase, enqueueBanner } = useTutorialStore.getState();
+    const { startPhase, enqueueBanner, completeTutorial } = useTutorialStore.getState();
+    const hasCompleted = (phase: TutorialPhase) => completedPhases.includes(phase);
+    const tryStartPhase = (phase: TutorialPhase) => {
+      const started = startPhase(phase);
+      if (started) enqueueBanner(phase);
+      return started;
+    };
+
+    if (ALL_PHASES.every(hasCompleted)) {
+      completeTutorial();
+      return;
+    }
 
     // PHASE 1: プロローグ完了後（LINE_DEATH_SEEN）→ バトル基礎
     // 注: ステップはバトル開始時に BattleCanvas → startTutorialBattlePhase() で発火
     //     ここでは「フェーズ解放済みとして初期化」はしない
     //     BATTLE_BASICS は BattleCanvas 単独で管理する
+    if (!lineDeathSeen) return;
 
     // PHASE 2: プロローグ完了 + 1ステージ以上クリア → 死霊術ラボ
     if (
-      lineDeathSeen &&
       clearedStages.length >= 1 &&
-      !completedPhases.includes('NECRO_LAB')
+      hasCompleted('BATTLE_BASICS') &&
+      !hasCompleted('NECRO_LAB')
     ) {
-      enqueueBanner('NECRO_LAB');
-      startPhase('NECRO_LAB');
+      tryStartPhase('NECRO_LAB');
+      return;
     }
 
-    // PHASE 3: モンスター2体以上 → パーティ編成
+    // PHASE 3: ネクロラボ後 + モンスター2体以上 → パーティ編成
     if (
       monsterCount >= 2 &&
-      !completedPhases.includes('PARTY_FORMATION')
+      hasCompleted('NECRO_LAB') &&
+      !hasCompleted('PARTY_FORMATION')
     ) {
-      enqueueBanner('PARTY_FORMATION');
-      startPhase('PARTY_FORMATION');
+      tryStartPhase('PARTY_FORMATION');
+      return;
     }
 
-    // PHASE 4: モンスター3体以上 → 職業転職
+    // PHASE 4: 編成理解後 + モンスター3体以上 → 職業転職
     if (
       monsterCount >= 3 &&
-      !completedPhases.includes('JOB_CHANGE')
+      hasCompleted('PARTY_FORMATION') &&
+      !hasCompleted('JOB_CHANGE')
     ) {
-      enqueueBanner('JOB_CHANGE');
-      startPhase('JOB_CHANGE');
+      tryStartPhase('JOB_CHANGE');
+      return;
     }
 
     // PHASE 5: AREA1 全3ノードクリア → 深淵の残滓
     const area1Done = ['area1_node1', 'area1_node2', 'area1_node3'].every(s => clearedStages.includes(s));
     if (
       area1Done &&
-      !completedPhases.includes('ABYSSAL_RESIDUE')
+      hasCompleted('JOB_CHANGE') &&
+      !hasCompleted('ABYSSAL_RESIDUE')
     ) {
-      enqueueBanner('ABYSSAL_RESIDUE');
-      startPhase('ABYSSAL_RESIDUE');
+      tryStartPhase('ABYSSAL_RESIDUE');
+      return;
     }
 
     // PHASE 6: 第1章ボス撃破 → 魔神化
     if (
       clearedStages.includes('area1_boss') &&
-      !completedPhases.includes('DEMONIZATION')
+      hasCompleted('ABYSSAL_RESIDUE') &&
+      !hasCompleted('DEMONIZATION')
     ) {
-      enqueueBanner('DEMONIZATION');
-      startPhase('DEMONIZATION');
+      tryStartPhase('DEMONIZATION');
     }
   }, [
     tutorialHydrated, storyHydrated, tutorialCompleted,
@@ -92,12 +108,17 @@ export function useTutorialTrigger() {
 
 /**
  * バトル開始時に BattleCanvas から呼ぶ。
- * tutorial_battle_01 入場時のみ BATTLE_BASICS フェーズを発火する。
+ * tutorial_battle_01 / 第1章初回ノード入場時に BATTLE_BASICS フェーズを発火する。
  */
 export function startTutorialBattlePhase(stageId: string) {
-  if (stageId !== 'tutorial_battle_01') return;
-  const { completedPhases, startPhase } = useTutorialStore.getState();
-  if (!completedPhases.includes('BATTLE_BASICS')) {
-    startPhase('BATTLE_BASICS');
+  const tutorialStageIds = new Set(['tutorial_battle_01', 'area1_node1']);
+  if (!tutorialStageIds.has(stageId)) return;
+
+  const story = useStoryStore.getState();
+  if (!story.hasFlag('LINE_DEATH_SEEN')) return;
+
+  const { completedPhases, startPhase, enqueueBanner } = useTutorialStore.getState();
+  if (!completedPhases.includes('BATTLE_BASICS') && startPhase('BATTLE_BASICS')) {
+    enqueueBanner('BATTLE_BASICS');
   }
 }
