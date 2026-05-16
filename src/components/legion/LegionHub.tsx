@@ -1,12 +1,12 @@
 'use client';
 
 import { useRef, useState, useMemo, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Swords, Zap, Plus, Sparkles, ChevronRight, Home, X, Crown, Filter, Recycle, Star } from 'lucide-react';
+import { motion, AnimatePresence, useDragControls, type PanInfo } from 'framer-motion';
+import { ChevronLeft, Swords, Zap, Plus, Sparkles, ChevronRight, Home, X, Crown, Filter, Recycle, Star, GripVertical } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import { useTutorialStore } from '../../store/useTutorialStore';
 import { useGothicSound } from '../necro/useGothicSound';
-import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats, WeaponMaterialData } from '../../types/game';
+import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats, WeaponMaterialData, type Tribe } from '../../types/game';
 import { getActiveSynergies, type ActiveSynergy } from '../../logic/TribeSynergySystem';
 import {
   calculateCharacterStatProfile,
@@ -80,11 +80,43 @@ const JOB: Record<string, Conf> = {
 const DEFAULT_CONF: Conf = { color: '#CC22FF', glow: 'rgba(204,34,255,0.4)', darkBg: 'rgba(16,0,44,0.97)', emoji: '🌟', label: '???', particle: 'rgba(204,34,255,0.6)', accent: '#dd66ff' };
 const VACANT_CONF:  Conf = { color: 'rgba(120,80,200,0.6)', glow: 'rgba(100,50,180,0.15)', darkBg: 'rgba(8,4,18,0.97)', emoji: '+', label: 'VACANT', particle: 'rgba(120,80,200,0.35)', accent: 'rgba(160,110,230,0.6)' };
 
+type TribeFilterKey = 'ALL' | Tribe;
+type MonsterSortKey = 'atk' | 'hp' | 'spd' | 'cost';
+type SortDir = 'asc' | 'desc';
+
+const TRIBE_CHIPS: { key: TribeFilterKey; emoji: string; label: string; color: string }[] = [
+  { key: 'ALL', emoji: '✦', label: 'ALL', color: '#8B00FF' },
+  { key: 'UNDEAD', emoji: '💀', label: 'UNDEAD', color: '#B09FF8' },
+  { key: 'DEMON', emoji: '😈', label: 'DEMON', color: '#FF7878' },
+  { key: 'BEAST', emoji: '🐺', label: 'BEAST', color: '#FBBB30' },
+  { key: 'HUMANOID', emoji: '👹', label: 'HMN', color: '#78C97C' },
+  { key: 'DRAGON', emoji: '🐉', label: 'DRAGON', color: '#00C896' },
+  { key: 'ORC', emoji: '🛡️', label: 'ORC', color: '#5C9E6A' },
+];
+
+const SORT_OPTIONS: { key: MonsterSortKey; label: string; icon: string; defaultDir: SortDir }[] = [
+  { key: 'atk', label: 'ATK', icon: '⚔', defaultDir: 'desc' },
+  { key: 'hp', label: 'HP', icon: '♥', defaultDir: 'desc' },
+  { key: 'spd', label: 'SPD', icon: '⚡', defaultDir: 'desc' },
+  { key: 'cost', label: 'COST', icon: '✦', defaultDir: 'asc' },
+];
+
+const POSITION_META = [
+  { label: '⚔ 前衛', short: 'VANGUARD', color: '#FF9955', hate: '50%' },
+  { label: '◈ 中衛', short: 'MIDDLE', color: '#B09FF8', hate: '30%' },
+  { label: '✦ 後衛', short: 'REAR', color: '#5599FF', hate: '20%' },
+] as const;
+
 function getConf(mk: MemberKey, player: CharacterData | null, party: (MonsterData | null)[]): Conf {
   if (mk === 'PLAYER') return JOB[player?.currentJobId ?? ''] ?? DEFAULT_CONF;
   const i = parseInt(mk.replace('MONSTER_', ''));
   const m = party[i];
   return m ? (TRIBE[m.tribe] ?? TRIBE.HUMANOID) : VACANT_CONF;
+}
+
+function getMonsterSortValue(monster: MonsterData, key: MonsterSortKey) {
+  if (key === 'cost') return monster.cost;
+  return Number(monster.stats[key] ?? 0);
 }
 
 const RARITY_COLOR: Record<string, string> = {
@@ -1350,16 +1382,33 @@ function MaterialCard({ mat, isSelected, onToggle }: { mat: ResidueMatData; isSe
 /* ──────────────────────────────────────────
    PORTRAIT CARD (list view)
 ────────────────────────────────────────── */
-function PortraitCard({ mk, player, party, equippedResidueSlots, soulShards, demonGauge, isDemonMode, onSelect, onToggleDemon, id }: {
+function PortraitCard({
+  mk, player, party, equippedResidueSlots, soulShards, demonGauge, isDemonMode,
+  onSelect, onToggleDemon, id, positionIndex, selected = false, dropActive = false,
+  dragArmed = false, allowVacantSelect = false,
+}: {
   mk: MemberKey; player: CharacterData | null; party: (MonsterData | null)[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
   soulShards: SoulShardData[]; demonGauge: number; isDemonMode: boolean;
   onSelect: () => void; onToggleDemon: () => void; id?: string;
+  positionIndex?: number; selected?: boolean; dropActive?: boolean; dragArmed?: boolean;
+  allowVacantSelect?: boolean;
 }) {
   const conf = getConf(mk, player, party);
   const info = getMemberInfo(mk, player, party, equippedResidueSlots, soulShards);
   const color = conf.color;
   const isVacant = info.isVacant;
+  const canSelect = !isVacant || allowVacantSelect;
+  const position = positionIndex !== undefined ? POSITION_META[positionIndex] : null;
+  const borderColor = dropActive
+    ? '#D4AF37'
+    : selected
+      ? '#E090FF'
+      : isVacant
+        ? 'rgba(100,60,180,0.22)'
+        : isDemonMode && mk === 'PLAYER'
+          ? 'rgba(220,30,30,0.5)'
+          : color + '44';
 
   const slotIcons: { icon: string; item: ItemData | AbyssalResidueData | null; label: string }[] = [
     { icon: '⚔', item: info.weapon, label: 'W' },
@@ -1373,16 +1422,55 @@ function PortraitCard({ mk, player, party, equippedResidueSlots, soulShards, dem
   const showDemonBadge = mk === 'PLAYER' && demonGauge >= 100;
 
   return (
-    <motion.button id={id} onClick={isVacant ? undefined : onSelect} whileTap={!isVacant ? { scale: 0.96 } : undefined}
+    <motion.div
+      id={id}
+      role={canSelect ? 'button' : undefined}
+      tabIndex={canSelect ? 0 : undefined}
+      onClick={canSelect ? onSelect : undefined}
+      onKeyDown={(event) => {
+        if (!canSelect) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      whileTap={canSelect ? { scale: 0.96 } : undefined}
       className="relative rounded-[20px] overflow-hidden flex flex-col select-none"
       style={{
+        width: '100%',
+        height: '100%',
+        cursor: canSelect ? 'pointer' : 'default',
+        touchAction: positionIndex !== undefined ? 'none' : 'auto',
         background: isDemonMode && mk === 'PLAYER'
           ? 'linear-gradient(175deg, rgba(42,2,2,0.98), rgba(2,1,8,0.99))'
           : `linear-gradient(175deg, ${conf.darkBg}, rgba(2,1,8,0.99))`,
-        border: `1.5px solid ${isVacant ? 'rgba(100,60,180,0.22)' : isDemonMode && mk === 'PLAYER' ? 'rgba(220,30,30,0.5)' : color + '44'}`,
+        borderWidth: 1.5,
         borderStyle: isVacant ? 'dashed' : 'solid',
-        boxShadow: isVacant ? 'none' : isDemonMode && mk === 'PLAYER' ? '0 8px 36px rgba(0,0,0,0.8), 0 0 0 1px rgba(220,30,30,0.18)' : `0 8px 36px rgba(0,0,0,0.8), 0 0 0 1px ${color}16`,
+        borderColor,
+        boxShadow: dropActive
+          ? '0 0 0 1px rgba(212,175,55,0.44), 0 0 22px rgba(212,175,55,0.28)'
+          : selected
+            ? `0 0 0 1px rgba(224,144,255,0.5), 0 0 24px ${color}40`
+            : isVacant ? 'none' : isDemonMode && mk === 'PLAYER' ? '0 8px 36px rgba(0,0,0,0.8), 0 0 0 1px rgba(220,30,30,0.18)' : `0 8px 36px rgba(0,0,0,0.8), 0 0 0 1px ${color}16`,
       }}>
+      {position && (
+        <div
+          className="absolute top-2 left-2 z-20 flex items-center gap-1 rounded-full px-1.5 py-0.5"
+          style={{
+            background: dragArmed ? 'rgba(212,175,55,0.18)' : `${position.color}18`,
+            border: `1px solid ${dragArmed ? 'rgba(212,175,55,0.55)' : position.color + '55'}`,
+            color: dragArmed ? '#FFD700' : position.color,
+            fontFamily: 'monospace',
+            fontSize: 8,
+            fontWeight: 900,
+            letterSpacing: '0.04em',
+            boxShadow: dragArmed ? '0 0 12px rgba(212,175,55,0.22)' : 'none',
+          }}
+        >
+          {dragArmed ? <GripVertical size={10} /> : null}
+          <span>{dragArmed ? 'DRAG' : position.label}</span>
+        </div>
+      )}
       {!isVacant && (
         <>
           <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at 50% 28%, ${isDemonMode && mk === 'PLAYER' ? 'rgba(220,30,30,0.38)' : conf.glow} 0%, transparent 60%)` }} />
@@ -1452,7 +1540,7 @@ function PortraitCard({ mk, player, party, equippedResidueSlots, soulShards, dem
           <svg width="5" height="9" viewBox="0 0 7 12"><path d="M1 1l5 5-5 5" stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
         </div>
       )}
-    </motion.button>
+    </motion.div>
   );
 }
 
@@ -2403,19 +2491,472 @@ function SynergyBanner({ party }: { party: (MonsterData | null)[] }) {
   );
 }
 
+function CostIndicator({ totalCost, maxCost, feedbackKey, feedbackMessage }: { totalCost: number; maxCost: number; feedbackKey: number; feedbackMessage: string | null }) {
+  const [showTip, setShowTip] = useState(false);
+  const ratio = maxCost > 0 ? totalCost / maxCost : 0;
+  const isOver = totalCost > maxCost;
+  const isWarn = ratio >= 0.75;
+  const color = isOver ? '#FF6666' : isWarn ? '#FFD700' : '#E090FF';
+  const bar = isOver
+    ? 'linear-gradient(90deg, #FF4444, #FF8800)'
+    : isWarn
+      ? 'linear-gradient(90deg, #D4AF37, #FFD700)'
+      : 'linear-gradient(90deg, #8B00FF, #DD22FF)';
+
+  useEffect(() => {
+    if (!feedbackKey) return;
+    setShowTip(true);
+    const t = window.setTimeout(() => setShowTip(false), 2000);
+    return () => window.clearTimeout(t);
+  }, [feedbackKey]);
+
+  return (
+    <div id="tut-cost-display" className="relative">
+      <motion.button
+        key={feedbackKey}
+        type="button"
+        onClick={() => setShowTip(v => !v)}
+        animate={isOver || feedbackKey ? { x: [0, -4, 4, -4, 4, 0] } : { x: 0 }}
+        transition={{ duration: 0.38 }}
+        className="flex flex-col items-end gap-1 rounded-xl px-3.5 py-1.5"
+        style={{
+          background: isOver ? 'rgba(255,68,68,0.12)' : isWarn ? 'rgba(212,175,55,0.11)' : 'rgba(136,0,228,0.14)',
+          border: `1px solid ${isOver ? 'rgba(255,68,68,0.46)' : isWarn ? 'rgba(212,175,55,0.38)' : 'rgba(148,0,238,0.32)'}`,
+          boxShadow: isOver ? '0 0 18px rgba(255,68,68,0.18)' : isWarn ? '0 0 16px rgba(212,175,55,0.14)' : 'none',
+        }}
+      >
+        <span className="text-[12px] font-black" style={{ color, fontFamily: 'monospace', fontVariantNumeric: 'tabular-nums' }}>
+          COST {totalCost}/{maxCost}{isOver ? ' OVER' : ''}
+        </span>
+        <div className="w-[108px] h-[5px] rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.42)', border: '1px solid rgba(136,0,228,0.2)' }}>
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(100, ratio * 100)}%`, opacity: isWarn && !isOver ? [1, 0.62, 1] : 1 }}
+            transition={{ width: { duration: 0.45, ease: 'easeOut' }, opacity: { duration: 1.4, repeat: isWarn && !isOver ? Infinity : 0 } }}
+            className="h-full rounded-full"
+            style={{ background: bar, boxShadow: isOver ? '0 0 8px #FF4444' : isWarn ? '0 0 7px #D4AF37' : 'none' }}
+          />
+        </div>
+      </motion.button>
+
+      <AnimatePresence>
+        {showTip && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.96 }}
+            className="absolute right-0 mt-1 w-[190px] rounded-lg px-2.5 py-2 text-left"
+            style={{
+              zIndex: 30,
+              background: 'rgba(8,3,20,0.96)',
+              border: `1px solid ${isOver || feedbackMessage ? 'rgba(255,68,68,0.38)' : 'rgba(139,0,255,0.34)'}`,
+              color: isOver || feedbackMessage ? '#FF9A9A' : 'rgba(220,210,240,0.88)',
+              fontFamily: "'Noto Sans JP', sans-serif",
+              fontSize: 10,
+              lineHeight: 1.55,
+              boxShadow: '0 12px 28px rgba(0,0,0,0.52)',
+            }}
+          >
+            {feedbackMessage ?? (isOver ? 'コスト超過。モンスターを外してください。' : `最大コスト ${maxCost} 以内で3体まで編成できます。`)}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function MonsterFilterBar({
+  activeFilters,
+  onToggle,
+  onClear,
+}: {
+  activeFilters: Set<Tribe>;
+  onToggle: (key: TribeFilterKey) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="shrink-0 flex items-center gap-2 min-w-0">
+      <div className="safe-scroll flex items-center gap-2 overflow-x-auto min-w-0 flex-1 pb-1">
+        {TRIBE_CHIPS.map(chip => {
+          const active = chip.key === 'ALL' ? activeFilters.size === 0 : activeFilters.has(chip.key as Tribe);
+          return (
+            <motion.button
+              key={chip.key}
+              type="button"
+              whileTap={{ scale: 0.92 }}
+              onClick={() => onToggle(chip.key)}
+              className="relative shrink-0 flex items-center justify-center"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                border: `1.5px solid ${active ? chip.color : chip.color + '33'}`,
+                background: active ? `radial-gradient(circle, ${chip.color}2C, rgba(0,0,0,0.72))` : 'rgba(12,6,28,0.78)',
+                boxShadow: active ? `0 0 12px ${chip.color}55` : 'none',
+              }}
+              title={chip.label}
+            >
+              <span style={{ fontSize: 17, filter: active ? 'none' : 'grayscale(0.6) opacity(0.55)', lineHeight: 1 }}>{chip.emoji}</span>
+              {active && (
+                <motion.div
+                  layoutId={`tribe-filter-${chip.key}`}
+                  className="absolute bottom-1 rounded-full"
+                  style={{ width: 16, height: 2, background: chip.color }}
+                />
+              )}
+            </motion.button>
+          );
+        })}
+      </div>
+      {activeFilters.size > 0 && (
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.94 }}
+          onClick={onClear}
+          className="shrink-0 flex items-center gap-1 rounded-full px-2 py-1"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,0,255,0.24)', color: '#A5A9B4', fontFamily: 'monospace', fontSize: 9, fontWeight: 900 }}
+        >
+          <X size={10} />
+          CLEAR
+        </motion.button>
+      )}
+    </div>
+  );
+}
+
+function SortControls({ sortKey, sortDir, onPress }: { sortKey: MonsterSortKey; sortDir: SortDir; onPress: (key: MonsterSortKey) => void }) {
+  return (
+    <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto safe-scroll pb-1">
+      <span className="shrink-0 flex items-center gap-1 text-[9px] font-black tracking-[0.16em]" style={{ color: 'rgba(185,110,255,0.72)', fontFamily: 'monospace' }}>
+        <Filter size={11} />
+        SORT
+      </span>
+      {SORT_OPTIONS.map(opt => {
+        const active = sortKey === opt.key;
+        return (
+          <motion.button
+            key={opt.key}
+            type="button"
+            whileTap={{ scale: 0.93 }}
+            onClick={() => onPress(opt.key)}
+            className="shrink-0 rounded-full px-2.5 py-1 flex items-center gap-1"
+            style={{
+              border: `1px solid ${active ? '#8B00FF' : 'rgba(120,80,200,0.3)'}`,
+              background: active ? 'rgba(139,0,255,0.2)' : 'rgba(12,6,28,0.6)',
+              color: active ? '#E090FF' : 'rgba(150,120,200,0.62)',
+              fontFamily: 'monospace',
+              fontSize: 10,
+              fontWeight: 900,
+            }}
+          >
+            <span>{opt.icon}</span>
+            <span>{opt.label}</span>
+            {active && <span style={{ fontSize: 9 }}>{sortDir === 'desc' ? '↓' : '↑'}</span>}
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MonsterRosterCard({
+  monster,
+  selected,
+  inPartyIndex,
+  costBlocked,
+  onPick,
+}: {
+  monster: MonsterData;
+  selected: boolean;
+  inPartyIndex: number;
+  costBlocked: boolean;
+  onPick: () => void;
+}) {
+  const conf = TRIBE[monster.tribe] ?? TRIBE.HUMANOID;
+  const alreadyInParty = inPartyIndex >= 0;
+  return (
+    <motion.button
+      type="button"
+      layout
+      whileTap={{ scale: 0.96 }}
+      onClick={onPick}
+      className="relative min-w-0 rounded-xl overflow-hidden text-left"
+      style={{
+        minHeight: 92,
+        background: selected
+          ? `linear-gradient(145deg, ${conf.glow}, rgba(6,2,18,0.96))`
+          : 'rgba(8,3,20,0.78)',
+        border: `1px solid ${costBlocked ? 'rgba(255,68,68,0.5)' : selected ? conf.color + 'AA' : conf.color + '33'}`,
+        boxShadow: selected ? `0 0 18px ${conf.glow}` : 'none',
+        padding: '9px 9px',
+      }}
+    >
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.07), transparent 48%)' }} />
+      <div className="relative flex items-start gap-8">
+        <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `radial-gradient(circle, ${conf.color}35, rgba(0,0,0,0.86))`, border: `1px solid ${conf.color}66`, fontSize: 22 }}>
+          <span style={{ filter: `drop-shadow(0 0 7px ${conf.color})` }}>{conf.emoji}</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate text-[12px] font-black" style={{ color: '#F0EAFF', fontFamily: "'Noto Sans JP', sans-serif" }}>{monster.name}</span>
+            {alreadyInParty && (
+              <span className="shrink-0 rounded px-1 py-0.5 text-[8px] font-black" style={{ color: POSITION_META[inPartyIndex].color, background: `${POSITION_META[inPartyIndex].color}1A`, border: `1px solid ${POSITION_META[inPartyIndex].color}44`, fontFamily: 'monospace' }}>
+                {POSITION_META[inPartyIndex].short}
+              </span>
+            )}
+          </div>
+          <div style={{ marginTop: 3, color: conf.color, fontFamily: 'monospace', fontSize: 9, fontWeight: 900, letterSpacing: '0.1em' }}>{conf.label}</div>
+        </div>
+        <div className="absolute right-0 top-0 rounded-full px-1.5 py-0.5 text-[9px] font-black" style={{ background: costBlocked ? 'rgba(255,68,68,0.16)' : `${conf.color}18`, border: `1px solid ${costBlocked ? 'rgba(255,68,68,0.5)' : conf.color + '44'}`, color: costBlocked ? '#FF7777' : conf.color, fontFamily: 'monospace' }}>
+          C{monster.cost}
+        </div>
+      </div>
+      <div className="relative mt-3 grid grid-cols-4 gap-1">
+        {(['atk', 'hp', 'spd'] as MonsterSortKey[]).map(key => (
+          <div key={key} className="rounded-md px-1.5 py-1" style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 7, color: '#6b5f7a' }}>{key.toUpperCase()}</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#DCD3FF', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{getMonsterSortValue(monster, key)}</div>
+          </div>
+        ))}
+        <div className="rounded-md px-1.5 py-1" style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ fontFamily: 'monospace', fontSize: 7, color: '#6b5f7a' }}>DEF</div>
+          <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#DCD3FF', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{monster.stats.def}</div>
+        </div>
+      </div>
+    </motion.button>
+  );
+}
+
+function SortablePartyTile({
+  index,
+  player,
+  party,
+  equippedResidueSlots,
+  soulShards,
+  demonGauge,
+  isDemonMode,
+  selected,
+  dropActive,
+  setSlotRef,
+  onSelectSlot,
+  onSwap,
+  onDragHover,
+}: {
+  index: number;
+  player: CharacterData | null;
+  party: (MonsterData | null)[];
+  equippedResidueSlots: (AbyssalResidueData | null)[];
+  soulShards: SoulShardData[];
+  demonGauge: number;
+  isDemonMode: boolean;
+  selected: boolean;
+  dropActive: boolean;
+  setSlotRef: (index: number, node: HTMLDivElement | null) => void;
+  onSelectSlot: (index: number) => void;
+  onSwap: (from: number, to: number) => void;
+  onDragHover: (index: number | null) => void;
+}) {
+  const controls = useDragControls();
+  const timerRef = useRef<number | null>(null);
+  const [armed, setArmed] = useState(false);
+  const monster = party[index] ?? null;
+  const mk = `MONSTER_${index}` as MemberKey;
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  return (
+    <motion.div
+      ref={node => setSlotRef(index, node)}
+      data-party-slot-index={index}
+      layout
+      drag={Boolean(monster)}
+      dragListener={false}
+      dragControls={controls}
+      dragSnapToOrigin
+      dragElastic={0.18}
+      whileDrag={{ scale: 1.06, opacity: 0.86, zIndex: 40 }}
+      onPointerDown={(event) => {
+        if (!monster) return;
+        clearTimer();
+        const pointerEvent = event.nativeEvent;
+        timerRef.current = window.setTimeout(() => {
+          setArmed(true);
+          haptic([15, 10]);
+          controls.start(pointerEvent);
+        }, 400);
+      }}
+      onPointerUp={clearTimer}
+      onPointerCancel={clearTimer}
+      onDrag={(event, info) => {
+        const target = getPartyDropIndex(info);
+        onDragHover(target);
+      }}
+      onDragEnd={(event, info) => {
+        clearTimer();
+        setArmed(false);
+        const target = getPartyDropIndex(info);
+        onDragHover(null);
+        if (target !== null && target !== index) onSwap(index, target);
+      }}
+      style={{ minHeight: 0, height: '100%', position: 'relative' }}
+    >
+      <PortraitCard
+        id={index === 0 ? 'tut-party-slot-0' : undefined}
+        mk={mk}
+        player={player}
+        party={party}
+        equippedResidueSlots={equippedResidueSlots}
+        soulShards={soulShards}
+        demonGauge={demonGauge}
+        isDemonMode={isDemonMode}
+        selected={selected}
+        dropActive={dropActive}
+        dragArmed={armed}
+        allowVacantSelect
+        positionIndex={index}
+        onSelect={() => onSelectSlot(index)}
+        onToggleDemon={() => {}}
+      />
+    </motion.div>
+  );
+}
+
+function getPartyDropIndex(info: PanInfo) {
+  const { x, y } = info.point;
+  for (let i = 0; i < 3; i++) {
+    const el = document.querySelector(`[data-party-slot-index="${i}"]`);
+    const rect = el?.getBoundingClientRect();
+    if (rect && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+      return i;
+    }
+  }
+  return null;
+}
+
 /* ──────────────────────────────────────────
    LEGION LIST VIEW
 ────────────────────────────────────────── */
-function LegionListView({ player, party, equippedResidueSlots, soulShards, demonGauge, isDemonMode, onSelect, onToggleDemon, onBack }: {
+function LegionListView({ player, party, equippedResidueSlots, soulShards, demonGauge, isDemonMode, onSelect, onFocusMember, onToggleDemon, onBack }: {
   player: CharacterData | null; party: (MonsterData | null)[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
   soulShards: SoulShardData[]; demonGauge: number; isDemonMode: boolean;
-  onSelect: (k: MemberKey) => void; onToggleDemon: () => void; onBack: () => void;
+  onSelect: (k: MemberKey) => void; onFocusMember: (k: MemberKey) => void; onToggleDemon: () => void; onBack: () => void;
 }) {
   const setCurrentTab = useGameStore(state => state.setCurrentTab);
   const necroStatus = useGameStore(state => state.necroStatus);
+  const inventoryMonsters = useGameStore(state => state.inventoryMonsters);
+  const setParty = useGameStore(state => state.setParty);
+  const updatePartySlot = useGameStore(state => state.updatePartySlot);
+  const swapPartySlots = useGameStore(state => state.swapPartySlots);
+  const addBattleLog = useGameStore(state => state.addBattleLog);
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState(0);
+  const [hoverSlotIndex, setHoverSlotIndex] = useState<number | null>(null);
+  const [activeFilters, setActiveFilters] = useState<Set<Tribe>>(new Set());
+  const [sortKey, setSortKey] = useState<MonsterSortKey>('atk');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [costFeedbackKey, setCostFeedbackKey] = useState(0);
+  const [costFeedbackMessage, setCostFeedbackMessage] = useState<string | null>(null);
+  const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const totalCost = (party as (MonsterData | null)[]).reduce((s, m) => s + (m?.cost ?? 0), 0);
   const maxCost = necroStatus?.maxCost ?? 10;
+
+  const selectedPosition = POSITION_META[selectedSlotIndex];
+
+  const setSlotRef = useCallback((index: number, node: HTMLDivElement | null) => {
+    slotRefs.current[index] = node;
+  }, []);
+
+  const sortedMonsters = useMemo(() => {
+    return [...inventoryMonsters]
+      .filter(monster => activeFilters.size === 0 || activeFilters.has(monster.tribe))
+      .sort((a, b) => {
+        const va = getMonsterSortValue(a, sortKey);
+        const vb = getMonsterSortValue(b, sortKey);
+        if (va === vb) return a.name.localeCompare(b.name, 'ja');
+        return sortDir === 'desc' ? vb - va : va - vb;
+      });
+  }, [activeFilters, inventoryMonsters, sortDir, sortKey]);
+
+  const previewParty = useCallback((slotIndex: number, monster: MonsterData) => {
+    const next = [...party] as (MonsterData | null)[];
+    const currentIndex = next.findIndex(member => member?.id === monster.id);
+    if (currentIndex === slotIndex) return next;
+    const targetPrevious = next[slotIndex] ?? null;
+    next[slotIndex] = monster;
+    if (currentIndex >= 0) next[currentIndex] = targetPrevious;
+    return next;
+  }, [party]);
+
+  const showCostError = useCallback((message: string) => {
+    setCostFeedbackMessage(message);
+    setCostFeedbackKey(key => key + 1);
+    haptic([10, 5, 10]);
+  }, []);
+
+  const assignMonster = useCallback((slotIndex: number, monster: MonsterData) => {
+    const next = previewParty(slotIndex, monster);
+    const nextCost = next.reduce((sum, member) => sum + (member?.cost ?? 0), 0);
+    if (nextCost > maxCost) {
+      showCostError(`コスト超過: ${nextCost}/${maxCost}。低コストの魔物を選んでください。`);
+      return;
+    }
+    setParty(next);
+    setSelectedSlotIndex(slotIndex);
+    onFocusMember(`MONSTER_${slotIndex}` as MemberKey);
+    addBattleLog(`FORMATION: ${POSITION_META[slotIndex].label} に ${monster.name} を配置`);
+    haptic([10, 4, 14]);
+  }, [addBattleLog, maxCost, onFocusMember, previewParty, setParty, showCostError]);
+
+  const removeSelectedSlot = useCallback(() => {
+    if (!party[selectedSlotIndex]) return;
+    updatePartySlot(selectedSlotIndex, null);
+    addBattleLog(`FORMATION: ${POSITION_META[selectedSlotIndex].label} を空き枠に変更`);
+    haptic([8, 4, 8]);
+  }, [addBattleLog, party, selectedSlotIndex, updatePartySlot]);
+
+  const handleSwap = useCallback((from: number, to: number) => {
+    swapPartySlots(from, to);
+    setSelectedSlotIndex(to);
+    onFocusMember(`MONSTER_${to}` as MemberKey);
+    addBattleLog(`FORMATION: ${POSITION_META[from].label} と ${POSITION_META[to].label} を入れ替え`);
+    haptic([15, 10]);
+  }, [addBattleLog, onFocusMember, swapPartySlots]);
+
+  const toggleFilter = useCallback((key: TribeFilterKey) => {
+    if (key === 'ALL') {
+      setActiveFilters(new Set());
+      haptic(5);
+      return;
+    }
+    setActiveFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    haptic(5);
+  }, []);
+
+  const handleSortPress = useCallback((key: MonsterSortKey) => {
+    if (sortKey === key) {
+      setSortDir(dir => dir === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortKey(key);
+      setSortDir(SORT_OPTIONS.find(option => option.key === key)?.defaultDir ?? 'desc');
+    }
+    haptic(5);
+  }, [sortKey]);
+
+  const wouldCostBlock = useCallback((monster: MonsterData) => {
+    const next = previewParty(selectedSlotIndex, monster);
+    return next.reduce((sum, member) => sum + (member?.cost ?? 0), 0) > maxCost;
+  }, [maxCost, previewParty, selectedSlotIndex]);
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.2 }}
       className="absolute inset-0 flex flex-col"
@@ -2448,12 +2989,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
               <ChevronLeft size={13} />
               <span className="text-[10px] font-black tracking-wider" style={{ fontFamily: 'monospace' }}>DETAIL</span>
             </motion.button>
-            <div id="tut-cost-display" className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl" style={{ background: 'rgba(136,0,228,0.14)', border: '1px solid rgba(148,0,238,0.32)' }}>
-              <span className="text-[12px] font-black" style={{ color: '#E090FF', fontFamily: 'monospace' }}>COST {totalCost}/{maxCost}</span>
-            </div>
-            <div className="w-[100px] h-[5px] rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.42)', border: '1px solid rgba(136,0,228,0.2)' }}>
-              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, (totalCost / maxCost) * 100)}%` }} transition={{ duration: 0.5, ease: 'easeOut' }} className="h-full rounded-full" style={{ background: 'linear-gradient(90deg, #8B00FF, #DD22FF)' }} />
-            </div>
+            <CostIndicator totalCost={totalCost} maxCost={maxCost} feedbackKey={costFeedbackKey} feedbackMessage={costFeedbackMessage} />
           </div>
         </div>
         <div className="mt-2.5 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(196,28,250,0.32), transparent)' }} />
@@ -2464,23 +3000,104 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
         <SynergyBanner party={party as (MonsterData | null)[]} />
       </div>
 
-      {/* 2×2 portrait grid */}
-      <div className="flex-1 px-3 pb-3 relative z-10 overflow-hidden min-h-0">
-        <div className="grid grid-cols-2 gap-3 h-full">
-          {MEMBER_KEYS.map(k => (
-            <PortraitCard key={k} id={k === 'MONSTER_0' ? 'tut-party-slot-0' : undefined} mk={k} player={player} party={party as (MonsterData | null)[]}
-              equippedResidueSlots={equippedResidueSlots} soulShards={soulShards}
-              demonGauge={demonGauge} isDemonMode={isDemonMode}
-              onSelect={() => {
-                const isMon = k.startsWith('MONSTER_');
-                const idx = isMon ? parseInt(k.replace('MONSTER_', '')) : -1;
-                if (isMon && !party[idx]) return;
+      <div className="flex-1 px-3 pb-3 relative z-10 overflow-hidden min-h-0 flex flex-col gap-2.5">
+        <div className="shrink-0 flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: 'rgba(8,3,20,0.66)', border: `1px solid ${selectedPosition.color}33` }}>
+          <div className="min-w-0">
+            <div className="text-[9px] font-black tracking-[0.18em]" style={{ color: selectedPosition.color, fontFamily: 'monospace' }}>{selectedPosition.short} / HATE {selectedPosition.hate}</div>
+            <div className="truncate text-[11px] font-bold" style={{ color: 'rgba(220,210,240,0.82)', fontFamily: "'Noto Sans JP', sans-serif" }}>
+              {party[selectedSlotIndex]?.name ?? '空き枠'} を選択中。下の一覧から配置できます。
+            </div>
+          </div>
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.94 }}
+            onClick={removeSelectedSlot}
+            disabled={!party[selectedSlotIndex]}
+            className="shrink-0 rounded-lg px-2.5 py-1.5 text-[10px] font-black"
+            style={{
+              background: party[selectedSlotIndex] ? 'rgba(255,68,68,0.12)' : 'rgba(255,255,255,0.035)',
+              border: `1px solid ${party[selectedSlotIndex] ? 'rgba(255,68,68,0.36)' : 'rgba(255,255,255,0.08)'}`,
+              color: party[selectedSlotIndex] ? '#FF9A9A' : '#4a3a5a',
+              fontFamily: 'monospace',
+            }}
+          >
+            外す
+          </motion.button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 shrink-0" style={{ height: 'clamp(230px, 41dvh, 330px)' }}>
+          <PortraitCard
+            mk="PLAYER"
+            player={player}
+            party={party as (MonsterData | null)[]}
+            equippedResidueSlots={equippedResidueSlots}
+            soulShards={soulShards}
+            demonGauge={demonGauge}
+            isDemonMode={isDemonMode}
+            onSelect={() => { haptic(8); onFocusMember('PLAYER'); onSelect('PLAYER'); }}
+            onToggleDemon={onToggleDemon}
+          />
+          {[0, 1, 2].map(index => (
+            <SortablePartyTile
+              key={`slot-${index}-${party[index]?.id ?? 'empty'}`}
+              index={index}
+              player={player}
+              party={party as (MonsterData | null)[]}
+              equippedResidueSlots={equippedResidueSlots}
+              soulShards={soulShards}
+              demonGauge={demonGauge}
+              isDemonMode={isDemonMode}
+              selected={selectedSlotIndex === index}
+              dropActive={hoverSlotIndex === index}
+              setSlotRef={setSlotRef}
+              onSelectSlot={(slotIndex) => {
+                setSelectedSlotIndex(slotIndex);
+                onFocusMember(`MONSTER_${slotIndex}` as MemberKey);
                 haptic(8);
-                onSelect(k);
               }}
-              onToggleDemon={onToggleDemon}
+              onSwap={handleSwap}
+              onDragHover={setHoverSlotIndex}
             />
           ))}
+        </div>
+
+        <div className="flex-1 min-h-0 rounded-2xl flex flex-col gap-2 p-2.5" style={{ background: 'rgba(4,2,16,0.78)', border: '1px solid rgba(139,0,255,0.22)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+          <div className="shrink-0 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-[10px] font-black tracking-[0.22em]" style={{ color: '#E090FF', fontFamily: "'Cinzel', serif" }}>MONSTER ROSTER</div>
+              <div className="text-[9px] font-bold truncate" style={{ color: '#6b5f7a', fontFamily: 'monospace' }}>
+                {sortedMonsters.length}/{inventoryMonsters.length} 体表示
+              </div>
+            </div>
+            <div className="shrink-0 rounded-full px-2 py-1 text-[9px] font-black" style={{ color: selectedPosition.color, background: `${selectedPosition.color}14`, border: `1px solid ${selectedPosition.color}38`, fontFamily: 'monospace' }}>
+              {selectedPosition.label}
+            </div>
+          </div>
+          <MonsterFilterBar activeFilters={activeFilters} onToggle={toggleFilter} onClear={() => setActiveFilters(new Set())} />
+          <SortControls sortKey={sortKey} sortDir={sortDir} onPress={handleSortPress} />
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-0.5">
+            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(142px, 1fr))' }}>
+              {sortedMonsters.map(monster => {
+                const inPartyIndex = party.findIndex(member => member?.id === monster.id);
+                const blocked = wouldCostBlock(monster);
+                return (
+                  <MonsterRosterCard
+                    key={monster.id}
+                    monster={monster}
+                    selected={party[selectedSlotIndex]?.id === monster.id}
+                    inPartyIndex={inPartyIndex}
+                    costBlocked={blocked}
+                    onPick={() => assignMonster(selectedSlotIndex, monster)}
+                  />
+                );
+              })}
+            </div>
+            {sortedMonsters.length === 0 && (
+              <div className="h-full min-h-[96px] flex items-center justify-center text-center text-[10px] font-black tracking-[0.16em]" style={{ color: '#4a3a5a', fontFamily: 'monospace' }}>
+                FILTERED: NO MONSTERS
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -2526,7 +3143,7 @@ export default function LegionHub() {
             player={player} party={party as (MonsterData | null)[]}
             equippedResidueSlots={equippedResidueSlots} soulShards={soulShards}
             demonGauge={demonGauge} isDemonMode={isDemonMode}
-            onSelect={openDetail} onToggleDemon={() => { haptic([15, 10, 30]); toggleDemonMode(); }}
+            onSelect={openDetail} onFocusMember={switchMember} onToggleDemon={() => { haptic([15, 10, 30]); toggleDemonMode(); }}
             onBack={goBackFromList} />
         )}
         {view === 'DETAIL' && selKey && (

@@ -6,13 +6,15 @@ import { useStoryStore } from '../store/useStoryStore';
 import { useTutorialStore } from '../store/useTutorialStore';
 import { ALL_PHASES, type TutorialPhase } from '../data/tutorial/phases';
 
+const EMPTY_CLEARED_STAGES: string[] = [];
+
 export function useTutorialTrigger() {
   const tutorialHydrated = useTutorialStore(s => s.hasHydrated);
   const storyHydrated = useStoryStore(s => s.hasHydrated);
   const completedPhases = useTutorialStore(s => s.completedPhases);
   const tutorialCompleted = useTutorialStore(s => s.tutorialCompleted);
 
-  const clearedStages = useGameStore(s => s.player?.clearedStages ?? []);
+  const clearedStages = useGameStore(s => s.player?.clearedStages ?? EMPTY_CLEARED_STAGES);
   const monsterCount = useGameStore(s => s.inventoryMonsters.length);
   const isDemonMode = useGameStore(s => s.isDemonMode);
 

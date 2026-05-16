@@ -11,13 +11,15 @@ import {
   getStageEnterSceneIds,
 } from '../data/story';
 
+const EMPTY_CLEARED_STAGES: string[] = [];
+
 function enqueueUnviewed(sceneIds: string[]) {
   const store = useStoryStore.getState();
   return store.enqueueScenes(sceneIds.filter(id => !store.isViewed(id)));
 }
 
 export function useStoryTrigger() {
-  const clearedStages = useGameStore(state => state.player?.clearedStages ?? []);
+  const clearedStages = useGameStore(state => state.player?.clearedStages ?? EMPTY_CLEARED_STAGES);
   const currentTab = useGameStore(state => state.currentTab);
   const isDemonMode = useGameStore(state => state.isDemonMode);
   const hasHydrated = useStoryStore(state => state.hasHydrated);

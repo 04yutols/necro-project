@@ -58,10 +58,11 @@
   - 実装メモ: フェーズは `BATTLE_BASICS → NECRO_LAB → PARTY_FORMATION → JOB_CHANGE → ABYSSAL_RESIDUE → DEMONIZATION` の順で排他起動。現行第1章の初回バトル `area1_node1` でも PHASE 1 を発火する。
 
 ### LegionHub 編成UI
-- [ ] ドラッグ並び替え（Framer Motion drag + long press 400ms + iOS Safari 分離ルール） → 詳細: `24_パーティ編成システム詳細.md`
-- [ ] CostIndicator（3段階カラー + シェイクアニメ + ツールチップ、`necroStatus.maxCost` 参照）
-- [ ] モンスターソート/フィルタ（種族チップ × ATK/HP/SPD/COST 4キー）
-- [ ] **バグ修正**: LegionHub L2416 `const maxCost = 12` → `necroStatus.maxCost`
+- [x] ドラッグ並び替え（Framer Motion drag + long press 400ms + iOS Safari 分離ルール） → 詳細: `24_パーティ編成システム詳細.md`
+- [x] CostIndicator（3段階カラー + シェイクアニメ + ツールチップ、`necroStatus.maxCost` 参照）
+- [x] モンスターソート/フィルタ（種族チップ × ATK/HP/SPD/COST 4キー）
+- [x] **バグ修正**: LegionHub L2416 `const maxCost = 12` → `necroStatus.maxCost`
+  - 実装メモ: 編成ビューにスロット選択、一覧から配置、長押しドラッグ入れ替え、コスト超過拒否、種族フィルタ、4キーソートを追加。
 
 ### バトルUI
 - [ ] 魔神化発動VFX（demonGauge は実装済み → エフェクト追加） → 詳細: `21_VFXアニメーション §4`
