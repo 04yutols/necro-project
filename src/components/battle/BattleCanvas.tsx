@@ -2,7 +2,6 @@
 
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import type { CSSProperties } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/useGameStore';
 import ResultScreen from './ResultScreen';
 import jobsData from '../../data/master/jobs.json';
@@ -61,6 +60,18 @@ interface ActiveSkillEffect {
   attackType: SkillAttackType;
   targetIds: number[];
   aoe: boolean;
+}
+
+interface DemonBurstState {
+  id: number;
+  form: DemonFormData;
+}
+
+interface FormationBadgeMeta {
+  icon: string;
+  label: string;
+  color: string;
+  short: string;
 }
 
 // ── ENEMY STATE ───────────────────────────────────────────────────────────────
@@ -218,6 +229,12 @@ const POSITIONS_BY_COUNT: Record<number, EnemyState['pos'][]> = {
 };
 
 const WAVE_REWARD_WEIGHTS = [0.25, 0.32, 0.43];
+
+const FORMATION_BADGES: FormationBadgeMeta[] = [
+  { icon: '⚔', label: '前衛', short: 'FRONT', color: '#f97316' },
+  { icon: '◈', label: '中衛', short: 'MID',   color: '#38bdf8' },
+  { icon: '✦', label: '後衛', short: 'BACK',  color: '#a78bfa' },
+];
 
 function getStageOrFallback(stageId?: string): StageData | null {
   if (stageId && STAGES[stageId]) return STAGES[stageId];
@@ -804,6 +821,139 @@ function SkillEffectOverlay({ effect }: { effect: ActiveSkillEffect | null }) {
   );
 }
 
+function DemonizeBurstOverlay({ burst }: { burst: DemonBurstState | null }) {
+  if (!burst) return null;
+  const color = burst.form.visual?.color ?? '#dc2626';
+  const soft = burst.form.visual?.soft ?? 'rgba(220,38,38,0.24)';
+  const particleCount = 34;
+
+  return (
+    <div
+      key={burst.id}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 64,
+        pointerEvents: 'none',
+        overflow: 'hidden',
+        background: `radial-gradient(ellipse at 50% 54%, ${soft}, rgba(4,0,8,0.34) 38%, transparent 72%)`,
+        animation: 'demonVfxFade 1.62s ease-out both',
+      }}
+    >
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `conic-gradient(from 0deg at 50% 54%, transparent 0deg, ${color}44 48deg, transparent 90deg, rgba(255,255,255,0.18) 124deg, transparent 170deg, ${color}33 235deg, transparent 360deg)`,
+        mixBlendMode: 'screen',
+        animation: 'demonVfxConic 1.42s ease-out both',
+      }} />
+      <div style={{
+        position: 'absolute',
+        left: '50%',
+        top: '52%',
+        width: 'min(82vw, 360px)',
+        aspectRatio: '1',
+        transform: 'translate(-50%, -50%)',
+        borderRadius: '50%',
+        border: `1px solid ${color}88`,
+        boxShadow: `0 0 44px ${color}66, inset 0 0 28px ${color}33`,
+        animation: 'demonConvergeRing 0.74s cubic-bezier(0.14,0.9,0.2,1) both',
+      }} />
+      <div style={{
+        position: 'absolute',
+        left: '50%',
+        top: '53%',
+        width: 'min(56vw, 248px)',
+        aspectRatio: '1',
+        transform: 'translate(-50%, -50%)',
+        borderRadius: '50%',
+        border: `2px dashed ${color}`,
+        opacity: 0.82,
+        filter: `drop-shadow(0 0 12px ${color})`,
+        animation: 'demonSigilBloom 1.08s ease-out both',
+      }}>
+        <div style={{
+          position: 'absolute',
+          inset: '19%',
+          clipPath: 'polygon(50% 0%, 63% 36%, 100% 36%, 69% 58%, 82% 100%, 50% 74%, 18% 100%, 31% 58%, 0 36%, 37% 36%)',
+          background: `linear-gradient(180deg, ${color}, rgba(255,255,255,0.92), ${color})`,
+          opacity: 0.48,
+        }} />
+      </div>
+      <div style={{
+        position: 'absolute',
+        left: '50%',
+        bottom: '-10%',
+        width: 'min(42vw, 172px)',
+        height: '86%',
+        transform: 'translateX(-50%)',
+        background: `linear-gradient(180deg, transparent, ${color}22 12%, rgba(255,255,255,0.86) 42%, ${color}88 62%, transparent)`,
+        filter: `blur(9px) drop-shadow(0 0 28px ${color})`,
+        mixBlendMode: 'screen',
+        animation: 'demonPillarRise 1.28s cubic-bezier(0.18,0.9,0.22,1) both',
+      }} />
+      {Array.from({ length: 7 }, (_, i) => (
+        <div
+          key={`crack-${i}`}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '54%',
+            width: 'min(44vw, 178px)',
+            height: 3,
+            borderRadius: 999,
+            transformOrigin: 'left center',
+            background: `linear-gradient(90deg, ${color}, transparent)`,
+            boxShadow: `0 0 12px ${color}`,
+            '--crack-rotate': `${-154 + i * 51}deg`,
+            animation: `demonVoidCrack 0.74s ease-out ${0.08 + i * 0.035}s both`,
+          } as CSSProperties & { '--crack-rotate': string }}
+        />
+      ))}
+      {Array.from({ length: particleCount }, (_, i) => {
+        const angle = (i / particleCount) * Math.PI * 2;
+        const distance = 76 + (i % 6) * 19;
+        return (
+          <div
+            key={`demon-particle-${i}`}
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '54%',
+              width: 4 + (i % 4),
+              height: 4 + (i % 4),
+              borderRadius: i % 5 === 0 ? 2 : '50%',
+              background: i % 6 === 0 ? '#fff' : color,
+              boxShadow: `0 0 14px ${color}`,
+              '--particle-x': `${Math.cos(angle) * distance}px`,
+              '--particle-y': `${Math.sin(angle) * distance}px`,
+              animation: `demonParticleBurst ${0.82 + (i % 4) * 0.06}s cubic-bezier(0.16,0.86,0.28,1) ${0.15 + i * 0.01}s both`,
+            } as CSSProperties & { '--particle-x': string; '--particle-y': string }}
+          />
+        );
+      })}
+      <div style={{
+        position: 'absolute',
+        left: '50%',
+        bottom: 'calc(18% + env(safe-area-inset-bottom, 0px))',
+        transform: 'translateX(-50%)',
+        width: 'min(84vw, 420px)',
+        textAlign: 'center',
+        color: '#f8e7ff',
+        textShadow: `0 0 18px ${color}, 0 0 34px rgba(255,255,255,0.36)`,
+        animation: 'demonTitleReveal 1.18s ease-out 0.42s both',
+      }}>
+        <div style={{ fontFamily: "'Cinzel Decorative', 'Noto Sans JP', serif", fontSize: 'clamp(18px, 6vw, 28px)', fontWeight: 900 }}>
+          {burst.form.visual?.icon ?? '☠'} 魔神化
+        </div>
+        <div style={{ marginTop: 5, fontFamily: "'Noto Sans JP', sans-serif", fontSize: 'clamp(12px, 3.5vw, 15px)', fontWeight: 900, color }}>
+          {burst.form.formName}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── TURN ORDER STRIP ──────────────────────────────────────────────────────────
 function TurnOrderStrip() {
   const items = [
@@ -1067,14 +1217,44 @@ function BattleLog({ lines }: { lines: string[] }) {
 interface BattlePartyMember {
   id: string; name: string; icon: string;
   hp: number; maxHp: number; mp: number; maxMp: number;
-  color: string; active: boolean;
+  color: string; active: boolean; formation?: FormationBadgeMeta;
+}
+
+function FormationBadge({ badge, active }: { badge: FormationBadgeMeta; active: boolean }) {
+  return (
+    <div style={{
+      minWidth: 48,
+      height: 23,
+      padding: '0 7px',
+      borderRadius: 999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      background: active ? `${badge.color}1f` : 'rgba(255,255,255,0.035)',
+      border: `1px solid ${active ? badge.color + '82' : 'rgba(255,255,255,0.08)'}`,
+      boxShadow: active ? `0 0 10px ${badge.color}28` : 'none',
+      color: active ? '#f8f3ff' : '#655974',
+      flexShrink: 0,
+    }}>
+      <span style={{ color: active ? badge.color : '#4a3a5a', fontSize: 10, lineHeight: 1 }}>{badge.icon}</span>
+      <span style={{
+        fontFamily: "'Noto Sans JP', sans-serif",
+        fontSize: 9,
+        fontWeight: 900,
+        lineHeight: 1,
+      }}>{badge.label}</span>
+    </div>
+  );
 }
 
 function PartyStatusBar({ party, demonized, playerStatusEffects }: { party: BattlePartyMember[]; demonized: boolean; playerStatusEffects: StatusEffect[] }) {
   return (
     <div style={{
       padding: '6px 12px', display: 'flex', flexDirection: 'column', gap: 4,
-      background: 'rgba(5,2,14,0.85)', borderTop: '1px solid rgba(255,255,255,0.06)',
+      background: demonized ? 'rgba(18,3,7,0.88)' : 'rgba(5,2,14,0.85)',
+      borderTop: `1px solid ${demonized ? 'rgba(220,38,38,0.16)' : 'rgba(255,255,255,0.06)'}`,
+      transition: 'background 0.45s ease',
     }}>
       {party.map(member => (
         <div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: member.hp <= 0 ? 0.35 : 1, position: 'relative' }}>
@@ -1113,6 +1293,7 @@ function PartyStatusBar({ party, demonized, playerStatusEffects }: { party: Batt
           <div style={{ width: 52, flexShrink: 0, fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600, color: member.active ? '#f0ebff' : '#6b5f7a' }}>
             {member.name}
           </div>
+          {member.formation && <FormationBadge badge={member.formation} active={member.hp > 0}/>}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#6b5f7a' }}>HP</div>
@@ -1173,7 +1354,7 @@ function SoulGauge({ value, demonized, demonColor, actionsRemaining }: { value: 
       }}>
         <div style={{
           width: `${pct}%`, height: '100%', borderRadius: 4,
-          background: demonized
+          backgroundImage: demonized
             ? `linear-gradient(90deg,#1f0307,${demonColor},#fca5a5)`
             : 'linear-gradient(90deg,#4a0e8a,#8A2BE2,#c084fc,#8A2BE2)',
           backgroundSize: '200% 100%',
@@ -1190,16 +1371,19 @@ function SoulGauge({ value, demonized, demonColor, actionsRemaining }: { value: 
   );
 }
 
-function DemonStatusRibbon({ form, actionsRemaining, ultimateUsed }: {
+function DemonStatusRibbon({ form, actionsRemaining, ultimateUsed, ultimateName, canUseUltimate, onUltimate }: {
   form: DemonFormData;
   actionsRemaining: number;
   ultimateUsed: boolean;
+  ultimateName: string;
+  canUseUltimate: boolean;
+  onUltimate: () => void;
 }) {
   const color = form.visual?.color ?? '#dc2626';
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'minmax(0,1fr) auto',
+      gridTemplateColumns: 'minmax(0,1fr) minmax(96px, 132px)',
       gap: 8,
       alignItems: 'center',
       marginBottom: 8,
@@ -1226,6 +1410,16 @@ function DemonStatusRibbon({ form, actionsRemaining, ultimateUsed }: {
         }}>
           <span style={{ color }}>{form.visual?.icon ?? '☠'}</span>
           <span>{form.formName}</span>
+          <span style={{
+            marginLeft: 'auto',
+            padding: '2px 6px',
+            borderRadius: 999,
+            border: `1px solid ${color}66`,
+            color,
+            fontFamily: "'Cinzel', serif",
+            fontSize: 8,
+            flexShrink: 0,
+          }}>{actionsRemaining} ACT</span>
         </div>
         <div style={{
           marginTop: 2,
@@ -1240,25 +1434,59 @@ function DemonStatusRibbon({ form, actionsRemaining, ultimateUsed }: {
         </div>
       </div>
       <div style={{
+        minHeight: 43,
+        padding: '5px 8px',
+        borderRadius: 12,
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        gap: 6,
+        justifyContent: 'center',
+        gap: 2,
         flexShrink: 0,
-        fontFamily: "'Cinzel', serif",
-        fontSize: 9,
-        fontWeight: 800,
-        color,
-      }}>
-        <span>{actionsRemaining} ACT</span>
-        <span style={{
-          padding: '2px 6px',
-          borderRadius: 999,
-          border: `1px solid ${ultimateUsed ? 'rgba(255,255,255,0.12)' : color + '80'}`,
-          color: ultimateUsed ? '#6b5f7a' : '#f8e7ff',
-          background: ultimateUsed ? 'rgba(255,255,255,0.04)' : color + '22',
+        cursor: canUseUltimate ? 'pointer' : 'default',
+        opacity: canUseUltimate ? 1 : 0.48,
+        background: canUseUltimate
+          ? `linear-gradient(135deg, ${color}40, ${color}12)`
+          : 'rgba(255,255,255,0.035)',
+        border: `1px solid ${canUseUltimate ? color + '88' : 'rgba(255,255,255,0.09)'}`,
+        boxShadow: canUseUltimate ? `0 0 18px ${color}42, inset 0 0 14px ${color}16` : 'none',
+        animation: canUseUltimate ? 'demonPulse 1.45s ease-in-out infinite' : 'none',
+      }}
+      onClick={() => {
+        if (canUseUltimate) onUltimate();
+      }}
+      >
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 4,
+          width: '100%',
+          minWidth: 0,
+          fontFamily: "'Noto Sans JP', sans-serif",
+          fontSize: 11,
+          fontWeight: 900,
+          color: canUseUltimate ? '#fff7fb' : '#6b5f7a',
+          lineHeight: 1,
         }}>
-          {ultimateUsed ? 'USED' : 'ULT'}
-        </span>
+          <span style={{ color }}>☠</span>
+          <span>魔神技</span>
+        </div>
+        <div style={{
+          width: '100%',
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          fontFamily: "'Cinzel', serif",
+          fontSize: 8,
+          fontWeight: 800,
+          color: canUseUltimate ? color : '#4a3a5a',
+          textAlign: 'center',
+          lineHeight: 1.15,
+        }}>
+          {ultimateUsed ? 'USED' : ultimateName}
+        </div>
       </div>
     </div>
   );
@@ -1293,7 +1521,7 @@ function CommandButton({ label, sublabel, icon, enabled, color, onClick, glow, d
       {enabled && glow && (
         <div style={{
           position: 'absolute', inset: 0, borderRadius: 14,
-          background: `linear-gradient(90deg,transparent,${color}18,transparent)`,
+          backgroundImage: `linear-gradient(90deg,transparent,${color}18,transparent)`,
           backgroundSize: '200% 100%', animation: 'shimmer 1.8s infinite',
         }}/>
       )}
@@ -1344,20 +1572,21 @@ function SkillButton({ skill, mp, onClick, demonized }: {
 }
 
 // ── SYSTEM BAR ────────────────────────────────────────────────────────────────
-function SystemBar({ auto, speed, onAuto, onSpeed, onEscape, canEscape }: {
+function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: {
   auto: boolean; speed: number;
-  onAuto: () => void; onSpeed: () => void;
+  onAuto: () => void; onSpeedChange: (speed: number) => void;
   onEscape: () => void; canEscape: boolean;
 }) {
   return (
     <div style={{
-      paddingTop: 5, paddingLeft: 12, paddingRight: 12,
+      paddingTop: 6, paddingLeft: 12, paddingRight: 12,
       paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))' as string,
-      display: 'flex', gap: 6, alignItems: 'center',
+      display: 'flex', gap: 8, alignItems: 'center',
       background: 'rgba(3,1,12,0.9)', borderTop: '1px solid rgba(255,255,255,0.04)',
     }}>
-      <div onClick={onAuto} style={{
-        padding: '5px 10px', borderRadius: 8,
+      <button type="button" onClick={onAuto} style={{
+        minHeight: 38,
+        padding: '0 12px', borderRadius: 10,
         background: auto ? 'rgba(138,43,226,0.3)' : 'rgba(255,255,255,0.05)',
         border: `1px solid ${auto ? '#8A2BE280' : 'rgba(255,255,255,0.08)'}`,
         fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
@@ -1365,24 +1594,56 @@ function SystemBar({ auto, speed, onAuto, onSpeed, onEscape, canEscape }: {
         cursor: 'pointer', letterSpacing: '0.06em',
         boxShadow: auto ? '0 0 10px rgba(138,43,226,0.3)' : 'none',
         transition: 'all 0.2s ease',
-      }}>AUTO {auto ? 'ON' : 'OFF'}</div>
-      <div onClick={onSpeed} style={{
-        padding: '5px 10px', borderRadius: 8,
-        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-        fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
-        color: '#8b7da8', cursor: 'pointer', letterSpacing: '0.06em',
-        transition: 'all 0.2s ease',
-      }}>×{speed}</div>
+      }}>AUTO {auto ? 'ON' : 'OFF'}</button>
+      <div style={{
+        minHeight: 38,
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, minmax(42px, 1fr))',
+        gap: 3,
+        padding: 3,
+        borderRadius: 12,
+        background: 'rgba(255,255,255,0.045)',
+        border: '1px solid rgba(255,255,255,0.08)',
+      }}>
+        {[1, 2, 3].map(value => {
+          const active = speed === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => onSpeedChange(value)}
+              style={{
+                minHeight: 31,
+                minWidth: 42,
+                padding: '0 7px',
+                borderRadius: 9,
+                background: active ? 'linear-gradient(135deg, rgba(138,43,226,0.35), rgba(192,132,252,0.16))' : 'transparent',
+                border: `1px solid ${active ? '#c084fc70' : 'transparent'}`,
+                boxShadow: active ? '0 0 12px rgba(138,43,226,0.28)' : 'none',
+                color: active ? '#f0ebff' : '#7f7194',
+                fontFamily: "'Cinzel', serif",
+                fontSize: 10,
+                fontWeight: 900,
+                cursor: 'pointer',
+                transition: 'all 0.16s ease',
+              }}
+            >
+              ×{value}
+            </button>
+          );
+        })}
+      </div>
       <div style={{ flex: 1 }}/>
-      <div onClick={canEscape ? onEscape : undefined} style={{
-        padding: '5px 12px', borderRadius: 8,
+      <button type="button" onClick={canEscape ? onEscape : undefined} style={{
+        minHeight: 38,
+        padding: '0 13px', borderRadius: 10,
         background: canEscape ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.03)',
         border: `1px solid ${canEscape ? '#ef444440' : 'rgba(255,255,255,0.05)'}`,
         fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
         color: canEscape ? '#f87171' : '#2a1a3a',
         cursor: canEscape ? 'pointer' : 'default',
         opacity: canEscape ? 1 : 0.4, letterSpacing: '0.06em',
-      }}>逃走</div>
+      }}>逃走</button>
     </div>
   );
 }
@@ -1413,6 +1674,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const [flashColor, setFlashColor] = useState<string | null>(null);
   const [screenShake, setScreenShake] = useState(false);
   const [skillEffect, setSkillEffect] = useState<ActiveSkillEffect | null>(null);
+  const [demonBurst, setDemonBurst] = useState<DemonBurstState | null>(null);
 
   const [showResult, setShowResult] = useState(false);
   const [battleResult, setBattleResult] = useState<{
@@ -1431,6 +1693,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const waveResolvingRef = useRef(false);
   const battleTotalsRef = useRef({ exp: 0, gold: 0, waves: 0 });
   const effectIdRef = useRef(0);
+  const demonBurstIdRef = useRef(0);
   const enemyTurnSerialRef = useRef(0);
 
   // Build battle party from store
@@ -1441,18 +1704,21 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       mp: player?.currentEnergy ?? 0, maxMp: player?.maxEnergy ?? 100,
       color: '#8A2BE2', active: true,
     },
-    ...party.slice(0, 2).map((m, i): BattlePartyMember => m ? {
+    ...party.slice(0, 3).map((m, i): BattlePartyMember => m ? {
       id: m.id, name: m.name, icon: m.tribe === 'UNDEAD' ? '🧟' : '👻',
       hp: m.stats?.hp ?? 580, maxHp: (m.stats as any)?.maxHp ?? m.stats?.hp ?? 580,
       mp: 0, maxMp: 100,
-      color: ['#22c55e','#06b6d4'][i], active: false,
+      color: ['#f97316','#06b6d4','#a78bfa'][i], active: false,
+      formation: FORMATION_BADGES[i],
     } : {
       id: `slot_${i}`, name: `使役魔${i+1}`, icon: '💀',
       hp: 0, maxHp: 100, mp: 0, maxMp: 100, color: '#4a3a5a', active: false,
+      formation: FORMATION_BADGES[i],
     }),
   ];
 
   const speedMs = 900 / speed;
+  const battleDelay = useCallback((ms: number, min = 80) => Math.max(min, ms / speed), [speed]);
   const currentMp = battleParty[0]?.mp ?? 0;
   const soulFull = soul >= 100;
   const currentWave = battleWaves[waveIndex] ?? battleWaves[0];
@@ -1493,6 +1759,10 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setDemonUltimateUsed(false);
     setPlayerStatusEffects([]);
     setAuto(false);
+    setDemonBurst(null);
+    setSkillEffect(null);
+    setFlashColor(null);
+    setScreenShake(false);
     setShowResult(false);
     setBattleResult(null);
     setLog([`戦闘開始！${battleWaves[0].title}へ侵攻する。`, `${battleWaves[0].label} 開始。骸骨騎士のターン。`]);
@@ -1570,13 +1840,13 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         setFlashColor('rgba(245,158,11,0.35)');
         window.setTimeout(() => setFlashColor(null), 600);
       }
-    }, 1200);
-  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, addAbyssalResidues, addResidueMaterials, battleWaves, currentWave.enemies, currentWave.isBoss, player?.name, stageId]);
+    }, battleDelay(1200, 520));
+  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, currentWave.enemies, currentWave.isBoss, player?.name, stageId]);
 
   function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
     const id = ++floatId;
     setFloats(prev => [...prev, { id, x, y, value, ...opts }]);
-    setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), 1200);
+    setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), battleDelay(1200, 450));
   }
 
   function triggerSkillEffect(skill: Pick<BattleSkill, 'name' | 'element' | 'attackType' | 'aoe'>, targetIds: number[]) {
@@ -1591,12 +1861,12 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     });
     window.setTimeout(() => {
       setSkillEffect(prev => prev?.id === id ? null : prev);
-    }, skill.element === 'THUNDER' || skill.attackType === 'SLASH' ? 920 : 1080);
+    }, battleDelay(skill.element === 'THUNDER' || skill.attackType === 'SLASH' ? 920 : 1080, 420));
   }
 
   function doEnemyHit(eid: number) {
     setEnemies(prev => prev.map(e => e.id === eid ? { ...e, hit: true } : e));
-    setTimeout(() => setEnemies(prev => prev.map(e => ({ ...e, hit: false }))), 500);
+    setTimeout(() => setEnemies(prev => prev.map(e => ({ ...e, hit: false }))), battleDelay(500, 220));
   }
 
   function damageEnemy(targetId: number, dmg: number, opts: { color?: string; element?: ElementType; ignoreShield?: boolean } = {}) {
@@ -1875,10 +2145,11 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     addLog(demonized ? `魔神化『${demonForm.formName}』の攻撃！ ${enemy?.name}へ${hitCount > 1 ? `${hitCount}連撃` : '深淵の一撃'}！` : `骸骨騎士の攻撃！ ${enemy?.name}を狙う！`);
     setTimeout(() => {
       let totalDamage = 0;
+      const hitInterval = battleDelay(120, 58);
       Array.from({ length: hitCount }).forEach((_, hitIndex) => {
         setTimeout(() => {
           totalDamage += damageEnemy(tid, dmg, { color: demonized ? demonColor : '#f0ebff', element: attackElement });
-        }, hitIndex * 120);
+        }, hitIndex * hitInterval);
       });
       if (demonized) { setFlashColor(demonForm.visual?.soft ?? 'rgba(220,38,38,0.3)'); setTimeout(() => setFlashColor(null), 350); }
       setTimeout(() => {
@@ -1889,7 +2160,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         }
         setPhase('playerTurn');
         endPlayerTurn();
-      }, hitCount * 140 + speedMs * 0.35);
+      }, hitCount * hitInterval + speedMs * 0.35);
     }, speedMs * 0.3);
   }
 
@@ -1925,6 +2196,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setFlashColor(vfxStyle.soft);
     setTimeout(() => setFlashColor(null), 400);
     setTimeout(() => {
+      const targetInterval = battleDelay(200, 90);
+      const hitInterval = battleDelay(110, 55);
       targets.forEach((tid, i) => {
         setTimeout(() => {
           let totalDamage = 0;
@@ -1932,18 +2205,18 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
             setTimeout(() => {
               const dmg = Math.round(skill.power * getElementBoostMultiplier(skill.element) * demonMult * ailmentMult * (hitCount > 1 ? 0.6 : 1) * (0.85 + Math.random() * 0.3));
               totalDamage += damageEnemy(tid, dmg, { color: vfxStyle.color, element: skill.element });
-            }, hitIndex * 110);
+            }, hitIndex * hitInterval);
           });
           setTimeout(() => {
             addLog(`${enemies.find(e => e.id === tid)?.name}に 合計${totalDamage}ダメージ！`);
             applyAilmentToEnemy(tid, skill);
-          }, hitCount * 120);
-        }, i * 200);
+          }, hitCount * hitInterval + battleDelay(40, 25));
+        }, i * targetInterval);
       });
       if (demonized) {
         applyDemonRiskFeedback(skill.attackType);
       }
-      setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, targets.length * 200 + speedMs * 0.3);
+      setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, targets.length * targetInterval + speedMs * 0.3);
     }, speedMs * 0.4);
   }
 
@@ -1975,27 +2248,35 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setTimeout(() => setFlashColor(null), 520);
 
     setTimeout(() => {
+      const targetInterval = battleDelay(180, 85);
       targets.forEach((tid, i) => {
         setTimeout(() => {
           const dmg = Math.round(ultimate.power * damageMultiplier * (0.9 + Math.random() * 0.22));
           const actualDamage = damageEnemy(tid, dmg, { color: demonColor, element: ultimate.element, ignoreShield });
           addLog(`${enemies.find(e => e.id === tid)?.name}に ${actualDamage}ダメージ！`);
           applyAilmentToEnemy(tid, ultimate);
-        }, i * 180);
+        }, i * targetInterval);
       });
       addLog(`残留効果: ${demonForm.ultimateSkill.lingering.descJa}`);
-      setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, targets.length * 180 + speedMs * 0.35);
+      setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, targets.length * targetInterval + speedMs * 0.35);
     }, speedMs * 0.45);
   }
 
   function handleDemonize() {
     if (!canActivateDemonMode(soul, demonized) || phase === 'animating' || phase === 'waveTransition') return;
     enemyTurnSerialRef.current += 1;
+    const burstId = ++demonBurstIdRef.current;
     setAuto(false);
     setDemonized(true);
     setDemonActionsRemaining(DEMON_ACTION_LIMIT);
     setDemonUltimateUsed(false);
     setSoul(0);
+    setDemonBurst({ id: burstId, form: demonForm });
+    setScreenShake(true);
+    window.setTimeout(() => setScreenShake(false), battleDelay(520, 260));
+    window.setTimeout(() => {
+      setDemonBurst(prev => prev?.id === burstId ? null : prev);
+    }, battleDelay(1680, 980));
     const cleared = clearStatusEffectsByDemonize(playerStatusEffects);
     if (cleared.cleared.length > 0) {
       setPlayerStatusEffects(cleared.effects);
@@ -2091,6 +2372,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       {/* Element × attack-type skill VFX overlay */}
       <SkillEffectOverlay effect={skillEffect}/>
 
+      {/* Demonization cinematic VFX overlay */}
+      <DemonizeBurstOverlay burst={demonBurst}/>
+
       {/* ── BATTLE LOG ── */}
       <BattleLog lines={log}/>
 
@@ -2163,6 +2447,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
                 form={demonForm}
                 actionsRemaining={demonActionsRemaining}
                 ultimateUsed={demonUltimateUsed}
+                ultimateName={demonUltimateSkill.name}
+                canUseUltimate={phase === 'playerTurn' && !demonUltimateUsed}
+                onUltimate={handleDemonUltimate}
               />
             )}
             <div style={{ display: 'flex', gap: 8, animation: 'commandReveal 0.3s ease-out' }}>
@@ -2182,15 +2469,16 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
                 icon="🧪" label="道具" sublabel="ITEM"
                 enabled={phase === 'playerTurn'} color="#f59e0b"
                 onClick={() => setPhase('itemMenu')}/>
-              <CommandButton
-                id="tut-demon-btn"
-                icon="☠" label={demonized ? '魔神技' : '魔神化'}
-                sublabel={demonized ? (demonUltimateUsed ? 'USED' : demonUltimateSkill.name) : soulFull ? 'INTERRUPT' : `SOUL ${Math.round(soul)}%`}
-                enabled={demonized ? phase === 'playerTurn' && !demonUltimateUsed : soulFull && !demonized && (phase === 'playerTurn' || phase === 'enemyTurn')}
-                color={demonized ? demonColor : '#dc2626'}
-                glow={demonized ? !demonUltimateUsed : soulFull && !demonized}
-                demonized={demonized}
-                onClick={demonized ? handleDemonUltimate : handleDemonize}/>
+              {!demonized && (
+                <CommandButton
+                  id="tut-demon-btn"
+                  icon="☠" label="魔神化"
+                  sublabel={soulFull ? 'INTERRUPT' : `SOUL ${Math.round(soul)}%`}
+                  enabled={soulFull && (phase === 'playerTurn' || phase === 'enemyTurn')}
+                  color="#dc2626"
+                  glow={soulFull}
+                  onClick={handleDemonize}/>
+              )}
             </div>
           </>
         )}
@@ -2200,7 +2488,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       <SystemBar
         auto={auto} speed={speed}
         onAuto={() => setAuto(a => !a)}
-        onSpeed={() => setSpeed(s => s >= 3 ? 1 : s + 1)}
+        onSpeedChange={setSpeed}
         onEscape={() => { addLog('逃走した。'); onEnd(); }}
         canEscape={true}/>
 

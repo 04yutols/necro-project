@@ -70,6 +70,8 @@
 | enemies.json/demonForms.json/items.json の第1章データ仕様を知りたい | [27_マスターデータ設計.md](27_マスターデータ設計.md) |
 | RewardService のドロップ生成・残滓ランダム生成・useGameStore 追加アクションを知りたい | [28_RewardService設計.md](28_RewardService設計.md) |
 | Prismaスキーマ拡張・NextAuth v5 セットアップ・バトル結合フローを知りたい | [29_DB認証結合設計.md](29_DB認証結合設計.md) |
+| パーティ編成UIの画面遷移・魔物選択・魔物詳細UXを知りたい | [33_パーティ編成UIUX実装設計.md](33_パーティ編成UIUX実装設計.md) |
+| 第1章バトルUIの魔神化VFX・魔神技ボタン・倍速・隊列バッジを知りたい | [34_バトルUIUX実装設計.md](34_バトルUIUX実装設計.md) |
 
 ## 重要ファイルパス一覧
 

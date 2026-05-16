@@ -1886,10 +1886,10 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
             })}
           </div>
           {/* Formation button */}
-          <div onClick={() => { haptic(5); onBack(); }} style={{ padding: '8px 12px', background: `linear-gradient(135deg, ${color}30, ${color}15)`, border: `1px solid ${color}60`, borderRadius: 10, cursor: 'pointer', boxShadow: `0 0 12px ${color}30`, flexShrink: 0, transition: 'all 0.2s ease' }}>
+          <button type="button" onClick={() => { haptic(5); onBack(); }} style={{ padding: '8px 12px', background: `linear-gradient(135deg, ${color}30, ${color}15)`, border: `1px solid ${color}60`, borderRadius: 10, cursor: 'pointer', boxShadow: `0 0 12px ${color}30`, flexShrink: 0, transition: 'all 0.2s ease' }}>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 700, color, letterSpacing: '0.05em', textAlign: 'center' }}>編成</div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 7, color: accent + '80', textAlign: 'center', marginTop: 1 }}>Formation</div>
-          </div>
+          </button>
         </div>
       </div>
       </div>
@@ -2575,8 +2575,8 @@ function MonsterFilterBar({
   onClear: () => void;
 }) {
   return (
-    <div className="shrink-0 flex items-center gap-2 min-w-0">
-      <div className="safe-scroll flex items-center gap-2 overflow-x-auto min-w-0 flex-1 pb-1">
+    <div className="shrink-0 flex items-center gap-2.5 min-w-0">
+      <div className="safe-scroll flex items-center gap-2.5 overflow-x-auto min-w-0 flex-1 pb-1.5">
         {TRIBE_CHIPS.map(chip => {
           const active = chip.key === 'ALL' ? activeFilters.size === 0 : activeFilters.has(chip.key as Tribe);
           return (
@@ -2586,9 +2586,10 @@ function MonsterFilterBar({
               whileTap={{ scale: 0.92 }}
               onClick={() => onToggle(chip.key)}
               className="relative shrink-0 flex items-center justify-center"
+              aria-label={chip.label}
               style={{
-                width: 40,
-                height: 40,
+                width: 48,
+                height: 48,
                 borderRadius: '50%',
                 border: `1.5px solid ${active ? chip.color : chip.color + '33'}`,
                 background: active ? `radial-gradient(circle, ${chip.color}2C, rgba(0,0,0,0.72))` : 'rgba(12,6,28,0.78)',
@@ -2596,12 +2597,12 @@ function MonsterFilterBar({
               }}
               title={chip.label}
             >
-              <span style={{ fontSize: 17, filter: active ? 'none' : 'grayscale(0.6) opacity(0.55)', lineHeight: 1 }}>{chip.emoji}</span>
+              <span style={{ fontSize: 19, filter: active ? 'none' : 'grayscale(0.6) opacity(0.55)', lineHeight: 1 }}>{chip.emoji}</span>
               {active && (
                 <motion.div
                   layoutId={`tribe-filter-${chip.key}`}
                   className="absolute bottom-1 rounded-full"
-                  style={{ width: 16, height: 2, background: chip.color }}
+                  style={{ width: 18, height: 2, background: chip.color }}
                 />
               )}
             </motion.button>
@@ -2613,10 +2614,10 @@ function MonsterFilterBar({
           type="button"
           whileTap={{ scale: 0.94 }}
           onClick={onClear}
-          className="shrink-0 flex items-center gap-1 rounded-full px-2 py-1"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,0,255,0.24)', color: '#A5A9B4', fontFamily: 'monospace', fontSize: 9, fontWeight: 900 }}
+          className="shrink-0 flex items-center gap-1.5 rounded-full px-3 py-2"
+          style={{ minHeight: 44, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,0,255,0.24)', color: '#A5A9B4', fontFamily: 'monospace', fontSize: 10, fontWeight: 900 }}
         >
-          <X size={10} />
+          <X size={13} />
           CLEAR
         </motion.button>
       )}
@@ -2626,9 +2627,9 @@ function MonsterFilterBar({
 
 function SortControls({ sortKey, sortDir, onPress }: { sortKey: MonsterSortKey; sortDir: SortDir; onPress: (key: MonsterSortKey) => void }) {
   return (
-    <div className="shrink-0 flex items-center gap-1.5 overflow-x-auto safe-scroll pb-1">
-      <span className="shrink-0 flex items-center gap-1 text-[9px] font-black tracking-[0.16em]" style={{ color: 'rgba(185,110,255,0.72)', fontFamily: 'monospace' }}>
-        <Filter size={11} />
+    <div className="shrink-0 flex items-center gap-2 overflow-x-auto safe-scroll pb-1.5">
+      <span className="shrink-0 flex items-center gap-1 text-[10px] font-black tracking-[0.16em]" style={{ color: 'rgba(185,110,255,0.72)', fontFamily: 'monospace' }}>
+        <Filter size={13} />
         SORT
       </span>
       {SORT_OPTIONS.map(opt => {
@@ -2639,13 +2640,14 @@ function SortControls({ sortKey, sortDir, onPress }: { sortKey: MonsterSortKey; 
             type="button"
             whileTap={{ scale: 0.93 }}
             onClick={() => onPress(opt.key)}
-            className="shrink-0 rounded-full px-2.5 py-1 flex items-center gap-1"
+            className="shrink-0 rounded-full px-4 py-2 flex items-center gap-1.5"
             style={{
+              minHeight: 44,
               border: `1px solid ${active ? '#8B00FF' : 'rgba(120,80,200,0.3)'}`,
               background: active ? 'rgba(139,0,255,0.2)' : 'rgba(12,6,28,0.6)',
               color: active ? '#E090FF' : 'rgba(150,120,200,0.62)',
               fontFamily: 'monospace',
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: 900,
             }}
           >
@@ -2665,65 +2667,260 @@ function MonsterRosterCard({
   inPartyIndex,
   costBlocked,
   onPick,
+  onDetail,
 }: {
   monster: MonsterData;
   selected: boolean;
   inPartyIndex: number;
   costBlocked: boolean;
   onPick: () => void;
+  onDetail: () => void;
 }) {
   const conf = TRIBE[monster.tribe] ?? TRIBE.HUMANOID;
   const alreadyInParty = inPartyIndex >= 0;
   return (
-    <motion.button
-      type="button"
+    <motion.div
+      role="button"
+      tabIndex={0}
       layout
       whileTap={{ scale: 0.96 }}
       onClick={onPick}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onPick();
+        }
+      }}
       className="relative min-w-0 rounded-xl overflow-hidden text-left"
       style={{
-        minHeight: 92,
+        minHeight: 136,
         background: selected
           ? `linear-gradient(145deg, ${conf.glow}, rgba(6,2,18,0.96))`
           : 'rgba(8,3,20,0.78)',
         border: `1px solid ${costBlocked ? 'rgba(255,68,68,0.5)' : selected ? conf.color + 'AA' : conf.color + '33'}`,
         boxShadow: selected ? `0 0 18px ${conf.glow}` : 'none',
-        padding: '9px 9px',
+        padding: '13px 13px',
+        cursor: 'pointer',
       }}
     >
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.07), transparent 48%)' }} />
-      <div className="relative flex items-start gap-8">
-        <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `radial-gradient(circle, ${conf.color}35, rgba(0,0,0,0.86))`, border: `1px solid ${conf.color}66`, fontSize: 22 }}>
+      <div className="relative flex items-start gap-3">
+        <div className="shrink-0 w-[54px] h-[54px] rounded-xl flex items-center justify-center" style={{ background: `radial-gradient(circle, ${conf.color}35, rgba(0,0,0,0.86))`, border: `1px solid ${conf.color}66`, fontSize: 28 }}>
           <span style={{ filter: `drop-shadow(0 0 7px ${conf.color})` }}>{conf.emoji}</span>
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="truncate text-[12px] font-black" style={{ color: '#F0EAFF', fontFamily: "'Noto Sans JP', sans-serif" }}>{monster.name}</span>
+            <span className="truncate text-[15px] font-black" style={{ color: '#F0EAFF', fontFamily: "'Noto Sans JP', sans-serif" }}>{monster.name}</span>
             {alreadyInParty && (
-              <span className="shrink-0 rounded px-1 py-0.5 text-[8px] font-black" style={{ color: POSITION_META[inPartyIndex].color, background: `${POSITION_META[inPartyIndex].color}1A`, border: `1px solid ${POSITION_META[inPartyIndex].color}44`, fontFamily: 'monospace' }}>
+              <span className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black" style={{ color: POSITION_META[inPartyIndex].color, background: `${POSITION_META[inPartyIndex].color}1A`, border: `1px solid ${POSITION_META[inPartyIndex].color}44`, fontFamily: 'monospace' }}>
                 {POSITION_META[inPartyIndex].short}
               </span>
             )}
           </div>
-          <div style={{ marginTop: 3, color: conf.color, fontFamily: 'monospace', fontSize: 9, fontWeight: 900, letterSpacing: '0.1em' }}>{conf.label}</div>
+          <div style={{ marginTop: 4, color: conf.color, fontFamily: 'monospace', fontSize: 10, fontWeight: 900, letterSpacing: '0.1em' }}>{conf.label}</div>
         </div>
-        <div className="absolute right-0 top-0 rounded-full px-1.5 py-0.5 text-[9px] font-black" style={{ background: costBlocked ? 'rgba(255,68,68,0.16)' : `${conf.color}18`, border: `1px solid ${costBlocked ? 'rgba(255,68,68,0.5)' : conf.color + '44'}`, color: costBlocked ? '#FF7777' : conf.color, fontFamily: 'monospace' }}>
-          C{monster.cost}
-        </div>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDetail();
+          }}
+          className="shrink-0 rounded-xl px-3.5 text-[11px] font-black tracking-[0.12em]"
+          style={{
+            minHeight: 46,
+            background: 'rgba(255,255,255,0.04)',
+            border: `1px solid ${conf.color}44`,
+            color: conf.color,
+            fontFamily: 'monospace',
+          }}
+        >
+          詳細
+        </button>
       </div>
-      <div className="relative mt-3 grid grid-cols-4 gap-1">
-        {(['atk', 'hp', 'spd'] as MonsterSortKey[]).map(key => (
-          <div key={key} className="rounded-md px-1.5 py-1" style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ fontFamily: 'monospace', fontSize: 7, color: '#6b5f7a' }}>{key.toUpperCase()}</div>
-            <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#DCD3FF', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{getMonsterSortValue(monster, key)}</div>
+      <div className="relative mt-3.5 grid grid-cols-5 gap-1.5">
+        <div className="rounded-lg px-2 py-2" style={{ background: costBlocked ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.035)', border: `1px solid ${costBlocked ? 'rgba(255,68,68,0.34)' : 'rgba(255,255,255,0.06)'}` }}>
+          <div style={{ fontFamily: 'monospace', fontSize: 9, color: costBlocked ? '#FF8888' : '#6b5f7a' }}>COST</div>
+          <div style={{ fontFamily: 'monospace', fontSize: 13, color: costBlocked ? '#FF7777' : '#D4AF37', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{monster.cost}</div>
+        </div>
+        {(['atk', 'hp', 'spd', 'def'] as const).map(key => (
+          <div key={key} className="rounded-lg px-2 py-2" style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#6b5f7a' }}>{key.toUpperCase()}</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 13, color: '#DCD3FF', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{monster.stats[key]}</div>
           </div>
         ))}
-        <div className="rounded-md px-1.5 py-1" style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ fontFamily: 'monospace', fontSize: 7, color: '#6b5f7a' }}>DEF</div>
-          <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#DCD3FF', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{monster.stats.def}</div>
+      </div>
+    </motion.div>
+  );
+}
+
+function MonsterDetailPage({
+  monster,
+  slotIndex,
+  party,
+  totalCost,
+  maxCost,
+  onBack,
+  onAssign,
+}: {
+  monster: MonsterData;
+  slotIndex: number;
+  party: (MonsterData | null)[];
+  totalCost: number;
+  maxCost: number;
+  onBack: () => void;
+  onAssign: () => boolean;
+}) {
+  const conf = TRIBE[monster.tribe] ?? TRIBE.HUMANOID;
+  const position = POSITION_META[slotIndex];
+  const projectedCost = (() => {
+    const next = [...party] as (MonsterData | null)[];
+    const currentIndex = next.findIndex(member => member?.id === monster.id);
+    const targetPrevious = next[slotIndex] ?? null;
+    next[slotIndex] = monster;
+    if (currentIndex >= 0 && currentIndex !== slotIndex) next[currentIndex] = targetPrevious;
+    return next.reduce((sum, member) => sum + (member?.cost ?? 0), 0);
+  })();
+  const costBlocked = projectedCost > maxCost;
+  const weaknessLabel = monster.weaknesses?.length
+    ? monster.weaknesses.map(element => element === 'NONE' ? 'NONE' : (ELEMENT_VIEW_META[element as keyof typeof ELEMENT_VIEW_META]?.labelJa ?? element)).join(' / ')
+    : 'なし';
+  const resistanceRows = Object.entries(monster.resistances ?? {}).filter(([, value]) => Number(value) !== 0);
+  const detailStats: { key: string; label: string; value: number; color?: string }[] = [
+    { key: 'cost', label: 'COST', value: monster.cost, color: costBlocked ? '#FF7777' : '#D4AF37' },
+    { key: 'atk', label: 'ATK', value: monster.stats.atk },
+    { key: 'hp', label: 'HP', value: monster.stats.hp },
+    { key: 'spd', label: 'SPD', value: monster.stats.spd },
+    { key: 'def', label: 'DEF', value: monster.stats.def },
+    { key: 'critRate', label: 'CR', value: monster.stats.critRate },
+    { key: 'critDmg', label: 'CD', value: monster.stats.critDmg },
+    { key: 'effectHit', label: 'E.HIT', value: monster.stats.effectHit },
+    { key: 'effectRes', label: 'E.RES', value: monster.stats.effectRes },
+  ];
+
+  return (
+    <motion.div
+      key={`monster-detail-${monster.id}`}
+      initial={{ x: '100%', opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: '100%', opacity: 0 }}
+      transition={{ type: 'spring', stiffness: 330, damping: 34 }}
+      className="relative z-10 flex h-full min-h-0 w-full flex-col overflow-hidden"
+      style={{
+        maxWidth: 430,
+        margin: '0 auto',
+        background: `linear-gradient(180deg, ${conf.darkBg}, #03010B 66%, #020108)`,
+      }}
+    >
+      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 22%, ${conf.glow}, transparent 42%)` }} />
+
+      <div className="shrink-0 px-5 pb-4 relative z-10" style={{ paddingTop: 'max(14px, env(safe-area-inset-top, 14px))', borderBottom: '1px solid rgba(139,0,255,0.18)' }}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[11px] font-black tracking-[0.18em]" style={{ color: position.color, fontFamily: 'monospace' }}>
+              {position.short} / MONSTER DETAIL
+            </div>
+            <div className="truncate text-[28px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', 'Noto Sans JP', serif", letterSpacing: '0.08em', textShadow: `0 0 18px ${conf.glow}` }}>
+              {monster.name}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] font-black" style={{ fontFamily: 'monospace' }}>
+              <span style={{ color: conf.color }}>{conf.label}</span>
+              <span style={{ color: costBlocked ? '#FF7777' : '#D4AF37' }}>COST {projectedCost}/{maxCost}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="魔物選択へ戻る"
+            onClick={onBack}
+            className="shrink-0 grid place-items-center rounded-xl"
+            style={{
+              width: 48,
+              height: 48,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(139,0,255,0.28)',
+              color: '#A5A9B4',
+            }}
+          >
+            <X size={18} />
+          </button>
         </div>
       </div>
-    </motion.button>
+
+      <div className="flex-1 min-h-0 overflow-y-auto safe-scroll custom-scrollbar px-5 py-5 relative z-10" style={{ touchAction: 'pan-y' }}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-28 h-28 rounded-[30px] grid place-items-center" style={{ background: `radial-gradient(circle at 38% 30%, ${conf.color}3F, rgba(0,0,0,0.88))`, border: `1.5px solid ${conf.color}77`, boxShadow: `0 18px 42px rgba(0,0,0,0.72), 0 0 34px ${conf.color}3A`, fontSize: 60 }}>
+            <span style={{ filter: `drop-shadow(0 0 12px ${conf.color})` }}>{conf.emoji}</span>
+          </div>
+
+          <div className="w-full grid grid-cols-2 gap-2.5">
+            {detailStats.map(stat => (
+              <div key={stat.key} className="rounded-2xl px-3 py-3" style={{ minHeight: 66, background: stat.key === 'cost' ? 'rgba(212,175,55,0.07)' : 'rgba(255,255,255,0.04)', border: `1px solid ${stat.key === 'cost' && costBlocked ? 'rgba(255,68,68,0.42)' : stat.key === 'cost' ? 'rgba(212,175,55,0.28)' : 'rgba(139,0,255,0.18)'}` }}>
+                <div style={{ color: '#6b5f7a', fontFamily: 'monospace', fontSize: 10, fontWeight: 900 }}>{stat.label}</div>
+                <div style={{ color: stat.color ?? '#F0EAFF', fontFamily: 'monospace', fontSize: 20, fontWeight: 900, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>{stat.value}</div>
+              </div>
+            ))}
+          </div>
+
+            <div className="w-full rounded-2xl p-4" style={{ background: 'rgba(4,2,16,0.72)', border: '1px solid rgba(139,0,255,0.22)' }}>
+              <div className="text-[11px] font-black tracking-[0.18em] mb-3" style={{ color: '#E090FF', fontFamily: "'Cinzel', serif" }}>COMBAT PROFILE</div>
+              <div className="grid gap-2.5 text-[12px]" style={{ color: 'rgba(220,210,240,0.86)', fontFamily: "'Noto Sans JP', sans-serif" }}>
+                <div className="flex justify-between gap-3"><span style={{ color: '#6b5f7a' }}>配置先</span><span style={{ color: position.color, fontFamily: 'monospace', fontWeight: 900 }}>{position.label}</span></div>
+                <div className="flex justify-between gap-3"><span style={{ color: '#6b5f7a' }}>弱点</span><span>{weaknessLabel}</span></div>
+                <div className="flex justify-between gap-3"><span style={{ color: '#6b5f7a' }}>現在コスト</span><span style={{ fontFamily: 'monospace', color: '#D4AF37' }}>{totalCost}/{maxCost}</span></div>
+                <div className="flex justify-between gap-3"><span style={{ color: '#6b5f7a' }}>編成後コスト</span><span style={{ fontFamily: 'monospace', color: costBlocked ? '#FF7777' : '#D4AF37', fontWeight: 900 }}>{projectedCost}/{maxCost}</span></div>
+              </div>
+            </div>
+
+            <div className="w-full rounded-2xl p-4" style={{ background: 'rgba(4,2,16,0.72)', border: '1px solid rgba(139,0,255,0.22)' }}>
+              <div className="text-[11px] font-black tracking-[0.18em] mb-3" style={{ color: '#E090FF', fontFamily: "'Cinzel', serif" }}>RESISTANCE</div>
+              {resistanceRows.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {resistanceRows.map(([element, value]) => {
+                    const meta = element === 'NONE' ? null : ELEMENT_VIEW_META[element as keyof typeof ELEMENT_VIEW_META];
+                    return (
+                      <div key={element} className="rounded-xl px-3 py-2.5 flex justify-between" style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.06)', color: meta?.color ?? '#A5A9B4', fontFamily: 'monospace', fontSize: 11, fontWeight: 900 }}>
+                        <span>{meta?.label ?? element}</span>
+                        <span>{Number(value) > 0 ? '+' : ''}{Number(value)}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-[11px]" style={{ color: '#6b5f7a', fontFamily: 'monospace' }}>RESISTANCE: NONE</div>
+              )}
+            </div>
+
+            {monster.spiritCore && (
+              <div className="w-full rounded-2xl p-4" style={{ background: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.25)' }}>
+                <div className="text-[11px] font-black tracking-[0.18em] mb-2" style={{ color: '#D4AF37', fontFamily: "'Cinzel', serif" }}>SPIRIT CORE</div>
+                <div className="text-[14px] font-black" style={{ color: '#F0EAFF', fontFamily: "'Noto Sans JP', sans-serif" }}>{monster.spiritCore.name}</div>
+                <div className="mt-1 text-[11px]" style={{ color: 'rgba(220,210,240,0.72)', fontFamily: 'monospace' }}>ATK x{monster.spiritCore.atkMultiplier}</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+      <div className="shrink-0 px-5 py-3 relative z-10" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))', borderTop: '1px solid rgba(139,0,255,0.18)' }}>
+        <motion.button
+          type="button"
+          whileTap={costBlocked ? undefined : { scale: 0.97 }}
+          disabled={costBlocked}
+          onClick={() => {
+            if (!costBlocked) onAssign();
+          }}
+          className="w-full rounded-2xl text-[13px] font-black tracking-[0.14em]"
+          style={{
+            minHeight: 56,
+            background: costBlocked ? 'rgba(255,68,68,0.11)' : 'linear-gradient(135deg, rgba(139,0,255,0.36), rgba(139,0,255,0.16))',
+            border: `1px solid ${costBlocked ? 'rgba(255,68,68,0.42)' : 'rgba(139,0,255,0.58)'}`,
+            color: costBlocked ? '#FF8A8A' : '#F0EAFF',
+            fontFamily: "'Noto Sans JP', sans-serif",
+            boxShadow: costBlocked ? 'none' : '0 0 20px rgba(139,0,255,0.22)',
+          }}
+        >
+          {costBlocked ? 'コスト不足' : '編成する'}
+        </motion.button>
+      </div>
+    </motion.div>
   );
 }
 
@@ -2838,6 +3035,396 @@ function getPartyDropIndex(info: PanInfo) {
   return null;
 }
 
+function MonsterPickerSheet({
+  slotIndex,
+  party,
+  sortedMonsters,
+  inventoryCount,
+  activeFilters,
+  sortKey,
+  sortDir,
+  maxCost,
+  totalCost,
+  onClose,
+  onAssign,
+  onRemove,
+  onToggleFilter,
+  onClearFilters,
+  onSortPress,
+  wouldCostBlock,
+}: {
+  slotIndex: number | null;
+  party: (MonsterData | null)[];
+  sortedMonsters: MonsterData[];
+  inventoryCount: number;
+  activeFilters: Set<Tribe>;
+  sortKey: MonsterSortKey;
+  sortDir: SortDir;
+  maxCost: number;
+  totalCost: number;
+  onClose: () => void;
+  onAssign: (slotIndex: number, monster: MonsterData) => boolean;
+  onRemove: (slotIndex: number) => void;
+  onToggleFilter: (key: TribeFilterKey) => void;
+  onClearFilters: () => void;
+  onSortPress: (key: MonsterSortKey) => void;
+  wouldCostBlock: (slotIndex: number, monster: MonsterData) => boolean;
+}) {
+  const isOpen = slotIndex !== null;
+  const position = slotIndex !== null ? POSITION_META[slotIndex] : POSITION_META[0];
+  const current = slotIndex !== null ? party[slotIndex] ?? null : null;
+
+  return (
+    <AnimatePresence>
+      {isOpen && slotIndex !== null && (
+        <motion.div
+          key="monster-picker-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="absolute inset-0 z-50"
+        >
+          <button
+            type="button"
+            aria-label="閉じる"
+            onClick={onClose}
+            className="absolute inset-0"
+            style={{ background: 'rgba(0,0,0,0.58)', backdropFilter: 'blur(3px)' }}
+          />
+
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+            className="absolute left-0 right-0 bottom-0"
+            style={{
+              height: 'min(78dvh, 680px)',
+              padding: '0 10px max(10px, env(safe-area-inset-bottom, 10px))',
+            }}
+          >
+            <div
+              className="h-full flex flex-col overflow-hidden"
+              style={{
+                borderRadius: '22px 22px 0 0',
+                background: 'linear-gradient(180deg, rgba(12,5,30,0.98), rgba(3,1,12,0.995))',
+                border: '1px solid rgba(139,0,255,0.34)',
+                boxShadow: '0 -22px 54px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)',
+              }}
+            >
+              <div className="shrink-0 px-4 pt-2.5 pb-3" style={{ borderBottom: '1px solid rgba(139,0,255,0.18)' }}>
+                <div className="mx-auto mb-2 rounded-full" style={{ width: 44, height: 4, background: 'rgba(224,144,255,0.38)' }} />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-black tracking-[0.18em]" style={{ color: position.color, fontFamily: 'monospace' }}>
+                      {position.short} / HATE {position.hate}
+                    </div>
+                    <div className="truncate text-[18px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', 'Noto Sans JP', serif", letterSpacing: '0.08em' }}>
+                      魔物選択
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 text-[10px] font-bold" style={{ color: 'rgba(190,176,230,0.66)', fontFamily: 'monospace' }}>
+                      <span>{current ? current.name : 'VACANT'}</span>
+                      <span style={{ color: totalCost > maxCost ? '#FF7777' : '#D4AF37' }}>COST {totalCost}/{maxCost}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="閉じる"
+                    onClick={onClose}
+                    className="shrink-0 grid place-items-center rounded-xl"
+                    style={{
+                      width: 44,
+                      height: 44,
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(139,0,255,0.28)',
+                      color: '#A5A9B4',
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="shrink-0 px-3.5 py-3 flex flex-col gap-2.5" style={{ background: 'rgba(4,1,12,0.55)' }}>
+                <MonsterFilterBar activeFilters={activeFilters} onToggle={onToggleFilter} onClear={onClearFilters} />
+                <SortControls sortKey={sortKey} sortDir={sortDir} onPress={onSortPress} />
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[10px] font-black tracking-[0.14em]" style={{ color: '#6b5f7a', fontFamily: 'monospace' }}>
+                    {sortedMonsters.length}/{inventoryCount} 体
+                  </div>
+                  <div className="rounded-full px-2.5 py-1 text-[10px] font-black" style={{ color: position.color, background: `${position.color}16`, border: `1px solid ${position.color}38`, fontFamily: 'monospace' }}>
+                    {position.label}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3.5 pb-3">
+                <div className="grid gap-2.5">
+                  {sortedMonsters.map(monster => {
+                    const inPartyIndex = party.findIndex(member => member?.id === monster.id);
+                    return (
+                      <MonsterRosterCard
+                        key={monster.id}
+                        monster={monster}
+                        selected={current?.id === monster.id}
+                        inPartyIndex={inPartyIndex}
+                        costBlocked={wouldCostBlock(slotIndex, monster)}
+                        onDetail={() => {}}
+                        onPick={() => {
+                          if (onAssign(slotIndex, monster)) onClose();
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+                {sortedMonsters.length === 0 && (
+                  <div className="h-full min-h-[180px] flex items-center justify-center text-center text-[11px] font-black tracking-[0.16em]" style={{ color: '#4a3a5a', fontFamily: 'monospace' }}>
+                    FILTERED: NO MONSTERS
+                  </div>
+                )}
+              </div>
+
+              <div className="shrink-0 grid grid-cols-2 gap-2 px-3.5 py-3" style={{ borderTop: '1px solid rgba(139,0,255,0.18)', background: 'rgba(2,1,8,0.9)' }}>
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => {
+                    if (!current) return;
+                    onRemove(slotIndex);
+                    onClose();
+                  }}
+                  disabled={!current}
+                  className="rounded-xl text-[12px] font-black tracking-[0.12em]"
+                  style={{
+                    minHeight: 46,
+                    background: current ? 'rgba(255,68,68,0.13)' : 'rgba(255,255,255,0.035)',
+                    border: `1px solid ${current ? 'rgba(255,68,68,0.42)' : 'rgba(255,255,255,0.08)'}`,
+                    color: current ? '#FF9A9A' : '#4a3a5a',
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  外す
+                </motion.button>
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.96 }}
+                  onClick={onClose}
+                  className="rounded-xl text-[12px] font-black tracking-[0.12em]"
+                  style={{
+                    minHeight: 46,
+                    background: 'linear-gradient(135deg, rgba(139,0,255,0.28), rgba(139,0,255,0.12))',
+                    border: '1px solid rgba(139,0,255,0.48)',
+                    color: '#E090FF',
+                    fontFamily: 'monospace',
+                    boxShadow: '0 0 14px rgba(139,0,255,0.18)',
+                  }}
+                >
+                  閉じる
+                </motion.button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function MonsterPickerPage({
+  slotIndex,
+  party,
+  sortedMonsters,
+  inventoryCount,
+  activeFilters,
+  sortKey,
+  sortDir,
+  maxCost,
+  totalCost,
+  detailMonster,
+  onClose,
+  onAssign,
+  onRemove,
+  onToggleFilter,
+  onClearFilters,
+  onSortPress,
+  onOpenDetail,
+  onCloseDetail,
+  wouldCostBlock,
+}: {
+  slotIndex: number | null;
+  party: (MonsterData | null)[];
+  sortedMonsters: MonsterData[];
+  inventoryCount: number;
+  activeFilters: Set<Tribe>;
+  sortKey: MonsterSortKey;
+  sortDir: SortDir;
+  maxCost: number;
+  totalCost: number;
+  detailMonster: MonsterData | null;
+  onClose: () => void;
+  onAssign: (slotIndex: number, monster: MonsterData) => boolean;
+  onRemove: (slotIndex: number) => void;
+  onToggleFilter: (key: TribeFilterKey) => void;
+  onClearFilters: () => void;
+  onSortPress: (key: MonsterSortKey) => void;
+  onOpenDetail: (monster: MonsterData) => void;
+  onCloseDetail: () => void;
+  wouldCostBlock: (slotIndex: number, monster: MonsterData) => boolean;
+}) {
+  if (slotIndex === null) return null;
+
+  const position = POSITION_META[slotIndex];
+  const current = party[slotIndex] ?? null;
+
+  return (
+    <AnimatePresence mode="wait">
+      {detailMonster ? (
+        <MonsterDetailPage
+          key={`detail-${detailMonster.id}`}
+          monster={detailMonster}
+          slotIndex={slotIndex}
+          party={party}
+          totalCost={totalCost}
+          maxCost={maxCost}
+          onBack={onCloseDetail}
+          onAssign={() => {
+            const ok = onAssign(slotIndex, detailMonster);
+            if (ok) onClose();
+            return ok;
+          }}
+        />
+      ) : (
+        <motion.div
+          key="monster-picker-page"
+          initial={{ x: '100%', opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: '100%', opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+          className="relative z-10 flex h-full min-h-0 w-full flex-col overflow-hidden"
+          style={{
+            maxWidth: 430,
+            margin: '0 auto',
+            background: 'linear-gradient(180deg, #08031A 0%, #03010B 72%, #020108 100%)',
+          }}
+        >
+          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(188,24,242,0.16), transparent 58%)' }} />
+
+          <div className="shrink-0 px-5 pb-4 relative z-10" style={{ paddingTop: 'max(14px, env(safe-area-inset-top, 14px))', borderBottom: '1px solid rgba(139,0,255,0.18)' }}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[11px] font-black tracking-[0.18em]" style={{ color: position.color, fontFamily: 'monospace' }}>
+                  {position.short} / HATE {position.hate}
+                </div>
+                <div className="truncate text-[28px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', 'Noto Sans JP', serif", letterSpacing: '0.08em', textShadow: '0 0 18px rgba(139,0,255,0.38)' }}>
+                  魔物選択
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] font-black" style={{ color: 'rgba(190,176,230,0.72)', fontFamily: 'monospace' }}>
+                  <span>{current ? current.name : 'VACANT'}</span>
+                  <span style={{ color: totalCost > maxCost ? '#FF7777' : '#D4AF37' }}>COST {totalCost}/{maxCost}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="編成トップへ戻る"
+                onClick={onClose}
+                className="shrink-0 grid place-items-center rounded-xl"
+                style={{
+                  width: 48,
+                  height: 48,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(139,0,255,0.28)',
+                  color: '#A5A9B4',
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          <div className="shrink-0 px-4 py-3.5 flex flex-col gap-3 relative z-10" style={{ background: 'rgba(4,1,12,0.55)' }}>
+            <MonsterFilterBar activeFilters={activeFilters} onToggle={onToggleFilter} onClear={onClearFilters} />
+            <SortControls sortKey={sortKey} sortDir={sortDir} onPress={onSortPress} />
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[10px] font-black tracking-[0.14em]" style={{ color: '#6b5f7a', fontFamily: 'monospace' }}>
+                {sortedMonsters.length}/{inventoryCount} 体
+              </div>
+              <div className="rounded-full px-2.5 py-1 text-[10px] font-black" style={{ color: position.color, background: `${position.color}16`, border: `1px solid ${position.color}38`, fontFamily: 'monospace' }}>
+                {position.label}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto safe-scroll custom-scrollbar px-4 pb-4 relative z-10" style={{ touchAction: 'pan-y' }}>
+            <div className="grid gap-3 pt-3">
+              {sortedMonsters.map(monster => {
+                const inPartyIndex = party.findIndex(member => member?.id === monster.id);
+                return (
+                  <MonsterRosterCard
+                    key={monster.id}
+                    monster={monster}
+                    selected={current?.id === monster.id}
+                    inPartyIndex={inPartyIndex}
+                    costBlocked={wouldCostBlock(slotIndex, monster)}
+                    onDetail={() => onOpenDetail(monster)}
+                    onPick={() => {
+                      if (onAssign(slotIndex, monster)) onClose();
+                    }}
+                  />
+                );
+              })}
+            </div>
+            {sortedMonsters.length === 0 && (
+              <div className="h-full min-h-[180px] flex items-center justify-center text-center text-[11px] font-black tracking-[0.16em]" style={{ color: '#4a3a5a', fontFamily: 'monospace' }}>
+                FILTERED: NO MONSTERS
+              </div>
+            )}
+          </div>
+
+          <div className="shrink-0 grid grid-cols-2 gap-2.5 px-4 py-3.5 relative z-10" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom, 14px))', borderTop: '1px solid rgba(139,0,255,0.18)', background: 'rgba(2,1,8,0.9)' }}>
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.96 }}
+              onClick={() => {
+                if (!current) return;
+                onRemove(slotIndex);
+                onClose();
+              }}
+              disabled={!current}
+              className="rounded-xl text-[12px] font-black tracking-[0.12em]"
+              style={{
+                minHeight: 52,
+                background: current ? 'rgba(255,68,68,0.13)' : 'rgba(255,255,255,0.035)',
+                border: `1px solid ${current ? 'rgba(255,68,68,0.42)' : 'rgba(255,255,255,0.08)'}`,
+                color: current ? '#FF9A9A' : '#4a3a5a',
+                fontFamily: 'monospace',
+              }}
+            >
+              外す
+            </motion.button>
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.96 }}
+              onClick={onClose}
+              className="rounded-xl text-[12px] font-black tracking-[0.12em]"
+              style={{
+                minHeight: 52,
+                background: 'linear-gradient(135deg, rgba(139,0,255,0.28), rgba(139,0,255,0.12))',
+                border: '1px solid rgba(139,0,255,0.48)',
+                color: '#E090FF',
+                fontFamily: 'monospace',
+                boxShadow: '0 0 14px rgba(139,0,255,0.18)',
+              }}
+            >
+              編成へ戻る
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 /* ──────────────────────────────────────────
    LEGION LIST VIEW
 ────────────────────────────────────────── */
@@ -2855,6 +3442,8 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
   const swapPartySlots = useGameStore(state => state.swapPartySlots);
   const addBattleLog = useGameStore(state => state.addBattleLog);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(0);
+  const [pickerSlotIndex, setPickerSlotIndex] = useState<number | null>(null);
+  const [detailMonster, setDetailMonster] = useState<MonsterData | null>(null);
   const [hoverSlotIndex, setHoverSlotIndex] = useState<number | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<Tribe>>(new Set());
   const [sortKey, setSortKey] = useState<MonsterSortKey>('atk');
@@ -2903,21 +3492,23 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
     const nextCost = next.reduce((sum, member) => sum + (member?.cost ?? 0), 0);
     if (nextCost > maxCost) {
       showCostError(`コスト超過: ${nextCost}/${maxCost}。低コストの魔物を選んでください。`);
-      return;
+      return false;
     }
     setParty(next);
     setSelectedSlotIndex(slotIndex);
     onFocusMember(`MONSTER_${slotIndex}` as MemberKey);
     addBattleLog(`FORMATION: ${POSITION_META[slotIndex].label} に ${monster.name} を配置`);
     haptic([10, 4, 14]);
+    return true;
   }, [addBattleLog, maxCost, onFocusMember, previewParty, setParty, showCostError]);
 
-  const removeSelectedSlot = useCallback(() => {
-    if (!party[selectedSlotIndex]) return;
-    updatePartySlot(selectedSlotIndex, null);
-    addBattleLog(`FORMATION: ${POSITION_META[selectedSlotIndex].label} を空き枠に変更`);
+  const removeSlot = useCallback((slotIndex: number) => {
+    if (!party[slotIndex]) return;
+    updatePartySlot(slotIndex, null);
+    setSelectedSlotIndex(slotIndex);
+    addBattleLog(`FORMATION: ${POSITION_META[slotIndex].label} を空き枠に変更`);
     haptic([8, 4, 8]);
-  }, [addBattleLog, party, selectedSlotIndex, updatePartySlot]);
+  }, [addBattleLog, party, updatePartySlot]);
 
   const handleSwap = useCallback((from: number, to: number) => {
     swapPartySlots(from, to);
@@ -2952,10 +3543,39 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
     haptic(5);
   }, [sortKey]);
 
-  const wouldCostBlock = useCallback((monster: MonsterData) => {
-    const next = previewParty(selectedSlotIndex, monster);
+  const wouldCostBlock = useCallback((slotIndex: number, monster: MonsterData) => {
+    const next = previewParty(slotIndex, monster);
     return next.reduce((sum, member) => sum + (member?.cost ?? 0), 0) > maxCost;
-  }, [maxCost, previewParty, selectedSlotIndex]);
+  }, [maxCost, previewParty]);
+
+  if (pickerSlotIndex !== null) {
+    return (
+      <MonsterPickerPage
+        slotIndex={pickerSlotIndex}
+        party={party as (MonsterData | null)[]}
+        sortedMonsters={sortedMonsters}
+        inventoryCount={inventoryMonsters.length}
+        activeFilters={activeFilters}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        maxCost={maxCost}
+        totalCost={totalCost}
+        detailMonster={detailMonster}
+        onClose={() => {
+          setDetailMonster(null);
+          setPickerSlotIndex(null);
+        }}
+        onAssign={assignMonster}
+        onRemove={removeSlot}
+        onToggleFilter={toggleFilter}
+        onClearFilters={() => setActiveFilters(new Set())}
+        onSortPress={handleSortPress}
+        onOpenDetail={setDetailMonster}
+        onCloseDetail={() => setDetailMonster(null)}
+        wouldCostBlock={wouldCostBlock}
+      />
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.2 }}
@@ -3001,31 +3621,43 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
       </div>
 
       <div className="flex-1 px-3 pb-3 relative z-10 overflow-hidden min-h-0 flex flex-col gap-2.5">
-        <div className="shrink-0 flex items-center justify-between gap-2 rounded-xl px-3 py-2" style={{ background: 'rgba(8,3,20,0.66)', border: `1px solid ${selectedPosition.color}33` }}>
-          <div className="min-w-0">
-            <div className="text-[9px] font-black tracking-[0.18em]" style={{ color: selectedPosition.color, fontFamily: 'monospace' }}>{selectedPosition.short} / HATE {selectedPosition.hate}</div>
-            <div className="truncate text-[11px] font-bold" style={{ color: 'rgba(220,210,240,0.82)', fontFamily: "'Noto Sans JP', sans-serif" }}>
-              {party[selectedSlotIndex]?.name ?? '空き枠'} を選択中。下の一覧から配置できます。
+        <div className="shrink-0 grid grid-cols-[1fr_auto] items-center gap-2 rounded-2xl px-3 py-2.5" style={{ background: 'rgba(8,3,20,0.72)', border: `1px solid ${selectedPosition.color}33`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setDetailMonster(null);
+              setPickerSlotIndex(selectedSlotIndex);
+            }}
+            className="min-w-0 text-left"
+            style={{ background: 'transparent', border: 0, padding: 0 }}
+          >
+            <div className="text-[10px] font-black tracking-[0.18em]" style={{ color: selectedPosition.color, fontFamily: 'monospace' }}>{selectedPosition.short} / HATE {selectedPosition.hate}</div>
+            <div className="truncate text-[13px] font-black" style={{ color: 'rgba(240,234,255,0.9)', fontFamily: "'Noto Sans JP', sans-serif" }}>
+              {party[selectedSlotIndex]?.name ?? '空き枠'}
             </div>
-          </div>
+          </button>
           <motion.button
             type="button"
             whileTap={{ scale: 0.94 }}
-            onClick={removeSelectedSlot}
-            disabled={!party[selectedSlotIndex]}
-            className="shrink-0 rounded-lg px-2.5 py-1.5 text-[10px] font-black"
+            onClick={() => {
+              setDetailMonster(null);
+              setPickerSlotIndex(selectedSlotIndex);
+            }}
+            className="shrink-0 rounded-xl px-4 text-[11px] font-black tracking-[0.12em]"
             style={{
-              background: party[selectedSlotIndex] ? 'rgba(255,68,68,0.12)' : 'rgba(255,255,255,0.035)',
-              border: `1px solid ${party[selectedSlotIndex] ? 'rgba(255,68,68,0.36)' : 'rgba(255,255,255,0.08)'}`,
-              color: party[selectedSlotIndex] ? '#FF9A9A' : '#4a3a5a',
+              minHeight: 44,
+              background: 'linear-gradient(135deg, rgba(139,0,255,0.26), rgba(139,0,255,0.12))',
+              border: '1px solid rgba(139,0,255,0.46)',
+              color: '#E090FF',
               fontFamily: 'monospace',
+              boxShadow: '0 0 14px rgba(139,0,255,0.16)',
             }}
           >
-            外す
+            魔物選択
           </motion.button>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 shrink-0" style={{ height: 'clamp(230px, 41dvh, 330px)' }}>
+        <div className="grid grid-cols-2 gap-2 flex-1 min-h-0" style={{ gridTemplateRows: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
           <PortraitCard
             mk="PLAYER"
             player={player}
@@ -3053,51 +3685,14 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
               onSelectSlot={(slotIndex) => {
                 setSelectedSlotIndex(slotIndex);
                 onFocusMember(`MONSTER_${slotIndex}` as MemberKey);
+                setDetailMonster(null);
+                setPickerSlotIndex(slotIndex);
                 haptic(8);
               }}
               onSwap={handleSwap}
               onDragHover={setHoverSlotIndex}
             />
           ))}
-        </div>
-
-        <div className="flex-1 min-h-0 rounded-2xl flex flex-col gap-2 p-2.5" style={{ background: 'rgba(4,2,16,0.78)', border: '1px solid rgba(139,0,255,0.22)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}>
-          <div className="shrink-0 flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="text-[10px] font-black tracking-[0.22em]" style={{ color: '#E090FF', fontFamily: "'Cinzel', serif" }}>MONSTER ROSTER</div>
-              <div className="text-[9px] font-bold truncate" style={{ color: '#6b5f7a', fontFamily: 'monospace' }}>
-                {sortedMonsters.length}/{inventoryMonsters.length} 体表示
-              </div>
-            </div>
-            <div className="shrink-0 rounded-full px-2 py-1 text-[9px] font-black" style={{ color: selectedPosition.color, background: `${selectedPosition.color}14`, border: `1px solid ${selectedPosition.color}38`, fontFamily: 'monospace' }}>
-              {selectedPosition.label}
-            </div>
-          </div>
-          <MonsterFilterBar activeFilters={activeFilters} onToggle={toggleFilter} onClear={() => setActiveFilters(new Set())} />
-          <SortControls sortKey={sortKey} sortDir={sortDir} onPress={handleSortPress} />
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-0.5">
-            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(142px, 1fr))' }}>
-              {sortedMonsters.map(monster => {
-                const inPartyIndex = party.findIndex(member => member?.id === monster.id);
-                const blocked = wouldCostBlock(monster);
-                return (
-                  <MonsterRosterCard
-                    key={monster.id}
-                    monster={monster}
-                    selected={party[selectedSlotIndex]?.id === monster.id}
-                    inPartyIndex={inPartyIndex}
-                    costBlocked={blocked}
-                    onPick={() => assignMonster(selectedSlotIndex, monster)}
-                  />
-                );
-              })}
-            </div>
-            {sortedMonsters.length === 0 && (
-              <div className="h-full min-h-[96px] flex items-center justify-center text-center text-[10px] font-black tracking-[0.16em]" style={{ color: '#4a3a5a', fontFamily: 'monospace' }}>
-                FILTERED: NO MONSTERS
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </motion.div>
@@ -3111,7 +3706,7 @@ export default function LegionHub() {
   const { player, party, equippedResidueSlots, soulShards, abyssalResidues, residueMaterials, weaponMaterials, inventoryItems, transmutationPoints, demonGauge, isDemonMode, toggleDemonMode } = useGameStore();
   const activeTutorialPhase = useTutorialStore(s => s.activePhase);
   const sound = useGothicSound();
-  const [view, setView] = useState<'LIST' | 'DETAIL' | 'GEAR'>('DETAIL');
+  const [view, setView] = useState<'LIST' | 'DETAIL' | 'GEAR'>('LIST');
   const [selKey, setSelKey] = useState<MemberKey | null>('PLAYER');
   const [gearCtx, setGearCtx] = useState<GearCtx | null>(null);
 
