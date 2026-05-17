@@ -34,6 +34,17 @@ async function getCsrfToken() {
   return data?.csrfToken ?? null;
 }
 
+async function readSession(): Promise<{ available: boolean; session: AuthSession }> {
+  const response = await fetch('/api/auth/session', {
+    cache: 'no-store',
+    headers: { Accept: 'application/json' },
+  });
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) return { available: false, session: {} };
+  const session = await response.json().catch(() => null) as AuthSession | null;
+  return { available: true, session: session ?? {} };
+}
+
 export function AuthPanel() {
   const [status, setStatus] = useState<SessionStatus>('loading');
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -46,15 +57,15 @@ export function AuthPanel() {
 
   const loadSession = useCallback(async () => {
     try {
-      const data = await readJson<AuthSession>('/api/auth/session', { cache: 'no-store' });
-      if (!data) {
+      const data = await readSession();
+      if (!data.available) {
         setStatus('unavailable');
         setUser(null);
         return;
       }
-      if (data.user) {
+      if (data.session.user) {
         setStatus('authenticated');
-        setUser(data.user);
+        setUser(data.session.user);
         return;
       }
       setStatus('guest');
@@ -152,6 +163,7 @@ export function AuthPanel() {
 
       await signInWithCredentials();
       await loadSession();
+      window.dispatchEvent(new Event('necro-auth-changed'));
       closeDialog();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '認証に失敗しました');
@@ -177,6 +189,7 @@ export function AuthPanel() {
       }
       setStatus('guest');
       setUser(null);
+      window.dispatchEvent(new Event('necro-auth-changed'));
     } catch {
       setStatus('guest');
       setUser(null);

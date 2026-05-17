@@ -477,6 +477,9 @@ async function processStageResultLocal(stageId?: string, meta: StageResultMeta =
           goldGain: onlineResult.goldGain,
         };
       }
+      if (onlineResult.error === 'SESSION_EXPIRED') {
+        window.dispatchEvent(new Event('necro-session-expired'));
+      }
     } catch (error) {
       console.warn('Cloud stage result failed, using local fallback.', error);
     }
