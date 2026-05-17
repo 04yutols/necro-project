@@ -24,6 +24,7 @@ import ShardEquipModal from '../components/necro/ShardEquipModal';
 import { HomeHero } from '../components/home/HomeHero';
 import { ResponsiveFrame } from '../components/layout/ResponsiveFrame';
 import { NecroLog } from '../components/ui/NecroLog';
+import { WorldLogPanel } from '../components/social/WorldLogPanel';
 import { Home as HomeIcon } from 'lucide-react';
 
 function GameContent() {
@@ -40,7 +41,7 @@ function GameContent() {
   const [isInBattle, setIsInBattle] = useState(false);
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
   const [pendingStageId, setPendingStageId] = useState<string | null>(null);
-  const [logPanel, setLogPanel] = useState<'STORY' | 'BATTLE'>('STORY');
+  const [logPanel, setLogPanel] = useState<'STORY' | 'BATTLE' | 'WORLD'>('STORY');
   const { unlockAudio } = useBGM({
     currentTab,
     isInBattle,
@@ -138,7 +139,7 @@ function GameContent() {
                 <span>RETURN TO HUB</span>
               </button>
               <div className="flex rounded-md overflow-hidden border border-[#2C2C2C] bg-black/40">
-                {(['STORY', 'BATTLE'] as const).map(panel => (
+                {(['STORY', 'BATTLE', 'WORLD'] as const).map(panel => (
                   <button
                     key={panel}
                     type="button"
@@ -149,13 +150,13 @@ function GameContent() {
                       background: logPanel === panel ? 'rgba(139,0,255,0.22)' : 'transparent',
                     }}
                   >
-                    {panel === 'STORY' ? '物語' : '戦歴'}
+                    {panel === 'STORY' ? '物語' : panel === 'BATTLE' ? '戦歴' : '世界'}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="flex-1 border border-[#1A1A1A] bg-[#0D0D0D] overflow-hidden">
-              {logPanel === 'STORY' ? <StoryArchive /> : <NecroLog logs={battleLogs} />}
+            <div className="flex-1 min-h-0 border border-[#1A1A1A] bg-[#0D0D0D] overflow-hidden p-2">
+              {logPanel === 'STORY' ? <StoryArchive /> : logPanel === 'BATTLE' ? <NecroLog logs={battleLogs} /> : <WorldLogPanel />}
             </div>
           </motion.div>
         );

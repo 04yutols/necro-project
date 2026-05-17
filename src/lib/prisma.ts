@@ -2,8 +2,8 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
 
-// ローカル開発時のみ WebSocket ポリフィルが必要
-if (process.env.NODE_ENV === 'development') {
+// ローカル開発・Jest 実行時は Neon WebSocket ポリフィルが必要
+if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   neonConfig.webSocketConstructor = require('ws');
 }

@@ -239,6 +239,7 @@ export interface CharacterData {
   jobs: UserJobState[];
   isAwakened: boolean;
   clearedStages: string[];
+  gold: number;
   statusEffects?: StatusEffect[];
   // エネルギーシステム（ランタイム状態 — DB非保存）
   currentEnergy: number;
@@ -384,6 +385,7 @@ export interface NecroStatus {
   rank: number;        // Max: 10
   maxCost: number;
   baseStatsBonus: number; // ランクアップで蓄積される基礎ステータス倍率補正
+  exp: number;         // 現在のネクロEXP
 }
 
 export interface BattleState {

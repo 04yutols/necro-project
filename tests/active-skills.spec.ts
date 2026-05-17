@@ -1,46 +1,38 @@
 import { test, expect } from '@playwright/test';
+import { prepareE2EPage, startFirstDungeonBattle } from './helpers/e2e';
 
-test.describe('Active Skills E2E Tests', () => {
+test.describe('Battle command UX', () => {
+  test.describe.configure({ timeout: 60000 });
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // 出撃タブへ
-    await page.click('text=出撃');
-    // ステージ1-1開始
-    await page.click('text=STAGE 1-1');
+    await prepareE2EPage(page);
+    await startFirstDungeonBattle(page);
   });
 
-  test('Skill usage and MP consumption works correctly', async ({ page }) => {
-    // スキルボタン「渾身斬り」が表示されているか確認 (Warrior Lv1のスキル)
-    const skillButton = page.locator('button:has-text("渾身斬り")');
-    await expect(skillButton).toBeVisible();
+  test('opens the current skill panel and shows element x attack-type skills', async ({ page }) => {
+    await page.locator('#tut-skill-btn').click();
 
-    // 初期MPを確認 (初期モックではMP 20)
-    // ログエリア上部のステータス表示などで確認できるが、今回はボタンの有効/無効と動作で検証
-    
-    // スキルを使用 (MPを5消費する)
-    await skillButton.click();
-    
-    // スキル発動のログが表示されるのを待機
-    const logArea = page.locator('div.bg-black\\/80.overflow-y-auto');
-    await expect(logArea).toContainText('アルドの渾身斬り！', { timeout: 5000 });
-    
-    // 連打してMPを枯渇させる (MP20 -> 15 -> 10 -> 5 -> 0)
-    // すでに1回（残り15）
-    await page.waitForTimeout(1000); // アニメーション待ち
-    await skillButton.click(); // 残り10
-    await page.waitForTimeout(1000);
-    await skillButton.click(); // 残り5
-    await page.waitForTimeout(1000);
-    await skillButton.click(); // 残り0
+    await expect(page.getByText('術・スキル選択')).toBeVisible();
+    await expect(page.getByText('渾身斬り')).toBeVisible();
+    await expect(page.getByText('雷鳴斬り')).toBeVisible();
+    await expect(page.getByText('鎌鼬')).toBeVisible();
+    await expect(page.getByText('ホーリークロス')).toBeVisible();
+    await expect(page.getByText(/雷\/斬撃/)).toBeVisible();
+    await expect(page.getByText(/風\/斬撃/)).toBeVisible();
 
-    await page.waitForTimeout(1000);
+    await page.getByText('← 戻る').click();
+    await expect(page.locator('#tut-attack-btn')).toContainText('攻撃');
+  });
 
-    // MP0になったため、スキルボタンが無効(disabled)になり、グレースケールになるはず
-    await expect(skillButton).toBeDisabled();
-    await expect(skillButton).toHaveClass(/grayscale/);
-    
-    // 物理攻撃（消費0）は引き続き使用できることを確認
-    const attackButton = page.locator('button:has-text("物理攻撃")');
-    await expect(attackButton).not.toBeDisabled();
+  test('keeps attack and system commands reachable on the mobile battle screen', async ({ page }) => {
+    await expect(page.locator('#tut-attack-btn')).toContainText('攻撃');
+    await expect(page.locator('#tut-soul-gauge')).toBeVisible();
+    await expect(page.getByRole('button', { name: /AUTO OFF/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: '×3' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '逃走' })).toBeVisible();
+
+    await page.locator('#tut-attack-btn').click();
+    await expect(page.getByTestId('battle-log')).toContainText('骸骨騎士の攻撃', { timeout: 5000 });
   });
 });

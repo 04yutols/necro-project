@@ -71,13 +71,15 @@ describe('RewardService.processDropTable', () => {
     expect(result.materials[0].expValue).toBe(120);
   });
 
-  // 6. isHidden=true → rate=1.0 でもスキップ
-  test('isHidden=true → weapons.length=0 even with rate=1.0', () => {
+  // 6. isHidden=true → UR/ユニークの秘匿ドロップも抽選対象
+  test('isHidden=true → hidden unique weapon can drop when roll succeeds', () => {
     const table: DropEntry[] = [
       { type: 'WEAPON', itemId: 'grudge_manifest', rate: 1.0, isHidden: true },
     ];
-    const result = svc.processDropTable(table, 0, makeSeqRng([0.0]));
-    expect(result.weapons).toHaveLength(0);
+    const result = svc.processDropTable(table, 0, makeSeqRng([0.0, 0.0]));
+    expect(result.weapons).toHaveLength(1);
+    expect(result.weapons[0].name).toBe('怨嗟顕現・喰魂');
+    expect(result.weapons[0].isUnique).toBe(true);
   });
 
   // 7. discoveryBonusRate=50 → rate×1.5 に補正 (rate=0.68 → 0.68×1.5=1.02、roll=0.99 → 命中)

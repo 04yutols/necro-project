@@ -143,8 +143,9 @@ export class RankingService {
     return result;
   }
 
-  static async getTopResidueScore(tx: Prisma.TransactionClient = prisma): Promise<number> {
-    const top = await tx.playerStats.findFirst({
+  static async getTopResidueScore(tx?: Prisma.TransactionClient): Promise<number> {
+    const client = tx ?? prisma;
+    const top = await client.playerStats.findFirst({
       orderBy: { bestResidueScore: 'desc' },
       select: { bestResidueScore: true },
     });
@@ -209,10 +210,13 @@ export class RankingService {
   }
 
   static async invalidate(): Promise<void> {
-    await Promise.all([
-      redisDel('ranking:RESIDUE_SCORE:global:50'),
-      redisDel('ranking:TOTAL_DAMAGE:global:50'),
-      redisDel('ranking:BOSS_KILLS:global:50'),
-    ]);
+    const limits = [5, 10, 50, 100];
+    const keys = [
+      ...limits.map(limit => `ranking:RESIDUE_SCORE:global:${limit}`),
+      ...limits.map(limit => `ranking:TOTAL_DAMAGE:global:${limit}`),
+      ...limits.map(limit => `ranking:BOSS_KILLS:global:${limit}`),
+      ...limits.map(limit => `ranking:STAGE_TIME:area1_boss:${limit}`),
+    ];
+    await Promise.all(keys.map(key => redisDel(key)));
   }
 }

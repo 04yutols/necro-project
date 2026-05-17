@@ -458,9 +458,10 @@ export const useGameStore = create<GameState>((set) => ({
     });
     return { player: { ...state.player, jobs: newJobs } };
   }),
-  addGold: (_amount) => {
-    // CharacterData に gold フィールドなし — Phase D で DB 追加後に実装
-  },
+  addGold: (amount) => set((state) => {
+    if (!state.player) return { player: null };
+    return { player: { ...state.player, gold: state.player.gold + amount } };
+  }),
   addClearedStage: (stageId) => set((state) => {
     if (!state.player) return { player: null };
     if (state.player.clearedStages.includes(stageId)) return state;
@@ -601,6 +602,7 @@ export const useGameStore = create<GameState>((set) => ({
       ],
       isAwakened: false,
       clearedStages: [],
+      gold: 50000,
       statusEffects: [],
       currentEnergy: 0,
       maxEnergy: 100,
@@ -611,6 +613,7 @@ export const useGameStore = create<GameState>((set) => ({
       rank: 1,
       maxCost: 10,
       baseStatsBonus: 1.0,
+      exp: 0,
     },
     inventoryMonsters: [
       { id: 'm1', name: 'ゴブリン',   tribe: 'HUMANOID', cost: 3, stats: { hp: 50, atk: 10, def: 5,  spd: 80,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0 }, resistances: { FIRE: -20 } },

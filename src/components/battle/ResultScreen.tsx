@@ -910,6 +910,7 @@ export default function ResultScreen({
 
   return (
     <div
+      data-testid="result-screen"
       className="w-full h-full relative overflow-hidden"
       style={{
         background: screen === 'appraisal'
@@ -951,6 +952,7 @@ export default function ResultScreen({
         </div>
       ) : screen === 'summary' ? (
         <div
+          data-testid="result-summary"
           className="relative z-10 h-full flex flex-col"
           style={{ padding: 'max(18px, env(safe-area-inset-top, 18px)) 16px max(18px, env(safe-area-inset-bottom, 18px))' }}
         >
@@ -1128,6 +1130,7 @@ export default function ResultScreen({
         </div>
       ) : (
         <div
+          data-testid="appraisal-screen"
           className="relative z-10 h-full flex flex-col"
           style={{ padding: 'max(14px, env(safe-area-inset-top, 14px)) 14px max(14px, env(safe-area-inset-bottom, 14px))' }}
         >

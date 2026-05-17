@@ -1,6 +1,6 @@
 # Necromance Brave — 設計書インデックス
 
-> 最終更新: 2026-05-16
+> 最終更新: 2026-05-17
 > AIエージェントの新セッション開始時はまずこのファイルを読む。
 
 ## プロジェクト概要
@@ -73,6 +73,7 @@
 | パーティ編成UIの画面遷移・魔物選択・魔物詳細UXを知りたい | [33_パーティ編成UIUX実装設計.md](33_パーティ編成UIUX実装設計.md) |
 | 第1章バトルUIの魔神化VFX・魔神技ボタン・倍速・隊列バッジを知りたい | [34_バトルUIUX実装設計.md](34_バトルUIUX実装設計.md) |
 | 第1章の品質演出・音響・鑑定VFX・霧解除演出を知りたい | [35_品質演出仕上げ実装設計.md](35_品質演出仕上げ実装設計.md) |
+| 第1章オンライン機能の保存・ランキング・世界ログ実装を知りたい | [36_オンライン機能実装設計.md](36_オンライン機能実装設計.md) |
 
 ## 重要ファイルパス一覧
 
@@ -87,6 +88,8 @@ src/app/page.tsx                — SPA エントリ、タブルーティング
 src/components/legion/LegionHub.tsx   — EQUIP画面・武器/5部位残滓ロードアウト
 src/logic/WeaponSystem.ts       — 武器基礎ATK・共鳴・打ち直し・分解計算
 src/logic/ResidueScore.ts       — 深淵の残滓スコア・5部位メタデータ
+src/services/RankingService.ts  — StageRecord / PlayerStats ランキング集計
+src/services/WorldEventService.ts — WorldLog 永続化・Pusher配信
 src/components/battle/BattleCanvas.tsx — バトル画面（PixiJS）
 src/data/master/               — マスターデータ JSON 5ファイル
 prisma/schema.prisma           — DBスキーマ

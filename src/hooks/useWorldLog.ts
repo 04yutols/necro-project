@@ -35,10 +35,38 @@ export function useWorldLog() {
 
     void load();
     const interval = window.setInterval(load, 30000);
+
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+    let socket: WebSocket | null = null;
+    if (key && cluster) {
+      socket = new WebSocket(`wss://ws-${cluster}.pusher.com/app/${key}?protocol=7&client=necro-browser&version=1.0&flash=false`);
+      socket.addEventListener('message', (message) => {
+        try {
+          const packet = JSON.parse(String(message.data)) as { event?: string; data?: string | WorldLogEntry };
+          if (packet.event === 'pusher:connection_established') {
+            socket?.send(JSON.stringify({ event: 'pusher:subscribe', data: { channel: 'world-log' } }));
+            return;
+          }
+          if (!['UR_DISCOVERED', 'SSR_DISCOVERED', 'BOSS_CLEARED', 'RANKING_UPDATED'].includes(packet.event ?? '')) return;
+          const event = typeof packet.data === 'string' ? JSON.parse(packet.data) as WorldLogEntry : packet.data;
+          if (!event?.id) return;
+          setEvents(prev => [event, ...prev.filter(item => item.id !== event.id)].slice(0, 50));
+          setError(null);
+        } catch {
+          // Pusher is a live enhancement; polling remains the source of truth.
+        }
+      });
+      socket.addEventListener('error', () => {
+        if (active) setError('ライブ接続を再試行中です');
+      });
+    }
+
     return () => {
       active = false;
       controller.abort();
       window.clearInterval(interval);
+      socket?.close();
     };
   }, []);
 

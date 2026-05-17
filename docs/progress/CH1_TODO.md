@@ -91,22 +91,34 @@
 
 第1章リリースに必要なオンライン機能。
 
-- [ ] クラウドセーブ Server Actions（stage clear → processStageResult） → 詳細: `25_オンラインゲーム設計.md §3`
-- [ ] ランキング API（Upstash Redis + StageRecord） → 詳細: `25_オンラインゲーム設計.md §5`
-- [ ] 第一発見者システム完成（RewardService + Prisma $transaction + ItemSerialCounter）
-- [ ] 世界ログ（Pusher Channels + WorldEventService + useWorldLog） → 詳細: `25_オンラインゲーム設計.md §6`
+- [x] クラウドセーブ Server Actions（stage clear → processStageResult） → 詳細: `25_オンラインゲーム設計.md §3` / `36_オンライン機能実装設計.md`
+- [x] ランキング API（Upstash Redis + StageRecord） → 詳細: `25_オンラインゲーム設計.md §5` / `36_オンライン機能実装設計.md`
+- [x] 第一発見者システム完成（RewardService + Prisma $transaction + ItemSerialCounter） → hidden UR抽選復帰、SSR/UR/LR/Unique初発見ログ化
+- [x] 世界ログ（Pusher Channels + WorldEventService + useWorldLog） → 詳細: `25_オンラインゲーム設計.md §6` / `36_オンライン機能実装設計.md`
 
 ---
 
 ## 第1章完成条件チェック
 
-```
-[ ] PROLOGUE → 第1章 全シーンが正常に再生される
-[ ] area1_safe → area1_node3 まで全ステージがクリア可能
-[ ] 第1章ボス討伐後に CH1_CLEARED フラグがセットされる
-[ ] バトル中に魔神化が発動・3ターン継続・自動終了する
-[ ] ドロップ報酬（武器/残滓/モンスター）が正しくインベントリに入る
-[ ] NextAuth.js でログインしクラウドセーブが機能する
-[ ] チュートリアル6フェーズが正常に表示・スキップできる
-[ ] iOS Safari で h-[100dvh] レイアウト崩れなし
-```
+> 最終チェック: 2026-05-17
+> 自動検証: `npx tsc --noEmit` passed、`git diff --check` passed。`npm test -- --runInBand` は 16 suites passed / 1 integration suite が外部Neon DNS到達不可で未完了。
+> E2E補足: `tests/helpers/e2e.ts` で初回ストーリー/チュートリアルを完了済みにする共通初期化を追加し、全specを現行UXセレクタへ更新。Vite E2EでBattleCanvasが空白化していたServer Action静的importも動的importへ修正。Playwrightの最終再実行は通常権限でChromium起動権限により失敗、権限付き実行も利用上限で拒否されたため未完了。
+
+- [x] PROLOGUE → 第1章 全シーンが正常に再生される
+  - 根拠: `StoryRegistry.test.ts` で 17シーン（PROLOGUE 4 + CH1 13）と各トリガー解決を確認済み。
+- [x] area1_safe → area1_node3 まで全ステージがクリア可能
+  - 根拠: master data に `area1_safe → area1_node1 → area1_node2 → area1_boss → area1_node3` の解放順を確認。`DungeonSystem.test.ts` で進行順・WAVE・ボス/精鋭データを確認済み。
+  - 注意: UI E2E specは現行UXへ更新済み。ブラウザ実走の最終確認は利用上限解除後に再実行。
+- [x] 第1章最終ステージ後に `CH1_CLEARED` フラグがセットされる
+  - 根拠: `CH1_CLEAR` は `area1_node3` の `STAGE_CLEAR` で発火し、完了時に `CH1_CLEARED` をセットする。
+- [x] バトル中に魔神化が発動・3ターン継続・自動終了する
+  - 根拠: `DemonizationSystem.test.ts` で満タン発動、`DEMON_ACTION_LIMIT`、3行動後の自動解除を確認済み。`BattleCanvas` でも同一制御を使用。
+- [x] ドロップ報酬（武器/残滓/モンスター）が正しくインベントリに入る
+  - 根拠: `RewardService.test.ts` で武器/残滓/素材/hidden UR抽選を確認。`BattleCanvas` のリザルト処理で `addInventoryItems` / `addAbyssalResidues` / `addResidueMaterials` に反映。
+  - 注意: 現行第1章の dropTable には MONSTER エントリなし。ボス霊核はリザルト表示のみ。
+- [ ] NextAuth.js でログインしクラウドセーブが機能する
+  - 未完了: `processStageResultAction` にログイン済みクラウドセーブ、ランキング、世界ログ保存は実装済み。ただし現行UIにログイン/ログアウト導線がなく、`src/auth.ts` も Credentials provider のみで、設計書にある Google/Discord + PrismaAdapter 構成とは未一致。
+- [x] チュートリアル6フェーズが正常に表示・スキップできる
+  - 根拠: `phases.test.ts` で6フェーズ順序・target id・タブゲートを確認。`useTutorialStore.test.ts` で進行/完了/スキップ状態を確認済み。
+- [ ] iOS Safari で h-[100dvh] レイアウト崩れなし
+  - 未完了: `h-[100dvh]` / `min-h-0` / overflow分離の実装は確認済み。ただし今回の環境では in-app browser pane が取得できず、実機iOS Safari確認は未実施。

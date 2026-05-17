@@ -15,6 +15,7 @@ import { startTutorialBattlePhase } from '../../hooks/useTutorialTrigger';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { RewardService, type StageDropResult } from '../../services/RewardService';
 import { calculateCharacterStatProfile } from '../../logic/StatSystem';
+import type { StageResultMeta } from '../../types/online';
 import {
   DEMON_ACTION_LIMIT,
   canActivateDemonMode,
@@ -411,14 +412,31 @@ function convertDropToResultItems(drop: StageDropResult, playerName?: string) {
   return [...weapons, ...residues, ...materials];
 }
 
-function processStageResultLocal(stageId?: string) {
+async function processStageResultLocal(stageId?: string, meta: StageResultMeta = {}) {
   const stage = stageId ? STAGES[stageId] : undefined;
+
+  if (stageId) {
+    try {
+      const { processStageResultAction } = await import('../../app/actions');
+      const onlineResult = await processStageResultAction(stageId, meta);
+      if (onlineResult.success) {
+        return {
+          dropResult: onlineResult.dropResult,
+          expGain: onlineResult.expGain,
+          goldGain: onlineResult.goldGain,
+        };
+      }
+    } catch (error) {
+      console.warn('Cloud stage result failed, using local fallback.', error);
+    }
+  }
+
   const dropResult = REWARD_SERVICE.processDropTable(stage?.rewards.dropTable ?? []);
-  return Promise.resolve({
+  return {
     dropResult,
     expGain: stage?.rewards.baseExp ?? 0,
     goldGain: stage?.rewards.baseGold ?? 0,
-  });
+  };
 }
 
 // ── SVG ENEMIES ───────────────────────────────────────────────────────────────
@@ -1197,7 +1215,7 @@ function BattleLog({ lines }: { lines: string[] }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [lines]);
   return (
-    <div ref={ref} style={{
+    <div ref={ref} data-testid="battle-log" style={{
       padding: '6px 14px', height: 58,
       background: 'linear-gradient(180deg,rgba(3,1,12,0.6),rgba(5,2,16,0.85))',
       borderTop: '1px solid rgba(255,255,255,0.05)',
@@ -1694,6 +1712,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const enemiesRef = useRef<EnemyState[]>(cloneEnemies(battleWaves[0].enemies));
   const waveResolvingRef = useRef(false);
   const battleTotalsRef = useRef({ exp: 0, gold: 0, waves: 0 });
+  const totalDamageRef = useRef(0);
+  const actionCountRef = useRef(0);
+  const battleStartedAtRef = useRef(Date.now());
   const effectIdRef = useRef(0);
   const demonBurstIdRef = useRef(0);
   const enemyTurnSerialRef = useRef(0);
@@ -1750,6 +1771,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     const firstEnemies = cloneEnemies(battleWaves[0].enemies);
     waveResolvingRef.current = false;
     battleTotalsRef.current = { exp: 0, gold: 0, waves: 0 };
+    totalDamageRef.current = 0;
+    actionCountRef.current = 0;
+    battleStartedAtRef.current = Date.now();
     waveIndexRef.current = 0;
     enemiesRef.current = firstEnemies;
     setWaveIndex(0);
@@ -1801,10 +1825,15 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       if (nextIndex >= battleWaves.length) {
         const isBoss      = currentWave.isBoss;
         const bossName    = currentWave.enemies[0]?.name ?? 'ボス';
-        const clearTime   = 74 + Math.round(Math.random() * 18);
+        const clearTime   = Math.max(1, Math.round((Date.now() - battleStartedAtRef.current) / 1000));
         const totalWaves  = battleWaves.length;
+        const turnCount   = Math.max(1, actionCountRef.current);
 
-        processStageResultLocal(stageId).then(({ dropResult, expGain, goldGain }) => {
+        processStageResultLocal(stageId, {
+          turnCount,
+          clearTimeSec: clearTime,
+          totalDamage: totalDamageRef.current,
+        }).then(({ dropResult, expGain, goldGain }) => {
           // ローカル実行時のストア更新
           addInventoryItems(dropResult.weapons);
           addAbyssalResidues(dropResult.residues);
@@ -1915,6 +1944,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     const positions: Record<number, { x: string; y: string }> = { 0: { x: '12%', y: '18%' }, 1: { x: '36%', y: '12%' }, 2: { x: '62%', y: '16%' } };
     const pos = positions[targetId] || { x: '40%', y: '15%' };
     spawnFloat(pos.x, pos.y, finalDmg, { crit: isCrit, color: opts.color || '#fff' });
+    totalDamageRef.current += Math.max(0, finalDmg);
     setEnemies(prev => {
       const next = prev.map(e => e.id === targetId ? {
         ...e,
@@ -2137,6 +2167,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   function handleAttack() {
     if (phase !== 'playerTurn') return;
     if (resolvePlayerStatusBeforeAction()) return;
+    actionCountRef.current += 1;
     sfx.battleAttack(demonized ? 'demon' : 'physical');
     setPhase('animating');
     const tid = getTargetId();
@@ -2195,6 +2226,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   function handleSkill(skill: BattleSkill) {
     if (resolvePlayerStatusBeforeAction()) return;
+    actionCountRef.current += 1;
     sfx.skillCast(skill.element, skill.attackType);
     setPhase('animating');
     const targets = skill.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
@@ -2233,6 +2265,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   function handleItem(item: typeof ITEMS[0]) {
     if (resolvePlayerStatusBeforeAction()) return;
+    actionCountRef.current += 1;
     setPhase('animating');
     if (item.effect === 'heal') {
       spawnFloat('42%', '52%', item.value, { heal: true, color: '#4ade80' });
@@ -2246,6 +2279,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   function handleDemonUltimate() {
     if (!demonized || demonUltimateUsed || phase !== 'playerTurn') return;
     if (resolvePlayerStatusBeforeAction()) return;
+    actionCountRef.current += 1;
     sfx.demonUltimate();
     setDemonUltimateUsed(true);
     setPhase('animating');

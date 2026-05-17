@@ -133,8 +133,6 @@ export class RewardService {
     const multiplier = 1 + discoveryBonusRate / 100;
 
     for (const entry of dropTable) {
-      if (entry.isHidden) continue;
-
       const roll = rng();
       if (roll >= entry.rate * multiplier) continue;
 

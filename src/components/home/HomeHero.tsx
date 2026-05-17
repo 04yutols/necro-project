@@ -41,20 +41,20 @@ export function HomeHero() {
 
   if (!player) return null;
 
-  // Real or mock data processing
   const currentJob = player.jobs.find(j => j.jobId === player.currentJobId) || { level: 1, exp: 0 };
   const jobNextExp = currentJob.level * 1000;
-  const jobExpRemain = 450; // Requested mock value
-  const jobExpPercent = 80;
+  const jobExpRemain = Math.max(0, jobNextExp - currentJob.exp);
+  const jobExpPercent = Math.min(100, Math.round((currentJob.exp / jobNextExp) * 100));
 
   const necroLevel = necroStatus?.level || 1;
   const necroNextExp = necroLevel * 2000;
-  const necroExpRemain = 2800; // Requested mock value
-  const necroExpPercent = 40;
+  const necroExp = necroStatus?.exp ?? 0;
+  const necroExpRemain = Math.max(0, necroNextExp - necroExp);
+  const necroExpPercent = Math.min(100, Math.round((necroExp / necroNextExp) * 100));
 
   const currentCost = party.reduce((sum, monster) => sum + (monster ? monster.cost : 0), 0);
   const maxCost = necroStatus?.maxCost || 10;
-  const goldAmount = 50000; // Requested mock value
+  const goldAmount = player.gold;
 
   const NAV_BUTTONS = [
     { id: 'MAP', label: '出撃・マップ', sub: 'WORLD EXPLORATION', icon: Map, color: THEME.primary, border: THEME.primaryBorder, bg: THEME.primaryBg, glow: '0 0 20px rgba(188,0,251,0.3)' },
