@@ -12,6 +12,7 @@ import itemsData from '../../data/master/items.json';
 import demonFormsData from '../../data/master/demonForms.json';
 import { getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
 import { startTutorialBattlePhase } from '../../hooks/useTutorialTrigger';
+import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { RewardService, type StageDropResult } from '../../services/RewardService';
 import { calculateCharacterStatProfile } from '../../logic/StatSystem';
 import {
@@ -1655,6 +1656,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     addExp, addGold, addClearedStage,
     addInventoryItems, addAbyssalResidues, addResidueMaterials,
   } = useGameStore();
+  const sfx = useSoundEffects();
   const playerProfile = player ? calculateCharacterStatProfile(player, equippedResidueSlots) : null;
   const playerStats = playerProfile?.total ?? player?.stats;
   const battleWaves = useMemo(() => buildBattleWaves(stageId), [stageId]);
@@ -1770,6 +1772,12 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   useEffect(() => { waveIndexRef.current = waveIndex; }, [waveIndex]);
   useEffect(() => { enemiesRef.current = enemies; }, [enemies]);
+  useEffect(() => {
+    sfx.setDemonOverlay(demonized);
+    return () => {
+      if (demonized) sfx.setDemonOverlay(false);
+    };
+  }, [demonized, sfx]);
 
   const resolveWaveClear = useCallback(() => {
     if (waveResolvingRef.current) return;
@@ -1785,6 +1793,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
     setPhase('waveTransition');
     setSoul(prev => Math.min(100, prev + 18));
+    sfx.waveClear(clearedWave.isBoss ? 'boss' : 'wave');
     addLog(`★ ${clearedWave.label} クリア！ EXP +${clearedWave.rewards.exp} / Gold +${clearedWave.rewards.gold}G`);
 
     window.setTimeout(() => {
@@ -1841,7 +1850,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         window.setTimeout(() => setFlashColor(null), 600);
       }
     }, battleDelay(1200, 520));
-  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, currentWave.enemies, currentWave.isBoss, player?.name, stageId]);
+  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, currentWave.enemies, currentWave.isBoss, player?.name, sfx, stageId]);
 
   function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
     const id = ++floatId;
@@ -2128,6 +2137,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   function handleAttack() {
     if (phase !== 'playerTurn') return;
     if (resolvePlayerStatusBeforeAction()) return;
+    sfx.battleAttack(demonized ? 'demon' : 'physical');
     setPhase('animating');
     const tid = getTargetId();
     const enemy = enemies.find(e => e.id === tid);
@@ -2185,6 +2195,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   function handleSkill(skill: BattleSkill) {
     if (resolvePlayerStatusBeforeAction()) return;
+    sfx.skillCast(skill.element, skill.attackType);
     setPhase('animating');
     const targets = skill.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[skill.element];
@@ -2235,6 +2246,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   function handleDemonUltimate() {
     if (!demonized || demonUltimateUsed || phase !== 'playerTurn') return;
     if (resolvePlayerStatusBeforeAction()) return;
+    sfx.demonUltimate();
     setDemonUltimateUsed(true);
     setPhase('animating');
     const ultimate = demonUltimateSkill;
@@ -2264,6 +2276,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   function handleDemonize() {
     if (!canActivateDemonMode(soul, demonized) || phase === 'animating' || phase === 'waveTransition') return;
+    sfx.demonActivate();
     enemyTurnSerialRef.current += 1;
     const burstId = ++demonBurstIdRef.current;
     setAuto(false);

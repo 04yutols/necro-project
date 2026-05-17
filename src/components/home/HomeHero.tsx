@@ -242,7 +242,7 @@ export function HomeHero() {
           >
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none',
-              background: 'linear-gradient(90deg, transparent, rgba(188,0,251,0.1), transparent)',
+              backgroundImage: 'linear-gradient(90deg, transparent, rgba(188,0,251,0.1), transparent)',
               backgroundSize: '200% 100%',
               animation: 'shimmer 2.5s infinite',
             }}/>
@@ -293,7 +293,7 @@ export function HomeHero() {
                   {/* Shimmer overlay */}
                   <div style={{
                     position: 'absolute', inset: 0, borderRadius: '16px',
-                    background: `linear-gradient(90deg, transparent, ${btn.color}0f, transparent)`,
+                    backgroundImage: `linear-gradient(90deg, transparent, ${btn.color}0f, transparent)`,
                     backgroundSize: '200% 100%',
                     animation: 'shimmer 3s infinite',
                     pointerEvents: 'none',

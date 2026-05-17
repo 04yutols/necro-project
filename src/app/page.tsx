@@ -9,6 +9,7 @@ import { StoryArchive } from '../components/story/StoryArchive';
 import { useStoryTrigger } from '../hooks/useStoryTrigger';
 import { useStoryStore } from '../store/useStoryStore';
 import { TutorialOrchestrator } from '../components/tutorial/TutorialOrchestrator';
+import { useBGM } from '../hooks/useBGM';
 
 const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').then((mod) => mod.default), {
   ssr: false,
@@ -40,6 +41,12 @@ function GameContent() {
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
   const [pendingStageId, setPendingStageId] = useState<string | null>(null);
   const [logPanel, setLogPanel] = useState<'STORY' | 'BATTLE'>('STORY');
+  const { unlockAudio } = useBGM({
+    currentTab,
+    isInBattle,
+    activeStageId,
+    storyActive: Boolean(activeStoryScene || storyQueueLength > 0),
+  });
 
   const equippingMonster = equippingMonsterId ? inventoryMonsters.find(m => m.id === equippingMonsterId) : null;
 
@@ -170,7 +177,11 @@ function GameContent() {
     <>
       <TutorialOrchestrator />
       <StoryOrchestrator>
-      <div className="h-[100dvh] w-full bg-[#050505] selection:bg-secondary/30 overflow-hidden">
+      <div
+        className="h-[100dvh] w-full bg-[#050505] selection:bg-secondary/30 overflow-hidden"
+        onPointerDownCapture={unlockAudio}
+        onTouchStartCapture={unlockAudio}
+      >
         <AnimatePresence mode="wait">
           {isInBattle ? (
             <motion.div

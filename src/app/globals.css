@@ -584,6 +584,33 @@ body > * {
   33% { transform: translateX(12px) translateY(-8px); opacity: 0.7; }
   66% { transform: translateX(-8px) translateY(10px); opacity: 0.45; }
 }
+@keyframes mapFogReveal {
+  0% { opacity: 0; filter: blur(10px); transform: scale(1.04); }
+  16% { opacity: 1; filter: blur(4px); transform: scale(1); }
+  68% { opacity: 0.94; }
+  100% { opacity: 0; filter: blur(18px); transform: scale(1.08); }
+}
+@keyframes fogRuneSweep {
+  0% { opacity: 0.9; transform: translate3d(-10%, 8%, 0) rotate(-4deg) scale(1.08); }
+  54% { opacity: 0.82; transform: translate3d(6%, -4%, 0) rotate(3deg) scale(1); }
+  100% { opacity: 0; transform: translate3d(18%, -12%, 0) rotate(8deg) scale(1.14); }
+}
+@keyframes fogShardDissolve {
+  0% { opacity: 0; transform: translateY(8px) scale(0.55); filter: blur(2px); }
+  24% { opacity: 0.86; filter: blur(0); }
+  100% { opacity: 0; transform: translateY(-18px) scale(1.4); filter: blur(4px); }
+}
+@keyframes mapUnlockPulse {
+  0% { opacity: 0; transform: scale(0.55); filter: brightness(1.8); }
+  44% { opacity: 0.95; transform: scale(1); filter: brightness(1.15); }
+  100% { opacity: 0; transform: scale(1.32); filter: brightness(0.7); }
+}
+@keyframes mapUnlockBanner {
+  0% { opacity: 0; transform: translateY(28px) scale(0.96); }
+  28% { opacity: 1; transform: translateY(0) scale(1); }
+  78% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(12px) scale(0.98); }
+}
 @keyframes pathFlow {
   0% { stroke-dashoffset: 120; }
   100% { stroke-dashoffset: 0; }
@@ -815,6 +842,18 @@ body > * {
 @keyframes skipScanPulse {
   0%, 100% { opacity: 0.68; box-shadow: 0 0 0 rgba(188,0,251,0); }
   50% { opacity: 1; box-shadow: 0 0 18px rgba(188,0,251,0.28); }
+}
+
+@keyframes residueTierBurst {
+  0% { opacity: 0.48; transform: translateX(-50%) scale(0.72); filter: blur(3px) brightness(1.7); }
+  48% { opacity: 0.92; transform: translateX(-50%) scale(1.08); filter: blur(0) brightness(1.25); }
+  100% { opacity: 0.28; transform: translateX(-50%) scale(1.28); filter: blur(8px) brightness(0.8); }
+}
+
+@keyframes residueShardFloat {
+  0%, 100% { opacity: 0; transform: translateY(18px) scale(0.5); }
+  28% { opacity: 0.85; }
+  72% { opacity: 0.32; transform: translateY(-26px) scale(1.1); }
 }
 
 @keyframes storyVfxPulse {

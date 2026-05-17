@@ -78,12 +78,12 @@
 
 品質・演出の仕上げ。
 
-- [ ] SSR/SRドロップ演出（PixiJS VFX 紫光柱） → 詳細: `21_VFXアニメーションカタログ §5.2`
-- [ ] `src/services/AudioService.ts` — BGMクロスフェード + SE合成 → 詳細: `23_サウンド設計.md`
-- [ ] `src/hooks/useBGM.ts` / `useSoundEffects.ts` / `useAudioStore.ts`
-- [ ] 武器詳細画面（パッシブ説明 + ランク別プレビュー）
-- [ ] 残滓強化モーダル（Tier演出付き）
-- [ ] エリアマップのノード進行UI（霧解除アニメーション）
+- [x] SSR/SRドロップ演出（PixiJS VFX 紫光柱） → 詳細: `21_VFXアニメーションカタログ §5.2` / `35_品質演出仕上げ実装設計.md`
+- [x] `src/services/AudioService.ts` — BGMクロスフェード + SE合成 → 詳細: `23_サウンド設計.md` / `35_品質演出仕上げ実装設計.md`
+- [x] `src/hooks/useBGM.ts` / `useSoundEffects.ts` / `useAudioStore.ts`
+- [x] 武器詳細画面（パッシブ説明 + ランク別プレビュー）
+- [x] 残滓強化モーダル（Tier演出付き）
+- [x] エリアマップのノード進行UI（霧解除アニメーション）
 
 ---
 

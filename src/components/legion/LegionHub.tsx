@@ -6,6 +6,7 @@ import { ChevronLeft, Swords, Zap, Plus, Sparkles, ChevronRight, Home, X, Crown,
 import { useGameStore } from '../../store/useGameStore';
 import { useTutorialStore } from '../../store/useTutorialStore';
 import { useGothicSound } from '../necro/useGothicSound';
+import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats, WeaponMaterialData, type Tribe } from '../../types/game';
 import { getActiveSynergies, type ActiveSynergy } from '../../logic/TribeSynergySystem';
 import {
@@ -1085,6 +1086,56 @@ function WeaponPassiveLine({ passive, rank, color }: { passive: ItemData['passiv
   );
 }
 
+function WeaponRankPreview({ weapon, rank, color }: { weapon: ItemData; rank: number; color: string }) {
+  const passives = [weapon.passiveA, weapon.passiveB].filter(Boolean) as NonNullable<ItemData['passiveA']>[];
+  if (passives.length === 0) return null;
+  const previewRanks = [...new Set([1, Math.max(1, rank), Math.min(5, Math.max(1, rank + 1)), 5])];
+
+  return (
+    <div style={{ borderRadius: 13, border: `1px solid ${color}28`, background: 'linear-gradient(135deg, rgba(255,255,255,0.045), rgba(0,0,0,0.22))', padding: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 900, letterSpacing: '0.14em', color }}>RANK PREVIEW</span>
+        <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 9, fontWeight: 800, color: 'rgba(202,190,235,0.68)' }}>魂の共鳴で効果量が上昇</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${previewRanks.length}, minmax(0, 1fr))`, gap: 7 }}>
+        {previewRanks.map((previewRank) => {
+          const active = previewRank === Math.max(1, rank);
+          const next = previewRank === Math.min(5, Math.max(1, rank + 1)) && previewRank !== rank;
+          return (
+            <div
+              key={previewRank}
+              style={{
+                minWidth: 0,
+                borderRadius: 10,
+                padding: '7px 6px',
+                background: active ? `${color}1F` : next ? 'rgba(212,175,55,0.10)' : 'rgba(0,0,0,0.24)',
+                border: `1px solid ${active ? color + '66' : next ? 'rgba(212,175,55,0.42)' : 'rgba(255,255,255,0.06)'}`,
+                boxShadow: active ? `0 0 14px ${color}22` : 'none',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, marginBottom: 5 }}>
+                <span style={{ fontFamily: "'Cinzel', serif", fontSize: 13, fontWeight: 900, color: active ? color : next ? '#D4AF37' : '#8b7da8' }}>R{previewRank}</span>
+                {active && <span style={{ fontFamily: 'monospace', fontSize: 7, color: '#8DFFBF' }}>NOW</span>}
+                {next && <span style={{ fontFamily: 'monospace', fontSize: 7, color: '#D4AF37' }}>NEXT</span>}
+              </div>
+              <div style={{ display: 'grid', gap: 5 }}>
+                {passives.map((passive) => (
+                  <div key={`${previewRank}-${passive.nameJa}`} style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 8, color: '#F0EAFF', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{passive.nameJa}</div>
+                    <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 8, color: 'rgba(202,190,235,0.62)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {describeWeaponPassive(passive, previewRank)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip }: {
   weapon: ItemData | null;
   equipped: ItemData | null;
@@ -1166,6 +1217,7 @@ function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip 
           <WeaponPassiveLine passive={weapon.passiveA} rank={rank} color={rarityColor} />
           <WeaponPassiveLine passive={weapon.passiveB} rank={rank} color={rarityColor} />
         </div>
+        <WeaponRankPreview weapon={weapon} rank={rank} color={rarityColor} />
 
         <motion.button
           type="button"
@@ -1293,6 +1345,248 @@ function WeaponDismantlePanel({ weapon, equipped, materials, color, onDismantle 
 /* ──────────────────────────────────────────
    STATS COMPARISON — inlined from NecroLab
 ────────────────────────────────────────── */
+interface ResidueEnhanceResult {
+  residueName: string;
+  rarity: AbyssalResidueData['rarity'];
+  expGain: number;
+  levelledUp: boolean;
+  before: { level: number; exp: number; maxExp: number; mainValue: number; score: number; grade: ReturnType<typeof getResidueScoreGrade> };
+  after: { level: number; exp: number; maxExp: number; mainValue: number; score: number; grade: ReturnType<typeof getResidueScoreGrade> };
+  mainStatType: string;
+}
+
+function previewResidueEnhanceResult(residue: AbyssalResidueData, expGain: number): ResidueEnhanceResult {
+  let newExp = residue.exp + expGain;
+  let newLevel = residue.level;
+  let newMaxExp = residue.maxExp;
+  let levelledUp = false;
+  while (newExp >= newMaxExp && newLevel < 20) {
+    newExp -= newMaxExp;
+    newLevel += 1;
+    newMaxExp = Math.floor(newMaxExp * 1.5);
+    levelledUp = true;
+  }
+  if (newLevel >= 20) newExp = Math.min(newExp, newMaxExp);
+
+  const projectedMainValue = levelledUp
+    ? Number((residue.mainStat.value * (1 + newLevel * 0.04)).toFixed(1))
+    : residue.mainStat.value;
+  const beforeScore = calculateResidueScore(residue);
+  const projectedResidue: AbyssalResidueData = {
+    ...residue,
+    level: newLevel,
+    exp: newExp,
+    maxExp: newMaxExp,
+    mainStat: { ...residue.mainStat, value: projectedMainValue },
+  };
+  const afterScore = calculateResidueScore(projectedResidue);
+
+  return {
+    residueName: residue.name,
+    rarity: residue.rarity,
+    expGain,
+    levelledUp,
+    mainStatType: residue.mainStat.type,
+    before: {
+      level: residue.level,
+      exp: residue.exp,
+      maxExp: residue.maxExp,
+      mainValue: residue.mainStat.value,
+      score: beforeScore,
+      grade: getResidueScoreGrade(beforeScore),
+    },
+    after: {
+      level: newLevel,
+      exp: newExp,
+      maxExp: newMaxExp,
+      mainValue: projectedMainValue,
+      score: afterScore,
+      grade: getResidueScoreGrade(afterScore),
+    },
+  };
+}
+
+function ResidueEnhanceResultModal({ result, onClose }: { result: ResidueEnhanceResult; onClose: () => void }) {
+  const color = RARITY_COLOR[result.rarity];
+  const levelDelta = result.after.level - result.before.level;
+  const scoreDelta = Number((result.after.score - result.before.score).toFixed(1));
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 90,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 'max(16px, env(safe-area-inset-top, 16px)) 14px max(16px, env(safe-area-inset-bottom, 16px))',
+        background: 'rgba(2,0,8,0.72)',
+        backdropFilter: 'blur(16px)',
+      }}
+    >
+      <motion.div
+        initial={{ y: 26, scale: 0.94, opacity: 0 }}
+        animate={{ y: 0, scale: 1, opacity: 1 }}
+        exit={{ y: 18, scale: 0.96, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+        style={{
+          width: 'min(402px, 100%)',
+          maxHeight: 'calc(100dvh - 32px)',
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          borderRadius: 22,
+          border: `1.5px solid ${color}77`,
+          background: 'linear-gradient(180deg, rgba(16,4,34,0.98), rgba(5,1,14,0.98))',
+          boxShadow: `0 0 44px ${color}38, inset 0 0 28px rgba(0,0,0,0.55)`,
+          position: 'relative',
+        }}
+      >
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[22px]">
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: -76,
+              width: 210,
+              height: 210,
+              borderRadius: '50%',
+              transform: 'translateX(-50%)',
+              background: `radial-gradient(circle, ${color}55, transparent 68%)`,
+              animation: result.levelledUp ? 'residueTierBurst 1.25s ease-out infinite' : 'pulseGlow 2s ease-in-out infinite',
+            }}
+          />
+          {Array.from({ length: 16 }, (_, i) => (
+            <span
+              key={i}
+              style={{
+                position: 'absolute',
+                left: `${8 + ((i * 29) % 84)}%`,
+                top: `${5 + ((i * 37) % 76)}%`,
+                width: 2 + (i % 3),
+                height: 2 + (i % 3),
+                borderRadius: '50%',
+                background: i % 2 === 0 ? color : '#EDE8FF',
+                opacity: 0.7,
+                boxShadow: `0 0 12px ${color}`,
+                animation: `residueShardFloat ${2.2 + (i % 5) * 0.18}s ease-in-out infinite`,
+                animationDelay: `${i * 0.08}s`,
+              }}
+            />
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="閉じる"
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            zIndex: 2,
+            width: 36,
+            height: 36,
+            borderRadius: 12,
+            border: '1px solid rgba(255,255,255,0.10)',
+            background: 'rgba(255,255,255,0.055)',
+            color: '#8b7da8',
+            display: 'grid',
+            placeItems: 'center',
+          }}
+        >
+          <X size={16} />
+        </button>
+
+        <div style={{ position: 'relative', padding: '24px 18px 18px', textAlign: 'center' }}>
+          <motion.div
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, type: 'spring', stiffness: 280, damping: 18 }}
+            style={{
+              width: 78,
+              height: 78,
+              margin: '0 auto 13px',
+              borderRadius: '50%',
+              border: `2px solid ${color}88`,
+              background: `radial-gradient(circle, ${color}35, rgba(0,0,0,0.86))`,
+              display: 'grid',
+              placeItems: 'center',
+              boxShadow: `0 0 28px ${color}55`,
+            }}
+          >
+            {result.levelledUp ? <Crown size={36} style={{ color }} /> : <Sparkles size={34} style={{ color }} />}
+          </motion.div>
+          <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color, fontWeight: 900, letterSpacing: '0.2em' }}>
+            SOUL INFUSION
+          </div>
+          <div style={{ marginTop: 5, fontFamily: "'Cinzel', serif", fontSize: 24, color: '#F0EAFF', fontWeight: 900, textShadow: `0 0 18px ${color}55` }}>
+            {result.levelledUp ? 'TIER ASCENDED' : 'INFUSION COMPLETE'}
+          </div>
+          <div style={{ marginTop: 7, fontSize: 12, color: '#bcaee4', fontWeight: 800 }}>{result.residueName}</div>
+        </div>
+
+        <div style={{ position: 'relative', padding: '0 18px 18px', display: 'grid', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 10, alignItems: 'stretch' }}>
+            <div style={{ borderRadius: 14, background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.08)', padding: 12 }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#7f7193', fontWeight: 900 }}>BEFORE</div>
+              <div style={{ marginTop: 5, fontFamily: "'Cinzel', serif", fontSize: 21, color: '#bcaee4', fontWeight: 900 }}>Lv.{result.before.level}</div>
+              <div style={{ marginTop: 3, fontFamily: 'monospace', fontSize: 11, color: result.before.grade.color, fontWeight: 900 }}>{result.before.grade.grade} / {result.before.score}</div>
+            </div>
+            <div style={{ display: 'grid', placeItems: 'center', color, fontWeight: 900 }}>
+              <ChevronRight size={22} />
+            </div>
+            <div style={{ borderRadius: 14, background: `${color}16`, border: `1px solid ${color}50`, padding: 12, boxShadow: `0 0 18px ${color}22` }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 9, color, fontWeight: 900 }}>AFTER</div>
+              <div style={{ marginTop: 5, fontFamily: "'Cinzel', serif", fontSize: 21, color: '#F0EAFF', fontWeight: 900 }}>Lv.{result.after.level}</div>
+              <div style={{ marginTop: 3, fontFamily: 'monospace', fontSize: 11, color: result.after.grade.color, fontWeight: 900 }}>{result.after.grade.grade} / {result.after.score}</div>
+            </div>
+          </div>
+
+          <div style={{ borderRadius: 14, background: 'rgba(0,0,0,0.26)', border: '1px solid rgba(255,255,255,0.07)', padding: 12, display: 'grid', gap: 9 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ color: '#8b7da8', fontSize: 10, fontWeight: 900 }}>主能力</span>
+              <span style={{ color, fontFamily: 'monospace', fontSize: 11, fontWeight: 900 }}>
+                {formatStat(result.mainStatType, result.before.mainValue)} → {formatStat(result.mainStatType, result.after.mainValue)}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ color: '#8b7da8', fontSize: 10, fontWeight: 900 }}>投入EXP</span>
+              <span style={{ color: '#E080FF', fontFamily: 'monospace', fontSize: 11, fontWeight: 900 }}>+{result.expGain.toLocaleString()}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ color: '#8b7da8', fontSize: 10, fontWeight: 900 }}>上昇</span>
+              <span style={{ color: levelDelta > 0 ? '#8DFFBF' : '#a89ec8', fontFamily: 'monospace', fontSize: 11, fontWeight: 900 }}>
+                {levelDelta > 0 ? `Lv +${levelDelta}` : '蓄積'} / SCORE {scoreDelta >= 0 ? '+' : ''}{scoreDelta}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              minHeight: 46,
+              borderRadius: 15,
+              border: `1.5px solid ${color}66`,
+              background: `linear-gradient(135deg, ${color}28, rgba(10,3,24,0.92))`,
+              color: '#F0EAFF',
+              fontFamily: "'Noto Sans JP', sans-serif",
+              fontSize: 13,
+              fontWeight: 900,
+              letterSpacing: '0.18em',
+            }}
+          >
+            確認
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function StatsComparison({ residue, expGain }: { residue: AbyssalResidueData | null; expGain: number }) {
   if (!residue) return (
     <div className="gothic-panel rounded-2xl p-4 shrink-0 flex items-center justify-center opacity-35" style={{ height: 110 }}>
@@ -1912,6 +2206,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
 }) {
   const { equipResidueToSlot, upgradeResidue, equipItem, rankUpWeapon, reforgeWeapon, dismantleWeapon } = useGameStore();
   const sound = useGothicSound();
+  const sfx = useSoundEffects();
   const conf = getConf(gearCtx.mk, player, party);
   const color = conf.color;
   const [tab, setTab] = useState<'EQUIP' | 'ENHANCE' | 'TRANSMUTE' | 'DISMANTLE'>('EQUIP');
@@ -1919,6 +2214,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   const [selectedResidueId, setSelectedResidueId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedMatIds, setSelectedMatIds] = useState<Set<string>>(new Set());
+  const [enhanceResult, setEnhanceResult] = useState<ResidueEnhanceResult | null>(null);
 
   const isResidueSlot = gearCtx.slotType === 'RESIDUE';
   const activeResidueSlotId: ResidueSlotId = RESIDUE_SLOT_ORDER[activeResidueSlotIndex] ?? 'chest';
@@ -1995,8 +2291,11 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
 
   const handleEnhance = () => {
     if (!selectedResidue || selectedMatIds.size === 0) return;
+    const result = previewResidueEnhanceResult(selectedResidue, totalExpGain);
     sound.playEquip();
+    sfx.residueEnhance(result.levelledUp);
     upgradeResidue(selectedResidue.id, [...selectedMatIds]);
+    setEnhanceResult(result);
     setSelectedMatIds(new Set());
   };
 
@@ -2223,6 +2522,14 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
           )}
         </AnimatePresence>
       </div>
+      <AnimatePresence>
+        {enhanceResult && (
+          <ResidueEnhanceResultModal
+            result={enhanceResult}
+            onClose={() => setEnhanceResult(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
     </motion.div>
   );
