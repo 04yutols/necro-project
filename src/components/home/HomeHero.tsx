@@ -4,6 +4,7 @@ import React from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { motion } from 'framer-motion';
 import { Map, Skull, Sword, Terminal, ChevronRight, Activity, Swords, Settings, Sparkles } from 'lucide-react';
+import { AuthPanel } from '../auth/AuthPanel';
 
 const THEME = {
   primary: '#BC00FB',
@@ -108,24 +109,27 @@ export function HomeHero() {
               拠点
             </div>
           </div>
-          <button
-            type="button"
-            aria-label="設定"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              color: '#8b7da8',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 16,
-            }}
-          >
-            <Settings size={16} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <AuthPanel />
+            <button
+              type="button"
+              aria-label="設定"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: '#8b7da8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 16,
+              }}
+            >
+              <Settings size={16} />
+            </button>
+          </div>
         </motion.div>
         
         {/* Header Profile UI */}

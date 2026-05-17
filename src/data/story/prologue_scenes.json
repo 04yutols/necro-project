@@ -1,0 +1,118 @@
+{
+  "scenes": [
+    {
+      "id": "PROLOGUE_BEGINNING",
+      "type": "ENVIRONMENT",
+      "sequence": 1,
+      "trigger": { "type": "GAME_START" },
+      "background": "BLOOD_RED",
+      "isSkippable": false,
+      "archiveTitle": "最悪の契約：序章",
+      "archiveChapter": 0,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "人里離れた魔族の村。そこは今、絶望の火の海と化していた。",
+          "textEn": "A remote demon village. It was now transformed into a sea of fire and despair."
+        },
+        {
+          "speaker": "narrator",
+          "text": "突如として降臨した魔王の手によって、平穏は一瞬で踏みにじられたのだ。",
+          "textEn": "Peace was trampled in an instant by the hand of the Demon King who suddenly descended."
+        }
+      ]
+    },
+    {
+      "id": "PROLOGUE_HERO_DEFEAT",
+      "type": "DIALOGUE",
+      "sequence": 2,
+      "trigger": { "type": "GAME_START" },
+      "background": "RUIN_LIGHT",
+      "isSkippable": false,
+      "archiveTitle": "勇者の終焉",
+      "archiveChapter": 0,
+      "lines": [
+        {
+          "speaker": "demon_king",
+          "speakerJa": "魔王",
+          "text": "「……終わりの時だ、勇者よ。お前の高潔な魂、ただ消し去るには惜しい」",
+          "textEn": "\"...It is the time of the end, Hero. Your noble soul is too precious to simply vanish.\"",
+          "portraits": [
+            { "characterId": "line", "position": "CENTER", "expression": "dying" },
+            { "characterId": "demon_king", "position": "RIGHT", "expression": "default" }
+          ]
+        },
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「……ぐっ、アルド……。逃げろ、こいつは……！」",
+          "textEn": "\"...Guh, Aldo... Run, this guy is...!\"",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "shocked" },
+            { "characterId": "line", "position": "CENTER", "expression": "dying" }
+          ]
+        },
+        {
+          "speaker": "narrator",
+          "text": "魔王の指先が、無慈悲にラインの胸を貫く。",
+          "textEn": "The Demon King's fingertips mercilessly pierce Line's chest.",
+          "vfx": "cursedPillarBreath"
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「……ラインッ！」",
+          "textEn": "\"...Line!\"",
+          "expression": "shocked"
+        }
+      ]
+    },
+    {
+      "id": "PROLOGUE_THE_CONTRACT",
+      "type": "DIALOGUE",
+      "sequence": 3,
+      "trigger": { "type": "GAME_START" },
+      "background": "DARK",
+      "isSkippable": false,
+      "archiveTitle": "最悪の契約",
+      "archiveChapter": 0,
+      "onComplete": {
+        "setFlag": "PROLOGUE_COMPLETED",
+        "navigateTo": "HOME"
+      },
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "魔王は冷笑を浮かべ、死霊術の禁忌を発動した。",
+          "textEn": "The Demon King wore a cold sneer and activated the taboo of necromancy."
+        },
+        {
+          "speaker": "narrator",
+          "text": "ラインの肉体から溢れ出る黄金の魂が、魔王の手によって強引に捕らえられる。",
+          "textEn": "The golden soul overflowing from Line's body was forcibly captured by the Demon King's hand.",
+          "vfx": "soulChain"
+        },
+        {
+          "speaker": "narrator",
+          "text": "それは、逃げ遅れた魔族の少年──アルドの肉体へと、容赦なく叩き込まれた。",
+          "textEn": "It was relentlessly hammered into the body of the demon-born boy who failed to escape—Aldo."
+        },
+        {
+          "speaker": "demon_king",
+          "speakerJa": "魔王",
+          "text": "（誰にも聞こえない声で囁く）\n「ネクロマンサーの生き残りよ。その『勇者の魂』が尽き果てるまで、せいぜい絶望を抱いて足掻くがいい」",
+          "textEn": "(Whispering in a voice audible to no one else)\n\"Necromancer survivor. Until that 'Hero's Soul' is exhausted, struggle as much as you can while embracing despair.\"",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "shocked" },
+            { "characterId": "demon_king", "position": "RIGHT", "expression": "contempt" }
+          ]
+        },
+        {
+          "speaker": "narrator",
+          "text": "勇者ラインは命を落とした。だがその魂は、かつての友の中で再び目覚めることとなる。",
+          "textEn": "Hero Line lost his life. But his soul would awaken once more within his former friend."
+        }
+      ]
+    }
+  ]
+}

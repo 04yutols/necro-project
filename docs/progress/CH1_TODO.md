@@ -117,7 +117,8 @@
   - 根拠: `RewardService.test.ts` で武器/残滓/素材/hidden UR抽選を確認。`BattleCanvas` のリザルト処理で `addInventoryItems` / `addAbyssalResidues` / `addResidueMaterials` に反映。
   - 注意: 現行第1章の dropTable には MONSTER エントリなし。ボス霊核はリザルト表示のみ。
 - [ ] NextAuth.js でログインしクラウドセーブが機能する
-  - 未完了: `processStageResultAction` にログイン済みクラウドセーブ、ランキング、世界ログ保存は実装済み。ただし現行UIにログイン/ログアウト導線がなく、`src/auth.ts` も Credentials provider のみで、設計書にある Google/Discord + PrismaAdapter 構成とは未一致。
+  - 進捗: HOME右上にCredentialsログイン/新規登録/ログアウトUIを追加し、`/api/auth/signup` と NextAuth Credentials provider へ接続済み。`processStageResultAction` のログイン済みクラウドセーブ、ランキング、世界ログ保存も実装済み。
+  - 未確認: Neon接続環境での実ログイン → ステージクリア → クラウド保存E2E。Google/Discord OAuth は設計書どおり後続対応。
 - [x] チュートリアル6フェーズが正常に表示・スキップできる
   - 根拠: `phases.test.ts` で6フェーズ順序・target id・タブゲートを確認。`useTutorialStore.test.ts` で進行/完了/スキップ状態を確認済み。
 - [ ] iOS Safari で h-[100dvh] レイアウト崩れなし

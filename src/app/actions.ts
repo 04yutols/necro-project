@@ -3,7 +3,7 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import { createCredentialsUser } from '@/services/AuthService';
 import { RewardService, StageDropResult } from '@/services/RewardService';
 import { MasterDataService } from '@/services/MasterDataService';
 import { RankingService } from '@/services/RankingService';
@@ -24,27 +24,7 @@ export async function signUpAction(
   password:    string,
   displayName: string,
 ): Promise<SignUpResult> {
-  if (!email || !password || !displayName) {
-    return { success: false, error: '全ての項目を入力してください' };
-  }
-  if (password.length < 8) {
-    return { success: false, error: 'パスワードは8文字以上にしてください' };
-  }
-  if (displayName.length < 2 || displayName.length > 16) {
-    return { success: false, error: 'プレイヤー名は2〜16文字にしてください' };
-  }
-
-  const exists = await prisma.user.findUnique({ where: { email } });
-  if (exists) {
-    return { success: false, error: 'このメールアドレスは既に登録されています' };
-  }
-
-  const passwordHash = await bcrypt.hash(password, 12);
-  await prisma.user.create({
-    data: { email, passwordHash, displayName, name: displayName },
-  });
-
-  return { success: true };
+  return createCredentialsUser({ email, password, displayName });
 }
 
 export interface StageResultPayload {
