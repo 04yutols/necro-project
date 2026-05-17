@@ -61,16 +61,39 @@ function emptyDrop(): StageDropResult {
 const DISCOVERY_RARITIES = new Set<ItemData['rarity']>(['SSR', 'UR', 'LR', 'UNIQUE', 'HIDDEN_UNIQUE']);
 const STARTER_MONSTER_IDS = ['goblin', 'skeleton', 'zombie'] as const;
 const STARTER_WEAPON_ID = 'bone_cleaver';
+
+// レベル1基礎ステータス（職業補正前）
+// 戦士の場合: HP×1.14→912, ATK×1.20→144, DEF×1.15→92
 const DEFAULT_BASE_STATS: BaseStats = {
-  hp: 7200,
-  atk: 1250,
-  def: 720,
-  spd: 110,
-  critRate: 8,
-  critDmg: 165,
+  hp: 800,
+  atk: 120,
+  def: 80,
+  spd: 100,
+  critRate: 5,
+  critDmg: 150,
   effectHit: 0,
-  effectRes: 5,
+  effectRes: 0,
 };
+
+// レベルアップごとのステータス成長量（職業補正前の生値）
+const STAT_GROWTH_PER_LEVEL = {
+  hp:  40,
+  atk: 6,
+  def: 4,
+} as const;
+
+// 累積EXP必要量: expForLevel(n) = 50*(n-1)*(n+8)
+// Lv2: 500, Lv3: 1100, Lv4: 1800, Lv5: 2600, ...
+function expForLevel(n: number): number {
+  if (n <= 1) return 0;
+  return 50 * (n - 1) * (n + 8);
+}
+
+function levelFromTotalExp(totalExp: number): number {
+  let level = 1;
+  while (level < 99 && expForLevel(level + 1) <= totalExp) level++;
+  return level;
+}
 const EMPTY_EQUIPMENT: EquipmentSlots = {
   weapon: null,
   sub: null,
@@ -514,15 +537,29 @@ export async function processStageResultAction(stageId: string, meta: StageResul
       });
     }
 
-    // EXP 加算
+    // EXP 加算 + レベルアップ時ステータス成長
     const currentJob = (char.jobs as any[]).find(j => j.jobId === char.currentJobId);
     if (currentJob) {
-      const newExp   = currentJob.exp + expGain;
-      const newLevel = Math.min(99, Math.floor(newExp / 100) + 1);
+      const newExp      = currentJob.exp + expGain;
+      const oldLevel    = currentJob.level as number;
+      const newLevel    = Math.min(99, levelFromTotalExp(newExp));
+      const levelsGained = newLevel - oldLevel;
+
       await tx.userJob.update({
         where: { characterId_jobId: { characterId: char.id, jobId: char.currentJobId! } },
         data:  { exp: newExp, level: newLevel },
       });
+
+      if (levelsGained > 0) {
+        await tx.character.update({
+          where: { id: char.id },
+          data: {
+            hp:  { increment: STAT_GROWTH_PER_LEVEL.hp  * levelsGained },
+            atk: { increment: STAT_GROWTH_PER_LEVEL.atk * levelsGained },
+            def: { increment: STAT_GROWTH_PER_LEVEL.def * levelsGained },
+          },
+        });
+      }
     }
 
     for (const monster of dropResult.monsters) {

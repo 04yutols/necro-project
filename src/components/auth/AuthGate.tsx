@@ -26,12 +26,17 @@ export function AuthGate({ onAuthenticated }: AuthGateProps) {
 
     try {
       if (mode === 'signup') {
+        console.log('[AuthGate] signup...');
         await signUpWithCredentials(email, password, displayName);
+        console.log('[AuthGate] signup OK');
       }
+      console.log('[AuthGate] signIn...');
       await signInWithCredentials(email, password);
+      console.log('[AuthGate] signIn OK → emitAuthChanged + onAuthenticated');
       emitAuthChanged();
       onAuthenticated();
     } catch (err) {
+      console.error('[AuthGate] error:', err);
       setError(err instanceof Error ? err.message : '認証に失敗しました');
     } finally {
       setSubmitting(false);

@@ -92,11 +92,14 @@ export function useAuthFlow(): AuthFlowState {
     let cancelled = false;
 
     async function boot() {
+      console.log('[AuthFlow] boot() start, version:', version);
       setStatus('checking');
       setError(null);
 
       try {
         const authSession = await fetchAuthSession();
+        console.log('[AuthFlow] fetchAuthSession result:', JSON.stringify(authSession));
+
         if (!authSession.available) {
           if (!bootedGuestRef.current && !useGameStore.getState().player) {
             initialize();
@@ -110,11 +113,14 @@ export function useAuthFlow(): AuthFlowState {
         }
 
         const session = authSession.session;
+        console.log('[AuthFlow] session.user:', JSON.stringify(session.user ?? null));
+
         if (!session.user?.id) {
           clearServerData();
           if (!cancelled) {
             setUser(null);
             setStatus('authRequired');
+            console.log('[AuthFlow] → authRequired (no user in session)');
           }
           return;
         }
@@ -123,12 +129,15 @@ export function useAuthFlow(): AuthFlowState {
         setStatus('loadingCharacter');
 
         const result = await loadCharacterWithRetry();
+        console.log('[AuthFlow] loadCharacterWithRetry result:', result.success, result.status, (!result.success && result.error) ? result.error : '');
         if (cancelled) return;
 
         if (!result.success) {
           clearServerData();
           setUser(null);
-          setStatus(result.status === 'UNAUTHENTICATED' ? 'authRequired' : 'error');
+          const nextStatus = result.status === 'UNAUTHENTICATED' ? 'authRequired' : 'error';
+          console.log('[AuthFlow] → ', nextStatus, '| reason:', result.error);
+          setStatus(nextStatus);
           setError(result.error);
           return;
         }
@@ -137,13 +146,16 @@ export function useAuthFlow(): AuthFlowState {
         if (result.status === 'NO_CHARACTER') {
           clearServerData();
           setStatus('characterRequired');
+          console.log('[AuthFlow] → characterRequired');
           return;
         }
 
         loadFromServer(result.data);
         setStatus('ready');
+        console.log('[AuthFlow] → ready');
       } catch (err) {
         if (cancelled) return;
+        console.error('[AuthFlow] boot() caught error:', err);
         setError(err instanceof Error ? err.message : '起動データの取得に失敗しました');
         setStatus('error');
       }

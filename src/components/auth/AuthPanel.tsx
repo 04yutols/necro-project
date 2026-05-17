@@ -1,8 +1,9 @@
 'use client';
 
-import React, { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cloud, LogIn, LogOut, ShieldCheck, UserPlus, X } from 'lucide-react';
+import { signIn, signOut } from 'next-auth/react';
 
 type AuthMode = 'login' | 'signup';
 type SessionStatus = 'loading' | 'guest' | 'authenticated' | 'unavailable';
@@ -29,10 +30,6 @@ async function readJson<T>(url: string, init?: RequestInit): Promise<T | null> {
   return response.json() as Promise<T>;
 }
 
-async function getCsrfToken() {
-  const data = await readJson<{ csrfToken?: string }>('/api/auth/csrf', { cache: 'no-store' });
-  return data?.csrfToken ?? null;
-}
 
 async function readSession(): Promise<{ available: boolean; session: AuthSession }> {
   const response = await fetch('/api/auth/session', {
@@ -47,6 +44,7 @@ async function readSession(): Promise<{ available: boolean; session: AuthSession
 
 export function AuthPanel() {
   const [status, setStatus] = useState<SessionStatus>('loading');
+  const useStatusRef = useRef<SessionStatus>('loading');
   const [user, setUser] = useState<SessionUser | null>(null);
   const [mode, setMode] = useState<AuthMode | null>(null);
   const [email, setEmail] = useState('');
@@ -55,26 +53,31 @@ export function AuthPanel() {
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const setStatusTracked = useCallback((s: SessionStatus) => {
+    useStatusRef.current = s;
+    setStatus(s);
+  }, []);
+
   const loadSession = useCallback(async () => {
     try {
       const data = await readSession();
       if (!data.available) {
-        setStatus('unavailable');
+        setStatusTracked('unavailable');
         setUser(null);
         return;
       }
       if (data.session.user) {
-        setStatus('authenticated');
+        setStatusTracked('authenticated');
         setUser(data.session.user);
         return;
       }
-      setStatus('guest');
+      setStatusTracked('guest');
       setUser(null);
     } catch {
-      setStatus('unavailable');
+      setStatusTracked('unavailable');
       setUser(null);
     }
-  }, []);
+  }, [setStatusTracked]);
 
   useEffect(() => {
     void loadSession();
@@ -108,34 +111,14 @@ export function AuthPanel() {
   };
 
   const signInWithCredentials = async () => {
-    const csrfToken = await getCsrfToken();
-    if (!csrfToken) {
-      throw new Error('クラウド認証APIに接続できません。Next runtimeで起動してください');
-    }
-
-    const body = new URLSearchParams({
-      csrfToken,
+    const result = await signIn('credentials', {
       email: email.trim().toLowerCase(),
       password,
-      callbackUrl: '/',
-      redirect: 'false',
-      json: 'true',
+      redirect: false,
     });
-
-    const response = await fetch('/api/auth/signin/credentials?redirect=false', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Accept: 'application/json',
-      },
-      body,
-    });
-    const contentType = response.headers.get('content-type') ?? '';
-    const result = contentType.includes('application/json')
-      ? await response.json().catch(() => null) as { error?: string | null } | null
-      : null;
-
-    if (!response.ok || result?.error) {
+    // result が falsy または error がある場合は失敗
+    // セッションを再取得して判定する（v5 beta の戻り値は不安定なため）
+    if (result && 'error' in result && result.error) {
       throw new Error('メールアドレスまたはパスワードが違います');
     }
   };
@@ -162,7 +145,13 @@ export function AuthPanel() {
       }
 
       await signInWithCredentials();
+      // v5 beta はセッション反映に少し遅延があることがある
+      await new Promise(r => setTimeout(r, 300));
       await loadSession();
+      // loadSession 後も guest のままなら認証失敗と判断
+      if (useStatusRef.current !== 'authenticated') {
+        throw new Error('メールアドレスまたはパスワードが違います');
+      }
       window.dispatchEvent(new Event('necro-auth-changed'));
       closeDialog();
     } catch (error) {
@@ -176,17 +165,7 @@ export function AuthPanel() {
     setSubmitting(true);
     setMessage(null);
     try {
-      const csrfToken = await getCsrfToken();
-      if (csrfToken) {
-        await fetch('/api/auth/signout?redirect=false', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Accept: 'application/json',
-          },
-          body: new URLSearchParams({ csrfToken, callbackUrl: '/' }),
-        });
-      }
+      await signOut({ redirect: false });
       setStatus('guest');
       setUser(null);
       window.dispatchEvent(new Event('necro-auth-changed'));
