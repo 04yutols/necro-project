@@ -71,6 +71,18 @@ describe('RewardService.processDropTable', () => {
     expect(result.materials[0].expValue).toBe(120);
   });
 
+  test('CONSUMABLE underworld_potion → consumables に数量付きで入る', () => {
+    const table: DropEntry[] = [
+      { type: 'CONSUMABLE', itemId: 'underworld_potion', quantity: 2, rate: 1.0 },
+    ];
+    const result = svc.processDropTable(table, 0, makeSeqRng([0.0]));
+    expect(result.consumables).toHaveLength(1);
+    expect(result.consumables[0].type).toBe('CONSUMABLE');
+    expect(result.consumables[0].name).toBe('冥界薬');
+    expect(result.consumables[0].quantity).toBe(2);
+    expect(result.consumables[0].battleEffect?.type).toBe('HEAL_HP');
+  });
+
   // 6. isHidden=true → UR/ユニークの秘匿ドロップも抽選対象
   test('isHidden=true → hidden unique weapon can drop when roll succeeds', () => {
     const table: DropEntry[] = [

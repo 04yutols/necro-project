@@ -34,7 +34,7 @@ import {
   processStatusEffects,
   tryApplyAilment,
 } from '../../logic/StatusAilmentSystem';
-import type { AilmentType, BossGimmick, DemonFormData, DropEntry, ElementType, EnemyData, EnemyTier, JobData, SkillAttackType, SkillData, StageData, StatusEffect } from '../../types/game';
+import type { AilmentType, BossGimmick, DemonFormData, DropEntry, ElementType, EnemyData, EnemyTier, ItemData, JobData, SkillAttackType, SkillData, StageData, StatusEffect } from '../../types/game';
 
 interface BattleCanvasProps {
   stageId?: string;
@@ -146,10 +146,12 @@ const SKILLS: BattleSkill[] = [
   { id: 'mock_earth',   name: '岩崩し',   mp: 11, power: 230, icon: '◆',  aoe: true,  element: 'EARTH',   attackType: 'STRIKE' },
   { id: 'mock_wind',    name: '鎌鼬',     mp: 8,  power: 190, icon: '✦',  aoe: true,  element: 'WIND',    attackType: 'SLASH' },
 ];
-const ITEMS = [
-  { id: 0, name: '冥界薬',   desc: 'HP+200 回復', count: 3, icon: '🧪', effect: 'heal',   value: 200 },
-  { id: 1, name: 'エーテル', desc: 'EN全回復',     count: 2, icon: '💎', effect: 'mpHeal', value: 100 },
-];
+type BattleConsumableItem = ItemData & {
+  type: 'CONSUMABLE';
+  quantity: number;
+  battleUsable: true;
+  battleEffect: NonNullable<ItemData['battleEffect']>;
+};
 
 const ELEMENT_VFX: Record<ElementType, { label: string; color: string; glow: string; soft: string; aura: string }> = {
   FIRE:    { label: '炎', color: '#ff5a1f', glow: 'rgba(255,90,31,0.72)',  soft: 'rgba(255,90,31,0.18)',  aura: 'radial-gradient(circle, rgba(255,90,31,0.38), transparent 64%)' },
@@ -169,7 +171,7 @@ const STAGES = stagesData as Record<string, StageData>;
 const ENEMIES = enemiesData as Record<string, EnemyData>;
 const DEMON_FORMS = demonFormsData as Record<string, DemonFormData>;
 const REWARD_SERVICE = new RewardService();
-const ITEMS_MASTER = itemsData as Record<string, { name?: string; rarity?: string; type?: string; subOptions?: Array<{ type: string; value: number }>; specialEffect?: string }>;
+const ITEMS_MASTER = itemsData as Record<string, ItemData>;
 
 const ELEMENT_ICON: Record<ElementType, string> = {
   FIRE: '🔥',
@@ -191,6 +193,26 @@ const ATTACK_TYPE_LABEL: Record<SkillAttackType, string> = {
   SUMMON: '召喚',
   HEAL: '回復',
 };
+
+function isBattleConsumableItem(item: ItemData): item is BattleConsumableItem {
+  return item.type === 'CONSUMABLE'
+    && item.battleUsable === true
+    && Boolean(item.battleEffect)
+    && (item.quantity ?? 0) > 0;
+}
+
+function getBattleItemDescription(item: BattleConsumableItem) {
+  switch (item.battleEffect.type) {
+    case 'HEAL_HP':
+      return `HP+${item.battleEffect.value} 回復`;
+    case 'RESTORE_ENERGY':
+      return item.battleEffect.value >= 100 ? 'EN全回復' : `EN+${item.battleEffect.value}`;
+    case 'RESTORE_SOUL':
+      return `ソウル+${item.battleEffect.value}%`;
+    default:
+      return item.specialEffect ?? item.flavor ?? '戦闘中に使用可能';
+  }
+}
 
 function toBattleSkill(skill: SkillData): BattleSkill {
   const element = skill.element ?? 'NONE';
@@ -409,16 +431,45 @@ function convertDropToResultItems(drop: StageDropResult, playerName?: string) {
     isUnique: false,
     quantity: m.quantity,
   }));
-  return [...weapons, ...residues, ...materials];
+  const consumables = drop.consumables.map(item => ({
+    id:       item.id,
+    name:     item.name,
+    type:     item.type as any,
+    rarity:   normalizeResultRarity(item.rarity) as any,
+    icon:     item.icon ?? '🧪',
+    isUnique: false,
+    quantity: item.quantity ?? 1,
+    flavor:   item.flavor,
+  }));
+  return [...weapons, ...residues, ...consumables, ...materials];
+}
+
+function buildLocalStageResult(stage?: StageData) {
+  const dropResult = REWARD_SERVICE.processDropTable(stage?.rewards.dropTable ?? []);
+  return {
+    dropResult,
+    expGain: stage?.rewards.baseExp ?? 0,
+    goldGain: stage?.rewards.baseGold ?? 0,
+  };
+}
+
+function isNextClientRuntime() {
+  return typeof window !== 'undefined'
+    && Boolean((window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__);
 }
 
 async function processStageResultLocal(stageId?: string, meta: StageResultMeta = {}) {
   const stage = stageId ? STAGES[stageId] : undefined;
 
-  if (stageId) {
+  if (stageId && isNextClientRuntime()) {
     try {
       const { processStageResultAction } = await import('../../app/actions');
-      const onlineResult = await processStageResultAction(stageId, meta);
+      const onlineResult = await Promise.race([
+        processStageResultAction(stageId, meta),
+        new Promise<never>((_, reject) => {
+          window.setTimeout(() => reject(new Error('Stage result action timed out.')), 3500);
+        }),
+      ]);
       if (onlineResult.success) {
         return {
           dropResult: onlineResult.dropResult,
@@ -431,12 +482,7 @@ async function processStageResultLocal(stageId?: string, meta: StageResultMeta =
     }
   }
 
-  const dropResult = REWARD_SERVICE.processDropTable(stage?.rewards.dropTable ?? []);
-  return {
-    dropResult,
-    expGain: stage?.rewards.baseExp ?? 0,
-    goldGain: stage?.rewards.baseGold ?? 0,
-  };
+  return buildLocalStageResult(stage);
 }
 
 // ── SVG ENEMIES ───────────────────────────────────────────────────────────────
@@ -1670,9 +1716,10 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
 // ── MAIN BATTLE CANVAS ────────────────────────────────────────────────────────
 export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const {
-    player, party, equippedResidueSlots,
-    addExp, addGold, addClearedStage,
+    player, party, equippedResidueSlots, inventoryItems,
+    addExp, addGold, addClearedStage, updateEnergy,
     addInventoryItems, addAbyssalResidues, addResidueMaterials,
+    consumeInventoryItem,
   } = useGameStore();
   const sfx = useSoundEffects();
   const playerProfile = player ? calculateCharacterStatProfile(player, equippedResidueSlots) : null;
@@ -1754,6 +1801,10 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     ? resolveUnlockedJobSkills(currentJobData, currentJobLevel, MASTER_SKILLS).map(toBattleSkill)
     : SKILLS;
   const mainSkills = jobSkills.length > 0 ? jobSkills : SKILLS;
+  const battleItems = useMemo(
+    () => inventoryItems.filter(isBattleConsumableItem),
+    [inventoryItems],
+  );
   const demonUltimateSkill = toDemonUltimateSkill(demonForm);
   const getElementBoostMultiplier = (element: ElementType) => {
     if (element === 'NONE') return 1;
@@ -1823,8 +1874,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     window.setTimeout(() => {
       const nextIndex = clearedIndex + 1;
       if (nextIndex >= battleWaves.length) {
-        const isBoss      = currentWave.isBoss;
-        const bossName    = currentWave.enemies[0]?.name ?? 'ボス';
+        const isBoss      = clearedWave.isBoss;
+        const bossName    = clearedWave.enemies[0]?.name ?? 'ボス';
         const clearTime   = Math.max(1, Math.round((Date.now() - battleStartedAtRef.current) / 1000));
         const totalWaves  = battleWaves.length;
         const turnCount   = Math.max(1, actionCountRef.current);
@@ -1835,7 +1886,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           totalDamage: totalDamageRef.current,
         }).then(({ dropResult, expGain, goldGain }) => {
           // ローカル実行時のストア更新
-          addInventoryItems(dropResult.weapons);
+          addInventoryItems([...dropResult.weapons, ...dropResult.consumables]);
           addAbyssalResidues(dropResult.residues);
           addResidueMaterials(dropResult.materials);
           addExp(expGain);
@@ -1879,7 +1930,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         window.setTimeout(() => setFlashColor(null), 600);
       }
     }, battleDelay(1200, 520));
-  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, currentWave.enemies, currentWave.isBoss, player?.name, sfx, stageId]);
+  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, player?.name, sfx, stageId]);
 
   function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
     const id = ++floatId;
@@ -2263,15 +2314,27 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     }, speedMs * 0.4);
   }
 
-  function handleItem(item: typeof ITEMS[0]) {
+  function handleItem(item: BattleConsumableItem) {
     if (resolvePlayerStatusBeforeAction()) return;
+    if (!consumeInventoryItem(item.id)) {
+      addLog(`${item.name}はもう残っていない。`);
+      setPhase('playerTurn');
+      return;
+    }
     actionCountRef.current += 1;
     setPhase('animating');
-    if (item.effect === 'heal') {
-      spawnFloat('42%', '52%', item.value, { heal: true, color: '#4ade80' });
-      addLog(`冥界薬を使用！ HP+${item.value}回復！`);
-    } else {
-      addLog(`エーテルを使用！ ENが全回復！`);
+    const { battleEffect } = item;
+    if (battleEffect.type === 'HEAL_HP') {
+      spawnFloat('42%', '52%', battleEffect.value, { heal: true, color: '#4ade80' });
+      addLog(`${item.name}を使用！ HP+${battleEffect.value}回復！`);
+    } else if (battleEffect.type === 'RESTORE_ENERGY') {
+      updateEnergy((player?.currentEnergy ?? 0) + battleEffect.value);
+      spawnFloat('42%', '52%', battleEffect.value, { heal: true, color: '#38bdf8' });
+      addLog(`${item.name}を使用！ EN${battleEffect.value >= 100 ? '全回復' : `+${battleEffect.value}`}！`);
+    } else if (battleEffect.type === 'RESTORE_SOUL') {
+      setSoul(prev => Math.min(100, prev + battleEffect.value));
+      spawnFloat('42%', '52%', battleEffect.value, { heal: true, color: '#c084fc' });
+      addLog(`${item.name}を使用！ ソウル+${battleEffect.value}%！`);
     }
     setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, speedMs * 0.5);
   }
@@ -2470,21 +2533,39 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
               <div onClick={() => setPhase('playerTurn')} style={{ padding: '3px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer' }}>← 戻る</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {ITEMS.map(item => (
-                <div key={item.id} onClick={() => { setPhase('playerTurn'); handleItem(item); }} style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 12px', background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: 10, cursor: 'pointer', animation: 'skillReveal 0.2s ease-out',
-                }}>
-                  <div style={{ fontSize: 18 }}>{item.icon}</div>
-                  <div style={{ flex: 1 }}>
+              {battleItems.length > 0 ? battleItems.map(item => (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => { setPhase('playerTurn'); handleItem(item); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    width: '100%', textAlign: 'left',
+                    padding: '8px 12px', background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 10, cursor: 'pointer', animation: 'skillReveal 0.2s ease-out',
+                  }}
+                >
+                  <div style={{ fontSize: 18 }}>{item.icon ?? '🧪'}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: '#f0ebff' }}>{item.name}</div>
-                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8' }}>{item.desc}</div>
+                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8' }}>{getBattleItemDescription(item)}</div>
                   </div>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#6b5f7a' }}>×{item.count}</div>
+                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#d8b4fe' }}>×{item.quantity}</div>
+                </button>
+              )) : (
+                <div style={{
+                  padding: '12px',
+                  borderRadius: 10,
+                  border: '1px dashed rgba(255,255,255,0.12)',
+                  background: 'rgba(255,255,255,0.025)',
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: 10,
+                  color: '#8b7da8',
+                }}>
+                  使用できる道具がありません。ダンジョンドロップで補充できます。
                 </div>
-              ))}
+              )}
             </div>
           </div>
         ) : (

@@ -3,6 +3,7 @@ import { MasterDataService } from './MasterDataService';
 
 export interface StageDropResult {
   weapons:   ItemData[];
+  consumables: ItemData[];
   residues:  AbyssalResidueData[];
   materials: ResidueMatData[];
   monsters:  MonsterData[];
@@ -128,7 +129,7 @@ export class RewardService {
     discoveryBonusRate: number = 0,
     rng: () => number = Math.random,
   ): StageDropResult {
-    const result: StageDropResult = { weapons: [], residues: [], materials: [], monsters: [] };
+    const result: StageDropResult = { weapons: [], consumables: [], residues: [], materials: [], monsters: [] };
     const mds = MasterDataService.getInstance();
     const multiplier = 1 + discoveryBonusRate / 100;
 
@@ -145,6 +146,16 @@ export class RewardService {
             ...master,
             id:   `${master.id}_${Date.now()}_${Math.floor(rng() * 1e5)}`,
             rank: 0,
+          });
+          break;
+        }
+        case 'CONSUMABLE': {
+          if (!entry.itemId) break;
+          const master = mds.getItem(entry.itemId) as ItemData | undefined;
+          if (!master || master.type !== 'CONSUMABLE') break;
+          result.consumables.push({
+            ...master,
+            quantity: Math.max(1, entry.quantity ?? master.quantity ?? 1),
           });
           break;
         }

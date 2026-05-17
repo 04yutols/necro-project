@@ -61,7 +61,8 @@
       "dropTable": [
         { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.55 },
         { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.12 },
-        { "type": "RESIDUE", "rarity": "RARE", "rate": 0.65 }
+        { "type": "RESIDUE", "rarity": "RARE", "rate": 0.65 },
+        { "type": "CONSUMABLE", "itemId": "underworld_potion", "quantity": 1, "rate": 0.85 }
       ]
     },
     "position": { "x": 188, "y": 422 }
@@ -106,7 +107,9 @@
       "dropTable": [
         { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.45 },
         { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.145 },
-        { "type": "RESIDUE", "rarity": "RARE", "rate": 0.82 }
+        { "type": "RESIDUE", "rarity": "RARE", "rate": 0.82 },
+        { "type": "CONSUMABLE", "itemId": "underworld_potion", "quantity": 1, "rate": 0.7 },
+        { "type": "CONSUMABLE", "itemId": "ether_shard", "quantity": 1, "rate": 0.18 }
       ]
     },
     "position": { "x": 102, "y": 326 }
@@ -153,6 +156,8 @@
         { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.18 },
         { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.012 },
         { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.5 },
+        { "type": "CONSUMABLE", "itemId": "ether_shard", "quantity": 1, "rate": 0.22 },
+        { "type": "CONSUMABLE", "itemId": "soul_incense", "quantity": 1, "rate": 0.15 },
         { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
       ]
     },
@@ -200,6 +205,8 @@
         { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.2 },
         { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.014 },
         { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.55 },
+        { "type": "CONSUMABLE", "itemId": "ether_shard", "quantity": 1, "rate": 0.25 },
+        { "type": "CONSUMABLE", "itemId": "soul_incense", "quantity": 1, "rate": 0.18 },
         { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
       ]
     },

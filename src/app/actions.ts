@@ -59,7 +59,7 @@ export interface StageResultPayload {
 }
 
 function emptyDrop(): StageDropResult {
-  return { weapons: [], residues: [], materials: [], monsters: [] };
+  return { weapons: [], consumables: [], residues: [], materials: [], monsters: [] };
 }
 
 const DISCOVERY_RARITIES = new Set<ItemData['rarity']>(['SSR', 'UR', 'LR', 'UNIQUE', 'HIDDEN_UNIQUE']);

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import jobsData from '../data/master/jobs.json';
+import itemsData from '../data/master/items.json';
 import demonFormsData from '../data/master/demonForms.json';
 import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
 import { DEMON_ACTION_LIMIT, clampDemonGauge } from '../logic/DemonizationSystem';
@@ -16,6 +17,7 @@ import {
 import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData, BaseStats, JobData, WeaponMaterialData, WeaponMaterialType, DemonFormData, DemonRiskType } from '../types/game';
 
 const JOBS = jobsData as Record<string, JobData>;
+const ITEMS = itemsData as Record<string, ItemData>;
 const DEMON_FORMS = demonFormsData as Record<string, DemonFormData>;
 
 const INITIAL_PLAYER_BASE_STATS: BaseStats = {
@@ -101,6 +103,28 @@ const MOCK_WEAPONS: ItemData[] = [
   },
 ];
 
+const INITIAL_CONSUMABLES: ItemData[] = [
+  { ...ITEMS.underworld_potion, quantity: 3 },
+  { ...ITEMS.ether_shard, quantity: 2 },
+  { ...ITEMS.soul_incense, quantity: 1 },
+];
+
+function isConsumable(item: ItemData): boolean {
+  return item.type === 'CONSUMABLE';
+}
+
+function mergeInventoryItems(current: ItemData[], incoming: ItemData[]): ItemData[] {
+  return incoming.reduce<ItemData[]>((items, item) => {
+    if (!isConsumable(item)) return [...items, item];
+    const quantity = Math.max(1, item.quantity ?? 1);
+    const existingIndex = items.findIndex(existing => isConsumable(existing) && existing.id === item.id);
+    if (existingIndex === -1) return [...items, { ...item, quantity }];
+    return items.map((existing, index) => index === existingIndex
+      ? { ...existing, quantity: (existing.quantity ?? 0) + quantity }
+      : existing);
+  }, current);
+}
+
 function withDerivedElementBoosts(player: CharacterData, residues: (AbyssalResidueData | null)[]): CharacterData {
   return {
     ...player,
@@ -162,6 +186,7 @@ interface GameState {
   setInventoryItems: (items: ItemData[]) => void;
   setAbyssalResidues: (residues: AbyssalResidueData[]) => void;
   addInventoryItems: (items: ItemData[]) => void;
+  consumeInventoryItem: (itemId: string) => boolean;
   addAbyssalResidues: (residues: AbyssalResidueData[]) => void;
   addResidueMaterials: (mats: ResidueMatData[]) => void;
   equipResidueToSlot: (slotIndex: number, residue: AbyssalResidueData | null) => void;
@@ -339,8 +364,23 @@ export const useGameStore = create<GameState>((set) => ({
   setInventoryItems: (items) => set({ inventoryItems: items }),
   setAbyssalResidues: (residues) => set({ abyssalResidues: residues }),
   addInventoryItems: (items) => set((state) => ({
-    inventoryItems: [...state.inventoryItems, ...items],
+    inventoryItems: mergeInventoryItems(state.inventoryItems, items),
   })),
+  consumeInventoryItem: (itemId) => {
+    let consumed = false;
+    set((state) => {
+      const item = state.inventoryItems.find(current => current.id === itemId && current.type === 'CONSUMABLE');
+      if (!item || (item.quantity ?? 0) <= 0) return state;
+      consumed = true;
+      const nextItems = (item.quantity ?? 1) <= 1
+        ? state.inventoryItems.filter(current => current.id !== itemId)
+        : state.inventoryItems.map(current => current.id === itemId
+          ? { ...current, quantity: (current.quantity ?? 1) - 1 }
+          : current);
+      return { inventoryItems: nextItems };
+    });
+    return consumed;
+  },
   addAbyssalResidues: (residues) => set((state) => ({
     abyssalResidues: [...state.abyssalResidues, ...residues],
   })),
@@ -620,7 +660,7 @@ export const useGameStore = create<GameState>((set) => ({
       { id: 'm2', name: 'スケルトン', tribe: 'UNDEAD',   cost: 4, stats: { hp: 40, atk: 12, def: 8,  spd: 50,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 20 }, resistances: { LIGHT: -50, DARK: 50 } },
       { id: 'm3', name: 'ゾンビ',     tribe: 'UNDEAD',   cost: 4, stats: { hp: 80, atk: 8,  def: 4,  spd: 20,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0 }, resistances: { FIRE: -50, LIGHT: -20, DARK: 20 } },
     ],
-    inventoryItems: MOCK_WEAPONS,
+    inventoryItems: [...MOCK_WEAPONS, ...INITIAL_CONSUMABLES],
     soulShards: [
       {
         id: 'initial-shard-1',

@@ -29,4 +29,15 @@ describe('useGameStore party formation actions', () => {
     expect(party[1]).toBeNull();
     expect(party[2]?.name).toBe('ゾンビ');
   });
+
+  test('consumables stack in inventory and are consumed one by one', () => {
+    const initialPotion = useGameStore.getState().inventoryItems.find(item => item.id === 'underworld_potion');
+    expect(initialPotion?.quantity).toBe(3);
+
+    useGameStore.getState().addInventoryItems([{ ...initialPotion!, quantity: 2 }]);
+    expect(useGameStore.getState().inventoryItems.find(item => item.id === 'underworld_potion')?.quantity).toBe(5);
+
+    expect(useGameStore.getState().consumeInventoryItem('underworld_potion')).toBe(true);
+    expect(useGameStore.getState().inventoryItems.find(item => item.id === 'underworld_potion')?.quantity).toBe(4);
+  });
 });

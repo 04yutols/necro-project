@@ -109,5 +109,44 @@
       "systemTag": "SHIELD_PIERCE"
     },
     "flavor": "周回で屠られた魔物たちの怨念が刃の内側で折り重なり、握る者の魂へ黒い刃紋を伸ばす。"
+  },
+  "underworld_potion": {
+    "id": "underworld_potion",
+    "name": "冥界薬",
+    "type": "CONSUMABLE",
+    "rarity": "COMMON",
+    "icon": "🧪",
+    "stats": {},
+    "isUnique": false,
+    "quantity": 1,
+    "battleUsable": true,
+    "battleEffect": { "type": "HEAL_HP", "value": 200 },
+    "flavor": "冥界草を煎じた回復薬。戦闘中に傷口へ黒い霧を纏わせ、生命力を一時的に呼び戻す。"
+  },
+  "ether_shard": {
+    "id": "ether_shard",
+    "name": "エーテル片",
+    "type": "CONSUMABLE",
+    "rarity": "RARE",
+    "icon": "💎",
+    "stats": {},
+    "isUnique": false,
+    "quantity": 1,
+    "battleUsable": true,
+    "battleEffect": { "type": "RESTORE_ENERGY", "value": 100 },
+    "flavor": "魂脈で凝固した蒼い結晶。非売品で、探索や希少ドロップからのみ得られる。"
+  },
+  "soul_incense": {
+    "id": "soul_incense",
+    "name": "魂寄せの香",
+    "type": "CONSUMABLE",
+    "rarity": "RARE",
+    "icon": "☾",
+    "stats": {},
+    "isUnique": false,
+    "quantity": 1,
+    "battleUsable": true,
+    "battleEffect": { "type": "RESTORE_SOUL", "value": 35 },
+    "flavor": "周囲の怨念を薄く燃やす香。魔神化ソウルを少量呼び戻す。"
   }
 }

@@ -184,6 +184,7 @@ function getDropName(drop: DropEntry) {
 function getDropIcon(drop: DropEntry) {
   if (drop.type === 'RESIDUE') return '◆';
   if (drop.type === 'WEAPON') return '⚔';
+  if (drop.type === 'CONSUMABLE') return '🧪';
   if (drop.type === 'MONSTER') return '☠';
   return '▣';
 }

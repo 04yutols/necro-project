@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ChevronRight, Eye, FastForward, Package, Share2, Skull, Sparkles } from 'lucide-react';
-import { Application, Graphics } from 'pixi.js';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { useGameStore } from '../../store/useGameStore';
 import type { ItemData } from '../../types/game';
@@ -221,126 +220,66 @@ function RarityBadge({ drop, compact = false }: { drop: ResultDrop; compact?: bo
   );
 }
 
-function colorToNumber(color: string): number {
-  return Number.parseInt(color.replace('#', '').slice(0, 6), 16);
-}
-
-function DropPixiVfx({ rarity, revealStage }: { rarity: DropRarity; revealStage: 'sealed' | 'revealing' | 'revealed' }) {
-  const hostRef = useRef<HTMLDivElement>(null);
+function DropCssVfx({ rarity, revealStage }: { rarity: DropRarity; revealStage: 'sealed' | 'revealing' | 'revealed' }) {
   const style = RARITY_STYLE[rarity];
   const tier = style.tier;
-
-  useEffect(() => {
-    if (tier === 'normal' || typeof window === 'undefined') return;
-    const host = hostRef.current;
-    if (!host) return;
-
-    let disposed = false;
-    const app = new Application();
-    const baseColor = colorToNumber(style.color);
-    const accentColor = tier === 'cursed' ? 0x7f1d1d : tier === 'premium' ? 0xfde68a : 0x8a2be2;
-    const count = tier === 'cursed' ? 58 : tier === 'premium' ? 48 : 30;
-    const particles = Array.from({ length: count }, (_, i) => ({
-      seed: i * 97.13,
-      orbit: 42 + (i % 9) * 17,
-      size: tier === 'cursed' ? 1.8 + (i % 4) * 1.2 : 1.4 + (i % 3) * 0.9,
-      speed: (tier === 'cursed' ? 0.7 : 0.45) + (i % 7) * 0.08,
-      color: i % 3 === 0 ? accentColor : baseColor,
-      phase: (i / count) * Math.PI * 2,
-    }));
-
-    void app.init({
-      backgroundAlpha: 0,
-      antialias: true,
-      autoDensity: true,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
-      resizeTo: host,
-    }).then(() => {
-      if (disposed) {
-        app.destroy();
-        return;
-      }
-
-      app.canvas.style.position = 'absolute';
-      app.canvas.style.inset = '0';
-      app.canvas.style.width = '100%';
-      app.canvas.style.height = '100%';
-      app.canvas.style.pointerEvents = 'none';
-      host.appendChild(app.canvas);
-
-      const pillar = new Graphics();
-      const halo = new Graphics();
-      const particleLayer = new Graphics();
-      app.stage.addChild(halo, pillar, particleLayer);
-      const startedAt = performance.now();
-
-      app.ticker.add(() => {
-        const w = Math.max(1, app.screen.width);
-        const h = Math.max(1, app.screen.height);
-        const cx = w / 2;
-        const cy = h * 0.48;
-        const elapsed = (performance.now() - startedAt) / 1000;
-        const revealBoost = revealStage === 'revealing' ? 1.55 : revealStage === 'revealed' ? 1.08 : 0.78;
-        const cursed = tier === 'cursed';
-        const premium = tier === 'premium';
-
-        halo.clear();
-        const haloPulse = 0.5 + Math.sin(elapsed * (cursed ? 3.2 : 2.1)) * 0.18;
-        halo.ellipse(cx, cy, w * (cursed ? 0.36 : 0.32) * revealBoost, h * 0.13 * revealBoost)
-          .fill({ color: cursed ? 0x1b000d : accentColor, alpha: cursed ? 0.22 + haloPulse * 0.08 : 0.14 + haloPulse * 0.08 });
-        halo.circle(cx, cy, Math.min(w, h) * (premium ? 0.28 : 0.25) * revealBoost)
-          .stroke({ color: baseColor, alpha: premium ? 0.42 : 0.3, width: premium ? 1.6 : 1 });
-
-        pillar.clear();
-        const heightPulse = 0.92 + Math.sin(elapsed * (cursed ? 5.4 : 3.4)) * (cursed ? 0.16 : 0.08);
-        const pillarW = Math.max(20, w * (cursed ? 0.16 : premium ? 0.13 : 0.1) * revealBoost);
-        const pillarH = h * 1.12 * heightPulse;
-        for (let layer = 0; layer < 5; layer += 1) {
-          const width = pillarW * (1 - layer * 0.15);
-          const alpha = (cursed ? 0.18 : 0.15) * (1 - layer * 0.11);
-          pillar.rect(cx - width / 2, cy - pillarH / 2, width, pillarH)
-            .fill({ color: layer % 2 === 0 ? baseColor : accentColor, alpha });
-        }
-        if (cursed) {
-          const tearW = pillarW * (0.18 + Math.abs(Math.sin(elapsed * 7.7)) * 0.22);
-          pillar.rect(cx - tearW / 2 + Math.sin(elapsed * 11) * 8, 0, tearW, h)
-            .fill({ color: 0x050006, alpha: 0.45 });
-        }
-
-        particleLayer.clear();
-        particles.forEach((particle, index) => {
-          const t = elapsed * particle.speed + particle.phase;
-          const converge = revealStage === 'revealing'
-            ? Math.max(0.16, 1 - ((elapsed * 1.3 + index * 0.017) % 1))
-            : 1;
-          const orbit = particle.orbit * converge * (cursed ? 1.15 : 1);
-          const wobble = Math.sin(elapsed * 3 + particle.seed) * (cursed ? 16 : 8);
-          const x = cx + Math.cos(t) * orbit + wobble;
-          const y = cy + Math.sin(t * (cursed ? 1.7 : 1.2)) * orbit * 0.72 - ((elapsed * 22 + particle.seed) % (h * 0.72)) + h * 0.36;
-          const alpha = cursed
-            ? 0.25 + Math.abs(Math.sin(t * 1.4)) * 0.55
-            : 0.22 + Math.abs(Math.sin(t)) * 0.42;
-          const size = particle.size * (revealStage === 'revealing' ? 1.35 : 1);
-          if (cursed && index % 5 === 0) {
-            particleLayer.rect(x - size * 0.5, y - size * 3, size, size * 8)
-              .fill({ color: particle.color, alpha: alpha * 0.8 });
-          } else {
-            particleLayer.circle(x, y, size).fill({ color: particle.color, alpha });
-          }
-        });
-      });
-    });
-
-    return () => {
-      disposed = true;
-      const canvas = app.canvas as HTMLCanvasElement | undefined;
-      if (canvas?.parentElement === host) host.removeChild(canvas);
-      app.destroy();
-    };
-  }, [revealStage, style.color, tier]);
-
   if (tier === 'normal') return null;
-  return <div ref={hostRef} className="absolute inset-0 pointer-events-none" style={{ mixBlendMode: tier === 'cursed' ? 'screen' : 'plus-lighter', opacity: tier === 'cursed' ? 0.92 : 0.82 }} />;
+  const cursed = tier === 'cursed';
+  const premium = tier === 'premium';
+  const particleCount = cursed ? 24 : 18;
+  const revealScale = revealStage === 'revealing' ? 1.16 : revealStage === 'revealed' ? 1.04 : 0.96;
+
+  return (
+    <div
+      className="absolute inset-0 pointer-events-none overflow-hidden"
+      style={{
+        mixBlendMode: cursed ? 'screen' : 'normal',
+        opacity: cursed ? 0.94 : 0.78,
+      }}
+    >
+      <div
+        className="absolute left-1/2 top-[-10%] bottom-[-10%]"
+        style={{
+          width: cursed ? 'min(29vw, 118px)' : premium ? 'min(24vw, 94px)' : 'min(18vw, 72px)',
+          transform: `translateX(-50%) scaleX(${revealScale})`,
+          background: cursed
+            ? 'linear-gradient(90deg, transparent, rgba(10,0,6,0.95), rgba(127,29,29,0.58), rgba(188,0,251,0.66), rgba(10,0,6,0.95), transparent)'
+            : `linear-gradient(90deg, transparent, ${style.color}22, ${style.color}66, ${style.color}18, transparent)`,
+          boxShadow: cursed ? '0 0 76px rgba(188,0,251,0.50)' : `0 0 44px ${style.glow}`,
+          animation: cursed ? 'cursedPillarBreath 1.7s ease-in-out infinite' : 'premiumRingPulse 2.4s ease-in-out infinite',
+        }}
+      />
+      <div
+        className="absolute left-1/2 top-1/2 rounded-full"
+        style={{
+          width: premium ? 'min(88vw, 348px)' : 'min(82vw, 318px)',
+          height: premium ? 'min(88vw, 348px)' : 'min(82vw, 318px)',
+          transform: `translate(-50%, -50%) scale(${revealScale})`,
+          border: `1px ${cursed ? 'dashed' : 'solid'} ${style.color}55`,
+          boxShadow: `0 0 30px ${style.glow}, inset 0 0 34px rgba(0,0,0,0.42)`,
+          animation: cursed ? 'cursedSigilSpin 10s linear infinite' : 'rareRuneSpin 9s linear infinite',
+        }}
+      />
+      {Array.from({ length: particleCount }, (_, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full"
+          style={{
+            left: `${5 + ((i * 37) % 90)}%`,
+            top: `${8 + ((i * 53) % 82)}%`,
+            width: cursed && i % 5 === 0 ? 2 : 2 + (i % 3),
+            height: cursed && i % 5 === 0 ? 22 + (i % 4) * 8 : 2 + (i % 3),
+            borderRadius: cursed && i % 5 === 0 ? 99 : '50%',
+            background: i % 3 === 0 ? style.color : cursed ? 'rgba(127,29,29,0.72)' : '#F0EAFF',
+            boxShadow: `0 0 12px ${style.color}`,
+            opacity: cursed ? 0.72 : 0.62,
+            animation: cursed ? `vengeanceWisp ${2.1 + (i % 5) * 0.22}s ease-in-out infinite` : `premiumSparkFall ${2.0 + (i % 5) * 0.18}s ease-in-out infinite`,
+            animationDelay: `${i * 0.09}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
 function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 'sealed' | 'revealing' | 'revealed'; onReveal: () => void }) {
@@ -362,7 +301,7 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
           : `radial-gradient(ellipse at 50% 48%, ${style.glow}, transparent 58%)`,
         }}
       />
-      <DropPixiVfx rarity={rarity} revealStage={stage} />
+      <DropCssVfx rarity={rarity} revealStage={stage} />
 
       {premium && (
         <>
