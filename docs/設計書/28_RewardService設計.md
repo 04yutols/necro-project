@@ -26,6 +26,7 @@
 ```typescript
 export interface StageDropResult {
   weapons:   ItemData[];
+  consumables: ItemData[];
   residues:  AbyssalResidueData[];
   materials: ResidueMatData[];
   monsters:  MonsterData[];      // 第1章では常に []
@@ -239,7 +240,7 @@ BattleCanvas: バトル終了シグナル
   → ResultScreen が stageData.rewards.dropTable を取得
   → new RewardService().processDropTable(dropTable, discoveryBonusRate)
   → StageDropResult を useGameStore に適用:
-       addInventoryItems(result.weapons)
+       addInventoryItems([...result.weapons, ...result.consumables])
        addAbyssalResidues(result.residues)
        addResidueMaterials(result.materials)
   → calculateExp(stageData.rewards.baseExp, player) → addExp(exp)

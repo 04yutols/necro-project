@@ -184,6 +184,7 @@ function getDropName(drop: DropEntry) {
 function getDropIcon(drop: DropEntry) {
   if (drop.type === 'RESIDUE') return '◆';
   if (drop.type === 'WEAPON') return '⚔';
+  if (drop.type === 'CONSUMABLE') return '🧪';
   if (drop.type === 'MONSTER') return '☠';
   return '▣';
 }
@@ -319,11 +320,13 @@ function MapNode({
   stage,
   state,
   isActive,
+  isRevealing = false,
   onClick,
 }: {
   stage: StageData;
   state: StageProgressState;
   isActive: boolean;
+  isRevealing?: boolean;
   onClick: (stage: StageData) => void;
 }) {
   const color = getStageColor(stage);
@@ -340,6 +343,22 @@ function MapNode({
         <>
           <circle cx={stage.position.x} cy={stage.position.y} r={size + 10} fill="none" stroke={color} strokeWidth="1.2" opacity="0" style={{ animation: 'nodeRing 2.2s ease-out infinite' }} />
           <circle cx={stage.position.x} cy={stage.position.y} r={size + 5} fill="none" stroke={color} strokeWidth="1" opacity="0" style={{ animation: 'nodeRing 2.2s ease-out infinite 0.35s' }} />
+        </>
+      )}
+      {isRevealing && !isLocked && (
+        <>
+          <circle cx={stage.position.x} cy={stage.position.y} r={size + 18} fill={color} opacity="0.12" style={{ animation: 'mapUnlockPulse 1.4s ease-out infinite' }} />
+          {Array.from({ length: 8 }, (_, i) => (
+            <circle
+              key={`fog-shard-${i}`}
+              cx={stage.position.x + Math.cos((i / 8) * Math.PI * 2) * (size + 16)}
+              cy={stage.position.y + Math.sin((i / 8) * Math.PI * 2) * (size + 16)}
+              r="2"
+              fill={color}
+              opacity="0.72"
+              style={{ animation: `fogShardDissolve ${1.1 + (i % 3) * 0.12}s ease-out infinite`, animationDelay: `${i * 0.06}s` }}
+            />
+          ))}
         </>
       )}
       <circle cx={stage.position.x} cy={stage.position.y + 4} r={size + 3} fill="#000" opacity="0.36" />
@@ -1001,12 +1020,78 @@ function DetailSheet({
   );
 }
 
+function FogRevealOverlay({ stage, onDone }: { stage: StageData; onDone: () => void }) {
+  const color = getStageColor(stage);
+
+  useEffect(() => {
+    const timer = window.setTimeout(onDone, 1900);
+    return () => window.clearTimeout(timer);
+  }, [onDone]);
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 30,
+        pointerEvents: 'none',
+        overflow: 'hidden',
+        background: 'radial-gradient(circle at 50% 48%, transparent 0 19%, rgba(5,2,16,0.24) 31%, rgba(5,2,16,0.68) 100%)',
+        animation: 'mapFogReveal 1.8s ease-out both',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-20%',
+          backgroundImage: `radial-gradient(circle at 42% 44%, ${color}36, transparent 17%), radial-gradient(circle at 58% 48%, rgba(255,255,255,0.12), transparent 15%), repeating-linear-gradient(115deg, rgba(255,255,255,0.045) 0 2px, transparent 2px 22px)`,
+          filter: 'blur(1.4px)',
+          animation: 'fogRuneSweep 1.65s ease-out both',
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '48%',
+          width: 'min(68vw, 260px)',
+          height: 'min(68vw, 260px)',
+          borderRadius: '50%',
+          transform: 'translate(-50%, -50%)',
+          border: `1px solid ${color}80`,
+          boxShadow: `0 0 44px ${color}55, inset 0 0 32px rgba(255,255,255,0.06)`,
+          animation: 'mapUnlockPulse 1.25s ease-out both',
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          left: 18,
+          right: 18,
+          bottom: 'max(26px, env(safe-area-inset-bottom, 26px))',
+          borderRadius: 18,
+          border: `1px solid ${color}66`,
+          background: 'linear-gradient(180deg, rgba(10,4,24,0.94), rgba(5,2,16,0.94))',
+          boxShadow: `0 0 28px ${color}30`,
+          padding: '13px 15px',
+          animation: 'mapUnlockBanner 1.6s cubic-bezier(0.2,1,0.28,1) both',
+        }}
+      >
+        <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color, fontWeight: 900, letterSpacing: '0.16em' }}>FOG CLEARED</div>
+        <div style={{ marginTop: 4, fontFamily: "'Noto Sans JP', sans-serif", fontSize: 15, color: '#f0ebff', fontWeight: 900 }}>{stage.nameJa}</div>
+        <div style={{ marginTop: 3, fontSize: 10, color: '#a89ec8' }}>新たな深淵の迷宮ノードが解放された</div>
+      </div>
+    </div>
+  );
+}
+
 export default function AreaMap({ onStartStage }: AreaMapProps) {
   const { player, party, setCurrentTab } = useGameStore();
   const [layer, setLayer] = useState<MapLayer>('WORLD');
   const [selectedArea, setSelectedArea] = useState<number | null>(null);
   const [activeWorldAreaId, setActiveWorldAreaId] = useState<number | null>(null);
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  const [fogRevealStageId, setFogRevealStageId] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -1021,9 +1106,22 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
   const areaStages = useMemo(() => allStages.filter(stage => stage.area === selectedAreaId), [allStages, selectedAreaId]);
   const nextStageForArea = useMemo(() => areaStages.find(stage => states[stage.id] === 'AVAILABLE') ?? null, [areaStages, states]);
   const activeStage = activeStageId ? STAGES[activeStageId] : null;
+  const fogRevealStage = fogRevealStageId ? STAGES[fogRevealStageId] : null;
   const currentStage = activeStage ?? nextStageForArea ?? areaStages.find(stage => stage.nodeType === 'SAFE') ?? areaStages[0] ?? STAGES.area1_safe;
 
   useEffect(() => { setIsMounted(true); }, []);
+
+  useEffect(() => {
+    if (!isMounted || !nextStage || clearedStages.length === 0 || typeof window === 'undefined') return;
+    const key = `necro:fog-reveal:${clearedStages.length}:${nextStage.id}`;
+    try {
+      if (window.sessionStorage.getItem(key) === '1') return;
+      window.sessionStorage.setItem(key, '1');
+    } catch {
+      // sessionStorage can be unavailable in private browsing.
+    }
+    setFogRevealStageId(nextStage.id);
+  }, [clearedStages.length, isMounted, nextStage]);
 
   useEffect(() => {
     if (layer !== 'AREA' || !isMounted || !scrollRef.current || !currentStage) return;
@@ -1283,6 +1381,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   stage={stage}
                   state={states[stage.id]}
                   isActive={activeStageId === stage.id}
+                  isRevealing={fogRevealStageId === stage.id}
                   onClick={(clickedStage) => setActiveStageId(prev => prev === clickedStage.id ? null : clickedStage.id)}
                 />
               ))}
@@ -1435,6 +1534,12 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
             </div>
           </div>
         </>
+      )}
+      {fogRevealStage && fogRevealStage.area === selectedAreaId && (
+        <FogRevealOverlay
+          stage={fogRevealStage}
+          onDone={() => setFogRevealStageId(null)}
+        />
       )}
     </div>
   );

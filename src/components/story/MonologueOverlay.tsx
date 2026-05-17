@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { FastForward } from 'lucide-react';
 import type { StoryScene } from '../../types/story';
+import { useStoryStore } from '../../store/useStoryStore';
 import { TypewriterText } from './TypewriterText';
 
 interface Props {
@@ -11,12 +13,14 @@ interface Props {
 }
 
 export function MonologueOverlay({ scene, onDone }: Props) {
+  const isViewed = useStoryStore(state => state.isViewed);
   const [lineIndex, setLineIndex] = useState(0);
   const [lineComplete, setLineComplete] = useState(false);
   const [flush, setFlush] = useState(false);
 
   const current = scene.lines[lineIndex];
   const isLast = lineIndex >= scene.lines.length - 1;
+  const canSkip = scene.isSkippable || isViewed(scene.id);
 
   const handleTap = () => {
     if (!lineComplete) {
@@ -48,6 +52,39 @@ export function MonologueOverlay({ scene, onDone }: Props) {
         cursor: 'pointer',
       }}
     >
+      {canSkip && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDone();
+          }}
+          aria-label="スキップ"
+          style={{
+            position: 'absolute',
+            top: 'max(16px, env(safe-area-inset-top, 16px))',
+            right: 16,
+            minWidth: 74,
+            height: 34,
+            borderRadius: 10,
+            border: '1px solid rgba(212,175,55,0.38)',
+            background: 'rgba(5,2,16,0.78)',
+            color: '#D4AF37',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            fontFamily: "'Cinzel', serif",
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: '0.08em',
+          }}
+        >
+          <FastForward size={14} />
+          SKIP
+        </button>
+      )}
+
       {/* ✦ アクセント */}
       <motion.div
         initial={{ opacity: 0, scaleX: 0 }}

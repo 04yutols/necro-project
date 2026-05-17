@@ -356,6 +356,7 @@ function VirtualResidueGrid({ items, selectedId, equippedIds, onSelect }: Virtua
 
   return (
     <div
+      id="tut-residue-grid"
       ref={containerRef}
       className="flex-1 overflow-y-auto custom-scrollbar"
       onScroll={e => setScrollTop(e.currentTarget.scrollTop)}
@@ -421,7 +422,7 @@ function EquipTab({
       className="flex flex-col flex-1 overflow-hidden"
     >
       {/* 3 residue slots */}
-      <div className="shrink-0 flex gap-2 px-3 pt-2.5 pb-1.5">
+      <div id="tut-residue-slots" className="shrink-0 flex gap-2 px-3 pt-2.5 pb-1.5">
         {equippedResidueSlots.map((slot, i) => (
           <ResidueSlotCard
             key={i}
@@ -884,6 +885,7 @@ export default function NecroLab() {
         {(['EQUIP', 'ENHANCE'] as const).map(tab => (
           <button
             key={tab}
+            id={tab === 'ENHANCE' ? 'tut-enhance-tab' : undefined}
             onClick={() => { sound.playTap(); setActiveTab(tab); }}
             className="flex-1 py-3.5 text-[13px] font-black tracking-[0.22em] relative transition-colors"
             style={{ color: activeTab === tab ? '#E080FF' : 'rgba(195,175,235,0.45)', fontFamily: 'monospace' }}

@@ -1,32 +1,28 @@
 import { test, expect } from '@playwright/test';
+import { prepareE2EPage, startFirstDungeonBattle } from './helpers/e2e';
 
-test.describe('Result Screen E2E Tests', () => {
+test.describe('Result and appraisal UX', () => {
+  test.describe.configure({ timeout: 120000 });
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // 出撃タブへ
-    await page.click('text=出撃');
-    // ステージ1-1開始
-    await page.click('text=STAGE 1-1');
+    await prepareE2EPage(page);
+    await startFirstDungeonBattle(page);
   });
 
-  test('Battle victory leads to result screen and can return to hub', async ({ page }) => {
-    // スケルトン兵を倒すまで攻撃 (モックターゲット HP 150)
-    const attackButton = page.locator('button:has-text("物理攻撃")');
-    
-    // 何回かクリックして倒す
-    for (let i = 0; i < 5; i++) {
-      await attackButton.click();
-      await page.waitForTimeout(1000); // 演出待ち
-    }
+  test('reaches result, transitions to appraisal, and exposes reward reveal controls', async ({ page }) => {
+    await page.getByRole('button', { name: '×3' }).click();
+    await page.getByRole('button', { name: /AUTO OFF/ }).click();
 
-    // VICTORYテキストが表示されるまで待機 (PixiJS Canvas内なのでテキスト検索)
-    // 実際には ResultScreen コンポーネント自体の表示を待つ
-    await expect(page.locator('text=拠点へ戻る')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('result-summary')).toBeVisible({ timeout: 70000 });
+    await expect(page.getByText('VICTORY')).toBeVisible();
+    await expect(page.getByText('BATTLE REWARDS')).toBeVisible();
 
-    // 拠点へ戻る
-    await page.click('text=拠点へ戻る');
+    await page.getByRole('button', { name: '鑑定へ進む' }).click();
+    await expect(page.getByTestId('appraisal-screen')).toBeVisible();
+    await expect(page.getByText('戦利品鑑定')).toBeVisible();
 
-    // 拠点タブがアクティブであることを確認
-    await expect(page.locator('h2:has-text("ステータス")')).toBeVisible();
+    await page.getByRole('button', { name: /鑑定する/ }).click();
+    await expect(page.getByRole('button', { name: /次の戦利品|獲得して戻る/ })).toBeVisible({ timeout: 10000 });
   });
 });

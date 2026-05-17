@@ -59,7 +59,11 @@ model User {
   accounts      Account[]
   sessions      Session[]
   characters    Character[]
+  ownedItems    Item[]  @relation("ItemOwner")
   discoveredItems Item[]  @relation("Discoverer")
+  stageRecords  StageRecord[]
+  playerStats   PlayerStats?
+  worldLogs     WorldLog[]
 }
 
 model Character {
@@ -166,6 +170,8 @@ model Item {
   subOptions    Json?    // Array of { type: string, value: number }
 
   // 第一発見者システム
+  ownerId       String?
+  owner         User?    @relation("ItemOwner", fields: [ownerId], references: [id])
   isUnique      Boolean  @default(false)
   discovererId  String?
   discovererName String?
@@ -182,6 +188,11 @@ model Item {
   equippedLegs    Character[] @relation("Legs")
   equippedAcc1    Character[] @relation("Acc1")
   equippedAcc2    Character[] @relation("Acc2")
+}
+
+model ItemSerialCounter {
+  itemName String @id
+  counter  Int    @default(0)
 }
 
 model AbyssalResidue {
@@ -236,4 +247,41 @@ model SpiritCore {
   skillChangeId String?
   atkMultiplier Float     @default(1.0)
   monsters      Monster[]
+}
+
+model StageRecord {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stageId        String
+  turnCount      Int
+  clearTimeSec   Int      @default(0)
+  totalDamage    Int      @default(0)
+  clearedAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, stageId])
+  @@index([stageId, turnCount])
+  @@index([stageId, clearTimeSec])
+}
+
+model PlayerStats {
+  userId           String   @id
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalDamage      BigInt   @default(0)
+  bossKillCount    Int      @default(0)
+  bestResidueScore Float    @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+model WorldLog {
+  id        String   @id @default(cuid())
+  type      String
+  payload   Json
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([type, createdAt])
 }

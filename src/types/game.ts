@@ -185,13 +185,19 @@ export interface WeaponMaterialData {
 export interface ItemData {
   id: string;
   name: string;
-  type: 'WEAPON' | 'SUB' | 'HEAD' | 'BODY' | 'ARMS' | 'LEGS' | 'ACC1' | 'ACC2';
+  type: 'WEAPON' | 'SUB' | 'HEAD' | 'BODY' | 'ARMS' | 'LEGS' | 'ACC1' | 'ACC2' | 'CONSUMABLE';
   rarity: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'UNIQUE' | 'HIDDEN_UNIQUE' | 'R' | 'SR' | 'SSR' | 'UR' | 'LR';
   stats: Partial<BaseStats>;
   resistances?: Resistances;
   specialEffect?: string;
   icon?: string;
   flavor?: string;
+  quantity?: number;
+  battleUsable?: boolean;
+  battleEffect?: {
+    type: 'HEAL_HP' | 'RESTORE_ENERGY' | 'RESTORE_SOUL';
+    value: number;
+  };
   
   // 第一発見者システム (GDD-追加要件)
   isUnique: boolean;
@@ -239,6 +245,7 @@ export interface CharacterData {
   jobs: UserJobState[];
   isAwakened: boolean;
   clearedStages: string[];
+  gold: number;
   statusEffects?: StatusEffect[];
   // エネルギーシステム（ランタイム状態 — DB非保存）
   currentEnergy: number;
@@ -313,10 +320,11 @@ export interface MonsterData {
 }
 
 export interface DropEntry {
-  type?: 'WEAPON' | 'RESIDUE' | 'MATERIAL' | 'MONSTER';
+  type?: 'WEAPON' | 'RESIDUE' | 'MATERIAL' | 'MONSTER' | 'CONSUMABLE';
   itemId?: string;
   monsterId?: string;
   rarity?: string;
+  quantity?: number;
   rate: number;
   isHidden?: boolean;
 }
@@ -384,6 +392,7 @@ export interface NecroStatus {
   rank: number;        // Max: 10
   maxCost: number;
   baseStatsBonus: number; // ランクアップで蓄積される基礎ステータス倍率補正
+  exp: number;         // 現在のネクロEXP
 }
 
 export interface BattleState {

@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { ItemData, EquipmentSlots, BaseStats } from '../../types/game';
-import { equipItemAction, unequipItemAction } from '../../app/actions';
 import { Shield, Sword, X, ArrowRight, Package, Home } from 'lucide-react';
 import { calculateCharacterStatProfile, formatStatValue } from '../../logic/StatSystem';
 
@@ -45,12 +44,9 @@ export default function EquipmentManager() {
     if (!player || !selectedSlot || !previewItem) return;
     setIsProcessing(true);
     try {
-      const result = await equipItemAction(player.id, selectedSlot, previewItem.id);
-      if (result.success) {
-        equipItem(selectedSlot, previewItem);
-        setPreviewItem(null);
-        setSelectedSlot(null);
-      }
+      equipItem(selectedSlot, previewItem);
+      setPreviewItem(null);
+      setSelectedSlot(null);
     } catch (e) {
       console.error(e);
     } finally {
@@ -62,11 +58,8 @@ export default function EquipmentManager() {
     if (!player) return;
     setIsProcessing(true);
     try {
-      const result = await unequipItemAction(player.id, slot);
-      if (result.success) {
-        unequipItem(slot);
-        if (selectedSlot === slot) setPreviewItem(null);
-      }
+      unequipItem(slot);
+      if (selectedSlot === slot) setPreviewItem(null);
     } catch (e) {
       console.error(e);
     } finally {

@@ -91,6 +91,7 @@ export class NecroService {
         rank: Math.min(10, status.rank + 1),
         maxCost: status.maxCost + 5,
         baseStatsBonus: status.baseStatsBonus + 0.5,
+        exp: 0,
       };
     }
 

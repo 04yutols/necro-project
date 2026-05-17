@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ChevronRight, Eye, FastForward, Package, Share2, Skull, Sparkles } from 'lucide-react';
+import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { useGameStore } from '../../store/useGameStore';
 import type { ItemData } from '../../types/game';
 import AppraisalCertificate from './AppraisalCertificate';
@@ -156,6 +157,14 @@ function isPremiumDrop(drop: ResultDrop) {
   return tier === 'premium' || tier === 'cursed';
 }
 
+function getDropRevealKind(drop: ResultDrop): 'COMMON' | 'SR' | 'SSR' | 'UR' {
+  const rarity = normalizeRarity(drop.rarity);
+  if (rarity === 'UR' || rarity === 'HIDDEN_UNIQUE') return 'UR';
+  if (rarity === 'SSR' || rarity === 'LR' || rarity === 'UNIQUE') return 'SSR';
+  if (rarity === 'SR' || rarity === 'RARE') return 'SR';
+  return 'COMMON';
+}
+
 function haptic(pattern: VibratePattern) {
   if (typeof navigator !== 'undefined') navigator.vibrate?.(pattern);
 }
@@ -211,6 +220,68 @@ function RarityBadge({ drop, compact = false }: { drop: ResultDrop; compact?: bo
   );
 }
 
+function DropCssVfx({ rarity, revealStage }: { rarity: DropRarity; revealStage: 'sealed' | 'revealing' | 'revealed' }) {
+  const style = RARITY_STYLE[rarity];
+  const tier = style.tier;
+  if (tier === 'normal') return null;
+  const cursed = tier === 'cursed';
+  const premium = tier === 'premium';
+  const particleCount = cursed ? 24 : 18;
+  const revealScale = revealStage === 'revealing' ? 1.16 : revealStage === 'revealed' ? 1.04 : 0.96;
+
+  return (
+    <div
+      className="absolute inset-0 pointer-events-none overflow-hidden"
+      style={{
+        mixBlendMode: cursed ? 'screen' : 'normal',
+        opacity: cursed ? 0.94 : 0.78,
+      }}
+    >
+      <div
+        className="absolute left-1/2 top-[-10%] bottom-[-10%]"
+        style={{
+          width: cursed ? 'min(29vw, 118px)' : premium ? 'min(24vw, 94px)' : 'min(18vw, 72px)',
+          transform: `translateX(-50%) scaleX(${revealScale})`,
+          background: cursed
+            ? 'linear-gradient(90deg, transparent, rgba(10,0,6,0.95), rgba(127,29,29,0.58), rgba(188,0,251,0.66), rgba(10,0,6,0.95), transparent)'
+            : `linear-gradient(90deg, transparent, ${style.color}22, ${style.color}66, ${style.color}18, transparent)`,
+          boxShadow: cursed ? '0 0 76px rgba(188,0,251,0.50)' : `0 0 44px ${style.glow}`,
+          animation: cursed ? 'cursedPillarBreath 1.7s ease-in-out infinite' : 'premiumRingPulse 2.4s ease-in-out infinite',
+        }}
+      />
+      <div
+        className="absolute left-1/2 top-1/2 rounded-full"
+        style={{
+          width: premium ? 'min(88vw, 348px)' : 'min(82vw, 318px)',
+          height: premium ? 'min(88vw, 348px)' : 'min(82vw, 318px)',
+          transform: `translate(-50%, -50%) scale(${revealScale})`,
+          border: `1px ${cursed ? 'dashed' : 'solid'} ${style.color}55`,
+          boxShadow: `0 0 30px ${style.glow}, inset 0 0 34px rgba(0,0,0,0.42)`,
+          animation: cursed ? 'cursedSigilSpin 10s linear infinite' : 'rareRuneSpin 9s linear infinite',
+        }}
+      />
+      {Array.from({ length: particleCount }, (_, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full"
+          style={{
+            left: `${5 + ((i * 37) % 90)}%`,
+            top: `${8 + ((i * 53) % 82)}%`,
+            width: cursed && i % 5 === 0 ? 2 : 2 + (i % 3),
+            height: cursed && i % 5 === 0 ? 22 + (i % 4) * 8 : 2 + (i % 3),
+            borderRadius: cursed && i % 5 === 0 ? 99 : '50%',
+            background: i % 3 === 0 ? style.color : cursed ? 'rgba(127,29,29,0.72)' : '#F0EAFF',
+            boxShadow: `0 0 12px ${style.color}`,
+            opacity: cursed ? 0.72 : 0.62,
+            animation: cursed ? `vengeanceWisp ${2.1 + (i % 5) * 0.22}s ease-in-out infinite` : `premiumSparkFall ${2.0 + (i % 5) * 0.18}s ease-in-out infinite`,
+            animationDelay: `${i * 0.09}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 'sealed' | 'revealing' | 'revealed'; onReveal: () => void }) {
   const rarity = normalizeRarity(drop.rarity);
   const style = RARITY_STYLE[rarity];
@@ -227,9 +298,10 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
             ? 'radial-gradient(ellipse at 50% 42%, rgba(188,0,251,0.24), rgba(70,0,18,0.28) 38%, transparent 70%)'
             : premium
               ? `radial-gradient(ellipse at 50% 42%, ${style.glow}, transparent 62%)`
-              : `radial-gradient(ellipse at 50% 48%, ${style.glow}, transparent 58%)`,
+          : `radial-gradient(ellipse at 50% 48%, ${style.glow}, transparent 58%)`,
         }}
       />
+      <DropCssVfx rarity={rarity} revealStage={stage} />
 
       {premium && (
         <>
@@ -608,6 +680,7 @@ export default function ResultScreen({
   const revealTimerRef = useRef<number | null>(null);
   const skipTimersRef = useRef<number[]>([]);
   const { addExp } = useGameStore();
+  const sfx = useSoundEffects();
 
   const particles = useMemo(() => Array.from({ length: 28 }, (_, i) => ({
     left: 5 + ((i * 37) % 90),
@@ -682,6 +755,7 @@ export default function ResultScreen({
 
   const goToAppraisal = () => {
     haptic(hasCursedDrop ? [16, 24, 42] : [12, 18]);
+    sfx.resultOpen(hasCursedDrop ? 'UR' : rareSignalCount > 0 ? 'SSR' : 'COMMON');
     setScreen('appraisal');
   };
 
@@ -689,6 +763,7 @@ export default function ResultScreen({
     if (dropStage !== 'sealed') return;
     if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
     haptic(isCursedDrop(currentDrop) ? [18, 28, 45, 35, 70] : isPremiumDrop(currentDrop) ? [16, 26, 38] : [10, 16]);
+    sfx.dropReveal(getDropRevealKind(currentDrop));
     setDropStage('revealing');
 
     const revealDelay = isCursedDrop(currentDrop) ? 1180 : isPremiumDrop(currentDrop) ? 820 : 420;
@@ -774,6 +849,7 @@ export default function ResultScreen({
 
   return (
     <div
+      data-testid="result-screen"
       className="w-full h-full relative overflow-hidden"
       style={{
         background: screen === 'appraisal'
@@ -815,6 +891,7 @@ export default function ResultScreen({
         </div>
       ) : screen === 'summary' ? (
         <div
+          data-testid="result-summary"
           className="relative z-10 h-full flex flex-col"
           style={{ padding: 'max(18px, env(safe-area-inset-top, 18px)) 16px max(18px, env(safe-area-inset-bottom, 18px))' }}
         >
@@ -992,6 +1069,7 @@ export default function ResultScreen({
         </div>
       ) : (
         <div
+          data-testid="appraisal-screen"
           className="relative z-10 h-full flex flex-col"
           style={{ padding: 'max(14px, env(safe-area-inset-top, 14px)) 14px max(14px, env(safe-area-inset-bottom, 14px))' }}
         >
