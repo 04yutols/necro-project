@@ -38,6 +38,7 @@ import {
   type WeaponPassiveContext,
   type WeaponPassiveResult,
 } from './WeaponPassive';
+import { calculateBattleDamage, type BattleDamageResult } from './BattleDamage';
 
 /**
  * Necromance Brave Battle Engine
@@ -138,10 +139,13 @@ export class BattleEngine {
 
     const { player } = this.state;
     const ult = demon.form.ultimateSkill;
-    const stats = calculateCharacterStatProfile(player).total;
+    const profile = calculateCharacterStatProfile(player);
+    const stats = profile.total;
+    const elementBoosts = hasElementDmgBoosts(player.elementDmgBoosts)
+      ? player.elementDmgBoosts
+      : profile.elementDmgBoosts;
 
     const ignoreDef = shouldBypassDefense(demon.form);
-    const defStats = ignoreDef ? { ...target.stats, def: 0 } : target.stats;
 
     const isAoe = ult.damage.targetType === 'ALL';
     const targets: MonsterData[] = isAoe
@@ -149,10 +153,11 @@ export class BattleEngine {
       : [target];
 
     for (const t of targets) {
+      const defStats = ignoreDef ? { ...t.stats, def: 0 } : t.stats;
       const resistances = ult.damage.flags?.includes('IGNORE_RESISTANCE') ? {} : (t.resistances ?? {});
       const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(
         stats,
-        player.elementDmgBoosts ?? {},
+        elementBoosts,
         defStats,
         resistances,
         ult.damage.power,
@@ -204,45 +209,16 @@ export class BattleEngine {
     defenderResistances: Resistances,
     powerMultiplier: number = 1.0,
     element: ElementType = 'NONE'
-  ): { damage: number; isCritical: boolean; isWeakness: boolean; isResisted: boolean } {
-
-    // 1. 基礎ダメージ
-    let damage = attackerStats.atk * powerMultiplier;
-
-    // 2. 防御軽減（HSR簡易版）
-    const defenderDef = Math.max(0, defenderStats.def);
-    const defMult = 1 - defenderDef / (defenderDef + 200);
-    damage *= defMult;
-
-    // 3. 属性ダメージ加成（装備・残滓 + 種族シナジー）
-    const equipElementBoost = (attackerElementBoosts[element] ?? 0) / 100;
-    const sb = this.synergyBonus;
-    let synergyElementPct = sb.elementDmgBonus ?? 0;
-    if (element === 'DARK') synergyElementPct += sb.darkDmgBonus ?? 0;
-    if (element === 'FIRE' || element === 'DARK') synergyElementPct += sb.fireDarkDmgBonus ?? 0;
-    damage *= (1 + equipElementBoost + synergyElementPct / 100);
-
-    // 4. 属性耐性
-    let isWeakness = false;
-    let isResisted = false;
-    const resistance = defenderResistances[element] ?? 0;
-    if (resistance < 0) isWeakness = true;
-    if (resistance > 0) isResisted = true;
-    damage *= (1 - resistance / 100);
-
-    // 5. 会心判定（種族シナジーの critRate/critDmg ボーナスを加算）
-    const effectiveCritRate = attackerStats.critRate + (sb.critRateBonus ?? 0);
-    const isCritical = Math.random() * 100 < effectiveCritRate;
-    if (isCritical) {
-      damage *= (attackerStats.critDmg + (sb.critDmgBonus ?? 0)) / 100;
-    }
-
-    return {
-      damage: Math.max(1, Math.floor(damage)),
-      isCritical,
-      isWeakness,
-      isResisted
-    };
+  ): BattleDamageResult {
+    return calculateBattleDamage({
+      attackerStats,
+      attackerElementBoosts,
+      defenderStats,
+      defenderResistances,
+      powerMultiplier,
+      element,
+      synergyBonus: this.synergyBonus,
+    });
   }
 
   private processPlayerAction(

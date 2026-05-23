@@ -14,7 +14,9 @@ import { getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
 import { startTutorialBattlePhase } from '../../hooks/useTutorialTrigger';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { RewardService, type StageDropResult } from '../../services/RewardService';
-import { calculateCharacterStatProfile } from '../../logic/StatSystem';
+import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/StatSystem';
+import { calculateBattleDamage, type BattleDamageResult } from '../../logic/BattleDamage';
+import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
 import type { StageResultMeta } from '../../types/online';
 import {
   DEMON_ACTION_LIMIT,
@@ -24,6 +26,7 @@ import {
   getDemonIncomingDamageMultiplier,
   getDemonRiskLabel,
   shouldBypassDefense,
+  shouldIgnoreResistance,
 } from '../../logic/DemonizationSystem';
 import {
   AILMENT_UI,
@@ -34,7 +37,7 @@ import {
   processStatusEffects,
   tryApplyAilment,
 } from '../../logic/StatusAilmentSystem';
-import type { AilmentType, BossGimmick, DemonFormData, DropEntry, ElementType, EnemyData, EnemyTier, ItemData, JobData, SkillAttackType, SkillData, StageData, StatusEffect } from '../../types/game';
+import type { AilmentType, BaseStats, BossGimmick, DemonFormData, DropEntry, ElementType, EnemyData, EnemyTier, ItemData, JobData, MonsterData, Resistances, SkillAttackType, SkillData, StageData, StatusEffect } from '../../types/game';
 
 interface BattleCanvasProps {
   stageId?: string;
@@ -47,6 +50,7 @@ type BattleSkill = {
   mp?: number;
   cost?: string;
   power: number;
+  powerMultiplier: number;
   icon: string;
   aoe: boolean;
   element: ElementType;
@@ -80,6 +84,7 @@ interface FormationBadgeMeta {
 interface EnemyState {
   id: number; sourceId?: string; name: string; nameEn: string;
   hp: number; maxHp: number; atk: number; color: string;
+  stats?: BaseStats; resistances?: Resistances;
   effectHit?: number; effectRes?: number;
   pos: 'left' | 'center' | 'right'; size: number;
   tier?: EnemyTier; weaknesses?: ElementType[];
@@ -140,11 +145,11 @@ const BATTLE_WAVES = [
 
 // ── SKILLS / ITEMS ─────────────────────────────────────────────────────────────
 const SKILLS: BattleSkill[] = [
-  { id: 'mock_fire',    name: '火葬弾',   mp: 12, power: 260, icon: '🔥', aoe: false, element: 'FIRE',    attackType: 'MAGIC' },
-  { id: 'mock_water',   name: '水葬渦',   mp: 14, power: 210, icon: '💧', aoe: true,  element: 'WATER',   attackType: 'MAGIC' },
-  { id: 'mock_thunder', name: '雷鳴斬り', mp: 10, power: 300, icon: '⚡', aoe: false, element: 'THUNDER', attackType: 'SLASH' },
-  { id: 'mock_earth',   name: '岩崩し',   mp: 11, power: 230, icon: '◆',  aoe: true,  element: 'EARTH',   attackType: 'STRIKE' },
-  { id: 'mock_wind',    name: '鎌鼬',     mp: 8,  power: 190, icon: '✦',  aoe: true,  element: 'WIND',    attackType: 'SLASH' },
+  { id: 'mock_fire',    name: '火葬弾',   mp: 12, power: 260, powerMultiplier: 1.45, icon: '🔥', aoe: false, element: 'FIRE',    attackType: 'MAGIC' },
+  { id: 'mock_water',   name: '水葬渦',   mp: 14, power: 210, powerMultiplier: 1.20, icon: '💧', aoe: true,  element: 'WATER',   attackType: 'MAGIC' },
+  { id: 'mock_thunder', name: '雷鳴斬り', mp: 10, power: 300, powerMultiplier: 1.60, icon: '⚡', aoe: false, element: 'THUNDER', attackType: 'SLASH' },
+  { id: 'mock_earth',   name: '岩崩し',   mp: 11, power: 230, powerMultiplier: 1.30, icon: '◆',  aoe: true,  element: 'EARTH',   attackType: 'STRIKE' },
+  { id: 'mock_wind',    name: '鎌鼬',     mp: 8,  power: 190, powerMultiplier: 1.15, icon: '✦',  aoe: true,  element: 'WIND',    attackType: 'SLASH' },
 ];
 type BattleConsumableItem = ItemData & {
   type: 'CONSUMABLE';
@@ -223,6 +228,7 @@ function toBattleSkill(skill: SkillData): BattleSkill {
     name: skill.name,
     mp: skill.mpCost,
     power: Math.round(basePower * skill.power),
+    powerMultiplier: skill.power,
     icon: ELEMENT_ICON[element],
     aoe: skill.targetType === 'ALL_ENEMIES',
     element,
@@ -239,6 +245,7 @@ function toDemonUltimateSkill(form: DemonFormData): BattleSkill {
     name: form.ultimateSkill.nameJa,
     cost: '1 USE',
     power: Math.round(430 * form.ultimateSkill.damage.power),
+    powerMultiplier: form.ultimateSkill.damage.power,
     icon: form.visual?.icon ?? ELEMENT_ICON[element],
     aoe: form.ultimateSkill.damage.targetType === 'ALL',
     element,
@@ -277,6 +284,8 @@ function toEnemyState(enemy: EnemyData, index: number, count: number): EnemyStat
     hp,
     maxHp: hp,
     atk: enemy.stats.atk,
+    stats: { ...enemy.stats },
+    resistances: { ...enemy.resistances },
     effectHit: enemy.stats.effectHit,
     effectRes: enemy.stats.effectRes,
     color: enemy.battle?.color ?? (enemy.tier === 'BOSS' ? '#ef4444' : '#8A2BE2'),
@@ -326,6 +335,8 @@ function buildBattleWaves(stageId?: string): BattleWave[] {
 function cloneEnemies(enemies: EnemyState[]): EnemyState[] {
   return enemies.map(enemy => ({
     ...enemy,
+    stats: enemy.stats ? { ...enemy.stats } : undefined,
+    resistances: enemy.resistances ? { ...enemy.resistances } : undefined,
     weaknesses: enemy.weaknesses ? [...enemy.weaknesses] : undefined,
     gimmicks: enemy.gimmicks ? [...enemy.gimmicks] : undefined,
     statusEffects: enemy.statusEffects?.map(effect => ({
@@ -334,6 +345,31 @@ function cloneEnemies(enemies: EnemyState[]): EnemyState[] {
     })),
     statusPulse: undefined,
   }));
+}
+
+const FALLBACK_PLAYER_STATS: BaseStats = {
+  hp: 820,
+  atk: 150,
+  def: 60,
+  spd: 100,
+  critRate: 5,
+  critDmg: 150,
+  effectHit: 0,
+  effectRes: 0,
+};
+
+function toEnemyBattleStats(enemy: EnemyState): BaseStats {
+  const fallbackAtk = Math.max(1, enemy.atk);
+  return {
+    hp: Math.max(1, enemy.stats?.hp ?? enemy.maxHp),
+    atk: enemy.stats?.atk ?? fallbackAtk,
+    def: Math.max(0, enemy.stats?.def ?? Math.round(fallbackAtk * 0.5)),
+    spd: Math.max(1, enemy.stats?.spd ?? 80),
+    critRate: Math.max(0, enemy.stats?.critRate ?? 0),
+    critDmg: Math.max(0, enemy.stats?.critDmg ?? 150),
+    effectHit: Math.max(0, enemy.stats?.effectHit ?? enemy.effectHit ?? 0),
+    effectRes: Math.max(0, enemy.stats?.effectRes ?? enemy.effectRes ?? 0),
+  };
 }
 
 function collectStageDrops(stageId?: string): DropEntry[] {
@@ -1727,6 +1763,13 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const sfx = useSoundEffects();
   const playerProfile = player ? calculateCharacterStatProfile(player, equippedResidueSlots) : null;
   const playerStats = playerProfile?.total ?? player?.stats;
+  const playerElementDmgBoosts = hasElementDmgBoosts(player?.elementDmgBoosts)
+    ? player?.elementDmgBoosts ?? {}
+    : playerProfile?.elementDmgBoosts ?? {};
+  const battleSynergyBonus = useMemo(
+    () => calculatePartyTribeSynergy(party.filter(Boolean) as MonsterData[]),
+    [party],
+  );
   const battleWaves = useMemo(() => buildBattleWaves(stageId), [stageId]);
 
   const [waveIndex, setWaveIndex] = useState(0);
@@ -1809,11 +1852,6 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     [inventoryItems],
   );
   const demonUltimateSkill = toDemonUltimateSkill(demonForm);
-  const getElementBoostMultiplier = (element: ElementType) => {
-    if (element === 'NONE') return 1;
-    const boost = playerProfile?.elementDmgBoosts[element] ?? player?.elementDmgBoosts?.[element] ?? 0;
-    return 1 + boost / 100;
-  };
 
   const addLog = useCallback((line: string) => setLog(prev => [...prev, line]), []);
 
@@ -1962,10 +2000,56 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setTimeout(() => setEnemies(prev => prev.map(e => ({ ...e, hit: false }))), battleDelay(500, 220));
   }
 
-  function damageEnemy(targetId: number, dmg: number, opts: { color?: string; element?: ElementType; ignoreShield?: boolean } = {}) {
-    const isCrit = Math.random() < 0.2;
+  function calculatePlayerHitDamage(
+    targetId: number,
+    opts: {
+      powerMultiplier?: number;
+      element?: ElementType;
+      attackType?: SkillAttackType;
+      attackMultiplier?: number;
+      ignoreDefense?: boolean;
+      ignoreResistance?: boolean;
+    } = {},
+  ): BattleDamageResult {
     const target = enemiesRef.current.find(e => e.id === targetId);
-    let finalDmg = isCrit ? Math.round(dmg * 1.5) : dmg;
+    if (!target) {
+      return { damage: 0, isCritical: false, isWeakness: false, isResisted: false };
+    }
+
+    const element = opts.element ?? 'NONE';
+    const attackType = opts.attackType ?? 'SLASH';
+    const activeDemonForm = demonized ? demonForm : null;
+    const baseStats = playerStats ?? FALLBACK_PLAYER_STATS;
+    const attackMultiplier = opts.attackMultiplier
+      ?? getDemonDamageMultiplier(activeDemonForm, attackType)
+        * getAilmentAttackMultiplier(playerStatusEffects, demonized);
+    const attackerStats: BaseStats = {
+      ...baseStats,
+      atk: Math.max(1, Math.floor(baseStats.atk * attackMultiplier)),
+    };
+    const defenderStats = toEnemyBattleStats(target);
+    const ignoreDefense = opts.ignoreDefense ?? shouldBypassDefense(activeDemonForm);
+    const ignoreResistance = opts.ignoreResistance ?? shouldIgnoreResistance(activeDemonForm);
+
+    return calculateBattleDamage({
+      attackerStats,
+      attackerElementBoosts: playerElementDmgBoosts,
+      defenderStats: ignoreDefense ? { ...defenderStats, def: 0 } : defenderStats,
+      defenderResistances: ignoreResistance ? {} : target.resistances ?? {},
+      powerMultiplier: opts.powerMultiplier ?? 1.0,
+      element,
+      synergyBonus: battleSynergyBonus,
+    });
+  }
+
+  function damageEnemy(
+    targetId: number,
+    dmg: number,
+    opts: { color?: string; element?: ElementType; ignoreShield?: boolean; crit?: boolean; isWeakness?: boolean; isResisted?: boolean } = {},
+  ) {
+    const isCrit = opts.crit ?? false;
+    const target = enemiesRef.current.find(e => e.id === targetId);
+    let finalDmg = dmg;
     let nextShieldHp = target?.shieldHp ?? 0;
     let shieldBroken = target?.shieldBroken ?? false;
     const hasShield = target && (target.maxShieldHp ?? 0) > 0 && (target.shieldHp ?? 0) > 0 && !target.shieldBroken;
@@ -2230,9 +2314,6 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     const enemy = enemies.find(e => e.id === tid);
     const attackElement = demonized ? demonForm.ultimateSkill.damage.element : 'NONE';
     const hitCount = demonized ? getDemonActionHitCount(demonForm, 'SLASH') : 1;
-    const demonMult = demonized ? getDemonDamageMultiplier(demonForm, 'SLASH') : 1;
-    const ailmentMult = getAilmentAttackMultiplier(playerStatusEffects, demonized);
-    const dmg = Math.round(1500 * demonMult * ailmentMult * (hitCount > 1 ? 0.62 : 1) * (0.75 + Math.random() * 0.25));
     triggerSkillEffect({
       name: demonized ? demonForm.formName : '攻撃',
       element: attackElement,
@@ -2245,7 +2326,19 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       const hitInterval = battleDelay(120, 58);
       Array.from({ length: hitCount }).forEach((_, hitIndex) => {
         setTimeout(() => {
-          totalDamage += damageEnemy(tid, dmg, { color: demonized ? demonColor : '#f0ebff', element: attackElement });
+          const result = calculatePlayerHitDamage(tid, {
+            powerMultiplier: 1.0,
+            element: attackElement,
+            attackType: 'SLASH',
+          });
+          if (result.isCritical) setSoul(prev => Math.min(100, prev + 5));
+          totalDamage += damageEnemy(tid, result.damage, {
+            color: demonized ? demonColor : '#f0ebff',
+            element: attackElement,
+            crit: result.isCritical,
+            isWeakness: result.isWeakness,
+            isResisted: result.isResisted,
+          });
         }, hitIndex * hitInterval);
       });
       if (demonized) { setFlashColor(demonForm.visual?.soft ?? 'rgba(220,38,38,0.3)'); setTimeout(() => setFlashColor(null), 350); }
@@ -2295,8 +2388,6 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     const targets = skill.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[skill.element];
     const hitCount = demonized ? getDemonActionHitCount(demonForm, skill.attackType) : 1;
-    const demonMult = demonized ? getDemonDamageMultiplier(demonForm, skill.attackType) : 1;
-    const ailmentMult = getAilmentAttackMultiplier(playerStatusEffects, demonized);
     triggerSkillEffect(skill, targets);
     addLog(`${demonized ? `魔神化『${demonForm.formName}』` : '術'}発動！ ${skill.name}！ ${vfxStyle.label}属性/${ATTACK_TYPE_LABEL[skill.attackType]}`);
     setFlashColor(vfxStyle.soft);
@@ -2309,8 +2400,19 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           let totalDamage = 0;
           Array.from({ length: hitCount }).forEach((_, hitIndex) => {
             setTimeout(() => {
-              const dmg = Math.round(skill.power * getElementBoostMultiplier(skill.element) * demonMult * ailmentMult * (hitCount > 1 ? 0.6 : 1) * (0.85 + Math.random() * 0.3));
-              totalDamage += damageEnemy(tid, dmg, { color: vfxStyle.color, element: skill.element });
+              const result = calculatePlayerHitDamage(tid, {
+                powerMultiplier: skill.powerMultiplier,
+                element: skill.element,
+                attackType: skill.attackType,
+              });
+              if (result.isCritical) setSoul(prev => Math.min(100, prev + 5));
+              totalDamage += damageEnemy(tid, result.damage, {
+                color: vfxStyle.color,
+                element: skill.element,
+                crit: result.isCritical,
+                isWeakness: result.isWeakness,
+                isResisted: result.isResisted,
+              });
             }, hitIndex * hitInterval);
           });
           setTimeout(() => {
@@ -2362,8 +2464,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     const ultimate = demonUltimateSkill;
     const targets = ultimate.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[ultimate.element];
-    const damageMultiplier = getDemonDamageMultiplier(demonForm, ultimate.attackType) * getAilmentAttackMultiplier(playerStatusEffects, demonized);
     const ignoreShield = shouldBypassDefense(demonForm);
+    const ignoreResistance = Boolean(demonForm.ultimateSkill.damage.flags?.includes('IGNORE_RESISTANCE'));
     triggerSkillEffect(ultimate, targets);
     addLog(`魔神技『${ultimate.name}』解放！ ${demonForm.formName}が戦場の理を塗り替える。`);
     setFlashColor(demonForm.visual?.soft ?? vfxStyle.soft);
@@ -2373,8 +2475,23 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       const targetInterval = battleDelay(180, 85);
       targets.forEach((tid, i) => {
         setTimeout(() => {
-          const dmg = Math.round(ultimate.power * damageMultiplier * (0.9 + Math.random() * 0.22));
-          const actualDamage = damageEnemy(tid, dmg, { color: demonColor, element: ultimate.element, ignoreShield });
+          const result = calculatePlayerHitDamage(tid, {
+            powerMultiplier: ultimate.powerMultiplier,
+            element: ultimate.element,
+            attackType: ultimate.attackType,
+            attackMultiplier: 1,
+            ignoreDefense: ignoreShield,
+            ignoreResistance,
+          });
+          if (result.isCritical) setSoul(prev => Math.min(100, prev + 5));
+          const actualDamage = damageEnemy(tid, result.damage, {
+            color: demonColor,
+            element: ultimate.element,
+            ignoreShield,
+            crit: result.isCritical,
+            isWeakness: result.isWeakness,
+            isResisted: result.isResisted,
+          });
           addLog(`${enemies.find(e => e.id === tid)?.name}に ${actualDamage}ダメージ！`);
           applyAilmentToEnemy(tid, ultimate);
         }, i * targetInterval);

@@ -19,10 +19,11 @@ export class JobService {
    * トランザクションを用いて UserJob の生成・更新を行う。
    */
   public async changeJob(characterOrId: string | CharacterData, nextJobId: string): Promise<void> {
+    const jobData = this.masterData.getJob(nextJobId);
+    if (!jobData) throw new Error(`Job ${nextJobId} not found in master data`);
+
     if (typeof characterOrId !== 'string') {
       const character = characterOrId;
-      const jobData = this.masterData.getJob(nextJobId);
-      if (!jobData) throw new Error(`Job ${nextJobId} not found in master data`);
       const unlock = getJobUnlockStatus(character, jobData);
       if (!unlock.unlocked) throw new Error(`Job ${nextJobId} is locked`);
 
@@ -41,9 +42,29 @@ export class JobService {
     if (!this.prisma) throw new Error('PrismaClient is required for persistent job changes.');
     const characterId = characterOrId;
     await this.prisma.$transaction(async (tx: any) => {
-      // マスターデータの存在確認
-      const jobData = this.masterData.getJob(nextJobId);
-      if (!jobData) throw new Error(`Job ${nextJobId} not found in master data`);
+      const character = await tx.character.findUnique({
+        where: { id: characterId },
+        include: { jobs: true },
+      });
+      if (!character) throw new Error(`Character ${characterId} not found`);
+
+      const unlock = getJobUnlockStatus(this.toCharacterDataForUnlock(character), jobData);
+      if (!unlock.unlocked) throw new Error(`Job ${nextJobId} is locked`);
+
+      await tx.job.upsert({
+        where: { id: nextJobId },
+        update: {
+          name: jobData.displayName ?? jobData.name,
+          tier: jobData.tier,
+          category: jobData.category,
+        },
+        create: {
+          id: nextJobId,
+          name: jobData.displayName ?? jobData.name,
+          tier: jobData.tier,
+          category: jobData.category,
+        },
+      });
 
       // 既存の UserJob を確認
       const userJob = await tx.userJob.findUnique({
@@ -73,6 +94,47 @@ export class JobService {
         data: { currentJobId: nextJobId },
       });
     });
+  }
+
+  private toCharacterDataForUnlock(character: any): CharacterData {
+    const currentJobId = character.currentJobId ?? 'warrior';
+    const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior')!;
+    const baseStats = {
+      hp: character.hp,
+      atk: character.atk,
+      def: character.def,
+      spd: character.spd,
+      critRate: character.critRate,
+      critDmg: character.critDmg,
+      effectHit: character.effectHit,
+      effectRes: character.effectRes,
+    };
+
+    return {
+      id: character.id,
+      name: character.name,
+      currentJobId,
+      category: currentJob.category,
+      baseStats,
+      stats: calculateJobAdjustedStats(baseStats, currentJob),
+      passives: {
+        passiveAtkBonus: character.passiveAtkBonus ?? 0,
+        passiveDefBonus: character.passiveDefBonus ?? 0,
+        passiveSpdBonus: character.passiveSpdBonus ?? 0,
+        passiveCritRateBonus: character.passiveCritRateBonus ?? 0,
+        passiveCritDmgBonus: character.passiveCritDmgBonus ?? 0,
+        passiveHpBonus: character.passiveHpBonus ?? 0,
+      },
+      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
+      baseResistances: {},
+      jobs: (character.jobs ?? []).map((job: UserJobState) => ({ jobId: job.jobId, level: job.level, exp: job.exp })),
+      isAwakened: false,
+      clearedStages: character.clearedStages ?? [],
+      gold: character.gold ?? 0,
+      currentEnergy: 0,
+      maxEnergy: currentJob.energyCurve?.baseMaxEnergy ?? 100,
+      elementDmgBoosts: {},
+    };
   }
 
   /**

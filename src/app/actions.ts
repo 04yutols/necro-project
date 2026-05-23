@@ -8,6 +8,7 @@ import { RewardService, StageDropResult } from '@/services/RewardService';
 import { MasterDataService } from '@/services/MasterDataService';
 import { RankingService } from '@/services/RankingService';
 import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventService';
+import { JobService } from '@/services/JobService';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
 import { calculateJobAdjustedStats } from '@/logic/JobSystem';
 import type {
@@ -442,6 +443,14 @@ function toReadyResult(loaded: LoadCharacterResult): SaveGameStateResult {
   return { success: false, error: loaded.error };
 }
 
+function jobChangeErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('not found in master data')) return '存在しない職業です';
+  if (message.includes('is locked')) return '解放条件を満たしていません';
+  if (message.includes('Character') && message.includes('not found')) return 'キャラクターが見つかりません';
+  return '転職の保存に失敗しました';
+}
+
 async function getAuthorizedUser(userId: string): Promise<ServerGameUser | null> {
   const session = await auth().catch(() => null);
   if (session?.user?.id !== userId) return null;
@@ -769,6 +778,35 @@ export async function loadCharacterForUser(user: ServerGameUser): Promise<LoadCh
     user: authorizedUser,
     data: toServerGameData(character, inventoryItems, inventoryMonsters),
   };
+}
+
+export async function changeJobAction(characterId: string, jobId: string): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return changeJobForUser(toServerUser(session.user), characterId, jobId);
+}
+
+export async function changeJobForUser(
+  user: ServerGameUser,
+  characterId: string,
+  jobId: string,
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    select: { id: true },
+  });
+  if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+
+  try {
+    await new JobService(prisma).changeJob(character.id, jobId);
+  } catch (error) {
+    return { success: false, error: jobChangeErrorMessage(error) };
+  }
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
 }
 
 export async function createCharacterAction(

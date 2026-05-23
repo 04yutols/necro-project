@@ -9,6 +9,7 @@ jest.mock('@/auth', () => ({
 
 import { auth } from '@/auth';
 import {
+  changeJobForUser,
   createCharacterForUser,
   equipItemForUser,
   equipResidueForUser,
@@ -105,8 +106,27 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(created.data.soulShards).toHaveLength(0);
     expect(created.data.party).toEqual([null, null, null]);
 
-    const initialBaseStats = created.data.player.baseStats;
-    const initialProfile = calculateCharacterStatProfile(created.data.player, created.data.equippedResidueSlots);
+    const changedToMage = await changeJobForUser(user, created.data.player.id, 'mage');
+    expect(changedToMage.success).toBe(true);
+    if (!changedToMage.success) throw new Error(changedToMage.error);
+    expect(changedToMage.data.player.currentJobId).toBe('mage');
+    expect(changedToMage.data.player.jobs).toContainEqual({ jobId: 'mage', level: 1, exp: 0 });
+    expect(changedToMage.data.player.maxEnergy).toBe(80);
+
+    const persistedMage = await prisma.character.findUnique({
+      where: { id: created.data.player.id },
+      include: { jobs: true },
+    });
+    expect(persistedMage?.currentJobId).toBe('mage');
+    expect(persistedMage?.jobs.some((job) => job.jobId === 'mage' && job.level === 1)).toBe(true);
+
+    const changedBackToWarrior = await changeJobForUser(user, created.data.player.id, 'warrior');
+    expect(changedBackToWarrior.success).toBe(true);
+    if (!changedBackToWarrior.success) throw new Error(changedBackToWarrior.error);
+    expect(changedBackToWarrior.data.player.currentJobId).toBe('warrior');
+
+    const initialBaseStats = changedBackToWarrior.data.player.baseStats;
+    const initialProfile = calculateCharacterStatProfile(changedBackToWarrior.data.player, changedBackToWarrior.data.equippedResidueSlots);
     expect(initialProfile.total.atk).toBeGreaterThan(created.data.player.stats.atk);
 
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.01);
