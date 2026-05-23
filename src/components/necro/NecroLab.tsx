@@ -775,7 +775,7 @@ function EnhanceTab({ abyssalResidues, residueMaterials, selectedId, onEnhance, 
 export default function NecroLab() {
   const {
     necroStatus, abyssalResidues, equippedResidueSlots, residueMaterials,
-    equipResidueToSlot, upgradeResidue, setCurrentTab,
+    equipResidueToSlot, upgradeResidue, setCurrentTab, player, loadFromServer,
   } = useGameStore();
 
   const sound = useGothicSound();
@@ -800,7 +800,10 @@ export default function NecroLab() {
     setActiveSlot(prev => prev === i ? null : i);
   };
 
-  const handleEquip = () => {
+  const canPersistToServer = () => typeof window !== 'undefined'
+    && Boolean((window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__);
+
+  const handleEquip = async () => {
     const residue = abyssalResidues.find(r => r.id === selectedId);
     if (!residue) return;
     let target = activeSlot;
@@ -811,6 +814,15 @@ export default function NecroLab() {
     sound.playEquip();
     equipResidueToSlot(target, residue);
     setActiveSlot(null);
+    if (!player || !canPersistToServer()) return;
+    try {
+      const { equipResidueAction } = await import('../../app/actions');
+      const result = await equipResidueAction(player.id, target, residue.id);
+      if (result.success) loadFromServer(result.data);
+      else console.error(result.error);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const handleEnhance = (matIds: string[]) => {

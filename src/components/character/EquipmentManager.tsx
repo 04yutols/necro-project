@@ -20,7 +20,7 @@ const SLOT_LABELS: Record<keyof EquipmentSlots, string> = {
 };
 
 export default function EquipmentManager() {
-  const { player, inventoryItems, equipItem, unequipItem, setCurrentTab, equippedResidueSlots } = useGameStore();
+  const { player, inventoryItems, equipItem, unequipItem, setCurrentTab, equippedResidueSlots, loadFromServer } = useGameStore();
   const [selectedSlot, setSelectedSlot] = useState<keyof EquipmentSlots | null>(null);
   const [previewItem, setPreviewItem] = useState<ItemData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -45,6 +45,12 @@ export default function EquipmentManager() {
     setIsProcessing(true);
     try {
       equipItem(selectedSlot, previewItem);
+      if (typeof window !== 'undefined' && (window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__) {
+        const { equipItemAction } = await import('../../app/actions');
+        const result = await equipItemAction(player.id, selectedSlot, previewItem.id);
+        if (result.success) loadFromServer(result.data);
+        else console.error(result.error);
+      }
       setPreviewItem(null);
       setSelectedSlot(null);
     } catch (e) {
@@ -59,6 +65,12 @@ export default function EquipmentManager() {
     setIsProcessing(true);
     try {
       unequipItem(slot);
+      if (typeof window !== 'undefined' && (window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__) {
+        const { unequipItemAction } = await import('../../app/actions');
+        const result = await unequipItemAction(player.id, slot);
+        if (result.success) loadFromServer(result.data);
+        else console.error(result.error);
+      }
       if (selectedSlot === slot) setPreviewItem(null);
     } catch (e) {
       console.error(e);

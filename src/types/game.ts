@@ -64,14 +64,9 @@ export interface JobData {
   };
   statModifiers?: Partial<BaseStats>;
   energyCurve: {
-    baseMaxEnergy: number;
-    energyRegen: number;
-    ultimateCost: number;
-  };
-  mpCurve?: {
-    baseMaxMP: number;
-    mpGrowth: number;
-    skillCost: number;
+    baseMaxEnergy: number; // スキルSPの最大値
+    energyRegen: number;   // 通常攻撃1回ごとのSP回復量
+    ultimateCost: number;  // 奥義コスト（未使用・将来用）
   };
   levelBonuses: Record<string, Partial<PassiveBonuses>>;
   skills: JobSkillUnlock[];
@@ -248,8 +243,9 @@ export interface CharacterData {
   gold: number;
   statusEffects?: StatusEffect[];
   // エネルギーシステム（ランタイム状態 — DB非保存）
-  currentEnergy: number;
-  maxEnergy:     number;
+  // スキルポイント（バトルランタイム）— 魔神化ゲージとは別リソース
+  currentEnergy: number; // 現在SP：0から溜まる、スキル使用で消費
+  maxEnergy:     number; // 最大SP：job.energyCurve.baseMaxEnergy が設定値
   // 属性ダメージ加成（装備・残滓から集計）
   elementDmgBoosts: Partial<Record<ElementType, number>>;
 }
@@ -419,8 +415,8 @@ export interface BattleLog {
   ailmentApplied?: AilmentType;
   ailmentTick?: AilmentType;
   ailmentClearedBy?: 'DEMONIZE' | 'TURN_END';
-  playerEnergy: number;
-  playerMP?: number; // legacy alias for older UI log readers
+  playerSp: number;         // スキルポイント（スキル使用リソース）
+  playerDemonGauge: number; // 魔神化ゲージ 0-100（別リソース）
   playerHP: number;
   description: string;
 }

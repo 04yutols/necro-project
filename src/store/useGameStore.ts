@@ -15,6 +15,7 @@ import {
   hasEnoughWeaponMaterials,
 } from '../logic/WeaponSystem';
 import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData, BaseStats, JobData, WeaponMaterialData, WeaponMaterialType, DemonFormData, DemonRiskType } from '../types/game';
+import type { ServerGameData } from '../types/serverGame';
 
 const JOBS = jobsData as Record<string, JobData>;
 const ITEMS = itemsData as Record<string, ItemData>;
@@ -198,6 +199,7 @@ interface GameState {
 
   updateHP: (hp: number) => void;
   updateEnergy: (energy: number) => void;
+  updateEnergyBy: (delta: number) => void;
   addExp: (amount: number) => void;
   addGold: (amount: number) => void;
   addClearedStage: (stageId: string) => void;
@@ -262,6 +264,8 @@ interface GameState {
 
   // 初期化用
   initialize: () => void;
+  loadFromServer: (data: ServerGameData) => void;
+  clearServerData: () => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -280,7 +284,7 @@ export const useGameStore = create<GameState>((set) => ({
   equippingMonsterId: null,
   battleLogs: ['SYSTEM STANDBY...'],
   actionTrigger: null,
-  demonGauge: 100,
+  demonGauge: 0,
   isDemonMode: false,
   demonActionsRemaining: 0,
   demonUltimateUsed: false,
@@ -486,6 +490,11 @@ export const useGameStore = create<GameState>((set) => ({
   updateEnergy: (energy) => set((state) => ({
     player: state.player ? { ...state.player, currentEnergy: Math.max(0, Math.min(energy, state.player.maxEnergy)) } : null
   })),
+  updateEnergyBy: (delta) => set((state) => {
+    if (!state.player) return {};
+    const next = Math.max(0, Math.min(state.player.currentEnergy + delta, state.player.maxEnergy));
+    return { player: { ...state.player, currentEnergy: next } };
+  }),
   addExp: (amount) => set((state) => {
     if (!state.player) return { player: null };
     const newJobs = state.player.jobs.map(j => {
@@ -617,6 +626,66 @@ export const useGameStore = create<GameState>((set) => ({
     };
   }),
 
+  loadFromServer: (data) => set({
+    player: withDerivedElementBoosts(data.player, data.equippedResidueSlots),
+    necroStatus: data.necroStatus,
+    party: [data.party[0] ?? null, data.party[1] ?? null, data.party[2] ?? null],
+    inventoryMonsters: data.inventoryMonsters,
+    soulShards: data.soulShards,
+    inventoryItems: data.inventoryItems,
+    abyssalResidues: data.abyssalResidues,
+    equippedResidueSlots: [
+      data.equippedResidueSlots[0] ?? null,
+      data.equippedResidueSlots[1] ?? null,
+      data.equippedResidueSlots[2] ?? null,
+      data.equippedResidueSlots[3] ?? null,
+      data.equippedResidueSlots[4] ?? null,
+    ],
+    residueMaterials: [],
+    weaponMaterials: [],
+    transmutationPoints: 0,
+    monsterCurrentHp: {},
+    equippingMonsterId: null,
+    battleLogs: ['CLOUD SAVE LOADED...'],
+    actionTrigger: null,
+    currentTab: 'HOME',
+    demonGauge: 0,
+    isDemonMode: false,
+    demonActionsRemaining: 0,
+    demonUltimateUsed: false,
+    demonFormJobId: null,
+    demonEffectBFlag: null,
+    demonRiskType: null,
+    demonRiskValue: 0,
+  }),
+
+  clearServerData: () => set({
+    player: null,
+    necroStatus: null,
+    party: [null, null, null],
+    inventoryMonsters: [],
+    soulShards: [],
+    inventoryItems: [],
+    abyssalResidues: [],
+    equippedResidueSlots: [null, null, null, null, null],
+    residueMaterials: [],
+    weaponMaterials: [],
+    transmutationPoints: 0,
+    monsterCurrentHp: {},
+    equippingMonsterId: null,
+    battleLogs: ['SYSTEM STANDBY...'],
+    actionTrigger: null,
+    currentTab: 'HOME',
+    demonGauge: 0,
+    isDemonMode: false,
+    demonActionsRemaining: 0,
+    demonUltimateUsed: false,
+    demonFormJobId: null,
+    demonEffectBFlag: null,
+    demonRiskType: null,
+    demonRiskValue: 0,
+  }),
+
   initialize: () => set({
     player: {
       id: '1',
@@ -710,7 +779,7 @@ export const useGameStore = create<GameState>((set) => ({
       null,
     ],
     currentTab: 'HOME',
-    demonGauge: 100,
+    demonGauge: 0,
     isDemonMode: false,
     demonActionsRemaining: 0,
     demonUltimateUsed: false,

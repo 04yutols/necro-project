@@ -137,8 +137,10 @@ function JobSigil({ jobId, size = 140 }: { jobId: string; size?: number }) {
 }
 
 export default function JobChangeScreen() {
-  const { player, changeJob, setCurrentTab } = useGameStore();
+  const { player, loadFromServer, setCurrentTab } = useGameStore();
   const [selectedJobId, setSelectedJobId] = useState(player?.currentJobId ?? 'warrior');
+  const [isChangingJob, setIsChangingJob] = useState(false);
+  const [changeError, setChangeError] = useState<string | null>(null);
 
   const jobs = useMemo(() => (
     JOB_ORDER
@@ -156,11 +158,33 @@ export default function JobChangeScreen() {
   const effectiveSelectedLevel = selectedLevel || 1;
   const unlock = getJobUnlockStatus(player, selectedJob);
   const isCurrent = player.currentJobId === selectedJobId;
+  const characterId = player.id;
   const baseStats = player.baseStats ?? player.stats;
   const currentStats = addPassiveBonuses(calculateJobAdjustedStats(baseStats, currentJob), player);
   const previewStats = addPassiveBonuses(calculateJobAdjustedStats(baseStats, selectedJob), player);
   const skillEntries = resolveJobSkills(selectedJob, unlock.unlocked ? effectiveSelectedLevel : 0, SKILLS);
   const tierLabel = selectedJob.tier === 1 ? 'TIER I' : 'TIER II';
+
+  async function handleChangeJob() {
+    if (isCurrent || !unlock.unlocked || isChangingJob) return;
+    setChangeError(null);
+    setIsChangingJob(true);
+    try {
+      const { changeJobAction } = await import('../../app/actions');
+      const result = await changeJobAction(characterId, selectedJobId);
+      if (!result.success) {
+        setChangeError(result.error);
+        return;
+      }
+      loadFromServer(result.data);
+      setSelectedJobId(result.data.player.currentJobId);
+      setCurrentTab('JOB');
+    } catch {
+      setChangeError('転職の保存に失敗しました');
+    } finally {
+      setIsChangingJob(false);
+    }
+  }
 
   return (
     <motion.div
@@ -347,7 +371,10 @@ export default function JobChangeScreen() {
                       key={id}
                       className="job-rail-card"
                       type="button"
-                      onClick={() => setSelectedJobId(id)}
+                      onClick={() => {
+                        setSelectedJobId(id);
+                        setChangeError(null);
+                      }}
                       style={{
                         flex: '0 0 clamp(84px, 23vw, 100px)',
                         width: 'clamp(84px, 23vw, 100px)',
@@ -504,6 +531,24 @@ export default function JobChangeScreen() {
               </div>
             )}
 
+            {changeError && (
+              <div
+                role="alert"
+                style={{
+                  marginTop: 10,
+                  borderRadius: 12,
+                  border: '1px solid rgba(248,113,113,0.38)',
+                  background: 'rgba(127,29,29,0.18)',
+                  padding: '9px 11px',
+                  fontSize: 11,
+                  color: '#fca5a5',
+                  lineHeight: 1.65,
+                }}
+              >
+                {changeError}
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 10, marginTop: 12, minWidth: 0 }}>
               <button
                 type="button"
@@ -525,25 +570,25 @@ export default function JobChangeScreen() {
               <button
                 id="tut-job-confirm"
                 type="button"
-                disabled={isCurrent || !unlock.unlocked}
-                onClick={() => changeJob(selectedJobId)}
+                disabled={isCurrent || !unlock.unlocked || isChangingJob}
+                onClick={handleChangeJob}
                 style={{
                   flex: 1,
                   minHeight: 48,
                   borderRadius: 12,
-                  background: isCurrent || !unlock.unlocked
+                  background: isCurrent || !unlock.unlocked || isChangingJob
                     ? 'rgba(255,255,255,0.04)'
                     : `linear-gradient(135deg, ${selectedStyle.color}42, ${selectedStyle.soft})`,
-                  border: `1px solid ${isCurrent || !unlock.unlocked ? 'rgba(255,255,255,0.08)' : selectedStyle.color + '88'}`,
+                  border: `1px solid ${isCurrent || !unlock.unlocked || isChangingJob ? 'rgba(255,255,255,0.08)' : selectedStyle.color + '88'}`,
                   color: isCurrent ? '#6b5f7a' : unlock.unlocked ? '#F0EAFF' : '#8A6D1F',
                   fontFamily: "'Cinzel', serif",
                   fontSize: 12,
                   fontWeight: 900,
                   letterSpacing: '0.08em',
-                  boxShadow: isCurrent || !unlock.unlocked ? 'none' : `0 0 22px ${selectedStyle.glow}`,
+                  boxShadow: isCurrent || !unlock.unlocked || isChangingJob ? 'none' : `0 0 22px ${selectedStyle.glow}`,
                 }}
               >
-                {isCurrent ? '選択中' : unlock.unlocked ? '転職' : '条件未達成'}
+                {isChangingJob ? '転職中...' : isCurrent ? '選択中' : unlock.unlocked ? '転職' : '条件未達成'}
               </button>
             </div>
           </div>

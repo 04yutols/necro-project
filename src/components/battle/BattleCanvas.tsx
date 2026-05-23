@@ -14,7 +14,10 @@ import { getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
 import { startTutorialBattlePhase } from '../../hooks/useTutorialTrigger';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { RewardService, type StageDropResult } from '../../services/RewardService';
-import { calculateCharacterStatProfile } from '../../logic/StatSystem';
+import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/StatSystem';
+import { calculateBattleDamage, type BattleDamageResult } from '../../logic/BattleDamage';
+import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
+import { calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilPlayer, type TurnOrderActor } from '../../logic/TurnOrderSystem';
 import type { StageResultMeta } from '../../types/online';
 import {
   DEMON_ACTION_LIMIT,
@@ -24,6 +27,7 @@ import {
   getDemonIncomingDamageMultiplier,
   getDemonRiskLabel,
   shouldBypassDefense,
+  shouldIgnoreResistance,
 } from '../../logic/DemonizationSystem';
 import {
   AILMENT_UI,
@@ -34,7 +38,7 @@ import {
   processStatusEffects,
   tryApplyAilment,
 } from '../../logic/StatusAilmentSystem';
-import type { AilmentType, BossGimmick, DemonFormData, DropEntry, ElementType, EnemyData, EnemyTier, ItemData, JobData, SkillAttackType, SkillData, StageData, StatusEffect } from '../../types/game';
+import type { AilmentType, BaseStats, BossGimmick, DemonFormData, DropEntry, ElementType, EnemyData, EnemyTier, ItemData, JobData, MonsterData, Resistances, SkillAttackType, SkillData, StageData, StatusEffect } from '../../types/game';
 
 interface BattleCanvasProps {
   stageId?: string;
@@ -47,6 +51,7 @@ type BattleSkill = {
   mp?: number;
   cost?: string;
   power: number;
+  powerMultiplier: number;
   icon: string;
   aoe: boolean;
   element: ElementType;
@@ -80,6 +85,7 @@ interface FormationBadgeMeta {
 interface EnemyState {
   id: number; sourceId?: string; name: string; nameEn: string;
   hp: number; maxHp: number; atk: number; color: string;
+  stats?: BaseStats; resistances?: Resistances;
   effectHit?: number; effectRes?: number;
   pos: 'left' | 'center' | 'right'; size: number;
   tier?: EnemyTier; weaknesses?: ElementType[];
@@ -99,6 +105,11 @@ type BattleWave = {
   isBoss?: boolean;
   rewards: { exp: number; gold: number };
   enemies: EnemyState[];
+};
+
+type BattleAvState = {
+  player: number;
+  enemies: Record<number, number>;
 };
 
 const INIT_ENEMIES: EnemyState[] = [
@@ -140,11 +151,11 @@ const BATTLE_WAVES = [
 
 // ── SKILLS / ITEMS ─────────────────────────────────────────────────────────────
 const SKILLS: BattleSkill[] = [
-  { id: 'mock_fire',    name: '火葬弾',   mp: 12, power: 260, icon: '🔥', aoe: false, element: 'FIRE',    attackType: 'MAGIC' },
-  { id: 'mock_water',   name: '水葬渦',   mp: 14, power: 210, icon: '💧', aoe: true,  element: 'WATER',   attackType: 'MAGIC' },
-  { id: 'mock_thunder', name: '雷鳴斬り', mp: 10, power: 300, icon: '⚡', aoe: false, element: 'THUNDER', attackType: 'SLASH' },
-  { id: 'mock_earth',   name: '岩崩し',   mp: 11, power: 230, icon: '◆',  aoe: true,  element: 'EARTH',   attackType: 'STRIKE' },
-  { id: 'mock_wind',    name: '鎌鼬',     mp: 8,  power: 190, icon: '✦',  aoe: true,  element: 'WIND',    attackType: 'SLASH' },
+  { id: 'mock_fire',    name: '火葬弾',   mp: 12, power: 260, powerMultiplier: 1.45, icon: '🔥', aoe: false, element: 'FIRE',    attackType: 'MAGIC' },
+  { id: 'mock_water',   name: '水葬渦',   mp: 14, power: 210, powerMultiplier: 1.20, icon: '💧', aoe: true,  element: 'WATER',   attackType: 'MAGIC' },
+  { id: 'mock_thunder', name: '雷鳴斬り', mp: 10, power: 300, powerMultiplier: 1.60, icon: '⚡', aoe: false, element: 'THUNDER', attackType: 'SLASH' },
+  { id: 'mock_earth',   name: '岩崩し',   mp: 11, power: 230, powerMultiplier: 1.30, icon: '◆',  aoe: true,  element: 'EARTH',   attackType: 'STRIKE' },
+  { id: 'mock_wind',    name: '鎌鼬',     mp: 8,  power: 190, powerMultiplier: 1.15, icon: '✦',  aoe: true,  element: 'WIND',    attackType: 'SLASH' },
 ];
 type BattleConsumableItem = ItemData & {
   type: 'CONSUMABLE';
@@ -223,6 +234,7 @@ function toBattleSkill(skill: SkillData): BattleSkill {
     name: skill.name,
     mp: skill.mpCost,
     power: Math.round(basePower * skill.power),
+    powerMultiplier: skill.power,
     icon: ELEMENT_ICON[element],
     aoe: skill.targetType === 'ALL_ENEMIES',
     element,
@@ -239,6 +251,7 @@ function toDemonUltimateSkill(form: DemonFormData): BattleSkill {
     name: form.ultimateSkill.nameJa,
     cost: '1 USE',
     power: Math.round(430 * form.ultimateSkill.damage.power),
+    powerMultiplier: form.ultimateSkill.damage.power,
     icon: form.visual?.icon ?? ELEMENT_ICON[element],
     aoe: form.ultimateSkill.damage.targetType === 'ALL',
     element,
@@ -277,6 +290,8 @@ function toEnemyState(enemy: EnemyData, index: number, count: number): EnemyStat
     hp,
     maxHp: hp,
     atk: enemy.stats.atk,
+    stats: { ...enemy.stats },
+    resistances: { ...enemy.resistances },
     effectHit: enemy.stats.effectHit,
     effectRes: enemy.stats.effectRes,
     color: enemy.battle?.color ?? (enemy.tier === 'BOSS' ? '#ef4444' : '#8A2BE2'),
@@ -326,6 +341,8 @@ function buildBattleWaves(stageId?: string): BattleWave[] {
 function cloneEnemies(enemies: EnemyState[]): EnemyState[] {
   return enemies.map(enemy => ({
     ...enemy,
+    stats: enemy.stats ? { ...enemy.stats } : undefined,
+    resistances: enemy.resistances ? { ...enemy.resistances } : undefined,
     weaknesses: enemy.weaknesses ? [...enemy.weaknesses] : undefined,
     gimmicks: enemy.gimmicks ? [...enemy.gimmicks] : undefined,
     statusEffects: enemy.statusEffects?.map(effect => ({
@@ -334,6 +351,31 @@ function cloneEnemies(enemies: EnemyState[]): EnemyState[] {
     })),
     statusPulse: undefined,
   }));
+}
+
+const FALLBACK_PLAYER_STATS: BaseStats = {
+  hp: 820,
+  atk: 150,
+  def: 60,
+  spd: 100,
+  critRate: 5,
+  critDmg: 150,
+  effectHit: 0,
+  effectRes: 0,
+};
+
+function toEnemyBattleStats(enemy: EnemyState): BaseStats {
+  const fallbackAtk = Math.max(1, enemy.atk);
+  return {
+    hp: Math.max(1, enemy.stats?.hp ?? enemy.maxHp),
+    atk: enemy.stats?.atk ?? fallbackAtk,
+    def: Math.max(0, enemy.stats?.def ?? Math.round(fallbackAtk * 0.5)),
+    spd: Math.max(1, enemy.stats?.spd ?? 80),
+    critRate: Math.max(0, enemy.stats?.critRate ?? 0),
+    critDmg: Math.max(0, enemy.stats?.critDmg ?? 150),
+    effectHit: Math.max(0, enemy.stats?.effectHit ?? enemy.effectHit ?? 0),
+    effectRes: Math.max(0, enemy.stats?.effectRes ?? enemy.effectRes ?? 0),
+  };
 }
 
 function collectStageDrops(stageId?: string): DropEntry[] {
@@ -476,6 +518,9 @@ async function processStageResultLocal(stageId?: string, meta: StageResultMeta =
           expGain: onlineResult.expGain,
           goldGain: onlineResult.goldGain,
         };
+      }
+      if (onlineResult.error === 'SESSION_EXPIRED') {
+        window.dispatchEvent(new Event('necro-session-expired'));
       }
     } catch (error) {
       console.warn('Cloud stage result failed, using local fallback.', error);
@@ -1717,18 +1762,25 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
 export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const {
     player, party, equippedResidueSlots, inventoryItems,
-    addExp, addGold, addClearedStage, updateEnergy,
+    addExp, addGold, addClearedStage, updateEnergy, updateEnergyBy,
     addInventoryItems, addAbyssalResidues, addResidueMaterials,
     consumeInventoryItem,
   } = useGameStore();
   const sfx = useSoundEffects();
   const playerProfile = player ? calculateCharacterStatProfile(player, equippedResidueSlots) : null;
   const playerStats = playerProfile?.total ?? player?.stats;
+  const playerElementDmgBoosts = hasElementDmgBoosts(player?.elementDmgBoosts)
+    ? player?.elementDmgBoosts ?? {}
+    : playerProfile?.elementDmgBoosts ?? {};
+  const battleSynergyBonus = useMemo(
+    () => calculatePartyTribeSynergy(party.filter(Boolean) as MonsterData[]),
+    [party],
+  );
   const battleWaves = useMemo(() => buildBattleWaves(stageId), [stageId]);
 
   const [waveIndex, setWaveIndex] = useState(0);
   const [enemies, setEnemies] = useState<EnemyState[]>(() => cloneEnemies(battleWaves[0].enemies));
-  const [soul, setSoul] = useState(45);
+  const [soul, setSoul] = useState(0);
   const [phase, setPhase] = useState<'playerTurn' | 'skillMenu' | 'itemMenu' | 'animating' | 'enemyTurn' | 'waveTransition'>('playerTurn');
   const [demonized, setDemonized] = useState(false);
   const [demonActionsRemaining, setDemonActionsRemaining] = useState(0);
@@ -1765,6 +1817,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const effectIdRef = useRef(0);
   const demonBurstIdRef = useRef(0);
   const enemyTurnSerialRef = useRef(0);
+  const battleAvRef = useRef<BattleAvState>({ player: 0, enemies: {} });
 
   // Build battle party from store
   const battleParty: BattlePartyMember[] = [
@@ -1806,13 +1859,57 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     [inventoryItems],
   );
   const demonUltimateSkill = toDemonUltimateSkill(demonForm);
-  const getElementBoostMultiplier = (element: ElementType) => {
-    if (element === 'NONE') return 1;
-    const boost = playerProfile?.elementDmgBoosts[element] ?? player?.elementDmgBoosts?.[element] ?? 0;
-    return 1 + boost / 100;
-  };
 
   const addLog = useCallback((line: string) => setLog(prev => [...prev, line]), []);
+
+  function getPlayerActionSpd() {
+    return Math.max(1, Math.round((playerStats?.spd ?? FALLBACK_PLAYER_STATS.spd) + (battleSynergyBonus.spdBonus ?? 0)));
+  }
+
+  function getEnemyActionSpd(enemy: EnemyState) {
+    return Math.max(1, toEnemyBattleStats(enemy).spd);
+  }
+
+  function createInitialAvState(nextEnemies: EnemyState[]): BattleAvState {
+    return {
+      player: 0,
+      enemies: Object.fromEntries(
+        nextEnemies
+          .filter((enemy) => enemy.hp > 0)
+          .map((enemy) => [enemy.id, calculateInitialActionValue(getEnemyActionSpd(enemy))]),
+      ),
+    };
+  }
+
+  function buildEnemyAvActors(nextEnemies: EnemyState[]): TurnOrderActor[] {
+    return nextEnemies
+      .filter((enemy) => enemy.hp > 0)
+      .map((enemy) => {
+        const spd = getEnemyActionSpd(enemy);
+        return {
+          id: String(enemy.id),
+          name: enemy.name,
+          side: 'ENEMY' as const,
+          spd,
+          currentAv: battleAvRef.current.enemies[enemy.id] ?? calculateInitialActionValue(spd),
+          tieBreaker: enemy.id + 1,
+        };
+      });
+  }
+
+  function persistAvSchedule(playerActor: TurnOrderActor, enemyActors: TurnOrderActor[]) {
+    battleAvRef.current = {
+      player: playerActor.currentAv,
+      enemies: Object.fromEntries(enemyActors.map((enemy) => [Number(enemy.id), enemy.currentAv])),
+    };
+  }
+
+  function formatAvOrder(order: TurnOrderActor[]) {
+    return order
+      .slice(0, 4)
+      .map((actor) => `${actor.side === 'PLAYER' ? '骸骨騎士' : actor.name}:${Math.round(actor.currentAv)}`)
+      .join(' → ');
+  }
 
   useEffect(() => {
     if (stageId) startTutorialBattlePhase(stageId);
@@ -1827,9 +1924,11 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     battleStartedAtRef.current = Date.now();
     waveIndexRef.current = 0;
     enemiesRef.current = firstEnemies;
+    battleAvRef.current = createInitialAvState(firstEnemies);
     setWaveIndex(0);
     setEnemies(firstEnemies);
-    setSoul(45);
+    setSoul(0);
+    updateEnergy(0); // SPもバトル開始時に0にリセット
     setPhase('playerTurn');
     setDemonized(false);
     setDemonActionsRemaining(0);
@@ -1920,6 +2019,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       const nextWave = battleWaves[nextIndex];
       const nextEnemies = cloneEnemies(nextWave.enemies);
       enemiesRef.current = nextEnemies;
+      battleAvRef.current = createInitialAvState(nextEnemies);
       setWaveIndex(nextIndex);
       setEnemies(nextEnemies);
       setPhase('playerTurn');
@@ -1958,10 +2058,56 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setTimeout(() => setEnemies(prev => prev.map(e => ({ ...e, hit: false }))), battleDelay(500, 220));
   }
 
-  function damageEnemy(targetId: number, dmg: number, opts: { color?: string; element?: ElementType; ignoreShield?: boolean } = {}) {
-    const isCrit = Math.random() < 0.2;
+  function calculatePlayerHitDamage(
+    targetId: number,
+    opts: {
+      powerMultiplier?: number;
+      element?: ElementType;
+      attackType?: SkillAttackType;
+      attackMultiplier?: number;
+      ignoreDefense?: boolean;
+      ignoreResistance?: boolean;
+    } = {},
+  ): BattleDamageResult {
     const target = enemiesRef.current.find(e => e.id === targetId);
-    let finalDmg = isCrit ? Math.round(dmg * 1.5) : dmg;
+    if (!target) {
+      return { damage: 0, isCritical: false, isWeakness: false, isResisted: false };
+    }
+
+    const element = opts.element ?? 'NONE';
+    const attackType = opts.attackType ?? 'SLASH';
+    const activeDemonForm = demonized ? demonForm : null;
+    const baseStats = playerStats ?? FALLBACK_PLAYER_STATS;
+    const attackMultiplier = opts.attackMultiplier
+      ?? getDemonDamageMultiplier(activeDemonForm, attackType)
+        * getAilmentAttackMultiplier(playerStatusEffects, demonized);
+    const attackerStats: BaseStats = {
+      ...baseStats,
+      atk: Math.max(1, Math.floor(baseStats.atk * attackMultiplier)),
+    };
+    const defenderStats = toEnemyBattleStats(target);
+    const ignoreDefense = opts.ignoreDefense ?? shouldBypassDefense(activeDemonForm);
+    const ignoreResistance = opts.ignoreResistance ?? shouldIgnoreResistance(activeDemonForm);
+
+    return calculateBattleDamage({
+      attackerStats,
+      attackerElementBoosts: playerElementDmgBoosts,
+      defenderStats: ignoreDefense ? { ...defenderStats, def: 0 } : defenderStats,
+      defenderResistances: ignoreResistance ? {} : target.resistances ?? {},
+      powerMultiplier: opts.powerMultiplier ?? 1.0,
+      element,
+      synergyBonus: battleSynergyBonus,
+    });
+  }
+
+  function damageEnemy(
+    targetId: number,
+    dmg: number,
+    opts: { color?: string; element?: ElementType; ignoreShield?: boolean; crit?: boolean; isWeakness?: boolean; isResisted?: boolean } = {},
+  ) {
+    const isCrit = opts.crit ?? false;
+    const target = enemiesRef.current.find(e => e.id === targetId);
+    let finalDmg = dmg;
     let nextShieldHp = target?.shieldHp ?? 0;
     let shieldBroken = target?.shieldBroken ?? false;
     const hasShield = target && (target.maxShieldHp ?? 0) > 0 && (target.shieldHp ?? 0) > 0 && !target.shieldBroken;
@@ -2151,7 +2297,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     return t ? t.id : (enemies.find(e => e.hp > 0)?.id ?? 0);
   }
 
-  function endPlayerTurn() {
+  function endPlayerTurn(spGain: number = 0) {
     if (enemiesRef.current.every(e => e.hp <= 0)) {
       resolveWaveClear();
       return;
@@ -2170,9 +2316,14 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       }
     }
     if (!demonized) {
-      setSoul(prev => Math.min(100, prev + 10));
+      setSoul(prev => Math.min(100, prev + 10)); // 魔神化ゲージ +10/ターン
+      if (spGain > 0) updateEnergyBy(spGain);   // SP回復（SPとゲージは別）
     }
-    setTimeout(() => runEnemyTurn(demonFormForEnemyTurn), speedMs * 0.4);
+    battleAvRef.current = {
+      ...battleAvRef.current,
+      player: battleAvRef.current.player + calculateActionDelay(getPlayerActionSpd()),
+    };
+    setTimeout(() => runEnemyTurn(demonFormForEnemyTurn), speedMs * 0.25);
   }
 
   function runEnemyTurn(activeDemonForm: DemonFormData | null = demonized ? demonForm : null) {
@@ -2188,10 +2339,33 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       resolveWaveClear();
       return;
     }
+    const playerActor: TurnOrderActor = {
+      id: 'player',
+      name: '骸骨騎士',
+      side: 'PLAYER',
+      spd: getPlayerActionSpd(),
+      currentAv: battleAvRef.current.player,
+      tieBreaker: 0,
+    };
+    const enemyActors = buildEnemyAvActors(statusPhase.alive);
+    const schedule = scheduleEnemiesUntilPlayer({
+      player: playerActor,
+      enemies: enemyActors,
+      skippedEnemyIds: new Set(Array.from(statusPhase.skippedIds).map(String)),
+    });
+    persistAvSchedule(schedule.player, schedule.enemies);
+
+    const orderText = formatAvOrder(schedule.orderPreview);
+    if (orderText) addLog(`行動順(AV): ${orderText}`);
+
+    const scheduledEnemies = schedule.enemyActions
+      .map((actor) => statusPhase.alive.find((enemy) => String(enemy.id) === actor.id))
+      .filter((enemy): enemy is EnemyState => Boolean(enemy));
+
     let delay = 0;
-    statusPhase.alive.forEach((enemy) => {
-      if (statusPhase.skippedIds.has(enemy.id)) return;
-      delay += speedMs * 0.55;
+    scheduledEnemies.forEach((enemy) => {
+      const enemyDelayRatio = calculateActionDelay(getEnemyActionSpd(enemy)) / Math.max(1, calculateActionDelay(getPlayerActionSpd()));
+      delay += speedMs * Math.max(0.32, Math.min(0.72, enemyDelayRatio * 0.55));
       setTimeout(() => {
         if (turnToken !== enemyTurnSerialRef.current) return;
         const enrage = enemy.gimmicks?.find(gimmick => gimmick.trigger === 'HP_BELOW_50' && gimmick.effect === 'ENRAGE');
@@ -2208,11 +2382,14 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         setTimeout(() => setScreenShake(false), 450);
       }, delay);
     });
+    if (scheduledEnemies.length === 0 && schedule.skippedEnemyTurns.length === 0) {
+      addLog('SPD差で敵の行動前に骸骨騎士へ手番が戻る。');
+    }
     setTimeout(() => {
       if (turnToken !== enemyTurnSerialRef.current) return;
       setPhase('playerTurn');
       addLog('骸骨騎士のターン。コマンドを選択しろ。');
-    }, delay + speedMs * 0.4);
+    }, delay + speedMs * 0.28);
   }
 
   function handleAttack() {
@@ -2225,9 +2402,6 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     const enemy = enemies.find(e => e.id === tid);
     const attackElement = demonized ? demonForm.ultimateSkill.damage.element : 'NONE';
     const hitCount = demonized ? getDemonActionHitCount(demonForm, 'SLASH') : 1;
-    const demonMult = demonized ? getDemonDamageMultiplier(demonForm, 'SLASH') : 1;
-    const ailmentMult = getAilmentAttackMultiplier(playerStatusEffects, demonized);
-    const dmg = Math.round(1500 * demonMult * ailmentMult * (hitCount > 1 ? 0.62 : 1) * (0.75 + Math.random() * 0.25));
     triggerSkillEffect({
       name: demonized ? demonForm.formName : '攻撃',
       element: attackElement,
@@ -2240,7 +2414,19 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       const hitInterval = battleDelay(120, 58);
       Array.from({ length: hitCount }).forEach((_, hitIndex) => {
         setTimeout(() => {
-          totalDamage += damageEnemy(tid, dmg, { color: demonized ? demonColor : '#f0ebff', element: attackElement });
+          const result = calculatePlayerHitDamage(tid, {
+            powerMultiplier: 1.0,
+            element: attackElement,
+            attackType: 'SLASH',
+          });
+          if (result.isCritical) setSoul(prev => Math.min(100, prev + 5));
+          totalDamage += damageEnemy(tid, result.damage, {
+            color: demonized ? demonColor : '#f0ebff',
+            element: attackElement,
+            crit: result.isCritical,
+            isWeakness: result.isWeakness,
+            isResisted: result.isResisted,
+          });
         }, hitIndex * hitInterval);
       });
       if (demonized) { setFlashColor(demonForm.visual?.soft ?? 'rgba(220,38,38,0.3)'); setTimeout(() => setFlashColor(null), 350); }
@@ -2250,8 +2436,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         if (demonized) {
           applyDemonRiskFeedback('SLASH');
         }
+        const attackSpGain = currentJobData?.energyCurve?.energyRegen ?? 20;
         setPhase('playerTurn');
-        endPlayerTurn();
+        endPlayerTurn(demonized ? 0 : attackSpGain); // 魔神化中はSP回復なし
       }, hitCount * hitInterval + speedMs * 0.35);
     }, speedMs * 0.3);
   }
@@ -2266,8 +2453,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     }
     if (demonForm.effectB.riskType === 'ENERGY_DRAIN') {
       const drain = Math.max(1, Math.round(demonForm.effectB.riskValue ?? 15));
-      setSoul(prev => Math.max(0, prev - drain));
-      addLog(`代償発動: 魂が過剰消費され、ソウル-${drain}。`);
+      updateEnergyBy(-drain); // SPを削る（魔神化ゲージではなくスキルポイント）
+      addLog(`代償発動: スキルSPが過剰消費され、SP-${drain}。`);
       return;
     }
     if (demonForm.effectB.riskType === 'SETUP_DEPENDENT') {
@@ -2277,14 +2464,18 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   function handleSkill(skill: BattleSkill) {
     if (resolvePlayerStatusBeforeAction()) return;
+    if (skill.mp && (skill.mp > currentMp)) {
+      addLog(`SPが不足しています（必要 ${skill.mp} / 現在 ${currentMp}）`);
+      return;
+    }
+    // SP消費（魔神化ゲージとは別リソース）
+    if (skill.mp) updateEnergyBy(-skill.mp);
     actionCountRef.current += 1;
     sfx.skillCast(skill.element, skill.attackType);
     setPhase('animating');
     const targets = skill.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[skill.element];
     const hitCount = demonized ? getDemonActionHitCount(demonForm, skill.attackType) : 1;
-    const demonMult = demonized ? getDemonDamageMultiplier(demonForm, skill.attackType) : 1;
-    const ailmentMult = getAilmentAttackMultiplier(playerStatusEffects, demonized);
     triggerSkillEffect(skill, targets);
     addLog(`${demonized ? `魔神化『${demonForm.formName}』` : '術'}発動！ ${skill.name}！ ${vfxStyle.label}属性/${ATTACK_TYPE_LABEL[skill.attackType]}`);
     setFlashColor(vfxStyle.soft);
@@ -2297,8 +2488,19 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           let totalDamage = 0;
           Array.from({ length: hitCount }).forEach((_, hitIndex) => {
             setTimeout(() => {
-              const dmg = Math.round(skill.power * getElementBoostMultiplier(skill.element) * demonMult * ailmentMult * (hitCount > 1 ? 0.6 : 1) * (0.85 + Math.random() * 0.3));
-              totalDamage += damageEnemy(tid, dmg, { color: vfxStyle.color, element: skill.element });
+              const result = calculatePlayerHitDamage(tid, {
+                powerMultiplier: skill.powerMultiplier,
+                element: skill.element,
+                attackType: skill.attackType,
+              });
+              if (result.isCritical) setSoul(prev => Math.min(100, prev + 5));
+              totalDamage += damageEnemy(tid, result.damage, {
+                color: vfxStyle.color,
+                element: skill.element,
+                crit: result.isCritical,
+                isWeakness: result.isWeakness,
+                isResisted: result.isResisted,
+              });
             }, hitIndex * hitInterval);
           });
           setTimeout(() => {
@@ -2310,7 +2512,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       if (demonized) {
         applyDemonRiskFeedback(skill.attackType);
       }
-      setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, targets.length * targetInterval + speedMs * 0.3);
+      // スキルはSP一部回復（通常攻撃より少ない）
+      setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(demonized ? 0 : 10); }, targets.length * targetInterval + speedMs * 0.3);
     }, speedMs * 0.4);
   }
 
@@ -2349,8 +2552,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     const ultimate = demonUltimateSkill;
     const targets = ultimate.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[ultimate.element];
-    const damageMultiplier = getDemonDamageMultiplier(demonForm, ultimate.attackType) * getAilmentAttackMultiplier(playerStatusEffects, demonized);
     const ignoreShield = shouldBypassDefense(demonForm);
+    const ignoreResistance = Boolean(demonForm.ultimateSkill.damage.flags?.includes('IGNORE_RESISTANCE'));
     triggerSkillEffect(ultimate, targets);
     addLog(`魔神技『${ultimate.name}』解放！ ${demonForm.formName}が戦場の理を塗り替える。`);
     setFlashColor(demonForm.visual?.soft ?? vfxStyle.soft);
@@ -2360,8 +2563,23 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       const targetInterval = battleDelay(180, 85);
       targets.forEach((tid, i) => {
         setTimeout(() => {
-          const dmg = Math.round(ultimate.power * damageMultiplier * (0.9 + Math.random() * 0.22));
-          const actualDamage = damageEnemy(tid, dmg, { color: demonColor, element: ultimate.element, ignoreShield });
+          const result = calculatePlayerHitDamage(tid, {
+            powerMultiplier: ultimate.powerMultiplier,
+            element: ultimate.element,
+            attackType: ultimate.attackType,
+            attackMultiplier: 1,
+            ignoreDefense: ignoreShield,
+            ignoreResistance,
+          });
+          if (result.isCritical) setSoul(prev => Math.min(100, prev + 5));
+          const actualDamage = damageEnemy(tid, result.damage, {
+            color: demonColor,
+            element: ultimate.element,
+            ignoreShield,
+            crit: result.isCritical,
+            isWeakness: result.isWeakness,
+            isResisted: result.isResisted,
+          });
           addLog(`${enemies.find(e => e.id === tid)?.name}に ${actualDamage}ダメージ！`);
           applyAilmentToEnemy(tid, ultimate);
         }, i * targetInterval);

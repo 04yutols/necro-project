@@ -72,6 +72,9 @@ model Character {
   userId          String?
   user            User?    @relation(fields: [userId], references: [id])
 
+  // 資産・オンライン同期
+  gold            Int      @default(50000)
+
   // 8種の基礎ステータス（HSR互換）
   hp              Int
   atk             Int
@@ -116,14 +119,34 @@ model Character {
   // 死霊術ステータス
   necroLevel      Int      @default(1)
   necroRank       Int      @default(1)
+  necroExp        Int      @default(0)
   necroMaxCost    Int      @default(10)
   necroBaseStatsBonus Float @default(1.0)
+
+  // パーティ編成（3枠）
+  partySlot0Id    String?
+  partySlot1Id    String?
+  partySlot2Id    String?
+  partySlot0      Monster? @relation("PartySlot0", fields: [partySlot0Id], references: [id], onDelete: SetNull)
+  partySlot1      Monster? @relation("PartySlot1", fields: [partySlot1Id], references: [id], onDelete: SetNull)
+  partySlot2      Monster? @relation("PartySlot2", fields: [partySlot2Id], references: [id], onDelete: SetNull)
+  inventoryMonsters Monster[] @relation("CharacterMonsters")
 
   // 進行管理
   clearedStages   String[] @default([])
 
-  // 深淵の残滓
-  abyssalResidues AbyssalResidue[]
+  // 深淵の残滓（5部位）
+  abyssalResidues AbyssalResidue[] @relation("CharacterResidues")
+  equippedResidue0Id String?
+  equippedResidue1Id String?
+  equippedResidue2Id String?
+  equippedResidue3Id String?
+  equippedResidue4Id String?
+  equippedResidue0   AbyssalResidue? @relation("ResidueSlot0", fields: [equippedResidue0Id], references: [id], onDelete: SetNull)
+  equippedResidue1   AbyssalResidue? @relation("ResidueSlot1", fields: [equippedResidue1Id], references: [id], onDelete: SetNull)
+  equippedResidue2   AbyssalResidue? @relation("ResidueSlot2", fields: [equippedResidue2Id], references: [id], onDelete: SetNull)
+  equippedResidue3   AbyssalResidue? @relation("ResidueSlot3", fields: [equippedResidue3Id], references: [id], onDelete: SetNull)
+  equippedResidue4   AbyssalResidue? @relation("ResidueSlot4", fields: [equippedResidue4Id], references: [id], onDelete: SetNull)
 }
 
 model Job {
@@ -201,7 +224,12 @@ model AbyssalResidue {
   // itemId は装備スロット種別 ('head'|'arms'|'chest'|'waist'|'legs') — Item FK ではない
   itemId      String
   characterId String?
-  character   Character? @relation(fields: [characterId], references: [id])
+  character   Character? @relation("CharacterResidues", fields: [characterId], references: [id], onDelete: SetNull)
+  equippedResidue0Of Character[] @relation("ResidueSlot0")
+  equippedResidue1Of Character[] @relation("ResidueSlot1")
+  equippedResidue2Of Character[] @relation("ResidueSlot2")
+  equippedResidue3Of Character[] @relation("ResidueSlot3")
+  equippedResidue4Of Character[] @relation("ResidueSlot4")
 
   rarity      String   @default("COMMON")  // COMMON | RARE | EPIC | LEGENDARY
   mainStat    Json                          // { type: string, value: number }
@@ -213,6 +241,9 @@ model AbyssalResidue {
 
 model Monster {
   id          String  @id @default(uuid())
+  masterId    String?
+  characterId String?
+  character   Character? @relation("CharacterMonsters", fields: [characterId], references: [id], onDelete: SetNull)
   name        String
   tribe       String
   cost        Int
@@ -224,11 +255,15 @@ model Monster {
   critDmg     Float   @default(150.0)
   effectHit   Float   @default(0.0)
   effectRes   Float   @default(0.0)
+  resistances  Json    @default("{}")
 
   soulShardId  String?
   soulShard    SoulShard?  @relation(fields: [soulShardId],  references: [id])
   spiritCoreId String?
   spiritCore   SpiritCore? @relation(fields: [spiritCoreId], references: [id])
+  partySlot0Of Character[] @relation("PartySlot0")
+  partySlot1Of Character[] @relation("PartySlot1")
+  partySlot2Of Character[] @relation("PartySlot2")
 }
 
 model SoulShard {

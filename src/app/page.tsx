@@ -10,6 +10,7 @@ import { useStoryTrigger } from '../hooks/useStoryTrigger';
 import { useStoryStore } from '../store/useStoryStore';
 import { TutorialOrchestrator } from '../components/tutorial/TutorialOrchestrator';
 import { useBGM } from '../hooks/useBGM';
+import { useAuthFlow } from '../hooks/useAuthFlow';
 
 const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').then((mod) => mod.default), {
   ssr: false,
@@ -25,14 +26,19 @@ import { HomeHero } from '../components/home/HomeHero';
 import { ResponsiveFrame } from '../components/layout/ResponsiveFrame';
 import { NecroLog } from '../components/ui/NecroLog';
 import { WorldLogPanel } from '../components/social/WorldLogPanel';
+import { AuthGate } from '../components/auth/AuthGate';
+import { CharacterCreation } from '../components/auth/CharacterCreation';
+import { LoadingScreen } from '../components/auth/LoadingScreen';
+import { ReloginModal } from '../components/auth/ReloginModal';
 import { Home as HomeIcon } from 'lucide-react';
 
 function GameContent() {
   const {
     player, party, equippingMonsterId, inventoryMonsters,
-    setEquippingMonsterId, addClearedStage, battleLogs, initialize,
+    setEquippingMonsterId, addClearedStage, battleLogs,
     currentTab, setCurrentTab
   } = useGameStore();
+  const authFlow = useAuthFlow();
 
   const { triggerStageEnter } = useStoryTrigger();
   const activeStoryScene = useStoryStore(s => s.activeScene);
@@ -50,10 +56,6 @@ function GameContent() {
   });
 
   const equippingMonster = equippingMonsterId ? inventoryMonsters.find(m => m.id === equippingMonsterId) : null;
-
-  useEffect(() => {
-    if (!player) initialize();
-  }, [player, initialize]);
 
   const startStageNow = useCallback((stageId: string) => {
     setActiveStageId(stageId);
@@ -76,7 +78,62 @@ function GameContent() {
     startStageNow(stageId);
   }, [activeStoryScene, pendingStageId, startStageNow, storyQueueLength]);
 
-  if (!player) return <div className="p-8 text-center bg-[#050505] min-h-screen font-serif text-gray-500">Loading...</div>;
+  if (authFlow.status === 'authRequired') {
+    return <AuthGate onAuthenticated={authFlow.reload} />;
+  }
+
+  if (authFlow.status === 'characterRequired') {
+    return <CharacterCreation initialName={authFlow.user?.name ?? authFlow.user?.email ?? null} onCreated={authFlow.reload} />;
+  }
+
+  if (authFlow.status === 'error') {
+    return (
+      <div className="h-[100dvh] w-full bg-[#050505] flex items-center justify-center p-5 text-center">
+        <div style={{
+          width: 'min(420px, 100%)',
+          borderRadius: 18,
+          border: '1px solid rgba(139,0,0,0.35)',
+          background: 'rgba(16,4,12,0.92)',
+          padding: 18,
+          color: '#F0EAFF',
+          boxShadow: '0 24px 70px rgba(0,0,0,0.65)',
+        }}>
+          <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 18, fontWeight: 800, marginBottom: 8 }}>SYNC ERROR</div>
+          <p style={{ margin: '0 0 14px', color: '#A5A9B4', fontSize: 12, lineHeight: 1.7 }}>{authFlow.error}</p>
+          <button
+            type="button"
+            onClick={authFlow.retry}
+            style={{
+              minHeight: 44,
+              width: '100%',
+              borderRadius: 13,
+              border: '1px solid rgba(139,0,255,0.48)',
+              background: 'rgba(139,0,255,0.16)',
+              color: '#F0EAFF',
+              fontWeight: 900,
+              letterSpacing: '0.12em',
+            }}
+          >
+            再試行
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const isCloudLoading = authFlow.status === 'checking' || authFlow.status === 'loadingCharacter';
+  if (!player && isCloudLoading) {
+    return (
+      <LoadingScreen
+        label={authFlow.status === 'loadingCharacter' ? 'Loading Character' : 'Cloud Save Sync'}
+        detail={authFlow.status === 'loadingCharacter' ? '契約者データを復元しています' : 'セッションを確認しています'}
+      />
+    );
+  }
+
+  if (!player) {
+    return <LoadingScreen />;
+  }
 
   // タブに応じたメインコンテンツのレンダリング (除外: BattleCanvas)
   const renderMainContent = () => {
@@ -225,6 +282,7 @@ function GameContent() {
             onClose={() => setEquippingMonsterId(null)}
           />
         )}
+        <ReloginModal open={authFlow.status === 'sessionExpired'} onRecovered={authFlow.reload} />
       </div>
       </StoryOrchestrator>
     </>

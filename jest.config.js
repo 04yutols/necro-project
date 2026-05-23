@@ -4,5 +4,8 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/*.test.ts'],
   setupFiles: ['<rootDir>/jest.setup.js'],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+  },
   forceExit: true,
 };
