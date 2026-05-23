@@ -145,6 +145,162 @@ BattleEngineを将来接続したときに挙動が衝突する可能性があ�
 
 ---
 
+---
+
+## 🔴 Critical（追加） — ゲームが壊れる
+
+### ✅ NC-1. プレイヤー死亡判定が存在しない（2026-05-24 完了）
+
+**問題：**  
+BattleCanvas は敵ターンで HP を減らすが、`playerHp <= 0` になっても何も起きない。  
+ゲームオーバー画面への遷移もなく、**バトルが永遠に続く**。
+
+**完了内容：**
+- `docs/設計書/41_プレイヤー死亡判定設計.md` に設計書作成。
+- `src/logic/PlayerDefeat.ts` に `applyPlayerDamage` / `isPlayerDead` 追加（純粋関数）。
+- `BattleCanvas.tsx` に `playerHp` state + `playerHpRef` を追加し、バトル中の HP を正確に追跡。
+- `runEnemyTurn()` の各敵攻撃後に HP 減算 + 死亡判定 → `triggerPlayerDefeat()` 実装。
+- `resolvePlayerStatusBeforeAction()` の状態異常ダメージにも同一の死亡チェックを追加。
+- `triggerPlayerDefeat()` が `enemyTurnSerialRef` をインクリメントして進行中アニメーションをキャンセル後、800ms 後に ResultScreen（DEFEAT）を表示。
+- `ResultScreen.tsx` の敗北表示を修正（赤骸骨バッジ、報酬なし、「マップへ撤退」ボタン）。
+- `src/logic/PlayerDefeat.test.ts` で 10 ケースを追加。全 112 テスト通過。
+
+---
+
+### NC-2. ボスギミック REVIVE / SUMMON_MINIONS が未実装
+
+**問題：**  
+`enemies.json` にボスの REVIVE（第2形態移行）と SUMMON_MINIONS が定義されているが、  
+BattleCanvas には対応処理がない。ボスが HP 0 になっても何も起きずバトルがクリアしてしまう。
+
+BattleEngine にはロジックがあるが BattleCanvas には接続されていない。
+
+**対応方針：**
+- REVIVE: HP が 0 になったとき `reviveGimmick` チェックし、HP 50% 回復 + シールド再生 + ログ表示
+- SUMMON_MINIONS: シールド破壊時に敵リストに雑魚を追加（または「増援が現れた」ログのみ）
+
+**関連ファイル：**
+- `src/data/master/enemies.json` — REVIVE/SUMMON_MINIONS 定義
+- `src/components/battle/BattleCanvas.tsx` — `damageEnemy()` の HP 0 分岐
+- `src/logic/BattleEngine.ts` — `applyBossGimmickEffect()` に参考実装あり
+
+---
+
+## 🟡 Medium（追加） — プレイはできるが設計上の欠陥
+
+### NM-1. エリアギミック（スリップダメージ / 状態異常）が BattleCanvas に接続されていない
+
+**問題：**  
+`StageData` に `areaGimmick: 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE'` があり、  
+BattleEngine には処理（`processAreaGimmick()`）があるが、BattleCanvas はギミックを無視している。  
+「毒沼ステージ」などがあっても何も起きない。
+
+**対応方針：**  
+`buildBattleWaves()` でステージの `areaGimmick` を取得し、  
+`endPlayerTurn()` または `runEnemyTurn()` の先頭で毎ターン判定・適用する。
+
+**関連ファイル：**
+- `src/data/master/stages.json` — `areaGimmick` フィールド
+- `src/components/battle/BattleCanvas.tsx` — `endPlayerTurn()` / `runEnemyTurn()`
+- `src/logic/BattleEngine.ts` — `processAreaGimmick()`（line ~678）参考実装あり
+
+---
+
+### NM-2. ボスギミック AV_DELAY が BattleCanvas に未実装
+
+**問題：**  
+`BossGimmick.effect: 'AV_DELAY'` がゲーム型と BattleEngine に定義されているが、  
+BattleCanvas の `runEnemyTurn()` は `ENRAGE` しかチェックしていない。  
+「TURN_3 で敵がプレイヤーの行動を遅延させる」ギミックが発火しない。
+
+**対応方針：**  
+`runEnemyTurn()` で `AV_DELAY` ギミックをチェックし、プレイヤーの次ターン開始を  
+指定ターン数だけ遅らせる（または PARALYSIS 付与で代用）。
+
+**関連ファイル：**
+- `src/components/battle/BattleCanvas.tsx` — `runEnemyTurn()`
+- `src/logic/BattleEngine.ts` — `applyBossGimmickEffect()` case `'AV_DELAY'` 参考あり
+
+---
+
+### NM-3. 魔神化「INTERRUPT」は実際にはプレイヤーターン中しか機能しない
+
+**問題：**  
+ソウルゲージが 100% のとき魔神化ボタンに「INTERRUPT」ラベルが表示されるが、  
+実際には `phase === 'playerTurn'` 中にしか押せない。敵ターン中の割り込みはできない。  
+ラベルと挙動が矛盾している。
+
+**対応方針：**  
+A案：敵ターン中（`phase === 'enemyTurn'`）でも魔神化を可能にし、  
+`enemyTurnSerialRef` をインクリメントして進行中の敵アクションをキャンセルする。  
+B案：ラベルを「FULL」に変更して誤解を防ぐ（実装変更なしで済む最小対応）。
+
+**関連ファイル：**
+- `src/components/battle/BattleCanvas.tsx` — `handleDemonize()`、`demonizeButton` の `enabled` 条件
+
+---
+
+### NM-4. 霊核（SpiritCore）の `atkMultiplier` がパーティモンスターの攻撃力に反映されていない
+
+**問題：**  
+`MonsterData.spiritCore` の `atkMultiplier` は DB から読み込まれているが、  
+BattleCanvas / BattleDamage でパーティモンスターのダメージ計算に使われていない。  
+霊核を装着しても攻撃力が変わらない。
+
+**対応方針：**  
+BattleCanvas のモンスター追撃処理でモンスターの ATK に `spiritCore.atkMultiplier` を掛ける。
+
+**関連ファイル：**
+- `src/components/battle/BattleCanvas.tsx` — モンスター追撃処理
+- `src/types/game.ts` — `SpiritCoreData.atkMultiplier`
+
+---
+
+### NM-5. 種族シナジー `defenseReducePct` が敵DEFの軽減に反映されていない
+
+**問題：**  
+ORC シナジーなどで `defenseReducePct` が加算されるが、  
+`calculateBattleDamage()` でこの値を使った敵 DEF 軽減処理がない。
+
+**対応方針：**  
+`BattleDamage.ts` の DEF 計算前に `defenderDef *= (1 - defenseReducePct/100)` を適用する。
+
+**関連ファイル：**
+- `src/logic/BattleDamage.ts` — `calculateBattleDamage()` 内の DEF 計算部分
+- `src/logic/TribeSynergySystem.ts` — `defenseReducePct` 定義
+
+---
+
+## 🟢 Low（追加） — 動作はするが将来の不整合リスク
+
+### NL-1. 種族シナジー `atkBonus` / `defBonus` / `avBonus` が未使用
+
+**問題：**  
+`SynergyBonus` に `atkBonus`、`defBonus`、`avBonus` フィールドがあるが、  
+`BattleDamage.ts` でも BattleCanvas でも参照されていない。
+
+**対応方針：** 仕様として不要なら型から削除。使うなら ATK/DEF 計算に加算する。
+
+**関連ファイル：**
+- `src/logic/TribeSynergySystem.ts`
+- `src/logic/BattleDamage.ts`（使用箇所なし）
+
+---
+
+### NL-2. `isAwakened` フラグが常に `false` で BattleCanvas に接続なし
+
+**問題：**  
+`CharacterData.isAwakened` が `true` のとき BattleEngine はモンスター ATK を 1.5 倍にするが、  
+BattleCanvas は `isAwakened` を参照していない。現在は常に `false` なので影響なし。
+
+**対応方針：** 「覚醒」システムを実装する際に BattleCanvas への接続を追加する。現時点では低優先度。
+
+**関連ファイル：**
+- `src/logic/BattleEngine.ts` — `processMonsterActions()`
+- `src/components/battle/BattleCanvas.tsx`（未参照）
+
+---
+
 ## 監査スコープ外（確認済み・問題なし）
 
 - スキルテーブル (`skills.json`) — 全スターター職 + 2次職スキル全件存在、power/mpCost/elementのバランス適切 ✅

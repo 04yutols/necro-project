@@ -18,6 +18,7 @@ import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/
 import { calculateBattleDamage, type BattleDamageResult } from '../../logic/BattleDamage';
 import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
 import { calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilPlayer, type TurnOrderActor } from '../../logic/TurnOrderSystem';
+import { applyPlayerDamage, isPlayerDead } from '../../logic/PlayerDefeat';
 import type { StageResultMeta } from '../../types/online';
 import {
   DEMON_ACTION_LIMIT,
@@ -1778,6 +1779,10 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   );
   const battleWaves = useMemo(() => buildBattleWaves(stageId), [stageId]);
 
+  const playerMaxHp = playerStats?.hp ?? 820;
+  const [playerHp, setPlayerHp] = useState(playerMaxHp);
+  const playerHpRef = useRef(playerMaxHp);
+
   const [waveIndex, setWaveIndex] = useState(0);
   const [enemies, setEnemies] = useState<EnemyState[]>(() => cloneEnemies(battleWaves[0].enemies));
   const [soul, setSoul] = useState(0);
@@ -1823,7 +1828,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const battleParty: BattlePartyMember[] = [
     {
       id: 'player', name: player?.name ?? '骸骨騎士', icon: '💀',
-      hp: playerStats?.hp ?? 820, maxHp: (playerStats as any)?.maxHp ?? playerStats?.hp ?? 820,
+      hp: playerHp, maxHp: playerMaxHp,
       mp: player?.currentEnergy ?? 0, maxMp: player?.maxEnergy ?? 100,
       color: '#8A2BE2', active: true,
     },
@@ -1925,6 +1930,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     waveIndexRef.current = 0;
     enemiesRef.current = firstEnemies;
     battleAvRef.current = createInitialAvState(firstEnemies);
+    playerHpRef.current = playerMaxHp;
+    setPlayerHp(playerMaxHp);
     setWaveIndex(0);
     setEnemies(firstEnemies);
     setSoul(0);
@@ -1946,6 +1953,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   useEffect(() => { waveIndexRef.current = waveIndex; }, [waveIndex]);
   useEffect(() => { enemiesRef.current = enemies; }, [enemies]);
+  useEffect(() => { playerHpRef.current = playerHp; }, [playerHp]);
   useEffect(() => {
     sfx.setDemonOverlay(demonized);
     return () => {
@@ -2274,12 +2282,19 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   function resolvePlayerStatusBeforeAction(): boolean {
     if (demonized || playerStatusEffects.length === 0) return false;
-    const result = processStatusEffects(playerStatusEffects, { maxHp: battleParty[0]?.maxHp ?? 1 });
+    const result = processStatusEffects(playerStatusEffects, { maxHp: playerMaxHp });
     setPlayerStatusEffects(result.effects);
     if (result.totalDamage > 0) {
+      const newHp = applyPlayerDamage(playerHpRef.current, result.totalDamage);
+      playerHpRef.current = newHp;
+      setPlayerHp(newHp);
       spawnFloat('42%', '58%', result.totalDamage, { color: '#4ade80' });
       const labels = result.ticks.filter(tick => tick.damage).map(tick => AILMENT_UI[tick.type].label).join('/');
-      addLog(`骸骨騎士は${labels}で${result.totalDamage}ダメージ。`);
+      addLog(`骸骨騎士は${labels}で${result.totalDamage}ダメージ。（残HP: ${newHp}）`);
+      if (isPlayerDead(newHp)) {
+        window.setTimeout(() => triggerPlayerDefeat(), 300);
+        return true;
+      }
     }
     result.ticks.filter(tick => tick.expired).forEach(tick => {
       addLog(`骸骨騎士の${AILMENT_UI[tick.type].label}が解除された。`);
@@ -2290,6 +2305,25 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setPhase('playerTurn');
     endPlayerTurn();
     return true;
+  }
+
+  function triggerPlayerDefeat() {
+    enemyTurnSerialRef.current += 1; // 進行中の敵アクションを全キャンセル
+    setAuto(false);
+    setPhase('waveTransition'); // プレイヤー入力を無効化
+    addLog('☠ 骸骨騎士は倒れた... バトル終了。');
+    setBattleResult({
+      isVictory: false,
+      expGained: 0,
+      goldGained: 0,
+      itemsGained: [],
+      monstersGained: [],
+      isPurplePillar: false,
+      wavesCleared: waveIndexRef.current,
+      totalWaves: battleWaves.length,
+      clearTime: Math.max(1, Math.round((Date.now() - battleStartedAtRef.current) / 1000)),
+    });
+    window.setTimeout(() => setShowResult(true), 800);
   }
 
   function getTargetId() {
@@ -2373,13 +2407,20 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         const incomingMult = getDemonIncomingDamageMultiplier(activeDemonForm);
         const effectiveAtk = enemy.atk * getAilmentAttackMultiplier(enemy.statusEffects);
         const dmg = Math.round(effectiveAtk * incomingMult * (enraged ? Number(enrage?.value ?? 1.35) : 1) * (0.8 + Math.random() * 0.4));
+        const newHp = applyPlayerDamage(playerHpRef.current, dmg);
+        playerHpRef.current = newHp;
+        setPlayerHp(newHp);
         spawnFloat('42%', '58%', dmg, { color: '#f87171' });
-        addLog(`${enemy.name}${enraged ? 'の怒り' : ''}の攻撃！ 骸骨騎士に ${dmg}ダメージ！${incomingMult > 1 ? ' 紙装甲の代償で被害が増幅。' : ''}`);
+        addLog(`${enemy.name}${enraged ? 'の怒り' : ''}の攻撃！ 骸骨騎士に ${dmg}ダメージ！${incomingMult > 1 ? ' 紙装甲の代償で被害が増幅。' : ''}（残HP: ${newHp}）`);
         applyEnemyAilmentToPlayer(enemy, activeDemonForm);
         setFlashColor('rgba(239,68,68,0.25)');
         setTimeout(() => setFlashColor(null), 300);
         setScreenShake(true);
         setTimeout(() => setScreenShake(false), 450);
+        if (isPlayerDead(newHp)) {
+          triggerPlayerDefeat();
+          return;
+        }
       }, delay);
     });
     if (scheduledEnemies.length === 0 && schedule.skippedEnemyTurns.length === 0) {
