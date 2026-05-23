@@ -306,8 +306,12 @@ export class BattleEngine {
       return;
     }
 
-    // エネルギー消費・獲得
+    // SP消費・回復（スキルポイント）
     player.currentEnergy = Math.min(player.maxEnergy, Math.max(0, player.currentEnergy - totalEnergyCost + energyGain));
+
+    // 魔神化ゲージ充填（SPとは別リソース）
+    const gaugeGain = actionType === 'PHYSICAL_ATTACK' ? 10 : 5;
+    this.addDemonGauge(gaugeGain);
 
     // ── ダメージ計算（hitCount 回ループ）────────────
     let totalDamage = 0;
@@ -327,6 +331,7 @@ export class BattleEngine {
         element,
       );
       totalDamage += result.damage;
+      if (result.isCritical) this.addDemonGauge(5); // 会心時ボーナス
       isCritical = isCritical || result.isCritical;
       isWeakness = isWeakness || result.isWeakness;
       isResisted = isResisted || result.isResisted;
@@ -335,6 +340,7 @@ export class BattleEngine {
     const shieldResult = this.applySpiritualShield(target, totalDamage, element);
     if (shieldResult.didBreak) {
       player.currentEnergy = Math.min(player.maxEnergy, player.currentEnergy + 30);
+      this.addDemonGauge(20); // 霊魂砕きボーナス
     }
 
     // HP 変化 + ボスギミックチェック
@@ -418,6 +424,7 @@ export class BattleEngine {
       target.stats.hp = Math.max(0, target.stats.hp - result.bonusDamage);
     }
     if (result.demonGaugeDelta) {
+      this.addDemonGauge(result.demonGaugeDelta);
       this.addLog('PASSIVE_DEMON_GAUGE', player.name, player.name,
         result.logDesc ?? '', undefined, false, false, false, 'NONE', 'MAGIC');
     } else if (result.avReduction) {
@@ -725,9 +732,22 @@ export class BattleEngine {
         player.currentEnergy + sb.energyPerTurn);
     }
     if (sb.demonGaugePerTurn) {
+      this.addDemonGauge(sb.demonGaugePerTurn);
       this.addLog('SYNERGY_GAUGE', 'SYNERGY', player.name,
         `DRAGONシナジー：魔神化ゲージ +${sb.demonGaugePerTurn}。`);
     }
+  }
+
+  private addDemonGauge(amount: number): void {
+    if (!this.demonState || this.demonState.isDemonMode) return;
+    this.demonState = {
+      ...this.demonState,
+      gauge: Math.min(100, this.demonState.gauge + amount),
+    };
+  }
+
+  getDemonGauge(): number {
+    return this.demonState?.gauge ?? 0;
   }
 
   private getMutableStats(player: CharacterData): BaseStats {
@@ -825,8 +845,8 @@ export class BattleEngine {
       element,
       attackType,
       ...ailment,
-      playerEnergy: this.state.player.currentEnergy,
-      playerMP: this.state.player.currentEnergy,
+      playerSp: this.state.player.currentEnergy,
+      playerDemonGauge: this.demonState?.gauge ?? 0,
       playerHP: this.getMutableStats(this.state.player).hp,
       description
     });

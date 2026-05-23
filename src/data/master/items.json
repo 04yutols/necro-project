@@ -23,6 +23,88 @@
     },
     "flavor": "粗削りだが、戦場で骨を砕いてきた実績がある。"
   },
+  "apprentice_cinder_staff": {
+    "id": "apprentice_cinder_staff",
+    "name": "煤火の見習い杖",
+    "type": "WEAPON",
+    "rarity": "R",
+    "weaponRarity": "R",
+    "archetype": "MID",
+    "rank": 1,
+    "ilv": 40,
+    "isUnique": false,
+    "stats": {},
+    "subOptions": [
+      { "type": "CRIT_DMG", "value": 8.5 },
+      { "type": "FIRE_DMG_BOOST", "value": 6.0 }
+    ],
+    "passiveA": {
+      "nameJa": "熾火の導き",
+      "descTemplate": "炎属性スキルの与ダメージが{value}%上昇する。",
+      "values": [4, 5, 6, 7, 8]
+    },
+    "passiveB": {
+      "nameJa": "焦げた魔導書",
+      "descTemplate": "術を使用した時、自身の会心ダメージが{value}%上昇する。",
+      "values": [3, 4, 5, 6, 7]
+    },
+    "flavor": "初歩の炎術を安定させるための煤けた杖。魔力の通り道に小さな火種が残る。"
+  },
+  "mourning_bell_crozier": {
+    "id": "mourning_bell_crozier",
+    "name": "弔鐘の司祭杖",
+    "type": "WEAPON",
+    "rarity": "R",
+    "weaponRarity": "R",
+    "archetype": "MID",
+    "rank": 1,
+    "ilv": 40,
+    "isUnique": false,
+    "stats": {},
+    "subOptions": [
+      { "type": "EFFECT_HIT", "value": 7.0 },
+      { "type": "DARK_DMG_BOOST", "value": 5.5 }
+    ],
+    "passiveA": {
+      "nameJa": "弔いの残響",
+      "descTemplate": "状態異常を付与する確率が{value}%上昇する。",
+      "values": [4, 5, 6, 7, 8]
+    },
+    "passiveB": {
+      "nameJa": "逆さ祈祷",
+      "descTemplate": "闇属性スキルの与ダメージが{value}%上昇する。",
+      "values": [3, 4, 5, 6, 7]
+    },
+    "flavor": "弔鐘を小さく鳴らす司祭杖。癒しの祈りを反転させ、呪いへ変える。"
+  },
+  "grave_thorn_dagger": {
+    "id": "grave_thorn_dagger",
+    "name": "墓棘の短剣",
+    "type": "WEAPON",
+    "rarity": "R",
+    "weaponRarity": "R",
+    "archetype": "MID",
+    "rank": 1,
+    "ilv": 40,
+    "isUnique": false,
+    "stats": {},
+    "subOptions": [
+      { "type": "CRIT_RATE", "value": 5.2 },
+      { "type": "SPD%", "value": 4.0 }
+    ],
+    "passiveA": {
+      "nameJa": "影踏み",
+      "descTemplate": "会心率が{value}%上昇する。",
+      "values": [4, 5, 6, 7, 8]
+    },
+    "passiveB": {
+      "nameJa": "墓所の早駆け",
+      "descTemplate": "通常攻撃後、次の行動が{value}%早まる。",
+      "values": [3, 4, 5, 6, 7],
+      "systemTag": "ACTION_VALUE"
+    },
+    "flavor": "墓地の茨を削り出した短剣。軽く、速く、急所へ迷わず届く。"
+  },
   "bleed_reaver": {
     "id": "bleed_reaver",
     "name": "血啜りの処刑剣",

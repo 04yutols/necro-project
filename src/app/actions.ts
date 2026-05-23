@@ -8,7 +8,7 @@ import { RewardService, StageDropResult } from '@/services/RewardService';
 import { MasterDataService } from '@/services/MasterDataService';
 import { RankingService } from '@/services/RankingService';
 import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventService';
-import { calculateResidueScore } from '@/logic/ResidueScore';
+import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
 import { calculateJobAdjustedStats } from '@/logic/JobSystem';
 import type {
   AbyssalResidueData,
@@ -26,7 +26,7 @@ import type {
   WeaponRarity,
 } from '@/types/game';
 import type { OnlineStageRecordSummary, StageResultMeta, WorldEventType, WorldLogEntry } from '@/types/online';
-import type { CreateCharacterResult, LoadCharacterResult, ServerGameData, ServerGameUser } from '@/types/serverGame';
+import type { CreateCharacterResult, LoadCharacterResult, SaveGameStateResult, ServerGameData, ServerGameUser } from '@/types/serverGame';
 
 // ── ユーザー登録 ──────────────────────────────────────────────────────────────
 
@@ -59,8 +59,16 @@ function emptyDrop(): StageDropResult {
 }
 
 const DISCOVERY_RARITIES = new Set<ItemData['rarity']>(['SSR', 'UR', 'LR', 'UNIQUE', 'HIDDEN_UNIQUE']);
-const STARTER_MONSTER_IDS = ['goblin', 'skeleton', 'zombie'] as const;
-const STARTER_WEAPON_ID = 'bone_cleaver';
+const STARTER_WEAPON_BY_JOB: Record<string, string> = {
+  warrior: 'bone_cleaver',
+  mage: 'apprentice_cinder_staff',
+  dark_priest: 'mourning_bell_crozier',
+  rogue: 'grave_thorn_dagger',
+};
+
+const STAGE_ID_ALIASES: Record<string, string> = {
+  '1-1': 'area1_node1',
+};
 
 // レベル1基礎ステータス（職業補正前）
 // 戦士の場合: HP×1.14→912, ATK×1.20→144, DEF×1.15→92
@@ -398,16 +406,54 @@ function itemCreateDataFromMaster(item: ItemData, ownerId: string): Prisma.ItemC
   };
 }
 
+function resolveStageId(stageId: string): string {
+  return STAGE_ID_ALIASES[stageId] ?? stageId;
+}
+
+function getStarterWeaponId(jobId: string): string {
+  return STARTER_WEAPON_BY_JOB[jobId] ?? STARTER_WEAPON_BY_JOB.warrior;
+}
+
+const EQUIPMENT_FIELD_BY_SLOT: Partial<Record<keyof EquipmentSlots, string>> = {
+  weapon: 'equipWeaponId',
+  sub: 'equipSubId',
+  head: 'equipHeadId',
+  body: 'equipBodyId',
+  arms: 'equipArmsId',
+  legs: 'equipLegsId',
+  acc1: 'equipAcc1Id',
+  acc2: 'equipAcc2Id',
+};
+
+const ITEM_TYPE_BY_SLOT: Partial<Record<keyof EquipmentSlots, ItemData['type']>> = {
+  weapon: 'WEAPON',
+  sub: 'SUB',
+  head: 'HEAD',
+  body: 'BODY',
+  arms: 'ARMS',
+  legs: 'LEGS',
+  acc1: 'ACC1',
+  acc2: 'ACC2',
+};
+
+function toReadyResult(loaded: LoadCharacterResult): SaveGameStateResult {
+  if (loaded.success && loaded.status === 'READY') return { success: true, data: loaded.data };
+  if (loaded.success) return { success: false, error: 'キャラクターデータが見つかりません' };
+  return { success: false, error: loaded.error };
+}
+
+async function getAuthorizedUser(userId: string): Promise<ServerGameUser | null> {
+  const session = await auth().catch(() => null);
+  if (session?.user?.id !== userId) return null;
+  return toServerUser(session.user);
+}
+
 /**
  * ステージクリア後のリザルト処理。
  * ログイン済み時はサーバー側でドロップ抽選 + DB保存を行う。
  * Next.js 実行時にセッションがない場合は、クライアントで再ログインを促す。
  */
 export async function processStageResultAction(stageId: string, meta: StageResultMeta = {}): Promise<StageResultPayload> {
-  const mds   = MasterDataService.getInstance();
-  const stage = mds.getStage(stageId);
-  const svc   = new RewardService();
-
   const session = await auth().catch(() => null);
   if (!session?.user?.id) {
     return {
@@ -419,12 +465,35 @@ export async function processStageResultAction(stageId: string, meta: StageResul
       error: 'SESSION_EXPIRED',
     };
   }
+  return processStageResultForUser(toServerUser(session.user), stageId, meta);
+}
+
+export async function processStageResultForUser(
+  user: ServerGameUser,
+  stageId: string,
+  meta: StageResultMeta = {},
+): Promise<StageResultPayload> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) {
+    return {
+      success: false,
+      dropResult: emptyDrop(),
+      expGain: 0,
+      goldGain: 0,
+      cloudSaved: false,
+      error: 'SESSION_EXPIRED',
+    };
+  }
+
+  const mds   = MasterDataService.getInstance();
+  const normalizedStageId = resolveStageId(stageId);
+  const stage = mds.getStage(normalizedStageId);
+  const svc   = new RewardService();
 
   if (!stage) {
     return { success: false, dropResult: emptyDrop(), expGain: 0, goldGain: 0, error: 'Stage not found' };
   }
-  const userId = session.user.id;
-  const sessionUser = session.user;
+  const userId = authorizedUser.id;
 
   // Character 取得（userId で紐付け）
   const char = await prisma.character.findFirst({
@@ -432,9 +501,7 @@ export async function processStageResultAction(stageId: string, meta: StageResul
     include: { jobs: true },
   });
   if (!char) {
-    // キャラクター未作成のゲスト的挙動にフォールバック
-    const dropResult = svc.processDropTable(stage.rewards.dropTable);
-    return { success: true, dropResult, expGain: stage.rewards.baseExp, goldGain: stage.rewards.baseGold, cloudSaved: false };
+    return { success: false, dropResult: emptyDrop(), expGain: 0, goldGain: 0, cloudSaved: false, error: 'CHARACTER_NOT_FOUND' };
   }
 
   // EXP 計算
@@ -449,7 +516,7 @@ export async function processStageResultAction(stageId: string, meta: StageResul
   // ドロップ抽選（サーバー側で確定）
   const dropResult = svc.processDropTable(stage.rewards.dropTable);
   const bestResidueScore = Math.max(0, ...dropResult.residues.map(residue => calculateResidueScore(residue)));
-  const playerName = getPlayerDisplayName(sessionUser);
+  const playerName = getPlayerDisplayName(authorizedUser);
 
   // DB 保存（トランザクション）
   const transactionResult = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -520,6 +587,13 @@ export async function processStageResultAction(stageId: string, meta: StageResul
       }
     }
 
+    // 消費アイテム保存
+    for (const consumable of dropResult.consumables) {
+      await tx.item.create({
+        data: itemCreateDataFromMaster(consumable, userId),
+      });
+    }
+
     // 残滓保存
     for (const residue of dropResult.residues) {
       await tx.abyssalResidue.create({
@@ -587,18 +661,18 @@ export async function processStageResultAction(stageId: string, meta: StageResul
       where: { id: char.id },
       data: {
         gold: { increment: goldGain },
-        ...(!char.clearedStages.includes(stageId) ? { clearedStages: { push: stageId } } : {}),
+        ...(!char.clearedStages.includes(normalizedStageId) ? { clearedStages: { push: normalizedStageId } } : {}),
       },
     });
 
     const isBossStage = stage.nodeType === 'BOSS' || Boolean(stage.isAreaBoss);
     const isWorldFirstBossClear = isBossStage && !(await tx.stageRecord.findFirst({
-      where: { stageId },
+      where: { stageId: normalizedStageId },
       select: { id: true },
     }));
     const stageRecord = await RankingService.recordStageClear(tx, {
       userId,
-      stageId,
+      stageId: normalizedStageId,
       turnCount: meta.turnCount,
       clearTimeSec: meta.clearTimeSec,
       totalDamage: meta.totalDamage,
@@ -609,7 +683,7 @@ export async function processStageResultAction(stageId: string, meta: StageResul
     if (isWorldFirstBossClear) {
       worldEvents.push(await createWorldEvent(tx, 'BOSS_CLEARED', {
         playerName,
-        stageId,
+        stageId: normalizedStageId,
         stageName: stage.nameJa ?? stage.name ?? stageId,
       }, userId));
     }
@@ -643,10 +717,17 @@ export async function loadCharacterAction(): Promise<LoadCharacterResult> {
   if (!session?.user?.id) {
     return { success: false, status: 'UNAUTHENTICATED', error: 'ログインが必要です' };
   }
-  const user = toServerUser(session.user);
+  return loadCharacterForUser(toServerUser(session.user));
+}
+
+export async function loadCharacterForUser(user: ServerGameUser): Promise<LoadCharacterResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) {
+    return { success: false, status: 'UNAUTHENTICATED', error: 'ログインが必要です' };
+  }
 
   const character = await prisma.character.findFirst({
-    where: { userId: session.user.id },
+    where: { userId: authorizedUser.id },
     include: {
       jobs: true,
       equipWeapon: true,
@@ -669,11 +750,11 @@ export async function loadCharacterAction(): Promise<LoadCharacterResult> {
     },
   });
   if (!character) {
-    return { success: true, status: 'NO_CHARACTER', user };
+    return { success: true, status: 'NO_CHARACTER', user: authorizedUser };
   }
 
   const inventoryItems = await prisma.item.findMany({
-    where: { ownerId: session.user.id },
+    where: { ownerId: authorizedUser.id },
     orderBy: { id: 'desc' },
   });
   const inventoryMonsters = await prisma.monster.findMany({
@@ -685,7 +766,7 @@ export async function loadCharacterAction(): Promise<LoadCharacterResult> {
   return {
     success: true,
     status: 'READY',
-    user,
+    user: authorizedUser,
     data: toServerGameData(character, inventoryItems, inventoryMonsters),
   };
 }
@@ -698,7 +779,20 @@ export async function createCharacterAction(
   if (!session?.user?.id) {
     return { success: false, error: 'ログインが必要です' };
   }
-  const userId = session.user.id;
+  return createCharacterForUser(toServerUser(session.user), jobId, name);
+}
+
+export async function createCharacterForUser(
+  user: ServerGameUser,
+  jobId: string,
+  name: string,
+): Promise<CreateCharacterResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) {
+    return { success: false, error: 'ログインが必要です' };
+  }
+
+  const userId = authorizedUser.id;
   const trimmedName = name.trim();
   if (trimmedName.length < 2 || trimmedName.length > 16) {
     return { success: false, error: '名前は2〜16文字にしてください' };
@@ -709,7 +803,7 @@ export async function createCharacterAction(
 
   const exists = await prisma.character.findFirst({ where: { userId }, select: { id: true } });
   if (exists) {
-    const loaded = await loadCharacterAction();
+    const loaded = await loadCharacterForUser(authorizedUser);
     if (loaded.success && loaded.status === 'READY') return { success: true, data: loaded.data };
     return { success: false, error: '既にキャラクターが存在します' };
   }
@@ -718,12 +812,12 @@ export async function createCharacterAction(
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await ensureJobRow(tx, jobId);
 
-    const starterWeapon = mds.getItem(STARTER_WEAPON_ID) as ItemData | undefined;
+    const starterWeapon = mds.getItem(getStarterWeaponId(jobId)) as ItemData | undefined;
     const createdWeapon = starterWeapon
       ? await tx.item.create({ data: itemCreateDataFromMaster(starterWeapon, userId), select: { id: true } })
       : null;
 
-    const character = await tx.character.create({
+    await tx.character.create({
       data: {
         name: trimmedName,
         userId,
@@ -740,44 +834,10 @@ export async function createCharacterAction(
         equipWeaponId: createdWeapon?.id ?? null,
         jobs: { create: { jobId, level: 1, exp: 0 } },
       },
-      include: { jobs: true },
-    });
-
-    const starterMonsters = await Promise.all(STARTER_MONSTER_IDS.map((monsterId) => {
-      const monster = mds.getMonster(monsterId) as MonsterData | undefined;
-      if (!monster) return null;
-      return tx.monster.create({
-        data: {
-          masterId: monsterId,
-          characterId: character.id,
-          name: monster.name,
-          tribe: monster.tribe,
-          cost: monster.cost,
-          hp: monster.stats.hp,
-          atk: monster.stats.atk,
-          def: monster.stats.def,
-          spd: monster.stats.spd,
-          critRate: monster.stats.critRate,
-          critDmg: monster.stats.critDmg,
-          effectHit: monster.stats.effectHit,
-          effectRes: monster.stats.effectRes,
-          resistances: (monster.resistances ?? {}) as Prisma.InputJsonValue,
-        },
-        select: { id: true },
-      });
-    }));
-    const [slot0, slot1] = starterMonsters.filter(Boolean);
-
-    await tx.character.update({
-      where: { id: character.id },
-      data: {
-        partySlot0Id: slot0?.id ?? null,
-        partySlot1Id: slot1?.id ?? null,
-      },
     });
   });
 
-  const loaded = await loadCharacterAction();
+  const loaded = await loadCharacterForUser(authorizedUser);
   if (loaded.success && loaded.status === 'READY') {
     return { success: true, data: loaded.data };
   }
@@ -808,18 +868,162 @@ export async function soulStoneAction(monsterId: string) {
   return { success: true, data: { id, originMonsterName: 'Goblin', effect: { atkBonus: 5, elementDmgBoost: 0 } } };
 }
 
-export async function updatePartyAction(characterId: string, monsterIds: (string | null)[]) {
-  return { success: true };
+export async function updatePartyAction(characterId: string, monsterIds: (string | null)[]): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return updatePartyForUser(toServerUser(session.user), characterId, monsterIds);
 }
 
 export async function equipShardAction(monsterId: string, shardId: string) {
   return { success: true };
 }
 
-export async function equipItemAction(characterId: string, slot: string, itemId: string) {
-  return { success: true };
+export async function equipItemAction(characterId: string, slot: string, itemId: string): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return equipItemForUser(toServerUser(session.user), characterId, slot, itemId);
 }
 
-export async function unequipItemAction(characterId: string, slot: string) {
-  return { success: true };
+export async function unequipItemAction(characterId: string, slot: string): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return unequipItemForUser(toServerUser(session.user), characterId, slot);
+}
+
+export async function equipResidueAction(characterId: string, slotIndex: number, residueId: string): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return equipResidueForUser(toServerUser(session.user), characterId, slotIndex, residueId);
+}
+
+export async function updatePartyForUser(
+  user: ServerGameUser,
+  characterId: string,
+  monsterIds: (string | null)[],
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const ids = [monsterIds[0] ?? null, monsterIds[1] ?? null, monsterIds[2] ?? null];
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    select: { id: true, necroMaxCost: true },
+  });
+  if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+
+  const uniqueIds = ids.filter((id): id is string => Boolean(id));
+  if (new Set(uniqueIds).size !== uniqueIds.length) {
+    return { success: false, error: '同じ魔物を複数スロットに編成できません' };
+  }
+
+  const monsters = uniqueIds.length > 0
+    ? await prisma.monster.findMany({ where: { id: { in: uniqueIds }, characterId }, select: { id: true, cost: true } })
+    : [];
+  if (monsters.length !== uniqueIds.length) {
+    return { success: false, error: '所有していない魔物が含まれています' };
+  }
+  const totalCost = monsters.reduce((sum, monster) => sum + monster.cost, 0);
+  if (totalCost > character.necroMaxCost) {
+    return { success: false, error: '編成コストが上限を超えています' };
+  }
+
+  await prisma.character.update({
+    where: { id: characterId },
+    data: {
+      partySlot0Id: ids[0],
+      partySlot1Id: ids[1],
+      partySlot2Id: ids[2],
+    },
+  });
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
+}
+
+export async function equipItemForUser(
+  user: ServerGameUser,
+  characterId: string,
+  slot: string,
+  itemId: string,
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const typedSlot = slot as keyof EquipmentSlots;
+  const dbField = EQUIPMENT_FIELD_BY_SLOT[typedSlot];
+  const expectedType = ITEM_TYPE_BY_SLOT[typedSlot];
+  if (!dbField || !expectedType) return { success: false, error: '装備スロットが不正です' };
+
+  const character = await prisma.character.findFirst({ where: { id: characterId, userId: authorizedUser.id }, select: { id: true } });
+  if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, ownerId: authorizedUser.id },
+    select: { id: true, type: true },
+  });
+  if (!item) return { success: false, error: '所有していない装備です' };
+  if (item.type !== expectedType) return { success: false, error: 'このスロットには装備できません' };
+
+  await prisma.character.update({
+    where: { id: characterId },
+    data: { [dbField]: item.id } as Prisma.CharacterUpdateInput,
+  });
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
+}
+
+export async function unequipItemForUser(
+  user: ServerGameUser,
+  characterId: string,
+  slot: string,
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const typedSlot = slot as keyof EquipmentSlots;
+  const dbField = EQUIPMENT_FIELD_BY_SLOT[typedSlot];
+  if (!dbField) return { success: false, error: '装備スロットが不正です' };
+
+  const character = await prisma.character.findFirst({ where: { id: characterId, userId: authorizedUser.id }, select: { id: true } });
+  if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+
+  await prisma.character.update({
+    where: { id: characterId },
+    data: { [dbField]: null } as Prisma.CharacterUpdateInput,
+  });
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
+}
+
+export async function equipResidueForUser(
+  user: ServerGameUser,
+  characterId: string,
+  slotIndex: number,
+  residueId: string,
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= RESIDUE_SLOT_ORDER.length) {
+    return { success: false, error: '残滓スロットが不正です' };
+  }
+
+  const character = await prisma.character.findFirst({ where: { id: characterId, userId: authorizedUser.id }, select: { id: true } });
+  if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+
+  const residue = await prisma.abyssalResidue.findFirst({
+    where: { id: residueId, characterId },
+    select: { id: true, itemId: true },
+  });
+  if (!residue) return { success: false, error: '所有していない残滓です' };
+  if (residue.itemId !== RESIDUE_SLOT_ORDER[slotIndex]) {
+    return { success: false, error: 'この残滓は選択中のスロットに装備できません' };
+  }
+
+  const dbField = `equippedResidue${slotIndex}Id`;
+  await prisma.character.update({
+    where: { id: characterId },
+    data: { [dbField]: residue.id } as Prisma.CharacterUpdateInput,
+  });
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
 }

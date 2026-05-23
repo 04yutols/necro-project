@@ -32,3 +32,7 @@ export type LoadCharacterResult =
 export type CreateCharacterResult =
   | { success: false; error: string }
   | { success: true; data: ServerGameData };
+
+export type SaveGameStateResult =
+  | { success: false; error: string }
+  | { success: true; data: ServerGameData };

@@ -199,6 +199,7 @@ interface GameState {
 
   updateHP: (hp: number) => void;
   updateEnergy: (energy: number) => void;
+  updateEnergyBy: (delta: number) => void;
   addExp: (amount: number) => void;
   addGold: (amount: number) => void;
   addClearedStage: (stageId: string) => void;
@@ -283,7 +284,7 @@ export const useGameStore = create<GameState>((set) => ({
   equippingMonsterId: null,
   battleLogs: ['SYSTEM STANDBY...'],
   actionTrigger: null,
-  demonGauge: 100,
+  demonGauge: 0,
   isDemonMode: false,
   demonActionsRemaining: 0,
   demonUltimateUsed: false,
@@ -489,6 +490,11 @@ export const useGameStore = create<GameState>((set) => ({
   updateEnergy: (energy) => set((state) => ({
     player: state.player ? { ...state.player, currentEnergy: Math.max(0, Math.min(energy, state.player.maxEnergy)) } : null
   })),
+  updateEnergyBy: (delta) => set((state) => {
+    if (!state.player) return {};
+    const next = Math.max(0, Math.min(state.player.currentEnergy + delta, state.player.maxEnergy));
+    return { player: { ...state.player, currentEnergy: next } };
+  }),
   addExp: (amount) => set((state) => {
     if (!state.player) return { player: null };
     const newJobs = state.player.jobs.map(j => {
@@ -643,7 +649,7 @@ export const useGameStore = create<GameState>((set) => ({
     battleLogs: ['CLOUD SAVE LOADED...'],
     actionTrigger: null,
     currentTab: 'HOME',
-    demonGauge: 100,
+    demonGauge: 0,
     isDemonMode: false,
     demonActionsRemaining: 0,
     demonUltimateUsed: false,
@@ -670,7 +676,7 @@ export const useGameStore = create<GameState>((set) => ({
     battleLogs: ['SYSTEM STANDBY...'],
     actionTrigger: null,
     currentTab: 'HOME',
-    demonGauge: 100,
+    demonGauge: 0,
     isDemonMode: false,
     demonActionsRemaining: 0,
     demonUltimateUsed: false,
@@ -773,7 +779,7 @@ export const useGameStore = create<GameState>((set) => ({
       null,
     ],
     currentTab: 'HOME',
-    demonGauge: 100,
+    demonGauge: 0,
     isDemonMode: false,
     demonActionsRemaining: 0,
     demonUltimateUsed: false,

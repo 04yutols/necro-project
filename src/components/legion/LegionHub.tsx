@@ -2204,7 +2204,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   weaponMaterials: WeaponMaterialData[];
   inventoryItems: ItemData[]; transmutationPoints: number; onBack: () => void;
 }) {
-  const { equipResidueToSlot, upgradeResidue, equipItem, rankUpWeapon, reforgeWeapon, dismantleWeapon } = useGameStore();
+  const { equipResidueToSlot, upgradeResidue, equipItem, rankUpWeapon, reforgeWeapon, dismantleWeapon, loadFromServer } = useGameStore();
   const sound = useGothicSound();
   const sfx = useSoundEffects();
   const conf = getConf(gearCtx.mk, player, party);
@@ -2261,16 +2261,37 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     setSelectedItemId(info.weapon?.id ?? filteredItems[0]?.id ?? null);
   }, [filteredItems, info.weapon?.id, isResidueSlot, selectedItemId]);
 
-  const handleEquipResidue = () => {
+  const canPersistToServer = () => typeof window !== 'undefined'
+    && Boolean((window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__);
+
+  const handleEquipResidue = async () => {
     if (!selectedResidue) return;
     sound.playEquip(); haptic([8, 4, 14]);
     equipResidueToSlot(activeResidueSlotIndex, selectedResidue);
+    if (!player || !canPersistToServer()) return;
+    try {
+      const { equipResidueAction } = await import('../../app/actions');
+      const result = await equipResidueAction(player.id, activeResidueSlotIndex, selectedResidue.id);
+      if (result.success) loadFromServer(result.data);
+      else console.error(result.error);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  const handleEquipItem = (item: ItemData) => {
+  const handleEquipItem = async (item: ItemData) => {
     if (!player) return;
     sound.playEquip(); haptic([8, 4, 14]);
     equipItem('weapon', item);
+    if (!canPersistToServer()) return;
+    try {
+      const { equipItemAction } = await import('../../app/actions');
+      const result = await equipItemAction(player.id, 'weapon', item.id);
+      if (result.success) loadFromServer(result.data);
+      else console.error(result.error);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const handleRankUpWeapon = (item: ItemData) => {

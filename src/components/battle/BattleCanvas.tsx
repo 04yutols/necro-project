@@ -1720,7 +1720,7 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
 export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const {
     player, party, equippedResidueSlots, inventoryItems,
-    addExp, addGold, addClearedStage, updateEnergy,
+    addExp, addGold, addClearedStage, updateEnergy, updateEnergyBy,
     addInventoryItems, addAbyssalResidues, addResidueMaterials,
     consumeInventoryItem,
   } = useGameStore();
@@ -1731,7 +1731,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   const [waveIndex, setWaveIndex] = useState(0);
   const [enemies, setEnemies] = useState<EnemyState[]>(() => cloneEnemies(battleWaves[0].enemies));
-  const [soul, setSoul] = useState(45);
+  const [soul, setSoul] = useState(0);
   const [phase, setPhase] = useState<'playerTurn' | 'skillMenu' | 'itemMenu' | 'animating' | 'enemyTurn' | 'waveTransition'>('playerTurn');
   const [demonized, setDemonized] = useState(false);
   const [demonActionsRemaining, setDemonActionsRemaining] = useState(0);
@@ -1832,7 +1832,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     enemiesRef.current = firstEnemies;
     setWaveIndex(0);
     setEnemies(firstEnemies);
-    setSoul(45);
+    setSoul(0);
+    updateEnergy(0); // SPもバトル開始時に0にリセット
     setPhase('playerTurn');
     setDemonized(false);
     setDemonActionsRemaining(0);
@@ -2154,7 +2155,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     return t ? t.id : (enemies.find(e => e.hp > 0)?.id ?? 0);
   }
 
-  function endPlayerTurn() {
+  function endPlayerTurn(spGain: number = 0) {
     if (enemiesRef.current.every(e => e.hp <= 0)) {
       resolveWaveClear();
       return;
@@ -2173,7 +2174,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       }
     }
     if (!demonized) {
-      setSoul(prev => Math.min(100, prev + 10));
+      setSoul(prev => Math.min(100, prev + 10)); // 魔神化ゲージ +10/ターン
+      if (spGain > 0) updateEnergyBy(spGain);   // SP回復（SPとゲージは別）
     }
     setTimeout(() => runEnemyTurn(demonFormForEnemyTurn), speedMs * 0.4);
   }
@@ -2253,8 +2255,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         if (demonized) {
           applyDemonRiskFeedback('SLASH');
         }
+        const attackSpGain = currentJobData?.energyCurve?.energyRegen ?? 20;
         setPhase('playerTurn');
-        endPlayerTurn();
+        endPlayerTurn(demonized ? 0 : attackSpGain); // 魔神化中はSP回復なし
       }, hitCount * hitInterval + speedMs * 0.35);
     }, speedMs * 0.3);
   }
@@ -2269,8 +2272,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     }
     if (demonForm.effectB.riskType === 'ENERGY_DRAIN') {
       const drain = Math.max(1, Math.round(demonForm.effectB.riskValue ?? 15));
-      setSoul(prev => Math.max(0, prev - drain));
-      addLog(`代償発動: 魂が過剰消費され、ソウル-${drain}。`);
+      updateEnergyBy(-drain); // SPを削る（魔神化ゲージではなくスキルポイント）
+      addLog(`代償発動: スキルSPが過剰消費され、SP-${drain}。`);
       return;
     }
     if (demonForm.effectB.riskType === 'SETUP_DEPENDENT') {
@@ -2280,6 +2283,12 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   function handleSkill(skill: BattleSkill) {
     if (resolvePlayerStatusBeforeAction()) return;
+    if (skill.mp && (skill.mp > currentMp)) {
+      addLog(`SPが不足しています（必要 ${skill.mp} / 現在 ${currentMp}）`);
+      return;
+    }
+    // SP消費（魔神化ゲージとは別リソース）
+    if (skill.mp) updateEnergyBy(-skill.mp);
     actionCountRef.current += 1;
     sfx.skillCast(skill.element, skill.attackType);
     setPhase('animating');
@@ -2313,7 +2322,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       if (demonized) {
         applyDemonRiskFeedback(skill.attackType);
       }
-      setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, targets.length * targetInterval + speedMs * 0.3);
+      // スキルはSP一部回復（通常攻撃より少ない）
+      setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(demonized ? 0 : 10); }, targets.length * targetInterval + speedMs * 0.3);
     }, speedMs * 0.4);
   }
 
