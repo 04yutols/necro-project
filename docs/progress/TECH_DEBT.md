@@ -58,7 +58,7 @@
 
 ## 🟡 Medium — プレイはできるが設計上の欠陥
 
-### M-1. `spd`ステータスがターン順に反映されていない
+### ✅ M-1. `spd`ステータスがターン順に反映されていない（2026-05-24 完了）
 
 **問題：**  
 `calcAVDelay()` が `StatusAilmentSystem.ts` に定義されているが、どこからも呼ばれていない。  
@@ -72,6 +72,12 @@ BattleCanvas の行動フローに AV（アクションバリュー）計算を�
 - `src/logic/StatusAilmentSystem.ts` — `calcAVDelay()`
 - `src/components/battle/BattleCanvas.tsx` — `runEnemyTurn()`、`endPlayerTurn()`
 - `src/logic/BattleEngine.ts` — AV制御を追加する場合
+
+**完了内容：**
+- `docs/設計書/40_AVターン順システム設計.md` に AV ターン順の式・初期化・敵フェーズ仕様・テスト方針を追加。
+- `src/logic/TurnOrderSystem.ts` を追加し、`actionDelay = 10000 / spd`、AV順ソート、敵フェーズスケジュール、状態異常AV遅延を共通化。
+- `BattleCanvas` の WAVE開始・プレイヤー行動後・敵フェーズに AV を接続し、SPD が手番頻度と敵の行動順に反映されるよう修正。
+- `src/logic/TurnOrderSystem.test.ts` を追加。
 
 ---
 

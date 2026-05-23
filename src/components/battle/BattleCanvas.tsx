@@ -17,6 +17,7 @@ import { RewardService, type StageDropResult } from '../../services/RewardServic
 import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/StatSystem';
 import { calculateBattleDamage, type BattleDamageResult } from '../../logic/BattleDamage';
 import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
+import { calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilPlayer, type TurnOrderActor } from '../../logic/TurnOrderSystem';
 import type { StageResultMeta } from '../../types/online';
 import {
   DEMON_ACTION_LIMIT,
@@ -104,6 +105,11 @@ type BattleWave = {
   isBoss?: boolean;
   rewards: { exp: number; gold: number };
   enemies: EnemyState[];
+};
+
+type BattleAvState = {
+  player: number;
+  enemies: Record<number, number>;
 };
 
 const INIT_ENEMIES: EnemyState[] = [
@@ -1811,6 +1817,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const effectIdRef = useRef(0);
   const demonBurstIdRef = useRef(0);
   const enemyTurnSerialRef = useRef(0);
+  const battleAvRef = useRef<BattleAvState>({ player: 0, enemies: {} });
 
   // Build battle party from store
   const battleParty: BattlePartyMember[] = [
@@ -1855,6 +1862,55 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   const addLog = useCallback((line: string) => setLog(prev => [...prev, line]), []);
 
+  function getPlayerActionSpd() {
+    return Math.max(1, Math.round((playerStats?.spd ?? FALLBACK_PLAYER_STATS.spd) + (battleSynergyBonus.spdBonus ?? 0)));
+  }
+
+  function getEnemyActionSpd(enemy: EnemyState) {
+    return Math.max(1, toEnemyBattleStats(enemy).spd);
+  }
+
+  function createInitialAvState(nextEnemies: EnemyState[]): BattleAvState {
+    return {
+      player: 0,
+      enemies: Object.fromEntries(
+        nextEnemies
+          .filter((enemy) => enemy.hp > 0)
+          .map((enemy) => [enemy.id, calculateInitialActionValue(getEnemyActionSpd(enemy))]),
+      ),
+    };
+  }
+
+  function buildEnemyAvActors(nextEnemies: EnemyState[]): TurnOrderActor[] {
+    return nextEnemies
+      .filter((enemy) => enemy.hp > 0)
+      .map((enemy) => {
+        const spd = getEnemyActionSpd(enemy);
+        return {
+          id: String(enemy.id),
+          name: enemy.name,
+          side: 'ENEMY' as const,
+          spd,
+          currentAv: battleAvRef.current.enemies[enemy.id] ?? calculateInitialActionValue(spd),
+          tieBreaker: enemy.id + 1,
+        };
+      });
+  }
+
+  function persistAvSchedule(playerActor: TurnOrderActor, enemyActors: TurnOrderActor[]) {
+    battleAvRef.current = {
+      player: playerActor.currentAv,
+      enemies: Object.fromEntries(enemyActors.map((enemy) => [Number(enemy.id), enemy.currentAv])),
+    };
+  }
+
+  function formatAvOrder(order: TurnOrderActor[]) {
+    return order
+      .slice(0, 4)
+      .map((actor) => `${actor.side === 'PLAYER' ? '骸骨騎士' : actor.name}:${Math.round(actor.currentAv)}`)
+      .join(' → ');
+  }
+
   useEffect(() => {
     if (stageId) startTutorialBattlePhase(stageId);
   }, [stageId]);
@@ -1868,6 +1924,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     battleStartedAtRef.current = Date.now();
     waveIndexRef.current = 0;
     enemiesRef.current = firstEnemies;
+    battleAvRef.current = createInitialAvState(firstEnemies);
     setWaveIndex(0);
     setEnemies(firstEnemies);
     setSoul(0);
@@ -1962,6 +2019,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       const nextWave = battleWaves[nextIndex];
       const nextEnemies = cloneEnemies(nextWave.enemies);
       enemiesRef.current = nextEnemies;
+      battleAvRef.current = createInitialAvState(nextEnemies);
       setWaveIndex(nextIndex);
       setEnemies(nextEnemies);
       setPhase('playerTurn');
@@ -2261,7 +2319,11 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       setSoul(prev => Math.min(100, prev + 10)); // 魔神化ゲージ +10/ターン
       if (spGain > 0) updateEnergyBy(spGain);   // SP回復（SPとゲージは別）
     }
-    setTimeout(() => runEnemyTurn(demonFormForEnemyTurn), speedMs * 0.4);
+    battleAvRef.current = {
+      ...battleAvRef.current,
+      player: battleAvRef.current.player + calculateActionDelay(getPlayerActionSpd()),
+    };
+    setTimeout(() => runEnemyTurn(demonFormForEnemyTurn), speedMs * 0.25);
   }
 
   function runEnemyTurn(activeDemonForm: DemonFormData | null = demonized ? demonForm : null) {
@@ -2277,10 +2339,33 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       resolveWaveClear();
       return;
     }
+    const playerActor: TurnOrderActor = {
+      id: 'player',
+      name: '骸骨騎士',
+      side: 'PLAYER',
+      spd: getPlayerActionSpd(),
+      currentAv: battleAvRef.current.player,
+      tieBreaker: 0,
+    };
+    const enemyActors = buildEnemyAvActors(statusPhase.alive);
+    const schedule = scheduleEnemiesUntilPlayer({
+      player: playerActor,
+      enemies: enemyActors,
+      skippedEnemyIds: new Set(Array.from(statusPhase.skippedIds).map(String)),
+    });
+    persistAvSchedule(schedule.player, schedule.enemies);
+
+    const orderText = formatAvOrder(schedule.orderPreview);
+    if (orderText) addLog(`行動順(AV): ${orderText}`);
+
+    const scheduledEnemies = schedule.enemyActions
+      .map((actor) => statusPhase.alive.find((enemy) => String(enemy.id) === actor.id))
+      .filter((enemy): enemy is EnemyState => Boolean(enemy));
+
     let delay = 0;
-    statusPhase.alive.forEach((enemy) => {
-      if (statusPhase.skippedIds.has(enemy.id)) return;
-      delay += speedMs * 0.55;
+    scheduledEnemies.forEach((enemy) => {
+      const enemyDelayRatio = calculateActionDelay(getEnemyActionSpd(enemy)) / Math.max(1, calculateActionDelay(getPlayerActionSpd()));
+      delay += speedMs * Math.max(0.32, Math.min(0.72, enemyDelayRatio * 0.55));
       setTimeout(() => {
         if (turnToken !== enemyTurnSerialRef.current) return;
         const enrage = enemy.gimmicks?.find(gimmick => gimmick.trigger === 'HP_BELOW_50' && gimmick.effect === 'ENRAGE');
@@ -2297,11 +2382,14 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         setTimeout(() => setScreenShake(false), 450);
       }, delay);
     });
+    if (scheduledEnemies.length === 0 && schedule.skippedEnemyTurns.length === 0) {
+      addLog('SPD差で敵の行動前に骸骨騎士へ手番が戻る。');
+    }
     setTimeout(() => {
       if (turnToken !== enemyTurnSerialRef.current) return;
       setPhase('playerTurn');
       addLog('骸骨騎士のターン。コマンドを選択しろ。');
-    }, delay + speedMs * 0.4);
+    }, delay + speedMs * 0.28);
   }
 
   function handleAttack() {
