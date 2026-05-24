@@ -48,6 +48,8 @@ export interface JobUnlockRequirement {
   minLevel: number;
 }
 
+export type JobGrowthModifiers = Partial<Record<'hp' | 'atk' | 'def', number>>;
+
 export interface JobData {
   id?: string;
   name: string;
@@ -68,6 +70,7 @@ export interface JobData {
     energyRegen: number;   // 通常攻撃1回ごとのSP回復量
     ultimateCost: number;  // 奥義コスト（未使用・将来用）
   };
+  growthModifiers?: JobGrowthModifiers;
   levelBonuses: Record<string, Partial<PassiveBonuses>>;
   skills: JobSkillUnlock[];
 }
@@ -233,6 +236,8 @@ export interface CharacterData {
   currentJobId: string;
   category: ClassCategory;
   baseStats?: BaseStats;
+  // ネクロランクによる基礎ステータス倍率補正（Character.necroBaseStatsBonus のスナップショット）
+  necroBaseStatsBonus?: number;
   stats: BaseStats;
   passives: PassiveBonuses;
   equipment: EquipmentSlots;

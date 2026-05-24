@@ -521,9 +521,10 @@ export class BattleEngine {
     } else {
       // モンスター全滅 → アルドが直接受ける
       const ms = this.getMutableStats(player);
+      const playerProfile = calculateCharacterStatProfile(player);
       const incomingMult = getDemonIncomingDamageMultiplier(this.demonState?.form ?? null);
       const rawDmg = Math.max(1, Math.floor(
-        enemy.stats.atk * (1 - ms.def / (ms.def + 200)) * incomingMult
+        enemy.stats.atk * (1 - playerProfile.total.def / (playerProfile.total.def + 200)) * incomingMult
       ));
       ms.hp = Math.max(1, ms.hp - rawDmg);
       this.addLog('ENEMY_ATTACK', enemy.name, player.name,

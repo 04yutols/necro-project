@@ -126,10 +126,22 @@ function mergeInventoryItems(current: ItemData[], incoming: ItemData[]): ItemDat
   }, current);
 }
 
-function withDerivedElementBoosts(player: CharacterData, residues: (AbyssalResidueData | null)[]): CharacterData {
+function withNecroBaseStatsBonus(player: CharacterData, necroStatus?: NecroStatus | null): CharacterData {
   return {
     ...player,
-    elementDmgBoosts: calculateCharacterStatProfile(player, residues).elementDmgBoosts,
+    necroBaseStatsBonus: necroStatus?.baseStatsBonus ?? player.necroBaseStatsBonus ?? 1,
+  };
+}
+
+function withDerivedElementBoosts(
+  player: CharacterData,
+  residues: (AbyssalResidueData | null)[],
+  necroStatus?: NecroStatus | null,
+): CharacterData {
+  const playerWithNecro = withNecroBaseStatsBonus(player, necroStatus);
+  return {
+    ...playerWithNecro,
+    elementDmgBoosts: calculateCharacterStatProfile(playerWithNecro, residues).elementDmgBoosts,
   };
 }
 
@@ -360,8 +372,15 @@ export const useGameStore = create<GameState>((set) => ({
   }),
   currentTab: 'HOME',
 
-  setPlayer: (player) => set({ player }),
-  setNecroStatus: (status) => set({ necroStatus: status }),
+  setPlayer: (player) => set((state) => ({
+    player: withDerivedElementBoosts(player, state.equippedResidueSlots, state.necroStatus),
+  })),
+  setNecroStatus: (status) => set((state) => ({
+    necroStatus: status,
+    player: state.player
+      ? withDerivedElementBoosts(state.player, state.equippedResidueSlots, status)
+      : state.player,
+  })),
   setParty: (party) => set({ party }),
   setInventoryMonsters: (monsters) => set({ inventoryMonsters: monsters }),
   setSoulShards: (shards) => set({ soulShards: shards }),
@@ -626,37 +645,40 @@ export const useGameStore = create<GameState>((set) => ({
     };
   }),
 
-  loadFromServer: (data) => set({
-    player: withDerivedElementBoosts(data.player, data.equippedResidueSlots),
-    necroStatus: data.necroStatus,
-    party: [data.party[0] ?? null, data.party[1] ?? null, data.party[2] ?? null],
-    inventoryMonsters: data.inventoryMonsters,
-    soulShards: data.soulShards,
-    inventoryItems: data.inventoryItems,
-    abyssalResidues: data.abyssalResidues,
-    equippedResidueSlots: [
+  loadFromServer: (data) => set(() => {
+    const equippedResidueSlots = [
       data.equippedResidueSlots[0] ?? null,
       data.equippedResidueSlots[1] ?? null,
       data.equippedResidueSlots[2] ?? null,
       data.equippedResidueSlots[3] ?? null,
       data.equippedResidueSlots[4] ?? null,
-    ],
-    residueMaterials: [],
-    weaponMaterials: [],
-    transmutationPoints: 0,
-    monsterCurrentHp: {},
-    equippingMonsterId: null,
-    battleLogs: ['CLOUD SAVE LOADED...'],
-    actionTrigger: null,
-    currentTab: 'HOME',
-    demonGauge: 0,
-    isDemonMode: false,
-    demonActionsRemaining: 0,
-    demonUltimateUsed: false,
-    demonFormJobId: null,
-    demonEffectBFlag: null,
-    demonRiskType: null,
-    demonRiskValue: 0,
+    ] as (AbyssalResidueData | null)[];
+    return {
+      player: withDerivedElementBoosts(data.player, equippedResidueSlots, data.necroStatus),
+      necroStatus: data.necroStatus,
+      party: [data.party[0] ?? null, data.party[1] ?? null, data.party[2] ?? null],
+      inventoryMonsters: data.inventoryMonsters,
+      soulShards: data.soulShards,
+      inventoryItems: data.inventoryItems,
+      abyssalResidues: data.abyssalResidues,
+      equippedResidueSlots,
+      residueMaterials: [],
+      weaponMaterials: [],
+      transmutationPoints: 0,
+      monsterCurrentHp: {},
+      equippingMonsterId: null,
+      battleLogs: ['CLOUD SAVE LOADED...'],
+      actionTrigger: null,
+      currentTab: 'HOME',
+      demonGauge: 0,
+      isDemonMode: false,
+      demonActionsRemaining: 0,
+      demonUltimateUsed: false,
+      demonFormJobId: null,
+      demonEffectBFlag: null,
+      demonRiskType: null,
+      demonRiskValue: 0,
+    };
   }),
 
   clearServerData: () => set({
@@ -693,6 +715,7 @@ export const useGameStore = create<GameState>((set) => ({
       currentJobId: 'warrior',
       category: 'PHYSICAL',
       baseStats: INITIAL_PLAYER_BASE_STATS,
+      necroBaseStatsBonus: 1.0,
       stats: calculateJobAdjustedStats(INITIAL_PLAYER_BASE_STATS, JOBS.warrior),
       baseResistances: {},
       passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveSpdBonus: 0, passiveCritRateBonus: 0, passiveCritDmgBonus: 0, passiveHpBonus: 0 },

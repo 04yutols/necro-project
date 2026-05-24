@@ -81,7 +81,7 @@ BattleCanvas の行動フローに AV（アクションバリュー）計算を�
 
 ---
 
-### M-2. ネクロレベル／ランクのステータスへの反映が未接続
+### M-2. ネクロレベル／ランクのステータスへの反映が未接続 ✅完了
 
 **問題：**  
 `NecroStatus.baseStatsBonus` フィールドがあるが、ダメージ計算・キャラクターステータス表示のどこにも使われていない。  
@@ -96,9 +96,18 @@ BattleCanvas の行動フローに AV（アクションバリュー）計算を�
 - `src/types/game.ts` — `NecroStatus.baseStatsBonus`（line ~390）
 - `src/app/actions.ts` — `toServerGameData()` で necroStatus を player に渡している部分
 
+**完了内容：**
+- `docs/設計書/43_ネクロランクステータス反映設計.md` に計算式・データフロー・テスト方針を追加。
+- `CharacterData.necroBaseStatsBonus` を追加し、DB の `Character.necroBaseStatsBonus` を `toServerGameData()` / `GameManager` から流すよう修正。
+- `calculateCharacterStatProfile()` に `necro` 内訳を追加し、HP/ATK/DEF/SPD にネクロランク倍率を反映。
+- 装備・残滓の `%` オプションがネクロ補正後の基礎値を参照するよう修正。
+- `BattleEngine` の主人公直接被弾時も最終 DEF を参照するよう修正。
+- Zustand の `loadFromServer()` / `setNecroStatus()` で `player.necroBaseStatsBonus` を同期。
+- `src/logic/StatSystem.test.ts` / `src/logic/BattleEngine.test.ts` に倍率反映テストを追加。
+
 ---
 
-### M-3. 職業別ステータス成長率がない（全職業一律）
+### M-3. 職業別ステータス成長率がない（全職業一律） ✅完了
 
 **問題：**  
 `STAT_GROWTH_PER_LEVEL = { hp: 40, atk: 6, def: 4 }` が全職業共通。  
@@ -111,6 +120,13 @@ BattleCanvas の行動フローに AV（アクションバリュー）計算を�
 **関連ファイル：**
 - `src/app/actions.ts` — `STAT_GROWTH_PER_LEVEL`（line ~79）、レベルアップ処理（line ~547）
 - `src/data/master/jobs.json` — 全職業に `growthModifiers` を追加
+
+**完了内容：**
+- `docs/設計書/44_職業別ステータス成長率設計.md` に成長式・役割分担・職業別倍率・テスト方針を追加。
+- `src/logic/JobGrowthSystem.ts` を追加し、基礎成長量と職業別倍率計算を共通化。
+- `src/data/master/jobs.json` の全12職に `growthModifiers` を追加。
+- `processStageResultForUser()` と旧 `GameManager.processStageResult()` で職業別成長を適用。
+- `src/logic/JobGrowthSystem.test.ts` と新規アカウント統合テストで成長反映を検証。
 
 ---
 

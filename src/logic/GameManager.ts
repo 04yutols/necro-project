@@ -3,6 +3,7 @@ import { NecroService } from '../services/NecroService';
 import { RewardService } from '../services/RewardService';
 import { MasterDataService } from '../services/MasterDataService';
 import { BattleEngine } from './BattleEngine';
+import { calculateJobGrowthIncrements } from './JobGrowthSystem';
 import { prisma } from '../lib/prisma';
 import { CharacterData, MonsterData } from '../types/game';
 
@@ -60,6 +61,7 @@ export class GameManager {
       name: char.name,
       currentJobId: char.currentJobId || 'warrior',
       category: (this.masterData.getJob(char.currentJobId || 'warrior')?.category as any) || 'PHYSICAL',
+      necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
       stats: {
         hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
         critRate: char.critRate, critDmg: char.critDmg,
@@ -135,6 +137,21 @@ export class GameManager {
           data: { exp: newExp, level: newLevel }
         });
 
+        if (newLevel > currentJob.level) {
+          const growth = calculateJobGrowthIncrements(
+            this.masterData.getJob(char.currentJobId || 'warrior'),
+            newLevel - currentJob.level,
+          );
+          await tx.character.update({
+            where: { id: characterId },
+            data: {
+              hp: { increment: growth.hp },
+              atk: { increment: growth.atk },
+              def: { increment: growth.def },
+            },
+          });
+        }
+
         // パッシブ加算チェック (JobServiceのロジックを流用)
         // 本来は JobService を tx 内で呼ぶべき
       }
@@ -169,6 +186,7 @@ export class GameManager {
       name: char.name,
       currentJobId: char.currentJobId || 'warrior',
       category: (this.masterData.getJob(char.currentJobId || 'warrior')?.category as any) || 'PHYSICAL',
+      necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
       stats: {
         hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
         critRate: char.critRate, critDmg: char.critDmg,

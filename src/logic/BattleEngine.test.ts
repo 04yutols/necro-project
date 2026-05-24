@@ -99,6 +99,62 @@ describe('BattleEngine', () => {
     expect(boostedDamage).toBeGreaterThan(baseDamage);
   });
 
+  test('Necro rank bonus increases outgoing battle damage', () => {
+    const basePlayer: CharacterData = {
+      ...mockPlayer,
+      stats: { ...mockPlayer.stats, critRate: 0 },
+      necroBaseStatsBonus: 1,
+    };
+    const rankedPlayer: CharacterData = {
+      ...basePlayer,
+      necroBaseStatsBonus: 2,
+    };
+
+    const baseTarget: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 500 },
+    };
+    const rankedTarget: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 500 },
+    };
+
+    const baseLogs = new BattleEngine(basePlayer, []).simulateAction('PHYSICAL_ATTACK', baseTarget);
+    const rankedLogs = new BattleEngine(rankedPlayer, []).simulateAction('PHYSICAL_ATTACK', rankedTarget);
+    const baseDamage = baseLogs.find(l => l.action === 'PHYSICAL_ATTACK')?.damage ?? 0;
+    const rankedDamage = rankedLogs.find(l => l.action === 'PHYSICAL_ATTACK')?.damage ?? 0;
+
+    expect(rankedDamage).toBeGreaterThan(baseDamage);
+  });
+
+  test('Necro rank bonus reduces direct incoming damage through final DEF', () => {
+    const basePlayer: CharacterData = {
+      ...mockPlayer,
+      stats: { ...mockPlayer.stats, hp: 500, atk: 1, def: 20, critRate: 0 },
+      necroBaseStatsBonus: 1,
+    };
+    const rankedPlayer: CharacterData = {
+      ...basePlayer,
+      stats: { ...basePlayer.stats },
+      necroBaseStatsBonus: 3,
+    };
+    const baseEnemy: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 500, atk: 120, def: 0 },
+    };
+    const rankedEnemy: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 500, atk: 120, def: 0 },
+    };
+
+    const baseLogs = new BattleEngine(basePlayer, []).simulateAction('PHYSICAL_ATTACK', baseEnemy);
+    const rankedLogs = new BattleEngine(rankedPlayer, []).simulateAction('PHYSICAL_ATTACK', rankedEnemy);
+    const baseDamage = baseLogs.find(l => l.action === 'ENEMY_ATTACK')?.damage ?? 0;
+    const rankedDamage = rankedLogs.find(l => l.action === 'ENEMY_ATTACK')?.damage ?? 0;
+
+    expect(rankedDamage).toBeLessThan(baseDamage);
+  });
+
   test('Spiritual shield heavily reduces non-weak attacks', () => {
     const player: CharacterData = {
       ...mockPlayer,

@@ -1,7 +1,10 @@
 import { prisma } from '../lib/prisma';
+import jobsData from '../data/master/jobs.json';
+import { calculateJobGrowthIncrements } from '../logic/JobGrowthSystem';
 import { RESIDUE_SLOT_ORDER } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
 import { createCredentialsUser } from '../services/AuthService';
+import type { JobData } from '../types/game';
 
 jest.mock('@/auth', () => ({
   auth: jest.fn(),
@@ -19,6 +22,8 @@ import {
 import type { ServerGameUser } from '../types/serverGame';
 
 jest.setTimeout(45000);
+
+const JOBS = jobsData as Record<string, JobData>;
 
 async function cleanupUser(email: string) {
   const user = await prisma.user.findUnique({
@@ -95,6 +100,7 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(created.data.necroStatus.level).toBe(1);
     expect(created.data.necroStatus.rank).toBe(1);
     expect(created.data.necroStatus.exp).toBe(0);
+    expect(created.data.player.necroBaseStatsBonus).toBe(created.data.necroStatus.baseStatsBonus);
     expect(created.data.player.currentJobId).toBe('warrior');
     expect(created.data.player.jobs).toEqual([{ jobId: 'warrior', level: 1, exp: 0 }]);
     expect(created.data.inventoryItems).toHaveLength(1);
@@ -151,8 +157,10 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     const warriorJob = afterClear.data.player.jobs.find((job) => job.jobId === 'warrior');
     expect(warriorJob?.exp).toBeGreaterThan(0);
     expect(warriorJob?.level).toBeGreaterThan(1);
-    expect(afterClear.data.player.baseStats.hp).toBeGreaterThan(initialBaseStats.hp);
-    expect(afterClear.data.player.baseStats.atk).toBeGreaterThan(initialBaseStats.atk);
+    const warriorGrowth = calculateJobGrowthIncrements(JOBS.warrior, (warriorJob?.level ?? 1) - 1);
+    expect(afterClear.data.player.baseStats.hp).toBe(initialBaseStats.hp + warriorGrowth.hp);
+    expect(afterClear.data.player.baseStats.atk).toBe(initialBaseStats.atk + warriorGrowth.atk);
+    expect(afterClear.data.player.baseStats.def).toBe(initialBaseStats.def + warriorGrowth.def);
     expect(afterClear.data.player.clearedStages).toContain('area1_node1');
     expect(afterClear.data.inventoryItems.length).toBeGreaterThan(1);
     expect(afterClear.data.abyssalResidues.length).toBeGreaterThan(0);

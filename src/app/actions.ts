@@ -11,6 +11,7 @@ import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventServi
 import { JobService } from '@/services/JobService';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
 import { calculateJobAdjustedStats } from '@/logic/JobSystem';
+import { calculateJobGrowthIncrements } from '@/logic/JobGrowthSystem';
 import type {
   AbyssalResidueData,
   BaseStats,
@@ -83,13 +84,6 @@ const DEFAULT_BASE_STATS: BaseStats = {
   effectHit: 0,
   effectRes: 0,
 };
-
-// レベルアップごとのステータス成長量（職業補正前の生値）
-const STAT_GROWTH_PER_LEVEL = {
-  hp:  40,
-  atk: 6,
-  def: 4,
-} as const;
 
 // 累積EXP必要量: expForLevel(n) = 50*(n-1)*(n+8)
 // Lv2: 500, Lv3: 1100, Lv4: 1800, Lv5: 2600, ...
@@ -310,6 +304,7 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
     currentJobId,
     category: currentJob.category,
     baseStats,
+    necroBaseStatsBonus: character.necroBaseStatsBonus ?? 1,
     stats: calculateJobAdjustedStats(baseStats, currentJob),
     passives: {
       passiveAtkBonus: character.passiveAtkBonus,
@@ -634,12 +629,14 @@ export async function processStageResultForUser(
       });
 
       if (levelsGained > 0) {
+        const currentJobData = mds.getJob(currentJob.jobId) as JobData | undefined;
+        const growth = calculateJobGrowthIncrements(currentJobData, levelsGained);
         await tx.character.update({
           where: { id: char.id },
           data: {
-            hp:  { increment: STAT_GROWTH_PER_LEVEL.hp  * levelsGained },
-            atk: { increment: STAT_GROWTH_PER_LEVEL.atk * levelsGained },
-            def: { increment: STAT_GROWTH_PER_LEVEL.def * levelsGained },
+            hp:  { increment: growth.hp },
+            atk: { increment: growth.atk },
+            def: { increment: growth.def },
           },
         });
       }
