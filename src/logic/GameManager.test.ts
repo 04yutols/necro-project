@@ -140,3 +140,33 @@ describe('GameManager.updateParty', () => {
     });
   });
 });
+
+describe('GameManager.processStageResult', () => {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const email = `codex-sec5-${suffix}@example.test`;
+  const manager = new GameManager();
+
+  afterAll(async () => {
+    await cleanupUser(email);
+    await prisma.$disconnect();
+  });
+
+  test('does not use combat critRate as a discovery drop bonus', async () => {
+    await cleanupUser(email);
+    const { character } = await createUserWithCharacter(email, 'SEC5', 10);
+    await prisma.character.update({
+      where: { id: character.id },
+      data: { critRate: 100 },
+    });
+
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      const result = await manager.processStageResult(character.id, 'area1_node1');
+      expect(result.rewards.weapons).toHaveLength(0);
+      expect(result.rewards.residues).toHaveLength(0);
+      expect(result.rewards.consumables).toHaveLength(0);
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
+});

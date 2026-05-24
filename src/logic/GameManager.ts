@@ -137,7 +137,7 @@ export class GameManager {
     // 1. 経験値と報酬の計算
     const playerConverted = this.convertToCharacterData(char);
     const expGain = this.rewardService.calculateExp(stage.rewards.baseExp, playerConverted);
-    const rewards = this.rewardService.processDropTable(stage.rewards.dropTable, char.critRate ?? 5);
+    const rewards = this.rewardService.processDropTable(stage.rewards.dropTable);
 
     // 2. DBへの反映 (トランザクション)
     await prisma.$transaction(async (tx: any) => {

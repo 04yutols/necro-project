@@ -83,6 +83,10 @@ function rollValue(range: [number, number], rng: () => number): number {
   return parseFloat((range[0] + rng() * (range[1] - range[0])).toFixed(1));
 }
 
+function clampDropRate(rate: number): number {
+  return Math.max(0, Math.min(1, rate));
+}
+
 function secureUuid(): string {
   if (globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
@@ -158,7 +162,8 @@ export class RewardService {
 
     for (const entry of dropTable) {
       const roll = rng();
-      if (roll >= entry.rate * multiplier) continue;
+      const adjustedRate = clampDropRate(entry.rate * multiplier);
+      if (roll >= adjustedRate) continue;
 
       switch (entry.type) {
         case 'WEAPON': {

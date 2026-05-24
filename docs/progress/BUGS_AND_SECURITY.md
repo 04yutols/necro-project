@@ -134,20 +134,30 @@ function generateInstanceId(prefix: string): string {
 
 ---
 
-### 🟠 SEC-5: ドロップ率のボーナス計算に`critRate`を誤用
+### ✅ SEC-5: ドロップ率のボーナス計算に`critRate`を誤用（2026-05-24 完了）
 
-**ファイル:** `src/logic/GameManager.ts:139`, `src/services/RewardService.ts:134`
+**旧ファイル位置:** `src/logic/GameManager.ts:139`, `src/services/RewardService.ts:134`
+
+**対応後:** `src/logic/GameManager.ts`, `src/services/RewardService.ts`
 
 ```typescript
-// GameManager — char.critRate をドロップボーナスとして渡している
-const rewards = this.rewardService.processDropTable(stage.rewards.dropTable, char.critRate ?? 5);
+const rewards = this.rewardService.processDropTable(stage.rewards.dropTable);
 
-// RewardService — multiplier > 1 になるとドロップ率が 100% を超える
-const multiplier = 1 + discoveryBonusRate / 100;
-if (roll >= entry.rate * multiplier) continue; // entry.rate * multiplier > 1 → 必ずドロップ
+const adjustedRate = clampDropRate(entry.rate * multiplier);
+if (roll >= adjustedRate) continue;
 ```
 
 `critRate` は戦闘の会心率であり、ドロップ率とは無関係。`critRate = 50` の場合、`multiplier = 1.5` となり `entry.rate = 1.0` のアイテムが必ず落ちる。`actions.ts` の正規パスでは `discoveryBonusRate` を渡さないため問題が表面化しにくい。
+
+**修正:** 旧 `GameManager.processStageResult()` から `critRate` のドロップ補正流用を削除し、`RewardService` 側でも最終ドロップ率を `0..1` にクランプするようにした。
+
+**対応内容:**
+- `GameManager.processStageResult()` は `processDropTable(stage.rewards.dropTable)` を呼ぶ。
+- `RewardService` に `clampDropRate()` を追加し、`entry.rate * multiplier` の結果を確率範囲に丸める。
+- `src/logic/GameManager.test.ts` で `critRate = 100` でもドロップ率が上がらないことを確認。
+- `src/services/RewardService.test.ts` で `discoveryBonusRate` が100%超の確率を作らないことを確認。
+
+**設計:** `docs/設計書/55_SEC5_ドロップ率ボーナスcritRate分離設計.md`
 
 ---
 
@@ -434,7 +444,7 @@ if (typeof characterOrId !== 'string') {
 | SEC-2 | ✅ | `actions.ts` | 2026-05-24 完了。認証・所有者確認・DB実データ取得を実装 |
 | SEC-3 | ✅ | `GameManager.ts` | 2026-05-24 完了。パーティ3スロットのDB保存を実装 |
 | SEC-4 | ✅ | `RewardService.ts` | 2026-05-24 完了。Web CryptoベースのID生成へ移行 |
-| SEC-5 | 🟠 | `GameManager.ts:139` | critRate をドロップボーナスに誤用 |
+| SEC-5 | ✅ | `GameManager.ts` / `RewardService.ts` | 2026-05-24 完了。critRate とドロップ補正を分離 |
 | BUG-4 | 🟠 | `useGameStore.ts:445` | 残滓強化でマテリアルスタック全消費 |
 | BUG-5 | 🟠 | `StatusAilmentSystem.ts:201` | BURN の免疫チェック欠落 |
 | BUG-6 | 🟠 | `BattleEngine.ts:335` | 敵HPオブジェクトの直接書き換え |

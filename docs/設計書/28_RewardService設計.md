@@ -169,7 +169,8 @@ public processDropTable(
     if (entry.isHidden) continue;
 
     const roll = rng();
-    if (roll >= entry.rate * multiplier) continue;
+    const adjustedRate = Math.max(0, Math.min(1, entry.rate * multiplier));
+    if (roll >= adjustedRate) continue;
 
     switch (entry.type) {
       case 'WEAPON': {
@@ -269,11 +270,12 @@ DB 連携前は全てクライアント側（Phase A の DB タスクとは独�
 | 3 | RESIDUE RARE 生成 | rarity='RARE', subOptions.length∈[2,3], level=1, maxExp=2500 |
 | 4 | RESIDUE EPIC 生成 | rarity='EPIC', subOptions.length∈[3,4] |
 | 5 | MATERIAL ドロップ | materials[0].id が 'bone_chip_' で始まる, expValue=120 |
-| 6 | isHidden=true → スキップ | weapons.length=0（rate=1.0 でも） |
-| 7 | discoveryBonusRate=50 で rate=0.68 のドロップ → 命中 | rng()=0.99 で rate×1.5=1.02 → roll < 1.02 → 取得 |
-| 8 | 同一 rng() で決定論的に同じ結果 | 2回呼び出し結果が一致 |
-| 9 | RESIDUE メインとサブが重複しない | mainStat.type ∉ subOptions.map(s=>s.type) |
-| 10 | calculateExp — MAGICAL 1.1× | result = Math.floor(baseExp × levelFactor × 1.1) |
+| 6 | isHidden=true → 秘匿ユニークも抽選対象 | roll 成功時に weapons.length=1 |
+| 7 | discoveryBonusRate=50 で rate=0.68 のドロップ → 命中 | rng()=0.99 で min(1, rate×1.5)=1.0 → 取得 |
+| 8 | discoveryBonusRate で 100% を超えない | rng()=1.0 では adjustedRate=1.0 でも取得しない |
+| 9 | 同一 rng() で決定論的に同じ結果 | 2回呼び出し結果が一致 |
+| 10 | RESIDUE メインとサブが重複しない | mainStat.type ∉ subOptions.map(s=>s.type) |
+| 11 | calculateExp — MAGICAL 1.1× | result = Math.floor(baseExp × levelFactor × 1.1) |
 
 ---
 

@@ -130,14 +130,22 @@ describe('RewardService.processDropTable', () => {
     expect(result.weapons[0].isUnique).toBe(true);
   });
 
-  // 7. discoveryBonusRate=50 → rate×1.5 に補正 (rate=0.68 → 0.68×1.5=1.02、roll=0.99 → 命中)
+  // 7. discoveryBonusRate=50 → rate×1.5 に補正しつつ、最終確率は100%で打ち止め
   test('discoveryBonusRate=50 で rate=0.68 → roll=0.99 で命中', () => {
     const table: DropEntry[] = [
       { type: 'RESIDUE', rarity: 'RARE', rate: 0.68 },
     ];
-    // roll=0.99 < 0.68×1.5=1.02 → 命中
+    // adjustedRate は min(1, 0.68×1.5) = 1 → roll=0.99 で命中
     const result = svc.processDropTable(table, 50, makeSeqRng([0.99, 0.1]));
     expect(result.residues).toHaveLength(1);
+  });
+
+  test('discoveryBonusRate cannot raise the effective drop rate above 100%', () => {
+    const table: DropEntry[] = [
+      { type: 'WEAPON', itemId: 'bone_cleaver', rate: 0.9 },
+    ];
+    const result = svc.processDropTable(table, 50, makeSeqRng([1.0]));
+    expect(result.weapons).toHaveLength(0);
   });
 
   // 8. 同一 rng で決定論的に同じ結果
