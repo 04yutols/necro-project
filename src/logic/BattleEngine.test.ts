@@ -173,7 +173,7 @@ describe('BattleEngine', () => {
 
     expect(attackLog?.damage).toBeLessThan(20);
     expect(attackLog?.description).toContain('霊的防壁に阻まれた');
-    expect(shieldedTarget.shieldHp).toBe(100);
+    expect(shieldedTarget.shieldHp).toBeLessThan(100);
   });
 
   test('Weak element breaks spiritual shield and grants extra energy', () => {

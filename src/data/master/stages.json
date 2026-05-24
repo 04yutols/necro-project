@@ -52,9 +52,9 @@
       },
       {
         "label": "WAVE 3",
-        "role": "BOSS",
-        "enemyIds": ["ossuary_wyrm_lord"],
-        "intent": "章ボスの簡易版。防壁破壊後に魔神化で押し切る。"
+        "role": "ELITE",
+        "enemyIds": ["grave_soldier", "grave_knight"],
+        "intent": "章ボスへの足がかり。騎士長との戦いでスキルの使いどころを学ぶ。"
       }
     ],
     "rewards": {

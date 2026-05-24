@@ -22,14 +22,14 @@ const ITEMS = itemsData as Record<string, ItemData>;
 const DEMON_FORMS = demonFormsData as Record<string, DemonFormData>;
 
 const INITIAL_PLAYER_BASE_STATS: BaseStats = {
-  hp:        7200,
-  atk:       1250,
-  def:        720,
-  spd:        110,
-  critRate:     8,   // 8%
-  critDmg:    165,   // 165% (1.65×)
+  hp:          60,
+  atk:          8,
+  def:         10,
+  spd:        100,
+  critRate:     5,
+  critDmg:    150,
   effectHit:    0,
-  effectRes:    5,
+  effectRes:    0,
 };
 
 const MOCK_WEAPONS: ItemData[] = [
@@ -40,8 +40,8 @@ const MOCK_WEAPONS: ItemData[] = [
     rarity: 'R',
     weaponRarity: 'R',
     archetype: 'MID',
-    rank: 2,
-    ilv: 46,
+    rank: 1,
+    ilv: 1,
     icon: '⚔',
     stats: {},
     subOptions: [{ type: 'ATK%', value: 6.2 }],
@@ -720,16 +720,16 @@ export const useGameStore = create<GameState>((set) => ({
       baseResistances: {},
       passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveSpdBonus: 0, passiveCritRateBonus: 0, passiveCritDmgBonus: 0, passiveHpBonus: 0 },
       equipment: {
-        weapon: MOCK_WEAPONS[2],
+        weapon: MOCK_WEAPONS[0],
         sub: null, head: null,
         body: null,
         arms: null, legs: null, acc1: null, acc2: null,
       },
       jobs: [
-        { jobId: 'warrior', level: 72, exp: 0 },
-        { jobId: 'mage', level: 22, exp: 1300 },
-        { jobId: 'dark_priest', level: 21, exp: 900 },
-        { jobId: 'rogue', level: 9, exp: 700 },
+        { jobId: 'warrior', level: 1, exp: 0 },
+        { jobId: 'mage', level: 1, exp: 0 },
+        { jobId: 'dark_priest', level: 1, exp: 0 },
+        { jobId: 'rogue', level: 1, exp: 0 },
         { jobId: 'necromancer', level: 1, exp: 0 }
       ],
       isAwakened: false,

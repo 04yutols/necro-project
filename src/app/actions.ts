@@ -73,11 +73,11 @@ const STAGE_ID_ALIASES: Record<string, string> = {
 };
 
 // レベル1基礎ステータス（職業補正前）
-// 戦士の場合: HP×1.14→912, ATK×1.20→144, DEF×1.15→92
+// 戦士の場合: HP×1.14→68, ATK×1.20→10, DEF×1.15→12
 const DEFAULT_BASE_STATS: BaseStats = {
-  hp: 800,
-  atk: 120,
-  def: 80,
+  hp: 60,
+  atk: 8,
+  def: 10,
   spd: 100,
   critRate: 5,
   critDmg: 150,

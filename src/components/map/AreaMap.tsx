@@ -731,7 +731,7 @@ function WavePreview({ stage }: { stage: StageData }) {
       <div style={panelTitleStyle}>WAVE STRUCTURE</div>
       <div style={{ display: 'grid', gap: 7 }}>
         {waves.map(wave => {
-          const color = wave.role === 'BOSS' ? '#ef4444' : wave.role === 'SHIELD' ? '#38bdf8' : '#8A2BE2';
+          const color = wave.role === 'BOSS' ? '#ef4444' : wave.role === 'ELITE' ? '#f59e0b' : wave.role === 'SHIELD' ? '#38bdf8' : '#8A2BE2';
           return (
             <div key={wave.label} style={{
               display: 'grid',

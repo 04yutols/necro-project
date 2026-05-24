@@ -645,20 +645,31 @@ export class BattleEngine {
     }
 
     const wasWeakShieldHit = element !== 'NONE' && Boolean(target.weaknesses?.includes(element));
+    const shieldDamage = Math.max(1, Math.floor(damage));
+    const remainingShield = Math.max(0, currentShield - shieldDamage);
+    target.shieldHp = remainingShield;
+    target.maxShieldHp = maxShield;
+
     if (!wasWeakShieldHit) {
+      if (remainingShield <= 0) {
+        target.shieldBroken = true;
+        return {
+          damage: Math.max(1, Math.floor(damage * 0.72)),
+          wasShielded: true,
+          wasWeakShieldHit: false,
+          didBreak: true,
+          remainingShield,
+        };
+      }
+
       return {
         damage: Math.max(1, Math.floor(damage * 0.22)),
         wasShielded: true,
         wasWeakShieldHit: false,
         didBreak: false,
-        remainingShield: currentShield,
+        remainingShield,
       };
     }
-
-    const shieldDamage = Math.max(1, Math.floor(damage * 0.75));
-    const remainingShield = Math.max(0, currentShield - shieldDamage);
-    target.shieldHp = remainingShield;
-    target.maxShieldHp = maxShield;
 
     if (remainingShield <= 0) {
       target.shieldBroken = true;

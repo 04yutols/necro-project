@@ -7,7 +7,7 @@
     "weaponRarity": "R",
     "archetype": "MID",
     "rank": 1,
-    "ilv": 40,
+    "ilv": 1,
     "isUnique": false,
     "stats": {},
     "subOptions": [{ "type": "ATK%", "value": 6.2 }],
@@ -31,7 +31,7 @@
     "weaponRarity": "R",
     "archetype": "MID",
     "rank": 1,
-    "ilv": 40,
+    "ilv": 1,
     "isUnique": false,
     "stats": {},
     "subOptions": [
@@ -58,7 +58,7 @@
     "weaponRarity": "R",
     "archetype": "MID",
     "rank": 1,
-    "ilv": 40,
+    "ilv": 1,
     "isUnique": false,
     "stats": {},
     "subOptions": [
@@ -85,7 +85,7 @@
     "weaponRarity": "R",
     "archetype": "MID",
     "rank": 1,
-    "ilv": 40,
+    "ilv": 1,
     "isUnique": false,
     "stats": {},
     "subOptions": [

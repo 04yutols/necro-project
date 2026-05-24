@@ -347,6 +347,7 @@ export interface EnemyData {
   resistances: Resistances;
   weaknesses: ElementType[];
   shieldHp?: number;
+  maxShieldHp?: number;
   gimmicks?: BossGimmick[];
   dropTable: DropEntry[];
   battle?: {
@@ -359,7 +360,7 @@ export interface EnemyData {
 
 export interface StageWaveData {
   label: string;
-  role: 'WARMUP' | 'SHIELD' | 'BOSS';
+  role: 'WARMUP' | 'SHIELD' | 'ELITE' | 'BOSS';
   enemyIds: string[];
   intent: string;
 }

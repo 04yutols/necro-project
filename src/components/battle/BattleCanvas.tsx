@@ -112,7 +112,7 @@ interface EnemyState {
 type BattleWave = {
   title: string;
   label: string;
-  role?: 'WARMUP' | 'SHIELD' | 'BOSS';
+  role?: 'WARMUP' | 'SHIELD' | 'ELITE' | 'BOSS';
   intent?: string;
   isBoss?: boolean;
   rewards: { exp: number; gold: number };
@@ -2336,9 +2336,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     if (hasShield && target && !opts.ignoreShield) {
       const element = opts.element ?? 'NONE';
       const isWeakShieldHit = element !== 'NONE' && Boolean(target.weaknesses?.includes(element));
+      const shieldDamage = Math.max(1, Math.round(finalDmg));
+      nextShieldHp = Math.max(0, (target.shieldHp ?? 0) - shieldDamage);
       if (isWeakShieldHit) {
-        const shieldDamage = Math.max(1, Math.round(finalDmg * 0.75));
-        nextShieldHp = Math.max(0, (target.shieldHp ?? 0) - shieldDamage);
         if (nextShieldHp <= 0) {
           shieldBroken = true;
           didBreakShield = true;
@@ -2352,8 +2352,18 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           addLog(`◇ 弱点属性が防壁を削った。残り ${nextShieldHp}`);
         }
       } else {
-        finalDmg = Math.max(1, Math.round(finalDmg * 0.22));
-        addLog(`◇ ${target.name}の霊的防壁がダメージを殺した。`);
+        if (nextShieldHp <= 0) {
+          shieldBroken = true;
+          didBreakShield = true;
+          finalDmg = Math.max(1, Math.round(finalDmg * 0.72));
+          addLog(`◇ ${target.name}の霊的防壁を打ち崩した。`);
+          setSoul(prev => Math.min(100, prev + 30));
+          setFlashColor('rgba(56,189,248,0.22)');
+          setTimeout(() => setFlashColor(null), 360);
+        } else {
+          finalDmg = Math.max(1, Math.round(finalDmg * 0.22));
+          addLog(`◇ ${target.name}の霊的防壁がダメージを殺した。残り ${nextShieldHp}`);
+        }
       }
     } else if (hasShield && target && opts.ignoreShield) {
       addLog(`◇ ${target.name}の防御を魔神技が貫いた。`);
