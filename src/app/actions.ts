@@ -12,6 +12,7 @@ import { JobService } from '@/services/JobService';
 import { NecroService } from '@/services/NecroService';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
 import { calculateEnergyState } from '@/logic/EnergySystem';
+import { levelFromTotalExp } from '@/logic/ExperienceSystem';
 import { calculateJobAdjustedStats } from '@/logic/JobSystem';
 import { calculateJobGrowthIncrements } from '@/logic/JobGrowthSystem';
 import type {
@@ -64,6 +65,10 @@ export type SoulStoneActionResult =
   | { success: false; error: string }
   | { success: true; data: SoulShardData };
 
+export type FetchPlayerActionResult =
+  | { success: false; error: string }
+  | { success: true; data: CharacterData };
+
 function emptyDrop(): StageDropResult {
   return { weapons: [], consumables: [], residues: [], materials: [], monsters: [] };
 }
@@ -93,18 +98,28 @@ const DEFAULT_BASE_STATS: BaseStats = {
   effectRes: 0,
 };
 
-// 累積EXP必要量: expForLevel(n) = 50*(n-1)*(n+8)
-// Lv2: 500, Lv3: 1100, Lv4: 1800, Lv5: 2600, ...
-function expForLevel(n: number): number {
-  if (n <= 1) return 0;
-  return 50 * (n - 1) * (n + 8);
-}
+const CHARACTER_GAME_DATA_INCLUDE = {
+  jobs: true,
+  equipWeapon: true,
+  equipSub: true,
+  equipHead: true,
+  equipBody: true,
+  equipArms: true,
+  equipLegs: true,
+  equipAcc1: true,
+  equipAcc2: true,
+  abyssalResidues: true,
+  partySlot0: { include: { soulShard: true, spiritCore: true } },
+  partySlot1: { include: { soulShard: true, spiritCore: true } },
+  partySlot2: { include: { soulShard: true, spiritCore: true } },
+  soulShards: true,
+  equippedResidue0: true,
+  equippedResidue1: true,
+  equippedResidue2: true,
+  equippedResidue3: true,
+  equippedResidue4: true,
+} satisfies Prisma.CharacterInclude;
 
-function levelFromTotalExp(totalExp: number): number {
-  let level = 1;
-  while (level < 99 && expForLevel(level + 1) <= totalExp) level++;
-  return level;
-}
 const EMPTY_EQUIPMENT: EquipmentSlots = {
   weapon: null,
   sub: null,
@@ -652,7 +667,7 @@ export async function processStageResultForUser(
     if (currentJob) {
       const newExp      = currentJob.exp + expGain;
       const oldLevel    = currentJob.level as number;
-      const newLevel    = Math.min(99, levelFromTotalExp(newExp));
+      const newLevel    = levelFromTotalExp(newExp);
       const levelsGained = newLevel - oldLevel;
 
       await tx.userJob.update({
@@ -766,27 +781,7 @@ export async function loadCharacterForUser(user: ServerGameUser): Promise<LoadCh
 
   const character = await prisma.character.findFirst({
     where: { userId: authorizedUser.id },
-    include: {
-      jobs: true,
-      equipWeapon: true,
-      equipSub: true,
-      equipHead: true,
-      equipBody: true,
-      equipArms: true,
-      equipLegs: true,
-      equipAcc1: true,
-      equipAcc2: true,
-      abyssalResidues: true,
-      partySlot0: { include: { soulShard: true, spiritCore: true } },
-      partySlot1: { include: { soulShard: true, spiritCore: true } },
-      partySlot2: { include: { soulShard: true, spiritCore: true } },
-      soulShards: true,
-      equippedResidue0: true,
-      equippedResidue1: true,
-      equippedResidue2: true,
-      equippedResidue3: true,
-      equippedResidue4: true,
-    },
+    include: CHARACTER_GAME_DATA_INCLUDE,
   });
   if (!character) {
     return { success: true, status: 'NO_CHARACTER', user: authorizedUser };
@@ -916,14 +911,40 @@ export async function loadGameStateAction() {
   return loadCharacterAction();
 }
 
-export async function fetchPlayerAction(characterId: string) {
+export async function fetchPlayerAction(characterId: string): Promise<FetchPlayerActionResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return fetchPlayerForUser(toServerUser(session.user), characterId);
+}
+
+export async function fetchPlayerForUser(
+  user: ServerGameUser,
+  characterId: string,
+): Promise<FetchPlayerActionResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    include: CHARACTER_GAME_DATA_INCLUDE,
+  });
+  if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+
+  const [inventoryItems, inventoryMonsters] = await Promise.all([
+    prisma.item.findMany({
+      where: { ownerId: authorizedUser.id },
+      orderBy: { id: 'desc' },
+    }),
+    prisma.monster.findMany({
+      where: { characterId: character.id },
+      include: { soulShard: true, spiritCore: true },
+      orderBy: { id: 'asc' },
+    }),
+  ]);
+
   return {
     success: true,
-    data: {
-      id:    characterId,
-      name:  'アルド',
-      stats: { hp: 100, atk: 20, def: 10, spd: 100, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 0 },
-    },
+    data: toServerGameData(character, inventoryItems, inventoryMonsters).player,
   };
 }
 

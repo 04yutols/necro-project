@@ -41,15 +41,15 @@
 
 ## 🟡 Medium — プレイはできるが設計上の欠陥 / 将来崩れるリスク
 
-### M-A. TECH_DEBT L-1: スタブ Server Action 残り1件が未本実装
+### M-A. TECH_DEBT L-1: スタブ Server Action 残り1件が未本実装（2026-05-24 完了）
 
-**問題:** `processGrowthAction` / `soulStoneAction` / `equipShardAction` は SEC-1 対応で認証・所有者確認・DB更新を実装済み。残りは `fetchPlayerAction` のモックのみ。
+**対応:** `processGrowthAction` / `soulStoneAction` / `equipShardAction` は SEC-1 対応で認証・所有者確認・DB更新を実装済み。残っていた `fetchPlayerAction` も SEC-2 対応で本実装済み。
 
 | アクション | 場所 | 現状 |
 |---|---|---|
-| `fetchPlayerAction` | `actions.ts:919` | ハードコードのモックデータを返す |
+| `fetchPlayerAction` | `actions.ts` | `auth()` と `Character.userId` で所有者確認し、DB由来の `CharacterData` を返す |
 
-**対応方針:** `SEC-2` として、使わないなら削除。使う場合は `session.user.id` でオーナーシップを検証してDB参照へ差し替え。第1章リリース前に要判断。
+**設計:** `docs/設計書/52_SEC2_fetchPlayerAction_IDOR設計.md`
 
 ---
 
@@ -184,7 +184,7 @@ BattleCanvas は「敵全滅」でWAVE進行するため、将来 BattleEngine �
 ## 第1章リリース前の最終確認リスト
 
 - [ ] R-1: monsters.json に第1章エネミー10体を追加
-- [ ] M-A: 残りスタブ `fetchPlayerAction` の削除または本実装判断
+- [x] M-A: 残りスタブ `fetchPlayerAction` の削除または本実装判断
 - [ ] M-B: BattleEngine WAVE進行を「敵全滅トリガー」に変更
 - [ ] L-1: EnergySystem.ts / EnergySystem.test.ts をコミット
 - [ ] L-2: 設計書番号の重複解消（45/46/47 各2冊）

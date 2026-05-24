@@ -102,4 +102,4 @@ specialAbility = tribe から派生
 
 ## 今回の非対象
 
-`fetchPlayerAction` の IDOR リスクは `SEC-2` として別項目。今回の修正では触らない。
+`fetchPlayerAction` の IDOR リスクは `SEC-2` として別項目化し、`52_SEC2_fetchPlayerAction_IDOR設計.md` で対応済み。

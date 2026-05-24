@@ -1,4 +1,10 @@
 import { useGameStore } from './useGameStore';
+import jobsData from '../data/master/jobs.json';
+import { calculateEnergyState } from '../logic/EnergySystem';
+import { levelFromTotalExp } from '../logic/ExperienceSystem';
+import type { JobData } from '../types/game';
+
+const JOBS = jobsData as Record<string, JobData>;
 
 describe('useGameStore party formation actions', () => {
   beforeEach(() => {
@@ -46,5 +52,22 @@ describe('useGameStore party formation actions', () => {
 
     expect(player?.currentEnergy).toBe(40);
     expect(player?.maxEnergy).toBe(100);
+  });
+
+  test('addExp uses the shared cumulative EXP level formula', () => {
+    useGameStore.getState().addExp(499);
+    let warrior = useGameStore.getState().player?.jobs.find(job => job.jobId === 'warrior');
+    expect(warrior?.exp).toBe(499);
+    expect(warrior?.level).toBe(levelFromTotalExp(499));
+    expect(warrior?.level).toBe(1);
+
+    useGameStore.getState().addExp(1);
+    const player = useGameStore.getState().player;
+    warrior = player?.jobs.find(job => job.jobId === 'warrior');
+    const expectedEnergy = calculateEnergyState(JOBS.warrior, levelFromTotalExp(500));
+
+    expect(warrior?.exp).toBe(500);
+    expect(warrior?.level).toBe(2);
+    expect(player?.maxEnergy).toBe(expectedEnergy.maxEnergy);
   });
 });

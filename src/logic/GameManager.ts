@@ -5,6 +5,7 @@ import { MasterDataService } from '../services/MasterDataService';
 import { BattleEngine } from './BattleEngine';
 import { calculateJobGrowthIncrements } from './JobGrowthSystem';
 import { calculateEnergyState } from './EnergySystem';
+import { levelFromTotalExp } from './ExperienceSystem';
 import { prisma } from '../lib/prisma';
 import { CharacterData, MonsterData } from '../types/game';
 
@@ -144,7 +145,7 @@ export class GameManager {
       const currentJob = char.jobs.find((j: any) => j.jobId === char.currentJobId);
       if (currentJob) {
         const newExp = currentJob.exp + expGain;
-        const newLevel = Math.floor(newExp / 100) + 1; // 簡易的なレベルアップ式
+        const newLevel = levelFromTotalExp(newExp);
         
         await tx.userJob.update({
           where: { characterId_jobId: { characterId, jobId: char.currentJobId! } },

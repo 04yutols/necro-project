@@ -4,6 +4,7 @@ import itemsData from '../data/master/items.json';
 import demonFormsData from '../data/master/demonForms.json';
 import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
 import { calculateEnergyState } from '../logic/EnergySystem';
+import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import { DEMON_ACTION_LIMIT, clampDemonGauge } from '../logic/DemonizationSystem';
 import { isResidueSlotCompatible } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
@@ -521,7 +522,7 @@ export const useGameStore = create<GameState>((set) => ({
     const newJobs = state.player.jobs.map(j => {
       if (j.jobId === state.player?.currentJobId) {
         const newExp = j.exp + amount;
-        const newLevel = Math.floor(newExp / 100) + 1; // 簡易レベルアップロジック
+        const newLevel = levelFromTotalExp(newExp);
         activeJobLevel = newLevel;
         return { ...j, exp: newExp, level: newLevel };
       }

@@ -132,16 +132,16 @@ BattleCanvas の行動フローに AV（アクションバリュー）計算を�
 
 ## 🟢 Low — 動作はするが将来の不整合リスク
 
-### L-1. スタブ実装のServer Action（残り1件）
+### L-1. スタブ実装のServer Action（2026-05-24 完了）
 
 `processGrowthAction` / `soulStoneAction` / `equipShardAction` は SEC-1 対応で認証・所有者確認・DB更新を実装済み。
-現在残っているスタブは `fetchPlayerAction` のみ。
+`fetchPlayerAction` も SEC-2 対応で認証・所有者確認・DB実データ取得を実装済み。
 
 | アクション | 場所 | 現状 |
 |---|---|---|
-| `fetchPlayerAction` | `actions.ts:919` | ハードコードのモックデータを返す |
+| `fetchPlayerAction` | `actions.ts` | `auth()` と `Character.userId` で所有者確認し、`CharacterData` を返す |
 
-**対応方針：** `SEC-2` として、使わないなら削除。使う場合は `session.user.id` でオーナーシップを検証してDB参照へ差し替える。
+**対応:** `docs/設計書/52_SEC2_fetchPlayerAction_IDOR設計.md` に設計を残し、`src/tests/sec2-fetch-player-action.integration.test.ts` で検証済み。
 
 ---
 

@@ -48,22 +48,32 @@ export async function processGrowthAction(characterId: string, type: ...) {
 
 ---
 
-### 🟠 SEC-2: `fetchPlayerAction` の IDOR リスク
+### ✅ SEC-2: `fetchPlayerAction` の IDOR リスク（2026-05-24 完了）
 
-**ファイル:** `src/app/actions.ts:890–899`
+**旧ファイル位置:** `src/app/actions.ts:908–919`
+
+**対応後:** `src/app/actions.ts:896–947`
 
 ```typescript
 export async function fetchPlayerAction(characterId: string) {
-  return {
-    success: true,
-    data: { id: characterId, name: 'アルド', stats: { hp: 100, ... } },
-  };
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return fetchPlayerForUser(toServerUser(session.user), characterId);
 }
 ```
 
 任意の `characterId` を渡してもハードコードされたデータを返す。現在はスタブだが、将来 DB 参照を追加する際に認証チェックを忘れると他ユーザーのデータが取得できる IDOR 脆弱性になる。
 
-**修正:** 実装時は必ず `session.user.id` でオーナーシップを検証する。
+**修正:** `auth()` と `Character.userId` による所有者確認を追加し、ハードコードのプレイヤーモックをDB由来の `CharacterData` へ置換した。
+
+**対応内容:**
+- `fetchPlayerAction` を認証必須に変更。
+- `fetchPlayerForUser` を追加し、既存Action群と同じ `getAuthorizedUser(user.id)` でセッション一致を検証。
+- `prisma.character.findFirst({ where: { id: characterId, userId: authorizedUser.id } })` により、他ユーザーのキャラクター取得を拒否。
+- `loadCharacterForUser` と同じ `CHARACTER_GAME_DATA_INCLUDE` / `toServerGameData` 経路で実データを返却。
+- `src/tests/sec2-fetch-player-action.integration.test.ts` で未ログイン拒否、自キャラ取得、越権拒否、DB実データ反映を確認。
+
+**設計:** `docs/設計書/52_SEC2_fetchPlayerAction_IDOR設計.md`
 
 ---
 
@@ -188,15 +198,15 @@ const result = processStatusEffects(
 
 ---
 
-### 🔴 BUG-3: EXP→レベル計算式がクライアントとサーバーで異なる
+### ✅ BUG-3: EXP→レベル計算式がクライアントとサーバーで異なる（2026-05-24 完了）
 
-**ファイル A (クライアント):** `src/store/useGameStore.ts:524`
+**旧ファイル A (クライアント):** `src/store/useGameStore.ts:524`
 
 ```typescript
 const newLevel = Math.floor(newExp / 100) + 1; // 簡易式
 ```
 
-**ファイル B (サーバー):** `src/app/actions.ts:91–99`
+**旧ファイル B (サーバー):** `src/app/actions.ts:91–99`
 
 ```typescript
 function expForLevel(n: number): number {
@@ -205,7 +215,7 @@ function expForLevel(n: number): number {
 function levelFromTotalExp(totalExp: number): number { ... }
 ```
 
-**ファイル C (旧 GameManager):** `src/logic/GameManager.ts:147`
+**旧ファイル C (旧 GameManager):** `src/logic/GameManager.ts:147`
 
 ```typescript
 const newLevel = Math.floor(newExp / 100) + 1; // 簡易式（サーバーとも不一致）
@@ -213,7 +223,16 @@ const newLevel = Math.floor(newExp / 100) + 1; // 簡易式（サーバーとも
 
 EXP=500 の場合、簡易式では Lv.6、正式式では Lv.2 になる。DB のレベルとクライアント表示が著しく乖離する。
 
-**修正:** `src/logic/EnergySystem.ts` などの共通ファイルに `levelFromTotalExp` を移動し、全箇所で同じ関数を呼ぶ。
+**修正:** `src/logic/ExperienceSystem.ts` を追加し、`levelFromTotalExp()` を Server Actions / Zustand / 旧 GameManager で共有するようにした。
+
+**対応内容:**
+- `expForLevel()` / `levelFromTotalExp()` / `getJobLevelProgress()` を `ExperienceSystem` に集約。
+- `src/app/actions.ts` のローカルEXP式を削除し、共通関数へ差し替え。
+- `src/store/useGameStore.ts` の `addExp()` を正式な累積EXP式へ差し替え。
+- `src/logic/GameManager.ts` の旧 `processStageResult()` も共通関数へ差し替え。
+- `ExperienceSystem.test.ts` / `useGameStore.party.test.ts` / `account-progression.integration.test.ts` で共通式を検証。
+
+**設計:** `docs/設計書/51_BUG3_EXPレベル計算統一設計.md`
 
 ---
 
@@ -385,8 +404,8 @@ if (typeof characterOrId !== 'string') {
 | SEC-1 | ✅ | `actions.ts` | 2026-05-24 完了。認証・所有者確認・DB更新を実装 |
 | BUG-1 | ✅ | `BattleEngine.ts` | 2026-05-24 完了。HP 0 到達と `PLAYER_DEFEATED` ログを実装 |
 | BUG-2 | 🔴 | `BattleEngine.ts:773` | 状態異常ダメージが現在HP を maxHp として計算 |
-| BUG-3 | 🔴 | `useGameStore.ts:524` / `actions.ts:99` | EXP→レベル式がクライアント/サーバーで異なる |
-| SEC-2 | 🟠 | `actions.ts:890` | IDOR リスクのあるスタブ Action |
+| BUG-3 | ✅ | `ExperienceSystem.ts` | 2026-05-24 完了。EXP→レベル式を共通化 |
+| SEC-2 | ✅ | `actions.ts` | 2026-05-24 完了。認証・所有者確認・DB実データ取得を実装 |
 | SEC-3 | 🟠 | `GameManager.ts:258` | パーティ更新が DB に保存されない |
 | SEC-4 | 🟠 | `actions.ts:906` | 非暗号乱数によるID生成 |
 | SEC-5 | 🟠 | `GameManager.ts:139` | critRate をドロップボーナスに誤用 |
