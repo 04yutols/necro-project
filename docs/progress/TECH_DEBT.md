@@ -132,18 +132,16 @@ BattleCanvas の行動フローに AV（アクションバリュー）計算を�
 
 ## 🟢 Low — 動作はするが将来の不整合リスク
 
-### L-1. スタブ実装のServer Action（4件）
+### L-1. スタブ実装のServer Action（残り1件）
 
-現在未使用のためゲームに影響なし。ただし将来使う際に気づかず呼ぶと壊れる。
+`processGrowthAction` / `soulStoneAction` / `equipShardAction` は SEC-1 対応で認証・所有者確認・DB更新を実装済み。
+現在残っているスタブは `fetchPlayerAction` のみ。
 
 | アクション | 場所 | 現状 |
 |---|---|---|
-| `fetchPlayerAction` | `actions.ts:851` | ハードコードのモックデータを返す |
-| `processGrowthAction` | `actions.ts:862` | 空の`{success:true}` |
-| `soulStoneAction` | `actions.ts:866` | ランダムIDのモックを返す |
-| `equipShardAction` | `actions.ts:874` | 空の`{success:true}` |
+| `fetchPlayerAction` | `actions.ts:919` | ハードコードのモックデータを返す |
 
-**対応方針：** 使わないなら削除。使う前に本実装に差し替える。
+**対応方針：** `SEC-2` として、使わないなら削除。使う場合は `session.user.id` でオーナーシップを検証してDB参照へ差し替える。
 
 ---
 

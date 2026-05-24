@@ -47,6 +47,7 @@ import {
 } from './BossGimmickSystem';
 import { calculateMonsterAttackProfile } from './MonsterAttackSystem';
 import { getEnergyRegen } from './EnergySystem';
+import { applyPlayerDamage as reducePlayerHp, isPlayerDead } from './PlayerDefeat';
 
 /**
  * Necromance Brave Battle Engine
@@ -62,6 +63,7 @@ export class BattleEngine {
   private firedGimmicks: Set<string> = new Set();
   private enemyMaxHp: Record<string, number> = {};
   private demonState: DemonRuntimeState | null = null;
+  private playerDefeatLogged = false;
 
   constructor(
     player: CharacterData,
@@ -103,7 +105,13 @@ export class BattleEngine {
     const { player } = this.state;
 
     // 1. ターン開始時のエリアギミック判定 (GDD-006)
+    if (this.isPlayerDefeated()) {
+      this.recordPlayerDefeat('SYSTEM', `${player.name}はすでに戦闘不能。`);
+      return this.logs;
+    }
+
     this.processAreaGimmick();
+    if (this.isPlayerDefeated()) return this.logs;
 
     // 1.5. 種族シナジー: ターン開始時効果 (docs/設計書/18)
     this.applyTurnStartSynergy();
@@ -115,6 +123,7 @@ export class BattleEngine {
     } else {
       const playerStatus = this.processRuntimeStatus(player.name, player.stats, player.statusEffects);
       player.statusEffects = playerStatus.effects;
+      if (this.isPlayerDefeated()) return this.logs;
       if (playerStatus.skipAction) {
         this.addLog('STATUS_SKIP', player.name, player.name, `${player.name}は状態異常で行動できない。`);
         this.updateState();
@@ -124,12 +133,14 @@ export class BattleEngine {
 
     // 3. プレイヤー行動 (GDD-003)
     this.processPlayerAction(actionType, target, skillId);
+    if (this.isPlayerDefeated()) return this.logs;
 
     // 4. 軍団の追撃・シナジー (GDD-005)
     this.processMonsterActions(target);
 
     // 5. 敵の反撃 (docs/設計書/26)
     this.processEnemyCounterAttack(target);
+    if (this.isPlayerDefeated()) return this.logs;
 
     // 6. ターン・WAVE更新 (GDD-002)
     this.updateState();
@@ -146,6 +157,11 @@ export class BattleEngine {
     if (!demon?.isDemonMode || !demon.form || demon.ultimateUsed) return this.logs;
 
     const { player } = this.state;
+    if (this.isPlayerDefeated()) {
+      this.recordPlayerDefeat('SYSTEM', `${player.name}はすでに戦闘不能。`);
+      return this.logs;
+    }
+
     const ult = demon.form.ultimateSkill;
     const profile = calculateCharacterStatProfile(player);
     const stats = profile.total;
@@ -199,6 +215,7 @@ export class BattleEngine {
 
     this.demonState = markDemonUltimateUsed(demon);
     this.processEnemyCounterAttack(target);
+    if (this.isPlayerDefeated()) return this.logs;
     this.updateState();
     return this.logs;
   }
@@ -348,9 +365,10 @@ export class BattleEngine {
     if (isDemonActive && demon!.form?.effectB.riskType === 'SELF_DAMAGE') {
       const selfDmgPct = demon!.form.effectB.riskValue ?? 10;
       const selfDmg = Math.floor(this.playerInitialMaxHp * selfDmgPct / 100);
-      this.getMutableStats(player).hp = Math.max(1, this.getMutableStats(player).hp - selfDmg);
+      this.applyDamageToPlayer(selfDmg);
       this.addLog('DEMON_SELF_DAMAGE', player.name, player.name,
         `【深淵の理】魔神化の代償で ${selfDmg} の反動ダメージ！`);
+      this.recordPlayerDefeat(player.name, `${player.name}は魔神化の反動に呑まれた。`);
     }
 
     // 魔神化行動消費
@@ -526,15 +544,18 @@ export class BattleEngine {
       this.addLog('ENEMY_ATTACK', enemy.name, monsterTarget.name, desc, finalDmg);
     } else {
       // モンスター全滅 → アルドが直接受ける
-      const ms = this.getMutableStats(player);
       const playerProfile = calculateCharacterStatProfile(player);
       const incomingMult = getDemonIncomingDamageMultiplier(this.demonState?.form ?? null);
       const rawDmg = Math.max(1, Math.floor(
         enemy.stats.atk * (1 - playerProfile.total.def / (playerProfile.total.def + 200)) * incomingMult
       ));
-      ms.hp = Math.max(1, ms.hp - rawDmg);
+      const nextHp = this.applyDamageToPlayer(rawDmg);
       this.addLog('ENEMY_ATTACK', enemy.name, player.name,
-        `${enemy.name}の攻撃！ アルドに${rawDmg}ダメージ。`, rawDmg);
+        isPlayerDead(nextHp)
+          ? `${enemy.name}の攻撃！ ${player.name}は倒れた！`
+          : `${enemy.name}の攻撃！ アルドに${rawDmg}ダメージ。`,
+        rawDmg);
+      this.recordPlayerDefeat(enemy.name, `${player.name}は倒れた。`);
     }
   }
 
@@ -708,6 +729,7 @@ export class BattleEngine {
     if (result.areaGimmick === 'SLIP_DAMAGE') {
       playerStats.hp = result.nextHp;
       this.addLog('GIMMICK', 'Area', player.name, `エリアギミック：スリップダメージにより${result.damage}ダメージ。`);
+      this.recordPlayerDefeat('Area', `${player.name}はエリアギミックに呑まれた。`);
     }
     if (result.areaGimmick === 'STATUS_AILMENT') {
       if (result.immune) {
@@ -756,6 +778,22 @@ export class BattleEngine {
     return ((player as any).stats ?? (player as any).baseStats) as BaseStats;
   }
 
+  private applyDamageToPlayer(damage: number): number {
+    const playerStats = this.getMutableStats(this.state.player);
+    playerStats.hp = reducePlayerHp(playerStats.hp, Math.max(0, damage));
+    return playerStats.hp;
+  }
+
+  private isPlayerDefeated(): boolean {
+    return isPlayerDead(this.getMutableStats(this.state.player).hp);
+  }
+
+  private recordPlayerDefeat(actorName: string, description: string): void {
+    if (this.playerDefeatLogged || !this.isPlayerDefeated()) return;
+    this.playerDefeatLogged = true;
+    this.addLog('PLAYER_DEFEATED', actorName, this.state.player.name, description);
+  }
+
   private updateState(): void {
     this.state.turn++;
     if (this.state.turn > 10) {
@@ -777,7 +815,11 @@ export class BattleEngine {
       isPlayer ? { immuneTypes: this.synergyBonus.ailmentImmune as AilmentType[] } : undefined,
     );
     if (result.totalDamage > 0) {
-      targetStats.hp = Math.max(1, targetStats.hp - result.totalDamage);
+      if (isPlayer) {
+        targetStats.hp = reducePlayerHp(targetStats.hp, result.totalDamage);
+      } else {
+        targetStats.hp = Math.max(0, targetStats.hp - result.totalDamage);
+      }
     }
     result.ticks.forEach(tick => {
       if (tick.damage) {
@@ -802,6 +844,9 @@ export class BattleEngine {
         this.addLog('AILMENT_CLEAR', targetName, targetName, `${targetName}の${this.getAilmentLabel(tick.type)}が解除された。`, undefined, false, false, false, 'NONE', 'MAGIC', { ailmentClearedBy: 'TURN_END' });
       }
     });
+    if (isPlayer) {
+      this.recordPlayerDefeat('STATUS', `${targetName}は状態異常に蝕まれて倒れた。`);
+    }
     return { effects: result.effects, skipAction: result.skipAction };
   }
 

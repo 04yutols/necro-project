@@ -9,6 +9,7 @@ import { MasterDataService } from '@/services/MasterDataService';
 import { RankingService } from '@/services/RankingService';
 import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventService';
 import { JobService } from '@/services/JobService';
+import { NecroService } from '@/services/NecroService';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
 import { calculateEnergyState } from '@/logic/EnergySystem';
 import { calculateJobAdjustedStats } from '@/logic/JobSystem';
@@ -56,6 +57,12 @@ export interface StageResultPayload {
   worldEvents?: WorldLogEntry[];
   error?:    string;
 }
+
+export type GrowthActionType = 'RANK_UP' | 'CHANGE_JOB';
+
+export type SoulStoneActionResult =
+  | { success: false; error: string }
+  | { success: true; data: SoulShardData };
 
 function emptyDrop(): StageDropResult {
   return { weapons: [], consumables: [], residues: [], materials: [], monsters: [] };
@@ -244,6 +251,16 @@ function toSpiritCoreData(row: {
   };
 }
 
+function deriveSoulShardAbility(tribe: string): string | undefined {
+  switch (tribe) {
+    case 'UNDEAD': return 'REGENERATE_SOUL';
+    case 'DEMON': return 'BANE_OF_LIGHT';
+    case 'DRAGON': return 'ELEMENTAL_SURGE';
+    case 'ORC': return 'IRON_HIDE';
+    default: return undefined;
+  }
+}
+
 function toSoulShardData(row: {
   id: string;
   originMonster: string;
@@ -340,6 +357,9 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
   };
   const monsters = inventoryMonsters.map(toMonsterData);
   const soulShards = new Map<string, SoulShardData>();
+  (character.soulShards ?? []).forEach((shard: any) => {
+    soulShards.set(shard.id, toSoulShardData(shard));
+  });
   inventoryMonsters.forEach((monster) => {
     if (monster.soulShard) soulShards.set(monster.soulShard.id, toSoulShardData(monster.soulShard));
   });
@@ -448,6 +468,14 @@ function jobChangeErrorMessage(error: unknown): string {
   if (message.includes('is locked')) return '解放条件を満たしていません';
   if (message.includes('Character') && message.includes('not found')) return 'キャラクターが見つかりません';
   return '転職の保存に失敗しました';
+}
+
+function rankUpErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('Lv.99') || message.includes('99')) return 'ランクアップには死霊術Lv.99到達が必要です';
+  if (message.includes('試練')) return 'ランクアップには試練のクリアが必要です';
+  if (message.includes('Character') && message.includes('not found')) return 'キャラクターが見つかりません';
+  return 'ランクアップに失敗しました';
 }
 
 async function getAuthorizedUser(userId: string): Promise<ServerGameUser | null> {
@@ -752,6 +780,7 @@ export async function loadCharacterForUser(user: ServerGameUser): Promise<LoadCh
       partySlot0: { include: { soulShard: true, spiritCore: true } },
       partySlot1: { include: { soulShard: true, spiritCore: true } },
       partySlot2: { include: { soulShard: true, spiritCore: true } },
+      soulShards: true,
       equippedResidue0: true,
       equippedResidue1: true,
       equippedResidue2: true,
@@ -898,13 +927,80 @@ export async function fetchPlayerAction(characterId: string) {
   };
 }
 
-export async function processGrowthAction(characterId: string, type: 'RANK_UP' | 'CHANGE_JOB') {
-  return { success: true, message: `${type} completed.` };
+export async function processGrowthAction(characterId: string, type: GrowthActionType): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return processGrowthForUser(toServerUser(session.user), characterId, type);
 }
 
-export async function soulStoneAction(monsterId: string) {
-  const id = `shard-${Math.random().toString(36).substr(2, 9)}`;
-  return { success: true, data: { id, originMonsterName: 'Goblin', effect: { atkBonus: 5, elementDmgBoost: 0 } } };
+export async function processGrowthForUser(
+  user: ServerGameUser,
+  characterId: string,
+  type: GrowthActionType,
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    select: { id: true },
+  });
+  if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+
+  if (type === 'CHANGE_JOB') {
+    return { success: false, error: '転職は changeJobAction(characterId, jobId) を使用してください' };
+  }
+
+  try {
+    await new NecroService(prisma).performRankUp(character.id, true);
+  } catch (error) {
+    return { success: false, error: rankUpErrorMessage(error) };
+  }
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
+}
+
+export async function soulStoneAction(monsterId: string): Promise<SoulStoneActionResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return soulStoneForUser(toServerUser(session.user), monsterId);
+}
+
+export async function soulStoneForUser(
+  user: ServerGameUser,
+  monsterId: string,
+): Promise<SoulStoneActionResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const monster = await prisma.monster.findFirst({
+    where: { id: monsterId, character: { is: { userId: authorizedUser.id } } },
+    select: {
+      id: true,
+      characterId: true,
+      name: true,
+      tribe: true,
+      atk: true,
+      effectHit: true,
+    },
+  });
+  if (!monster?.characterId) return { success: false, error: '所有していない魔物です' };
+
+  const soulShard = await prisma.$transaction(async (tx) => {
+    const created = await tx.soulShard.create({
+      data: {
+        characterId: monster.characterId,
+        originMonster: monster.name,
+        atkBonus: Math.floor(monster.atk * 0.1),
+        elementDmgBoost: Math.floor((monster.effectHit ?? 0) * 0.1),
+        specialAbility: deriveSoulShardAbility(monster.tribe),
+      },
+    });
+    await tx.monster.delete({ where: { id: monster.id } });
+    return created;
+  });
+
+  return { success: true, data: toSoulShardData(soulShard) };
 }
 
 export async function updatePartyAction(characterId: string, monsterIds: (string | null)[]): Promise<SaveGameStateResult> {
@@ -913,8 +1009,38 @@ export async function updatePartyAction(characterId: string, monsterIds: (string
   return updatePartyForUser(toServerUser(session.user), characterId, monsterIds);
 }
 
-export async function equipShardAction(monsterId: string, shardId: string) {
-  return { success: true };
+export async function equipShardAction(monsterId: string, shardId: string): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return equipShardForUser(toServerUser(session.user), monsterId, shardId);
+}
+
+export async function equipShardForUser(
+  user: ServerGameUser,
+  monsterId: string,
+  shardId: string,
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const monster = await prisma.monster.findFirst({
+    where: { id: monsterId, character: { is: { userId: authorizedUser.id } } },
+    select: { id: true, characterId: true },
+  });
+  if (!monster?.characterId) return { success: false, error: '所有していない魔物です' };
+
+  const shard = await prisma.soulShard.findFirst({
+    where: { id: shardId, characterId: monster.characterId },
+    select: { id: true },
+  });
+  if (!shard) return { success: false, error: '所有していない魂片です' };
+
+  await prisma.monster.update({
+    where: { id: monster.id },
+    data: { soulShardId: shard.id },
+  });
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
 }
 
 export async function equipItemAction(characterId: string, slot: string, itemId: string): Promise<SaveGameStateResult> {

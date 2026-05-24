@@ -8,11 +8,12 @@
 
 ## セキュリティリスク
 
-### 🔴 SEC-1: 認証なしのスタブ Server Actions
+### ✅ SEC-1: 認証なしのスタブ Server Actions（2026-05-24 完了）
 
-**ファイル:** `src/app/actions.ts:901–918`
+**旧ファイル位置:** `src/app/actions.ts:901–918`
+**対応後:** `src/app/actions.ts:930–1044`
 
-以下の Server Action が認証チェックを持たず、ダミー実装のまま公開されている。
+以下の Server Action が認証チェックを持たず、ダミー実装のまま公開されていた。
 
 ```typescript
 // soulStoneAction — 認証なし、DB 非接続、固定値を返す
@@ -34,7 +35,16 @@ export async function processGrowthAction(characterId: string, type: ...) {
 
 **影響:** 任意のユーザーがこれらのエンドポイントを呼び出してクライアント側の状態を書き換えられる。`soulStoneAction` は `monsterId` を検証せず、`originMonsterName` が常に `'Goblin'` になるため実装と乖離している。
 
-**修正:** 各 Action に `auth()` セッション確認を追加し、DB 操作を実装する。
+**修正:** 各 Action に `auth()` セッション確認を追加し、DB 操作を実装した。
+
+**対応内容:**
+- `processGrowthAction` を `processGrowthForUser` 経由の認証・所有者確認つきランクアップ処理へ変更。
+- `soulStoneAction` を認証・所有者確認つきの `SoulShard` 作成 + 元 `Monster` 削除処理へ変更。
+- `equipShardAction` を認証・所有者確認つきの `Monster.soulShardId` 更新処理へ変更。
+- `SoulShard.characterId` を追加し、魂片の所有権をDBで検証できるようにした。
+- `src/tests/sec1-server-actions.integration.test.ts` で未ログイン拒否、越権拒否、魂石化、魂片装備、ランクアップを確認。
+
+**設計:** `docs/設計書/49_SEC1_認証付きServerActions設計.md`
 
 ---
 
@@ -137,9 +147,10 @@ if (password.length < 8) {
 
 ## ロジックバグ
 
-### 🔴 BUG-1: プレイヤーが絶対に死なない
+### ✅ BUG-1: プレイヤーが絶対に死なない（2026-05-24 完了）
 
-**ファイル:** `src/logic/BattleEngine.ts:535`
+**旧ファイル位置:** `src/logic/BattleEngine.ts:535`
+**対応後:** `src/logic/BattleEngine.ts:106–143`, `src/logic/BattleEngine.ts:350–356`, `src/logic/BattleEngine.ts:552–561`, `src/logic/BattleEngine.ts:754–767`, `src/logic/BattleEngine.ts:803–834`
 
 ```typescript
 // モンスター全滅時にアルドが直接攻撃を受けるが...
@@ -148,11 +159,15 @@ ms.hp = Math.max(1, ms.hp - rawDmg);  // ← HPが1未満にならない
 
 `PlayerDefeat.ts` に `applyPlayerDamage()` と `isPlayerDead()` が実装されているにも関わらず、`BattleEngine` は `Math.max(1, ...)` でHP下限を1に固定している。プレイヤーは永遠に死なないためゲームオーバーが発生しない。
 
-**修正:**
-```typescript
-ms.hp = Math.max(0, ms.hp - rawDmg);
-// 死亡判定ログを追加し、上位レイヤーでゲームオーバー処理を呼ぶ
-```
+**修正:** `BattleEngine` のプレイヤーHP減算を `PlayerDefeat.applyPlayerDamage()` に統一し、HP 0 到達時に `PLAYER_DEFEATED` ログを出して後続フェーズを停止するようにした。
+
+**対応内容:**
+- 敵の直接攻撃、魔神化反動、状態異常ダメージ、エリアスリップダメージを敗北判定へ接続。
+- `Math.max(1, ...)` による不死化を削除し、HP は 0 まで減る。
+- 敗北ログは1ターン中1回だけ出るよう `playerDefeatLogged` で制御。
+- `BattleEngine.test.ts` に「敵直接攻撃で死亡」「状態異常で死亡して行動停止」のテストを追加。
+
+**設計:** `docs/設計書/50_BUG1_BattleEngine敗北判定設計.md`
 
 ---
 
@@ -367,8 +382,8 @@ if (typeof characterOrId !== 'string') {
 
 | ID | 深刻度 | ファイル | 概要 |
 |----|--------|----------|------|
-| SEC-1 | 🔴 | `actions.ts:901–918` | 認証なしスタブ Action が本番公開中 |
-| BUG-1 | 🔴 | `BattleEngine.ts:535` | プレイヤーHP が 1 より低くならずゲームオーバー不可 |
+| SEC-1 | ✅ | `actions.ts` | 2026-05-24 完了。認証・所有者確認・DB更新を実装 |
+| BUG-1 | ✅ | `BattleEngine.ts` | 2026-05-24 完了。HP 0 到達と `PLAYER_DEFEATED` ログを実装 |
 | BUG-2 | 🔴 | `BattleEngine.ts:773` | 状態異常ダメージが現在HP を maxHp として計算 |
 | BUG-3 | 🔴 | `useGameStore.ts:524` / `actions.ts:99` | EXP→レベル式がクライアント/サーバーで異なる |
 | SEC-2 | 🟠 | `actions.ts:890` | IDOR リスクのあるスタブ Action |

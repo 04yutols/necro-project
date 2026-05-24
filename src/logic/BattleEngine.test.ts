@@ -4,7 +4,10 @@ import { CharacterData, MonsterData } from '../types/game';
 describe('BattleEngine', () => {
   beforeEach(() => {
     mockPlayer.currentEnergy = 0;
+    enemySeq = 0;
   });
+
+  let enemySeq = 0;
 
   const mockPlayer: CharacterData = {
     id: '1',
@@ -59,6 +62,29 @@ describe('BattleEngine', () => {
     },
     resistances: {},
   };
+
+  const createPlayer = (
+    stats: Partial<CharacterData['stats']> = {},
+    extra: Partial<CharacterData> = {},
+  ): CharacterData => ({
+    ...mockPlayer,
+    ...extra,
+    baseStats: { ...mockPlayer.baseStats, ...stats },
+    stats: { ...mockPlayer.stats, ...stats },
+    equipment: { ...mockPlayer.equipment },
+    passives: { ...mockPlayer.passives },
+    jobs: [...mockPlayer.jobs],
+    statusEffects: extra.statusEffects,
+    currentEnergy: extra.currentEnergy ?? 0,
+    maxEnergy: extra.maxEnergy ?? mockPlayer.maxEnergy,
+    elementDmgBoosts: { ...mockPlayer.elementDmgBoosts, ...extra.elementDmgBoosts },
+  });
+
+  const createEnemy = (stats: Partial<MonsterData['stats']> = {}): MonsterData => ({
+    ...mockTarget,
+    id: `enemy-${enemySeq++}`,
+    stats: { ...mockTarget.stats, ...stats },
+  });
 
   test('Damage calculation uses HSR-style defMult', () => {
     const engine = new BattleEngine(mockPlayer, []);
@@ -167,6 +193,40 @@ describe('BattleEngine', () => {
     const rankedDamage = rankedLogs.find(l => l.action === 'ENEMY_ATTACK')?.damage ?? 0;
 
     expect(rankedDamage).toBeLessThan(baseDamage);
+  });
+
+  test('direct enemy damage can defeat the player when no party monsters remain', () => {
+    const player = createPlayer({ hp: 30, atk: 1, def: 0, critRate: 0 });
+    const enemy = createEnemy({ hp: 500, atk: 90, def: 999 });
+
+    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+    expect(player.stats.hp).toBe(0);
+    expect(logs.find(log => log.action === 'ENEMY_ATTACK' && log.targetName === player.name)?.playerHP).toBe(0);
+    expect(logs.find(log => log.action === 'PLAYER_DEFEATED')?.description).toContain('倒れた');
+  });
+
+  test('lethal player status damage stops the action and emits defeat log', () => {
+    const player = createPlayer(
+      { hp: 10, atk: 50, def: 30, critRate: 0 },
+      {
+        statusEffects: [{
+          type: 'BLEED',
+          remainingTurns: 2,
+          stackCount: 1,
+          sourceAtk: 300,
+          stacks: [{ remainingTurns: 2, sourceAtk: 300 }],
+        }],
+      },
+    );
+    const enemy = createEnemy({ hp: 500, atk: 10, def: 10 });
+
+    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+    expect(player.stats.hp).toBe(0);
+    expect(logs.some(log => log.action === 'AILMENT_TICK')).toBe(true);
+    expect(logs.some(log => log.action === 'PHYSICAL_ATTACK')).toBe(false);
+    expect(logs.find(log => log.action === 'PLAYER_DEFEATED')?.description).toContain('状態異常');
   });
 
   test('Spiritual shield heavily reduces non-weak attacks', () => {

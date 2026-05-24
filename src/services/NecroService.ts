@@ -44,6 +44,7 @@ export class NecroService {
 
       const soulShard = await tx.soulShard.create({
         data: {
+          characterId: monster.characterId,
           originMonster: monster.name,
           atkBonus,
           elementDmgBoost,
@@ -126,6 +127,9 @@ export class NecroService {
       const shard = await tx.soulShard.findUnique({ where: { id: shardId } });
       if (!monster) throw new Error('Monster not found');
       if (!shard) throw new Error('SoulShard not found');
+      if (!monster.characterId || shard.characterId !== monster.characterId) {
+        throw new Error('SoulShard owner mismatch');
+      }
       await tx.monster.update({ where: { id: monsterId }, data: { soulShardId: shardId } });
     });
   }
