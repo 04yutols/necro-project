@@ -17,6 +17,7 @@ import { RewardService, type StageDropResult } from '../../services/RewardServic
 import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/StatSystem';
 import { calculateBattleDamage, type BattleDamageResult } from '../../logic/BattleDamage';
 import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
+import { applyAreaGimmickToPlayer, getAreaGimmickMeta, resolveStageAreaGimmick } from '../../logic/AreaGimmickSystem';
 import { calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilPlayer, type TurnOrderActor } from '../../logic/TurnOrderSystem';
 import {
   bossGimmickKey,
@@ -39,7 +40,6 @@ import {
 } from '../../logic/DemonizationSystem';
 import {
   AILMENT_UI,
-  applyStatusEffect,
   clearStatusEffectsByDemonize,
   getAilmentAttackMultiplier,
   getSkillAilment,
@@ -1785,6 +1785,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     [party],
   );
   const battleWaves = useMemo(() => buildBattleWaves(stageId), [stageId]);
+  const currentStage = useMemo(() => getStageOrFallback(stageId), [stageId]);
+  const areaGimmick = resolveStageAreaGimmick(currentStage);
+  const areaGimmickMeta = getAreaGimmickMeta(areaGimmick);
 
   const playerMaxHp = playerStats?.hp ?? 820;
   const [playerHp, setPlayerHp] = useState(playerMaxHp);
@@ -2066,8 +2069,12 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setScreenShake(false);
     setShowResult(false);
     setBattleResult(null);
-    setLog([`戦闘開始！${battleWaves[0].title}へ侵攻する。`, `${battleWaves[0].label} 開始。骸骨騎士のターン。`]);
-  }, [battleWaves]);
+    setLog([
+      `戦闘開始！${battleWaves[0].title}へ侵攻する。`,
+      ...(areaGimmick !== 'NONE' ? [`エリアギミック発生：${areaGimmickMeta.label} — ${areaGimmickMeta.description}`] : []),
+      `${battleWaves[0].label} 開始。骸骨騎士のターン。`,
+    ]);
+  }, [areaGimmick, areaGimmickMeta.description, areaGimmickMeta.label, battleWaves, playerMaxHp, updateEnergy]);
 
   useEffect(() => { waveIndexRef.current = waveIndex; }, [waveIndex]);
   useEffect(() => { enemiesRef.current = enemies; }, [enemies]);
@@ -2408,9 +2415,52 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     return { alive: nextEnemies.filter(enemy => enemy.hp > 0), skippedIds };
   }
 
+  function applyAreaGimmickBeforePlayerAction(): { stopped: boolean; statusEffects: StatusEffect[] } {
+    const result = applyAreaGimmickToPlayer({
+      areaGimmick,
+      currentHp: playerHpRef.current,
+      maxHp: playerMaxHp,
+      statusEffects: playerStatusEffects,
+      isDemonMode: demonized,
+      defenseReducePct: battleSynergyBonus.defenseReducePct,
+    });
+    if (!result.triggered) return { stopped: false, statusEffects: playerStatusEffects };
+
+    if (result.damage > 0) {
+      playerHpRef.current = result.nextHp;
+      setPlayerHp(result.nextHp);
+      spawnFloat('42%', '58%', result.damage, { color: areaGimmickMeta.color });
+      addLog(`エリアギミック：${areaGimmickMeta.label}が骸骨騎士を蝕み ${result.damage}ダメージ。（残HP: ${result.nextHp}）`);
+      setFlashColor(areaGimmickMeta.soft);
+      window.setTimeout(() => setFlashColor(null), 360);
+      if (isPlayerDead(result.nextHp)) {
+        window.setTimeout(() => triggerPlayerDefeat(), 300);
+        return { stopped: true, statusEffects: result.statusEffects };
+      }
+    }
+
+    if (result.immune) {
+      addLog(`エリアギミック：${areaGimmickMeta.label}を魔神化が無効化した。`);
+      return { stopped: false, statusEffects: result.statusEffects };
+    }
+
+    if (result.appliedAilment) {
+      setPlayerStatusEffects(result.statusEffects);
+      addLog(`エリアギミック：${areaGimmickMeta.label}により${AILMENT_UI[result.appliedAilment].label}を受けた。`);
+      setFlashColor(areaGimmickMeta.soft);
+      window.setTimeout(() => setFlashColor(null), 360);
+    }
+
+    return { stopped: false, statusEffects: result.statusEffects };
+  }
+
   function resolvePlayerStatusBeforeAction(): boolean {
-    if (demonized || playerStatusEffects.length === 0) return false;
-    const result = processStatusEffects(playerStatusEffects, { maxHp: playerMaxHp });
+    const areaResult = applyAreaGimmickBeforePlayerAction();
+    if (areaResult.stopped) return true;
+    const activeStatusEffects = areaResult.statusEffects;
+
+    if (demonized || activeStatusEffects.length === 0) return false;
+    const result = processStatusEffects(activeStatusEffects, { maxHp: playerMaxHp });
     setPlayerStatusEffects(result.effects);
     if (result.totalDamage > 0) {
       const newHp = applyPlayerDamage(playerHpRef.current, result.totalDamage);
@@ -2850,6 +2900,28 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
             {phase === 'playerTurn' ? '自ターン' : phase === 'enemyTurn' ? '敵ターン' : '行動中'}
           </div>
         </div>
+        {areaGimmick !== 'NONE' && (
+          <div style={{
+            width: 'fit-content',
+            maxWidth: '100%',
+            margin: '0 auto 5px',
+            padding: '3px 9px',
+            borderRadius: 999,
+            border: `1px solid ${areaGimmickMeta.color}66`,
+            background: `linear-gradient(135deg, ${areaGimmickMeta.soft}, rgba(5,1,12,0.78))`,
+            color: '#f8f3ff',
+            boxShadow: `0 0 12px ${areaGimmickMeta.color}33`,
+            fontFamily: "'Noto Sans JP', sans-serif",
+            fontSize: 9,
+            fontWeight: 900,
+            lineHeight: 1.2,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {areaGimmickMeta.shortLabel} / {areaGimmickMeta.label}
+          </div>
+        )}
         <TurnOrderStrip/>
       </div>
 

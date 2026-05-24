@@ -364,6 +364,8 @@ export interface StageWaveData {
   intent: string;
 }
 
+export type AreaGimmickType = 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE';
+
 export interface StageData {
   id: string;
   name: string;
@@ -377,6 +379,7 @@ export interface StageData {
   difficulty: number;
   description: string;
   waveCount: number;
+  areaGimmick?: AreaGimmickType;
   unlockRequires: string[];
   waves: StageWaveData[];
   rewards: {
@@ -401,7 +404,7 @@ export interface BattleState {
   monsters: (MonsterData | null)[];
   wave: number;
   turn: number;
-  areaGimmick?: 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE';
+  areaGimmick?: AreaGimmickType;
   monsterCurrentHp: Record<string, number>;
 }
 

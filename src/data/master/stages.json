@@ -12,6 +12,7 @@
     "difficulty": 0,
     "description": "亡国の王都へ侵攻するための拠点。ここでは戦闘は発生せず、軍団編成と装備確認に戻れる。",
     "waveCount": 0,
+    "areaGimmick": "NONE",
     "unlockRequires": [],
     "waves": [],
     "rewards": {
@@ -34,6 +35,7 @@
     "difficulty": 1,
     "description": "英雄に滅ぼされた亡国の外縁。墓荒らしの骸兵と腐肉喰らいを倒し、魂ゲージを温める導入ダンジョン。",
     "waveCount": 3,
+    "areaGimmick": "NONE",
     "unlockRequires": [],
     "waves": [
       {
@@ -80,6 +82,7 @@
     "difficulty": 2,
     "description": "王城の地下に残る処刑場。骨巨人の高耐久と霊的防壁が、属性スキルの選択を要求する。",
     "waveCount": 3,
+    "areaGimmick": "NONE",
     "unlockRequires": ["area1_node1"],
     "waves": [
       {
@@ -127,6 +130,7 @@
     "difficulty": 3,
     "description": "骸骨山脈の頂。死骨竜王オッサリウスが霊的防壁と怒りを纏い、隠しURの可能性を抱えて待つ。",
     "waveCount": 3,
+    "areaGimmick": "NONE",
     "unlockRequires": ["area1_node2"],
     "waves": [
       {
@@ -177,6 +181,7 @@
     "difficulty": 4,
     "description": "竜骨祭壇の先に広がる赤黒い湿地。水・風弱点を持つ血沼の女王が、次章への門を閉ざす。",
     "waveCount": 3,
+    "areaGimmick": "STATUS_AILMENT",
     "unlockRequires": ["area1_boss"],
     "waves": [
       {
@@ -225,6 +230,7 @@
     "difficulty": 5,
     "description": "第二章の入り口。現行プロトタイプではロック表示のみを行い、後続エネミー追加時に解放する。",
     "waveCount": 3,
+    "areaGimmick": "STATUS_AILMENT",
     "unlockRequires": ["area1_node3"],
     "waves": [
       {

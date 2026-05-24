@@ -211,7 +211,7 @@ BattleEngine にはロジックがあるが BattleCanvas には接続されて�
 
 ## 🟡 Medium（追加） — プレイはできるが設計上の欠陥
 
-### NM-1. エリアギミック（スリップダメージ / 状態異常）が BattleCanvas に接続されていない
+### NM-1. エリアギミック（スリップダメージ / 状態異常）が BattleCanvas に接続されていない ✅完了
 
 **問題：**  
 `StageData` に `areaGimmick: 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE'` があり、  
@@ -226,6 +226,15 @@ BattleEngine には処理（`processAreaGimmick()`）があるが、BattleCanvas
 - `src/data/master/stages.json` — `areaGimmick` フィールド
 - `src/components/battle/BattleCanvas.tsx` — `endPlayerTurn()` / `runEnemyTurn()`
 - `src/logic/BattleEngine.ts` — `processAreaGimmick()`（line ~678）参考実装あり
+
+**完了内容：**
+- `docs/設計書/45_エリアギミックBattleCanvas接続設計.md` に適用タイミング・式・データフロー・UI方針を追加。
+- `src/types/game.ts` に `AreaGimmickType` と `StageData.areaGimmick` を追加。
+- `src/logic/AreaGimmickSystem.ts` を追加し、スリップダメージ / 毒沼 / 魔神化免疫を共通化。
+- `BattleCanvas` のプレイヤー行動前処理へエリアギミックを接続し、ログ・HUDバッジ・ダメージ表示を追加。
+- `BattleEngine.processAreaGimmick()` も同じ共通ロジックへ接続。
+- `src/data/master/stages.json` に既存ステージの `areaGimmick` を設定。
+- `src/logic/AreaGimmickSystem.test.ts` を追加。
 
 ---
 

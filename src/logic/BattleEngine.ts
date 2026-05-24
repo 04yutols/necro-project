@@ -14,7 +14,6 @@ import {
 import { MasterDataService } from '../services/MasterDataService';
 import { calculateCharacterStatProfile, hasElementDmgBoosts } from './StatSystem';
 import {
-  applyStatusEffect,
   calcAVDelay,
   getAilmentAttackMultiplier,
   getSkillAilment,
@@ -22,6 +21,7 @@ import {
   tryApplyAilment,
 } from './StatusAilmentSystem';
 import { calculatePartyTribeSynergy, type SynergyBonus } from './TribeSynergySystem';
+import { applyAreaGimmickToPlayer } from './AreaGimmickSystem';
 import {
   type DemonRuntimeState,
   getDemonDamageMultiplier,
@@ -678,19 +678,26 @@ export class BattleEngine {
 
   private processAreaGimmick(): void {
     const { areaGimmick, player } = this.state;
-    if (areaGimmick === 'SLIP_DAMAGE') {
-      const playerStats = this.getMutableStats(player);
-      const rawDamage = Math.floor(playerStats.hp * 0.05);
-      const damage = Math.floor(rawDamage * (1 - (this.synergyBonus.defenseReducePct ?? 0) / 100));
-      playerStats.hp -= damage;
-      this.addLog('GIMMICK', 'Area', player.name, `エリアギミック：スリップダメージにより${damage}ダメージ。`);
+    const playerStats = this.getMutableStats(player);
+    const result = applyAreaGimmickToPlayer({
+      areaGimmick,
+      currentHp: playerStats.hp,
+      maxHp: this.playerInitialMaxHp,
+      statusEffects: player.statusEffects,
+      isDemonMode: this.demonState?.isDemonMode ?? false,
+      defenseReducePct: this.synergyBonus.defenseReducePct,
+    });
+
+    if (result.areaGimmick === 'SLIP_DAMAGE') {
+      playerStats.hp = result.nextHp;
+      this.addLog('GIMMICK', 'Area', player.name, `エリアギミック：スリップダメージにより${result.damage}ダメージ。`);
     }
-    if (areaGimmick === 'STATUS_AILMENT') {
-      if (this.demonState?.isDemonMode) {
+    if (result.areaGimmick === 'STATUS_AILMENT') {
+      if (result.immune) {
         this.addLog('GIMMICK', 'Area', player.name, '瘴気が襲うが、魔神化により状態異常を無効化した。');
         return;
       }
-      player.statusEffects = applyStatusEffect(player.statusEffects, 'POISON', 0);
+      player.statusEffects = result.statusEffects;
       this.addLog('GIMMICK', 'Area', player.name, '瘴気の沼が毒を刻んだ。', undefined, false, false, false, 'DARK', 'MAGIC', { ailmentApplied: 'POISON' });
     }
   }
