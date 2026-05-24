@@ -236,27 +236,45 @@ export class GameManager {
    * パーティ編成の更新 (GDD-005)
    */
   public async updateParty(characterId: string, monsterIds: (string | null)[]): Promise<void> {
-    // 3枠固定のバリデーション
     if (monsterIds.length !== 3) throw new Error("Party must have 3 slots.");
 
-    const char = await prisma.character.findUnique({
-      where: { id: characterId }
-    });
-    if (!char) throw new Error("Character not found.");
-
-    // コスト計算
-    const monsters = await prisma.monster.findMany({
-      where: { id: { in: monsterIds.filter(id => id !== null) as string[] } }
-    });
-    const totalCost = monsters.reduce((acc: any, m: any) => acc + m.cost, 0);
-
-    if (totalCost > char.necroMaxCost) {
-      throw new Error(`Cost limit exceeded: ${totalCost} / ${char.necroMaxCost}`);
+    const slotIds = [monsterIds[0] ?? null, monsterIds[1] ?? null, monsterIds[2] ?? null];
+    const selectedIds = slotIds.filter((id): id is string => Boolean(id));
+    if (new Set(selectedIds).size !== selectedIds.length) {
+      throw new Error("Duplicate monsters cannot be assigned to multiple party slots.");
     }
 
-    // 本来はパーティ編成をDBに保存するテーブルが必要だが、
-    // ここでは簡易的にログ出力のみ、またはCharacterモデルにID配列を持たせる等の対応
-    console.log(`Party updated for ${characterId}: ${monsterIds.join(', ')}`);
+    await prisma.$transaction(async (tx: any) => {
+      const char = await tx.character.findUnique({
+        where: { id: characterId },
+        select: { id: true, necroMaxCost: true },
+      });
+      if (!char) throw new Error("Character not found.");
+
+      const monsters = selectedIds.length > 0
+        ? await tx.monster.findMany({
+            where: { id: { in: selectedIds }, characterId: char.id },
+            select: { id: true, cost: true },
+          })
+        : [];
+      if (monsters.length !== selectedIds.length) {
+        throw new Error("Party contains monsters not owned by character.");
+      }
+
+      const totalCost = monsters.reduce((acc: number, monster: { cost: number }) => acc + monster.cost, 0);
+      if (totalCost > char.necroMaxCost) {
+        throw new Error(`Cost limit exceeded: ${totalCost} / ${char.necroMaxCost}`);
+      }
+
+      await tx.character.update({
+        where: { id: char.id },
+        data: {
+          partySlot0Id: slotIds[0],
+          partySlot1Id: slotIds[1],
+          partySlot2Id: slotIds[2],
+        },
+      });
+    });
   }
 
   /**

@@ -83,9 +83,32 @@ function rollValue(range: [number, number], rng: () => number): number {
   return parseFloat((range[0] + rng() * (range[1] - range[0])).toFixed(1));
 }
 
+function secureUuid(): string {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  const getRandomValues = globalThis.crypto?.getRandomValues?.bind(globalThis.crypto);
+  if (!getRandomValues) {
+    throw new Error('Secure random ID generation requires Web Crypto API.');
+  }
+
+  const bytes = new Uint8Array(16);
+  getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function generateInstanceId(prefix: string): string {
+  return `${prefix}_${secureUuid()}`;
+}
+
 export class RewardService {
   private static generateResidueId(): string {
-    return `res_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+    return generateInstanceId('res');
   }
 
   private static generateResidue(
@@ -144,7 +167,7 @@ export class RewardService {
           if (!master) break;
           result.weapons.push({
             ...master,
-            id:   `${master.id}_${Date.now()}_${Math.floor(rng() * 1e5)}`,
+            id:   generateInstanceId(master.id),
             rank: 0,
           });
           break;
@@ -168,7 +191,7 @@ export class RewardService {
           if (!entry.itemId) break;
           const mat = mds.getMaterial(entry.itemId);
           if (mat) {
-            result.materials.push({ ...mat, id: `${mat.id}_${Date.now()}` });
+            result.materials.push({ ...mat, id: generateInstanceId(mat.id) });
           }
           break;
         }

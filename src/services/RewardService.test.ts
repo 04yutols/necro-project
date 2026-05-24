@@ -71,6 +71,42 @@ describe('RewardService.processDropTable', () => {
     expect(result.materials[0].expValue).toBe(120);
   });
 
+  test('generated instance ids do not depend on Date.now or Math.random', () => {
+    const table: DropEntry[] = [
+      { type: 'WEAPON', itemId: 'bone_cleaver', rate: 1.0 },
+      { type: 'RESIDUE', rarity: 'RARE', rate: 1.0 },
+      { type: 'MATERIAL', itemId: 'bone_chip', rate: 1.0 },
+    ];
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(123456789);
+    const mathRandomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.1234);
+
+    try {
+      const result = svc.processDropTable(table, 0, makeSeqRng([
+        0.0,
+        0.0,
+        0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7,
+        0.0,
+      ]));
+      const ids = [
+        result.weapons[0].id,
+        result.residues[0].id,
+        result.materials[0].id,
+      ];
+
+      expect(ids).toHaveLength(3);
+      expect(new Set(ids).size).toBe(3);
+      ids.forEach((id) => {
+        expect(id).not.toContain('123456789');
+        expect(id).toMatch(/_[0-9a-f-]{36}$/);
+      });
+      expect(mathRandomSpy).not.toHaveBeenCalled();
+      expect(nowSpy).not.toHaveBeenCalled();
+    } finally {
+      mathRandomSpy.mockRestore();
+      nowSpy.mockRestore();
+    }
+  });
+
   test('CONSUMABLE underworld_potion → consumables に数量付きで入る', () => {
     const table: DropEntry[] = [
       { type: 'CONSUMABLE', itemId: 'underworld_potion', quantity: 2, rate: 1.0 },

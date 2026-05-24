@@ -77,34 +77,60 @@ export async function fetchPlayerAction(characterId: string) {
 
 ---
 
-### 🟠 SEC-3: `GameManager.updateParty` が DB に保存しない
+### ✅ SEC-3: `GameManager.updateParty` が DB に保存しない（2026-05-24 完了）
 
-**ファイル:** `src/logic/GameManager.ts:258`
+**旧ファイル位置:** `src/logic/GameManager.ts:258`
+
+**対応後:** `src/logic/GameManager.ts:238–280`
 
 ```typescript
-// コスト計算後、実際の保存は行われない
-console.log(`Party updated for ${characterId}: ${monsterIds.join(', ')}`);
+await tx.character.update({
+  where: { id: char.id },
+  data: {
+    partySlot0Id: slotIds[0],
+    partySlot1Id: slotIds[1],
+    partySlot2Id: slotIds[2],
+  },
+});
 ```
 
 本来は `actions.ts` の `updatePartyForUser` が正しい実装を持つが、`GameManager` から直接呼ばれるパスではパーティ変更が永続化されない。
 
+**修正:** `GameManager.updateParty()` を既存 `Character.partySlot0Id` / `partySlot1Id` / `partySlot2Id` へ保存する実装に変更した。
+
+**対応内容:**
+- 3枠固定、重複禁止、存在確認、キャラクター所有魔物のみ、コスト上限を検証。
+- 検証とDB保存を1トランザクション内で実行。
+- 失敗時に既存パーティを上書きしないことをテストで確認。
+- `src/logic/GameManager.test.ts` で保存、重複拒否、越権魔物拒否、コスト超過拒否、3枠ルールを検証。
+
+**設計:** `docs/設計書/53_SEC3_GameManager_updateParty永続化設計.md`
+
 ---
 
-### 🟠 SEC-4: 非暗号論的乱数によるID生成
+### ✅ SEC-4: 非暗号論的乱数によるID生成（2026-05-24 完了）
 
-**ファイル:** `src/app/actions.ts:906`, `src/services/RewardService.ts:88`
+**旧ファイル位置:** `src/app/actions.ts:906`, `src/services/RewardService.ts:88`
+
+**対応後:** `src/services/RewardService.ts`
 
 ```typescript
-// actions.ts — Math.random() によるシャードID
-const id = `shard-${Math.random().toString(36).substr(2, 9)}`;
-
-// RewardService.ts — Date.now() + Math.random() による残滓ID
-return `res_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+function generateInstanceId(prefix: string): string {
+  return `${prefix}_${secureUuid()}`;
+}
 ```
 
 `Math.random()` は暗号論的に安全でない。高負荷時に `Date.now()` が衝突し、同一のIDが生成される可能性がある（DB の一意制約違反）。
 
-**修正:** `crypto.randomUUID()` または `nanoid` を使用する。
+**修正:** `RewardService` の武器、深淵の残滓、素材のインスタンスID生成を `globalThis.crypto.randomUUID()` / `getRandomValues()` ベースへ変更した。`Math.random()` へのフォールバックは行わない。
+
+**対応内容:**
+- `secureUuid()` を追加し、Web CryptoでUUID v4を生成。
+- `generateInstanceId(prefix)` を追加し、既存prefixを維持したまま暗号論的IDへ移行。
+- `RewardService.generateResidueId()`、武器ID、素材IDの `Date.now()` / `Math.random()` 依存を削除。
+- `src/services/RewardService.test.ts` で `Date.now()` と `Math.random()` に依存しないこと、UUID形式、重複なしを確認。
+
+**設計:** `docs/設計書/54_SEC4_暗号論的ID生成設計.md`
 
 ---
 
@@ -406,8 +432,8 @@ if (typeof characterOrId !== 'string') {
 | BUG-2 | 🔴 | `BattleEngine.ts:773` | 状態異常ダメージが現在HP を maxHp として計算 |
 | BUG-3 | ✅ | `ExperienceSystem.ts` | 2026-05-24 完了。EXP→レベル式を共通化 |
 | SEC-2 | ✅ | `actions.ts` | 2026-05-24 完了。認証・所有者確認・DB実データ取得を実装 |
-| SEC-3 | 🟠 | `GameManager.ts:258` | パーティ更新が DB に保存されない |
-| SEC-4 | 🟠 | `actions.ts:906` | 非暗号乱数によるID生成 |
+| SEC-3 | ✅ | `GameManager.ts` | 2026-05-24 完了。パーティ3スロットのDB保存を実装 |
+| SEC-4 | ✅ | `RewardService.ts` | 2026-05-24 完了。Web CryptoベースのID生成へ移行 |
 | SEC-5 | 🟠 | `GameManager.ts:139` | critRate をドロップボーナスに誤用 |
 | BUG-4 | 🟠 | `useGameStore.ts:445` | 残滓強化でマテリアルスタック全消費 |
 | BUG-5 | 🟠 | `StatusAilmentSystem.ts:201` | BURN の免疫チェック欠落 |

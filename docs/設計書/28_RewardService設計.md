@@ -93,10 +93,17 @@ const RESIDUE_NAMES: Record<AbyssalResidueData['rarity'], string[]> = {
 ### 4-a. `generateResidueId()`（private static）
 
 ```typescript
+function secureUuid(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  // randomUUID 非対応環境では getRandomValues() で UUID v4 を生成する。
+}
+
+function generateInstanceId(prefix: string): string {
+  return `${prefix}_${secureUuid()}`;
+}
+
 private static generateResidueId(): string {
-  // crypto.randomUUID() はNext.jsサーバーサイドで使用可。
-  // クライアント（BattleCanvas）でも Web Crypto API により使用可。
-  return `res_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+  return generateInstanceId('res');
 }
 ```
 
@@ -172,7 +179,7 @@ public processDropTable(
         // インスタンス ID を付与してコピー生成（rank=0 初期状態）
         const weapon: ItemData = {
           ...master,
-          id:   `${master.id}_${Date.now()}_${Math.floor(rng() * 1e5)}`,
+          id:   generateInstanceId(master.id),
           rank: 0,
         };
         result.weapons.push(weapon);
@@ -186,7 +193,7 @@ public processDropTable(
       case 'MATERIAL': {
         if (!entry.itemId) break;
         const mat = mds.getMaterial(entry.itemId);
-        if (mat) result.materials.push({ ...mat, id: `${mat.id}_${Date.now()}` });
+        if (mat) result.materials.push({ ...mat, id: generateInstanceId(mat.id) });
         break;
       }
       case 'MONSTER': {
