@@ -238,7 +238,7 @@ BattleEngine には処理（`processAreaGimmick()`）があるが、BattleCanvas
 
 ---
 
-### NM-2. ボスギミック AV_DELAY が BattleCanvas に未実装
+### NM-2. ボスギミック AV_DELAY が BattleCanvas に未実装 ✅完了
 
 **問題：**  
 `BossGimmick.effect: 'AV_DELAY'` がゲーム型と BattleEngine に定義されているが、  
@@ -252,6 +252,14 @@ BattleCanvas の `runEnemyTurn()` は `ENRAGE` しかチェックしていない
 **関連ファイル：**
 - `src/components/battle/BattleCanvas.tsx` — `runEnemyTurn()`
 - `src/logic/BattleEngine.ts` — `applyBossGimmickEffect()` case `'AV_DELAY'` 参考あり
+
+**完了内容：**
+- `docs/設計書/46_ボスギミックAV_DELAY_BattleCanvas設計.md` に AV_DELAY の式・発火タイミング・UI方針を追加。
+- `src/logic/BossGimmickSystem.ts` に `DEFAULT_BOSS_AV_DELAY` / `getBossAvDelayBase()` / `calculateBossAvDelay()` を追加。
+- `BattleCanvas.runEnemyTurn()` の敵行動スケジュール前に `TURN_3 / AV_DELAY` 判定を接続し、`battleAvRef.current.player` へ実遅延 AV を加算。
+- 発火ログ、紫フラッシュ、画面揺れを追加。
+- `src/data/master/enemies.json` の `ossuary_wyrm_lord` AV_DELAY を `value: 40` に修正。
+- `src/logic/BossGimmickSystem.test.ts` に AV_DELAY の発火条件・effectRes 軽減テストを追加。
 
 ---
 

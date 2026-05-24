@@ -1,4 +1,5 @@
 import type { BossGimmick } from '../types/game';
+import { calcAVDelay } from './StatusAilmentSystem';
 
 export interface BossGimmickTriggerContext {
   prevHpPct: number;
@@ -9,6 +10,7 @@ export interface BossGimmickTriggerContext {
 
 const DEFAULT_REVIVE_HP_RATIO = 0.5;
 const DEFAULT_SUMMON_COUNT = 2;
+export const DEFAULT_BOSS_AV_DELAY = 40;
 const SUMMON_POOLS: Record<string, string[]> = {
   blood_mire_queen: ['bloodmire_leech', 'rot_hound'],
   ossuary_wyrm_lord: ['grave_soldier', 'earthbound_grudge'],
@@ -73,4 +75,16 @@ export function resolveSummonMinionIds(
 
   if (count === 0) return [];
   return pool.slice(0, count);
+}
+
+export function getBossAvDelayBase(gimmick: BossGimmick): number {
+  const value = gimmick.value;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return DEFAULT_BOSS_AV_DELAY;
+  }
+  return Math.floor(value);
+}
+
+export function calculateBossAvDelay(gimmick: BossGimmick, targetEffectRes: number): number {
+  return calcAVDelay(getBossAvDelayBase(gimmick), targetEffectRes);
 }

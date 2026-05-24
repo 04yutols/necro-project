@@ -58,4 +58,15 @@ describe('TurnOrderSystem', () => {
     expect(applyActionDelay(actor).currentAv).toBe(110);
     expect(applyStatusActionDelay(actor, 40, 50).currentAv).toBe(30);
   });
+
+  test('delayed player AV lets an enemy act before the next player turn', () => {
+    const player: TurnOrderActor = { id: 'player', name: 'Player', side: 'PLAYER', spd: 100, currentAv: 120 };
+    const delayedPlayer = applyStatusActionDelay(player, 40, 0);
+    const enemy: TurnOrderActor = { id: 'boss', name: 'Boss', side: 'ENEMY', spd: 100, currentAv: 130 };
+
+    const schedule = scheduleEnemiesUntilPlayer({ player: delayedPlayer, enemies: [enemy] });
+
+    expect(delayedPlayer.currentAv).toBe(160);
+    expect(schedule.enemyActions.map((actor) => actor.id)).toEqual(['boss']);
+  });
 });

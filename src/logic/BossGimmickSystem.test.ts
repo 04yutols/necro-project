@@ -1,7 +1,9 @@
 import type { BossGimmick } from '../types/game';
 import {
   bossGimmickKey,
+  calculateBossAvDelay,
   findReviveGimmick,
+  getBossAvDelayBase,
   getReviveHp,
   resolveSummonMinionIds,
   shouldTriggerBossGimmick,
@@ -43,5 +45,26 @@ describe('BossGimmickSystem', () => {
     })).toBe(true);
     expect(resolveSummonMinionIds('blood_mire_queen', 2, 2)).toEqual(['bloodmire_leech', 'rot_hound']);
     expect(resolveSummonMinionIds('blood_mire_queen', 2, 1)).toEqual(['bloodmire_leech']);
+  });
+
+  test('calculates AV_DELAY with effectRes mitigation', () => {
+    const avDelay: BossGimmick = { trigger: 'TURN_3', effect: 'AV_DELAY', value: 40 };
+
+    expect(shouldTriggerBossGimmick(avDelay, {
+      prevHpPct: 100,
+      newHpPct: 100,
+      turn: 3,
+      shieldBroken: false,
+    })).toBe(true);
+    expect(shouldTriggerBossGimmick(avDelay, {
+      prevHpPct: 100,
+      newHpPct: 100,
+      turn: 2,
+      shieldBroken: false,
+    })).toBe(false);
+    expect(calculateBossAvDelay(avDelay, 0)).toBe(40);
+    expect(calculateBossAvDelay(avDelay, 50)).toBe(20);
+    expect(calculateBossAvDelay(avDelay, 100)).toBe(0);
+    expect(getBossAvDelayBase({ ...avDelay, value: undefined })).toBe(40);
   });
 });

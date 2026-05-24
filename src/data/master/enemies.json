@@ -136,7 +136,7 @@
     "maxShieldHp": 310,
     "gimmicks": [
       { "trigger": "HP_BELOW_50", "effect": "ENRAGE", "value": 1 },
-      { "trigger": "TURN_3", "effect": "AV_DELAY", "value": 1 },
+      { "trigger": "TURN_3", "effect": "AV_DELAY", "value": 40 },
       { "trigger": "HP_BELOW_50", "effect": "REVIVE", "value": 1 }
     ],
     "dropTable": [

@@ -21,7 +21,9 @@ import { applyAreaGimmickToPlayer, getAreaGimmickMeta, resolveStageAreaGimmick }
 import { calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilPlayer, type TurnOrderActor } from '../../logic/TurnOrderSystem';
 import {
   bossGimmickKey,
+  calculateBossAvDelay,
   findReviveGimmick,
+  getBossAvDelayBase,
   getReviveHp,
   resolveSummonMinionIds,
   shouldTriggerBossGimmick,
@@ -1931,6 +1933,42 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     return enemy.sourceId ?? enemy.id;
   }
 
+  function applyBossAvDelayGimmicks(nextAlive: EnemyState[]) {
+    nextAlive.forEach((enemy) => {
+      const gimmick = enemy.gimmicks?.find(candidate => candidate.effect === 'AV_DELAY');
+      if (!gimmick) return;
+
+      const bossId = getCanvasBossGimmickId(enemy);
+      const key = bossGimmickKey(bossId, gimmick);
+      if (bossGimmickFiredRef.current.has(key)) return;
+
+      const shouldFire = shouldTriggerBossGimmick(gimmick, {
+        prevHpPct: 100,
+        newHpPct: 100,
+        turn: actionCountRef.current,
+        shieldBroken: enemy.shieldBroken,
+      });
+      if (!shouldFire) return;
+
+      bossGimmickFiredRef.current.add(key);
+      const baseDelay = getBossAvDelayBase(gimmick);
+      const actualDelay = calculateBossAvDelay(gimmick, playerStats?.effectRes ?? 0);
+      if (actualDelay > 0) {
+        battleAvRef.current = {
+          ...battleAvRef.current,
+          player: battleAvRef.current.player + actualDelay,
+        };
+        addLog(`【AV遅延】${enemy.name}が時の鎖を放つ！ 骸骨騎士の行動値 +${actualDelay}（基礎${baseDelay}）。`);
+      } else {
+        addLog(`【AV遅延】${enemy.name}の時の鎖を効果抵抗で完全に弾いた。`);
+      }
+      setFlashColor('rgba(168,85,247,0.28)');
+      window.setTimeout(() => setFlashColor(null), 520);
+      setScreenShake(true);
+      window.setTimeout(() => setScreenShake(false), 360);
+    });
+  }
+
   function createSummonedEnemyState(enemyId: string, runtimeId: number, pos: EnemyState['pos']): EnemyState | null {
     const master = ENEMIES[enemyId];
     if (!master) return null;
@@ -2551,6 +2589,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       resolveWaveClear();
       return;
     }
+    applyBossAvDelayGimmicks(statusPhase.alive);
     const playerActor: TurnOrderActor = {
       id: 'player',
       name: '骸骨騎士',
