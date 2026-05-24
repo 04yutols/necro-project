@@ -272,22 +272,29 @@ EXP=500 の場合、簡易式では Lv.6、正式式では Lv.2 になる。DB �
 
 ---
 
-### 🟠 BUG-4: `upgradeResidue` がマテリアルスタック全体を消費する
+### ✅ BUG-4: `upgradeResidue` がマテリアルスタック全体を消費する（2026-05-24 完了）
 
-**ファイル:** `src/store/useGameStore.ts:425–446`
+**旧ファイル位置:** `src/store/useGameStore.ts:425–446`
+
+**対応後:** `src/store/useGameStore.ts`, `src/components/legion/LegionHub.tsx`, `src/components/necro/NecroLab.tsx`
 
 ```typescript
-// EXP計算: mat.quantity 分まとめて計算される
-const expGain = matIds.reduce((acc, id) => {
-  const mat = state.residueMaterials.find(m => m.id === id);
-  return acc + (mat ? mat.expValue * mat.quantity : 0);
-}, 0);
-
-// 削除: IDが一致するスタック全体を削除
-const remainingMaterials = state.residueMaterials.filter(m => !matIds.includes(m.id));
+const spent = spendResidueMaterials(state.residueMaterials, matIds);
+if (spent.expGain <= 0) return state;
 ```
 
 `matIds` に1つのIDを渡しても、そのマテリアルが `quantity: 5` を持っていれば EXP は5倍得られ、スタック全体が消える。「1個だけ使う」操作ができない。
+
+**修正:** `matIds` の1要素を「素材1個の消費リクエスト」として扱い、消費できた個数ぶんだけEXPを付与するようにした。
+
+**対応内容:**
+- `spendResidueMaterials()` を追加し、素材IDの出現回数と所持数から消費数を決定。
+- 1回選択では `quantity` を1だけ減らし、0になった場合のみスタックを削除。
+- 同じIDを複数回渡しても、所持数を超えるEXPは付与しない。
+- `LegionHub` / `NecroLab` の強化プレビューと一括選択を「1カード=1個消費」に合わせた。
+- `src/store/useGameStore.party.test.ts` で1個消費、装備中残滓同期、過剰要求時の上限制御を確認。
+
+**設計:** `docs/設計書/56_BUG4_残滓強化素材スタック消費設計.md`
 
 ---
 
@@ -445,6 +452,6 @@ if (typeof characterOrId !== 'string') {
 | SEC-3 | ✅ | `GameManager.ts` | 2026-05-24 完了。パーティ3スロットのDB保存を実装 |
 | SEC-4 | ✅ | `RewardService.ts` | 2026-05-24 完了。Web CryptoベースのID生成へ移行 |
 | SEC-5 | ✅ | `GameManager.ts` / `RewardService.ts` | 2026-05-24 完了。critRate とドロップ補正を分離 |
-| BUG-4 | 🟠 | `useGameStore.ts:445` | 残滓強化でマテリアルスタック全消費 |
+| BUG-4 | ✅ | `useGameStore.ts` | 2026-05-24 完了。残滓強化素材を1個単位で消費 |
 | BUG-5 | 🟠 | `StatusAilmentSystem.ts:201` | BURN の免疫チェック欠落 |
 | BUG-6 | 🟠 | `BattleEngine.ts:335` | 敵HPオブジェクトの直接書き換え |

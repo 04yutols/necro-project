@@ -80,6 +80,7 @@
 | `GameManager.updateParty` のDB保存・所有魔物検証を知りたい | [53_SEC3_GameManager_updateParty永続化設計.md](53_SEC3_GameManager_updateParty永続化設計.md) |
 | 報酬インスタンスIDの暗号論的生成・SEC-4対応を知りたい | [54_SEC4_暗号論的ID生成設計.md](54_SEC4_暗号論的ID生成設計.md) |
 | `critRate` とドロップ率ボーナスの分離・SEC-5対応を知りたい | [55_SEC5_ドロップ率ボーナスcritRate分離設計.md](55_SEC5_ドロップ率ボーナスcritRate分離設計.md) |
+| 残滓強化素材スタックの1個単位消費・BUG-4対応を知りたい | [56_BUG4_残滓強化素材スタック消費設計.md](56_BUG4_残滓強化素材スタック消費設計.md) |
 
 ## 重要ファイルパス一覧
 

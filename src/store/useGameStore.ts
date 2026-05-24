@@ -180,6 +180,25 @@ function addWeaponMaterials(materials: WeaponMaterialData[], rewards: { type: We
   }, materials);
 }
 
+function spendResidueMaterials(
+  materials: ResidueMatData[],
+  matIds: string[],
+): { expGain: number; materials: ResidueMatData[] } {
+  const requested = matIds.reduce((counts, id) => counts.set(id, (counts.get(id) ?? 0) + 1), new Map<string, number>());
+  let expGain = 0;
+
+  const nextMaterials = materials.flatMap((material) => {
+    const consume = Math.min(requested.get(material.id) ?? 0, material.quantity);
+    if (consume <= 0) return [material];
+
+    expGain += material.expValue * consume;
+    const nextQuantity = material.quantity - consume;
+    return nextQuantity > 0 ? [{ ...material, quantity: nextQuantity }] : [];
+  });
+
+  return { expGain, materials: nextMaterials };
+}
+
 interface GameState {
   player: CharacterData | null;
   necroStatus: NecroStatus | null;
@@ -424,10 +443,10 @@ export const useGameStore = create<GameState>((set) => ({
   upgradeResidue: (residueId, matIds) => set((state) => {
     const residue = state.abyssalResidues.find(r => r.id === residueId);
     if (!residue) return state;
-    const expGain = matIds.reduce((acc, id) => {
-      const mat = state.residueMaterials.find(m => m.id === id);
-      return acc + (mat ? mat.expValue * mat.quantity : 0);
-    }, 0);
+    const spent = spendResidueMaterials(state.residueMaterials, matIds);
+    if (spent.expGain <= 0) return state;
+
+    const expGain = spent.expGain;
     let newExp = residue.exp + expGain;
     let newLevel = residue.level;
     let newMaxExp = residue.maxExp;
@@ -443,7 +462,7 @@ export const useGameStore = create<GameState>((set) => ({
     const updatedEquippedSlots = state.equippedResidueSlots.map(s =>
       s?.id === residueId ? { ...s, level: newLevel, exp: newExp, maxExp: newMaxExp } : s
     ) as (AbyssalResidueData | null)[];
-    const remainingMaterials = state.residueMaterials.filter(m => !matIds.includes(m.id));
+    const remainingMaterials = spent.materials;
     return { abyssalResidues: updatedResidues, equippedResidueSlots: updatedEquippedSlots, residueMaterials: remainingMaterials };
   }),
   rankUpWeapon: (weaponId) => set((state) => {

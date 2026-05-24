@@ -70,4 +70,31 @@ describe('useGameStore party formation actions', () => {
     expect(warrior?.level).toBe(2);
     expect(player?.maxEnergy).toBe(expectedEnergy.maxEnergy);
   });
+
+  test('upgradeResidue consumes one material unit per selected id instead of the whole stack', () => {
+    useGameStore.getState().upgradeResidue('r7', ['mat-1']);
+
+    const state = useGameStore.getState();
+    const residue = state.abyssalResidues.find(item => item.id === 'r7');
+    const equipped = state.equippedResidueSlots.find(item => item?.id === 'r7');
+    const material = state.residueMaterials.find(item => item.id === 'mat-1');
+
+    expect(residue?.exp).toBe(200);
+    expect(residue?.level).toBe(1);
+    expect(equipped?.exp).toBe(200);
+    expect(material?.quantity).toBe(7);
+  });
+
+  test('upgradeResidue bounds repeated material ids by the owned stack quantity', () => {
+    useGameStore.getState().upgradeResidue('r7', ['mat-3', 'mat-3', 'mat-3']);
+
+    const state = useGameStore.getState();
+    const residue = state.abyssalResidues.find(item => item.id === 'r7');
+    const material = state.residueMaterials.find(item => item.id === 'mat-3');
+
+    expect(material).toBeUndefined();
+    expect(residue?.level).toBe(3);
+    expect(residue?.exp).toBe(500);
+    expect(residue?.maxExp).toBe(1800);
+  });
 });
