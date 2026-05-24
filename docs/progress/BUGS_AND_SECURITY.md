@@ -298,18 +298,28 @@ if (spent.expGain <= 0) return state;
 
 ---
 
-### 🟠 BUG-5: BURN の免疫チェックが欠落
+### ✅ BUG-5: BURN の免疫チェックが欠落
 
-**ファイル:** `src/logic/StatusAilmentSystem.ts:201`
+**ファイル:** `src/logic/StatusAilmentSystem.ts:199`
 
 ```typescript
 if (effect.type === 'POISON') {
-  damage = options?.immuneTypes?.includes('POISON') ? 0 : Math.floor(target.maxHp * 0.03);
+  damage = isImmune ? 0 : Math.floor(target.maxHp * 0.03);
 }
-if (effect.type === 'BURN') damage = Math.floor(target.maxHp * 0.05); // ← 免疫チェックなし
+if (effect.type === 'BURN') damage = isImmune ? 0 : Math.floor(target.maxHp * 0.05);
 ```
 
-BLEED と POISON には `immuneTypes` チェックがあるが、BURN にはない。BURN 免疫を持つシナジーや装備がある場合、意図通りに機能しない。
+既存実装では BLEED と POISON には `immuneTypes` チェックがあるが、BURN にはなかった。BURN 免疫を持つシナジーや装備がある場合、意図通りに機能しない。
+
+**修正:** 各状態異常処理の先頭で `effect.type` 基準の `isImmune` を算出し、BLEED / POISON / BURN のDoTダメージ判定を共通化した。
+
+**対応内容:**
+- BURN の持続ダメージが `immuneTypes: ['BURN']` で0になるよう修正。
+- 免疫時も残りターンは通常通り減らし、状態異常の自然経過を維持。
+- ダメージ0の tick は出さず、UI側に不要な0ダメージ演出を流さない。
+- `StatusAilmentSystem.test.ts` にBURN免疫とDoT免疫一貫性の回帰テストを追加。
+
+**設計:** `docs/設計書/57_BUG5_BURN免疫チェック設計.md`
 
 ---
 
@@ -453,5 +463,5 @@ if (typeof characterOrId !== 'string') {
 | SEC-4 | ✅ | `RewardService.ts` | 2026-05-24 完了。Web CryptoベースのID生成へ移行 |
 | SEC-5 | ✅ | `GameManager.ts` / `RewardService.ts` | 2026-05-24 完了。critRate とドロップ補正を分離 |
 | BUG-4 | ✅ | `useGameStore.ts` | 2026-05-24 完了。残滓強化素材を1個単位で消費 |
-| BUG-5 | 🟠 | `StatusAilmentSystem.ts:201` | BURN の免疫チェック欠落 |
+| BUG-5 | ✅ | `StatusAilmentSystem.ts:199` | BURN の免疫チェック欠落 |
 | BUG-6 | 🟠 | `BattleEngine.ts:335` | 敵HPオブジェクトの直接書き換え |

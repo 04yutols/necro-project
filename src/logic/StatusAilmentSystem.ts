@@ -167,11 +167,11 @@ export function processStatusEffects(
   const nextEffects: StatusEffect[] = [];
 
   for (const effect of cloneEffects(effects)) {
+    const isImmune = options?.immuneTypes?.includes(effect.type) ?? false;
     if (effect.type === 'BLEED') {
       const stacks = (effect.stacks ?? [{ remainingTurns: effect.remainingTurns, sourceAtk: effect.sourceAtk ?? 0 }])
         .map(stack => ({ ...stack, remainingTurns: stack.remainingTurns - 1 }))
         .filter(stack => stack.remainingTurns > 0);
-      const isImmune = options?.immuneTypes?.includes('BLEED');
       const damage = isImmune ? 0 : Math.floor((effect.stacks ?? [{ remainingTurns: effect.remainingTurns, sourceAtk: effect.sourceAtk ?? 0 }])
         .reduce((sum, stack) => sum + (stack.sourceAtk ?? 0) * 0.05, 0));
       if (damage > 0) {
@@ -194,11 +194,9 @@ export function processStatusEffects(
 
     let damage = 0;
     if (effect.type === 'POISON') {
-      damage = options?.immuneTypes?.includes('POISON')
-        ? 0
-        : Math.floor(target.maxHp * 0.03);
+      damage = isImmune ? 0 : Math.floor(target.maxHp * 0.03);
     }
-    if (effect.type === 'BURN') damage = Math.floor(target.maxHp * 0.05);
+    if (effect.type === 'BURN') damage = isImmune ? 0 : Math.floor(target.maxHp * 0.05);
     if (effect.type === 'FREEZE') {
       skipAction = true;
       ticks.push({ type: 'FREEZE', skipped: true });

@@ -49,6 +49,35 @@ describe('StatusAilmentSystem', () => {
     expect(getAilmentAttackMultiplier(processed.effects, true)).toBe(1);
   });
 
+  test('processStatusEffects suppresses burn damage for immune targets', () => {
+    const effects = applyStatusEffect([], 'BURN', 0);
+
+    const processed = processStatusEffects(effects, { maxHp: 1000 }, () => 1, {
+      immuneTypes: ['BURN'],
+    });
+
+    expect(processed.totalDamage).toBe(0);
+    expect(processed.ticks.some(tick => tick.type === 'BURN' && tick.damage !== undefined)).toBe(false);
+    expect(processed.effects[0].type).toBe('BURN');
+    expect(processed.effects[0].remainingTurns).toBe(1);
+  });
+
+  test('processStatusEffects applies DoT immunity consistently across damage ailments', () => {
+    const effects = [
+      ...applyStatusEffect([], 'BLEED', 100),
+      ...applyStatusEffect([], 'POISON', 0),
+      ...applyStatusEffect([], 'BURN', 0),
+    ];
+
+    const processed = processStatusEffects(effects, { maxHp: 1000 }, () => 1, {
+      immuneTypes: ['BLEED', 'POISON', 'BURN'],
+    });
+
+    expect(processed.totalDamage).toBe(0);
+    expect(processed.ticks.some(tick => (tick.damage ?? 0) > 0)).toBe(false);
+    expect(processed.effects).toHaveLength(3);
+  });
+
   test('tryApplyAilment respects immunity and deterministic rolls', () => {
     const immune = tryApplyAilment(
       'POISON',
