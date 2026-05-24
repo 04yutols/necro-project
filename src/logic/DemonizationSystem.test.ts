@@ -4,6 +4,7 @@ import {
   DEMON_ACTION_LIMIT,
   activateDemonMode,
   canActivateDemonMode,
+  canActivateDemonModeInPhase,
   clampDemonGauge,
   consumeDemonAction,
   getDemonActionHitCount,
@@ -12,7 +13,9 @@ import {
   getDemonRiskLabel,
   isDemonStatusImmune,
   markDemonUltimateUsed,
+  resolveDemonActivation,
   shouldBypassDefense,
+  shouldInterruptEnemyTurnOnDemonize,
   shouldIgnoreResistance,
 } from './DemonizationSystem';
 
@@ -141,5 +144,47 @@ describe('DemonizationSystem', () => {
     expect(getDemonRiskLabel('GLASS_CANNON')).toBe('紙装甲');
     expect(getDemonRiskLabel('SETUP_DEPENDENT')).toBe('仕込み依存');
     expect(getDemonRiskLabel(null as unknown as DemonRiskType)).toBe('なし');
+  });
+
+  test('INTERRUPT activation is allowed during enemy turn and returns control to player turn', () => {
+    expect(canActivateDemonModeInPhase(100, false, 'playerTurn')).toBe(true);
+    expect(canActivateDemonModeInPhase(100, false, 'enemyTurn')).toBe(true);
+
+    const playerTurn = resolveDemonActivation(100, false, 'playerTurn');
+    expect(playerTurn).toEqual({
+      canActivate: true,
+      interruptsEnemyTurn: false,
+      nextPhase: 'playerTurn',
+    });
+
+    const enemyTurn = resolveDemonActivation(100, false, 'enemyTurn');
+    expect(enemyTurn).toEqual({
+      canActivate: true,
+      interruptsEnemyTurn: true,
+      nextPhase: 'playerTurn',
+    });
+    expect(shouldInterruptEnemyTurnOnDemonize('enemyTurn')).toBe(true);
+    expect(shouldInterruptEnemyTurnOnDemonize('playerTurn')).toBe(false);
+  });
+
+  test('INTERRUPT activation blocks non-command phases and unavailable gauge states', () => {
+    expect(resolveDemonActivation(99, false, 'enemyTurn')).toMatchObject({
+      canActivate: false,
+      reason: 'GAUGE_NOT_READY',
+    });
+    expect(resolveDemonActivation(100, true, 'enemyTurn')).toMatchObject({
+      canActivate: false,
+      reason: 'ALREADY_ACTIVE',
+    });
+
+    for (const phase of ['skillMenu', 'itemMenu', 'animating', 'waveTransition'] as const) {
+      expect(resolveDemonActivation(100, false, phase)).toMatchObject({
+        canActivate: false,
+        interruptsEnemyTurn: false,
+        nextPhase: null,
+        reason: 'INVALID_PHASE',
+      });
+      expect(canActivateDemonModeInPhase(100, false, phase)).toBe(false);
+    }
   });
 });

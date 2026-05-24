@@ -32,11 +32,12 @@ import { applyPlayerDamage, isPlayerDead } from '../../logic/PlayerDefeat';
 import type { StageResultMeta } from '../../types/online';
 import {
   DEMON_ACTION_LIMIT,
-  canActivateDemonMode,
+  canActivateDemonModeInPhase,
   getDemonActionHitCount,
   getDemonDamageMultiplier,
   getDemonIncomingDamageMultiplier,
   getDemonRiskLabel,
+  shouldInterruptEnemyTurnOnDemonize,
   shouldBypassDefense,
   shouldIgnoreResistance,
 } from '../../logic/DemonizationSystem';
@@ -1862,6 +1863,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const battleDelay = useCallback((ms: number, min = 80) => Math.max(min, ms / speed), [speed]);
   const currentMp = battleParty[0]?.mp ?? 0;
   const soulFull = soul >= 100;
+  const demonizeReady = canActivateDemonModeInPhase(soul, demonized, phase);
+  const demonizeSublabel = soulFull ? (phase === 'enemyTurn' ? 'INTERRUPT' : 'READY') : `SOUL ${Math.round(soul)}%`;
   const currentWave = battleWaves[waveIndex] ?? battleWaves[0];
   const currentJobId = player?.currentJobId ?? 'warrior';
   const currentJobData = JOBS[currentJobId] ?? JOBS.warrior;
@@ -2848,15 +2851,19 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   }
 
   function handleDemonize() {
-    if (!canActivateDemonMode(soul, demonized) || phase === 'animating' || phase === 'waveTransition') return;
+    if (!canActivateDemonModeInPhase(soul, demonized, phase)) return;
+    const interruptsEnemyTurn = shouldInterruptEnemyTurnOnDemonize(phase);
     sfx.demonActivate();
-    enemyTurnSerialRef.current += 1;
+    if (interruptsEnemyTurn) {
+      enemyTurnSerialRef.current += 1;
+    }
     const burstId = ++demonBurstIdRef.current;
     setAuto(false);
     setDemonized(true);
     setDemonActionsRemaining(DEMON_ACTION_LIMIT);
     setDemonUltimateUsed(false);
     setSoul(0);
+    battleAvRef.current = { ...battleAvRef.current, player: 0 };
     setDemonBurst({ id: burstId, form: demonForm });
     setScreenShake(true);
     window.setTimeout(() => setScreenShake(false), battleDelay(520, 260));
@@ -2871,7 +2878,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setFlashColor(demonForm.visual?.soft ?? 'rgba(180,0,0,0.5)');
     setTimeout(() => setFlashColor(null), 800);
     addLog(`☠ 魔神化『${demonForm.formName}』発動！ ${demonForm.concept}`);
-    addLog('絶対割り込み: 敵の行動をキャンセルし、行動値を0に固定。状態異常とデバフを完全無効化。');
+    addLog(interruptsEnemyTurn
+      ? '絶対割り込み: 敵の行動をキャンセルし、行動値を0に固定。状態異常とデバフを完全無効化。'
+      : '魔神化: 行動値を0に固定。状態異常とデバフを完全無効化。');
     addLog(`Effect A: ${demonForm.effectA.descJa}`);
     addLog(`Effect B: ${demonForm.effectB.descJa}`);
     setPhase('playerTurn');
@@ -3099,8 +3108,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
                 <CommandButton
                   id="tut-demon-btn"
                   icon="☠" label="魔神化"
-                  sublabel={soulFull ? 'INTERRUPT' : `SOUL ${Math.round(soul)}%`}
-                  enabled={soulFull && (phase === 'playerTurn' || phase === 'enemyTurn')}
+                  sublabel={demonizeSublabel}
+                  enabled={demonizeReady}
                   color="#dc2626"
                   glow={soulFull}
                   onClick={handleDemonize}/>

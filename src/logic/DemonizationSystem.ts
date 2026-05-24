@@ -3,6 +3,23 @@ import type { DemonFormData, DemonRiskType, SkillAttackType } from '../types/gam
 export const DEMON_GAUGE_MAX = 100;
 export const DEMON_ACTION_LIMIT = 3;
 
+export type DemonActivationPhase =
+  | 'playerTurn'
+  | 'skillMenu'
+  | 'itemMenu'
+  | 'animating'
+  | 'enemyTurn'
+  | 'waveTransition';
+
+export type DemonActivationBlockReason = 'GAUGE_NOT_READY' | 'ALREADY_ACTIVE' | 'INVALID_PHASE';
+
+export interface DemonActivationResolution {
+  canActivate: boolean;
+  interruptsEnemyTurn: boolean;
+  nextPhase: 'playerTurn' | null;
+  reason?: DemonActivationBlockReason;
+}
+
 export interface DemonRuntimeState {
   isDemonMode: boolean;
   gauge: number;
@@ -17,6 +34,48 @@ export function clampDemonGauge(value: number): number {
 
 export function canActivateDemonMode(gauge: number, isDemonMode: boolean): boolean {
   return !isDemonMode && clampDemonGauge(gauge) >= DEMON_GAUGE_MAX;
+}
+
+export function resolveDemonActivation(
+  gauge: number,
+  isDemonMode: boolean,
+  phase: DemonActivationPhase,
+): DemonActivationResolution {
+  if (!canActivateDemonMode(gauge, isDemonMode)) {
+    return {
+      canActivate: false,
+      interruptsEnemyTurn: false,
+      nextPhase: null,
+      reason: isDemonMode ? 'ALREADY_ACTIVE' : 'GAUGE_NOT_READY',
+    };
+  }
+
+  if (phase !== 'playerTurn' && phase !== 'enemyTurn') {
+    return {
+      canActivate: false,
+      interruptsEnemyTurn: false,
+      nextPhase: null,
+      reason: 'INVALID_PHASE',
+    };
+  }
+
+  return {
+    canActivate: true,
+    interruptsEnemyTurn: phase === 'enemyTurn',
+    nextPhase: 'playerTurn',
+  };
+}
+
+export function canActivateDemonModeInPhase(
+  gauge: number,
+  isDemonMode: boolean,
+  phase: DemonActivationPhase,
+): boolean {
+  return resolveDemonActivation(gauge, isDemonMode, phase).canActivate;
+}
+
+export function shouldInterruptEnemyTurnOnDemonize(phase: DemonActivationPhase): boolean {
+  return phase === 'enemyTurn';
 }
 
 export function activateDemonMode(form: DemonFormData | null, gauge: number): DemonRuntimeState {

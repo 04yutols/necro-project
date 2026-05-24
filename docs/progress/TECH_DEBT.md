@@ -263,20 +263,23 @@ BattleCanvas の `runEnemyTurn()` は `ENRAGE` しかチェックしていない
 
 ---
 
-### NM-3. 魔神化「INTERRUPT」は実際にはプレイヤーターン中しか機能しない
+### ✅ NM-3. 魔神化「INTERRUPT」は実際にはプレイヤーターン中しか機能しない
 
 **問題：**  
 ソウルゲージが 100% のとき魔神化ボタンに「INTERRUPT」ラベルが表示されるが、  
 実際には `phase === 'playerTurn'` 中にしか押せない。敵ターン中の割り込みはできない。  
 ラベルと挙動が矛盾している。
 
-**対応方針：**  
-A案：敵ターン中（`phase === 'enemyTurn'`）でも魔神化を可能にし、  
-`enemyTurnSerialRef` をインクリメントして進行中の敵アクションをキャンセルする。  
-B案：ラベルを「FULL」に変更して誤解を防ぐ（実装変更なしで済む最小対応）。
+**対応済み：**
+敵ターン中（`phase === 'enemyTurn'`）でも魔神化を可能にし、
+敵ターン中の発動時のみ `enemyTurnSerialRef` をインクリメントして予約済み敵アクションをキャンセルする。
+通常のプレイヤーターン発動は `READY`、敵ターン発動は `INTERRUPT` と表示を分けた。
 
 **関連ファイル：**
 - `src/components/battle/BattleCanvas.tsx` — `handleDemonize()`、`demonizeButton` の `enabled` 条件
+- `src/logic/DemonizationSystem.ts` — `resolveDemonActivation()`、`canActivateDemonModeInPhase()`、`shouldInterruptEnemyTurnOnDemonize()`
+- `src/logic/DemonizationSystem.test.ts` — フェーズ別発動可否と割り込み判定のテスト
+- `docs/設計書/47_魔神化INTERRUPT接続設計.md` — 詳細設計
 
 ---
 
