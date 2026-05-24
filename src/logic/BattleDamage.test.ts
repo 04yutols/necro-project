@@ -37,6 +37,59 @@ describe('calculateBattleDamage', () => {
     expect(result.isCritical).toBe(false);
   });
 
+  describe('defenseReducePct (ORC synergy)', () => {
+    const baseInput = {
+      attackerStats: attacker,
+      defenderStats: defender, // DEF = 100
+      powerMultiplier: 1.0,
+      rng: () => 0.99, // no crit
+    } as const;
+
+    test('0% reduction matches baseline (no synergy)', () => {
+      // effectiveDef=100, defMult=1-100/300=0.6667, damage=66
+      const result = calculateBattleDamage({ ...baseInput, synergyBonus: { defenseReducePct: 0 } });
+      expect(result.damage).toBe(66);
+    });
+
+    test('15% reduction (ORC×2 partial)', () => {
+      // effectiveDef=85, defMult=1-85/285≈0.7018, damage=70
+      const result = calculateBattleDamage({ ...baseInput, synergyBonus: { defenseReducePct: 15 } });
+      expect(result.damage).toBe(70);
+    });
+
+    test('25% reduction (ORC×3 full)', () => {
+      // effectiveDef=75, defMult=1-75/275≈0.7273, damage=72
+      const result = calculateBattleDamage({ ...baseInput, synergyBonus: { defenseReducePct: 25 } });
+      expect(result.damage).toBe(72);
+    });
+
+    test('35% reduction (ORC×3 full + UNDEAD cross-resonance)', () => {
+      // effectiveDef=65, defMult=1-65/265≈0.7547, damage=75
+      const result = calculateBattleDamage({ ...baseInput, synergyBonus: { defenseReducePct: 35 } });
+      expect(result.damage).toBe(75);
+    });
+
+    test('100% reduction eliminates DEF entirely', () => {
+      // effectiveDef=0, defMult=1.0, damage=100
+      const result = calculateBattleDamage({ ...baseInput, synergyBonus: { defenseReducePct: 100 } });
+      expect(result.damage).toBe(100);
+    });
+
+    test('over-100% is clamped to 100%', () => {
+      const result = calculateBattleDamage({ ...baseInput, synergyBonus: { defenseReducePct: 150 } });
+      expect(result.damage).toBe(100);
+    });
+
+    test('DEF=0 enemy is unaffected by reduction', () => {
+      // effectiveDef=0 regardless; defMult=1.0
+      const zeroDef = { ...defender, def: 0 };
+      const withReduce = calculateBattleDamage({ ...baseInput, defenderStats: zeroDef, synergyBonus: { defenseReducePct: 35 } });
+      const withoutReduce = calculateBattleDamage({ ...baseInput, defenderStats: zeroDef });
+      expect(withReduce.damage).toBe(withoutReduce.damage);
+      expect(withReduce.damage).toBe(100);
+    });
+  });
+
   test('applies element boosts, tribe synergy, weakness, and crit in one path', () => {
     const result = calculateBattleDamage({
       attackerStats: { ...attacker, critRate: 100, critDmg: 200 },

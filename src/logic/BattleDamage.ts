@@ -22,9 +22,10 @@ export interface BattleDamageResult {
 /**
  * BattleEngine / BattleCanvas 共通のダメージ式。
  *
- * baseDmg = ATK x power
- * defMult = 1 - DEF / (DEF + 200)
- * final   = baseDmg x defMult x (1 + elementBoost + synergyBoost) x resistance
+ * baseDmg      = ATK x power
+ * effectiveDef = DEF x (1 - defenseReducePct/100)   ← ORC シナジーで軽減
+ * defMult      = 1 - effectiveDef / (effectiveDef + 200)
+ * final        = baseDmg x defMult x (1 + elementBoost + synergyBoost) x resistance
  */
 export function calculateBattleDamage({
   attackerStats,
@@ -38,7 +39,9 @@ export function calculateBattleDamage({
 }: BattleDamageInput): BattleDamageResult {
   let damage = attackerStats.atk * powerMultiplier;
 
-  const defenderDef = Math.max(0, defenderStats.def);
+  const rawDef = Math.max(0, defenderStats.def);
+  const reducePct = Math.min(100, Math.max(0, synergyBonus.defenseReducePct ?? 0));
+  const defenderDef = rawDef * (1 - reducePct / 100);
   const defMult = 1 - defenderDef / (defenderDef + 200);
   damage *= defMult;
 

@@ -307,18 +307,16 @@ DB起点のBattleEngineでも欠落しないよう、`GameManager.startStage()` 
 
 ---
 
-### NM-5. 種族シナジー `defenseReducePct` が敵DEFの軽減に反映されていない
+### ✅ NM-5. 種族シナジー `defenseReducePct` が敵DEFの軽減に反映されていない（2026-05-24 完了）
 
 **問題：**  
 ORC シナジーなどで `defenseReducePct` が加算されるが、  
 `calculateBattleDamage()` でこの値を使った敵 DEF 軽減処理がない。
 
-**対応方針：**  
-`BattleDamage.ts` の DEF 計算前に `defenderDef *= (1 - defenseReducePct/100)` を適用する。
-
-**関連ファイル：**
-- `src/logic/BattleDamage.ts` — `calculateBattleDamage()` 内の DEF 計算部分
-- `src/logic/TribeSynergySystem.ts` — `defenseReducePct` 定義
+**完了内容：**
+- `docs/設計書/45_防御削減シナジー設計.md` に式・数値例・テスト仕様を追加。
+- `BattleDamage.ts` の DEF 計算を `effectiveDef = rawDef × (1 - clamp(reducePct,0,100)/100)` に修正（2行追加）。
+- `BattleDamage.test.ts` に defenseReducePct ブロック（7ケース）を追加。全 149 テスト通過。
 
 ---
 
