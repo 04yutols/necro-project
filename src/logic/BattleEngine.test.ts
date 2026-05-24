@@ -266,4 +266,45 @@ describe('BattleEngine', () => {
     expect(boss.shieldBroken).toBe(true);
     expect(logs.some((log) => log.action === 'BOSS_SUMMON')).toBe(true);
   });
+
+  test('SpiritCore atkMultiplier increases party monster follow-up damage', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      stats: { ...mockPlayer.stats, atk: 1, critRate: 0 },
+      currentEnergy: 0,
+    };
+    const targetBase: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+    };
+    const targetCore: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+    };
+    const baseMonster: MonsterData = {
+      ...mockTarget,
+      id: 'ally-base',
+      name: 'Base Ally',
+      stats: { ...mockTarget.stats, hp: 300, atk: 40, def: 10, critRate: 0 },
+    };
+    const coreMonster: MonsterData = {
+      ...baseMonster,
+      id: 'ally-core',
+      name: 'Core Ally',
+      spiritCore: {
+        id: 'core-2x',
+        name: '怨霊の霊核',
+        atkMultiplier: 2,
+      },
+    };
+
+    const baseLogs = new BattleEngine({ ...player }, [baseMonster]).simulateAction('PHYSICAL_ATTACK', targetBase);
+    const coreLogs = new BattleEngine({ ...player }, [coreMonster]).simulateAction('PHYSICAL_ATTACK', targetCore);
+    const baseDamage = baseLogs.find(log => log.action === 'MONSTER_ATTACK')?.damage ?? 0;
+    const coreDamage = coreLogs.find(log => log.action === 'MONSTER_ATTACK')?.damage ?? 0;
+
+    expect(baseDamage).toBe(40);
+    expect(coreDamage).toBe(80);
+    expect(coreLogs.find(log => log.action === 'MONSTER_ATTACK')?.description).toContain('怨霊の霊核');
+  });
 });

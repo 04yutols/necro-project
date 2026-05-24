@@ -50,6 +50,7 @@ export class GameManager {
 
     const monsterData = await prisma.monster.findMany({
       where: { id: { in: partyMonsterIds } },
+      include: { spiritCore: true },
     });
 
     const stageData = this.masterData.getStage(stageId);
@@ -98,7 +99,14 @@ export class GameManager {
           critRate: m.critRate ?? 0, critDmg: m.critDmg ?? 150,
           effectHit: m.effectHit ?? 0, effectRes: m.effectRes ?? 0,
         },
-        resistances: mMaster ? mMaster.resistances || {} : {}
+        resistances: mMaster ? mMaster.resistances || {} : {},
+        spiritCore: m.spiritCore ? {
+          id: m.spiritCore.id,
+          name: m.spiritCore.name,
+          element: m.spiritCore.element ?? undefined,
+          skillChangeId: m.spiritCore.skillChangeId ?? undefined,
+          atkMultiplier: m.spiritCore.atkMultiplier ?? 1,
+        } : undefined,
       };
     });
 

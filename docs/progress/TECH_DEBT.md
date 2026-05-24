@@ -283,19 +283,27 @@ BattleCanvas の `runEnemyTurn()` は `ENRAGE` しかチェックしていない
 
 ---
 
-### NM-4. 霊核（SpiritCore）の `atkMultiplier` がパーティモンスターの攻撃力に反映されていない
+### ✅ NM-4. 霊核（SpiritCore）の `atkMultiplier` がパーティモンスターの攻撃力に反映されていない
 
 **問題：**  
 `MonsterData.spiritCore` の `atkMultiplier` は DB から読み込まれているが、  
 BattleCanvas / BattleDamage でパーティモンスターのダメージ計算に使われていない。  
 霊核を装着しても攻撃力が変わらない。
 
-**対応方針：**  
-BattleCanvas のモンスター追撃処理でモンスターの ATK に `spiritCore.atkMultiplier` を掛ける。
+**対応済み：**
+`MonsterAttackSystem` にモンスター追撃用の攻撃プロファイルを追加し、
+`spiritCore.atkMultiplier` と霊核属性を BattleEngine / BattleCanvas の追撃へ接続した。
+DB起点のBattleEngineでも欠落しないよう、`GameManager.startStage()` で `spiritCore` relation をincludeする。
 
 **関連ファイル：**
 - `src/components/battle/BattleCanvas.tsx` — モンスター追撃処理
+- `src/logic/BattleEngine.ts` — 純粋戦闘シミュレーションの軍団追撃
+- `src/logic/MonsterAttackSystem.ts` — 霊核倍率・属性を含む追撃プロファイル
+- `src/logic/MonsterAttackSystem.test.ts` — 霊核倍率の単体テスト
+- `src/logic/BattleEngine.test.ts` — 追撃ダメージへの反映テスト
+- `src/logic/GameManager.ts` — DBから `spiritCore` relation を読み込み
 - `src/types/game.ts` — `SpiritCoreData.atkMultiplier`
+- `docs/設計書/48_霊核ATK倍率追撃反映設計.md` — 詳細設計
 
 ---
 

@@ -45,6 +45,7 @@ import {
   getReviveHp,
   shouldTriggerBossGimmick,
 } from './BossGimmickSystem';
+import { calculateMonsterAttackProfile } from './MonsterAttackSystem';
 
 /**
  * Necromance Brave Battle Engine
@@ -471,21 +472,24 @@ export class BattleEngine {
     monsters.forEach(monster => {
       if (!monster) return;
 
-      const monsterStats = { ...monster.stats };
-      if (player.isAwakened) {
-        monsterStats.atk = Math.floor(monsterStats.atk * 1.5);
-      }
-
-      const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(monsterStats, {}, target.stats, target.resistances, 1.0, 'NONE');
-      const shieldResult = this.applySpiritualShield(target, damage, 'NONE');
+      const attackProfile = calculateMonsterAttackProfile(monster, { awakened: player.isAwakened });
+      const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(
+        attackProfile.stats,
+        {},
+        target.stats,
+        target.resistances,
+        1.0,
+        attackProfile.element,
+      );
+      const shieldResult = this.applySpiritualShield(target, damage, attackProfile.element);
 
       this.enemyMaxHp[target.id] = this.enemyMaxHp[target.id] ?? target.stats.hp;
       target.stats.hp = Math.max(0, target.stats.hp - shieldResult.damage);
 
       const desc = shieldResult.wasShielded
         ? `${monster.name}の追撃！ 霊的防壁に阻まれた。`
-        : `${monster.name}の追撃！`;
-      this.addLog('MONSTER_ATTACK', monster.name, target.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, 'NONE', 'STRIKE');
+        : `${monster.name}の追撃！${attackProfile.spiritCoreName ? ` 霊核「${attackProfile.spiritCoreName}」が共鳴。` : ''}`;
+      this.addLog('MONSTER_ATTACK', monster.name, target.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, attackProfile.element, 'STRIKE');
     });
   }
 

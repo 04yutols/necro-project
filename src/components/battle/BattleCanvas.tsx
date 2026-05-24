@@ -16,6 +16,7 @@ import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { RewardService, type StageDropResult } from '../../services/RewardService';
 import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/StatSystem';
 import { calculateBattleDamage, type BattleDamageResult } from '../../logic/BattleDamage';
+import { calculateMonsterAttackProfile } from '../../logic/MonsterAttackSystem';
 import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
 import { applyAreaGimmickToPlayer, getAreaGimmickMeta, resolveStageAreaGimmick } from '../../logic/AreaGimmickSystem';
 import { calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilPlayer, type TurnOrderActor } from '../../logic/TurnOrderSystem';
@@ -2275,6 +2276,50 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     });
   }
 
+  function getLiveFollowUpTargetId(preferredTargetId: number): number | null {
+    const preferred = enemiesRef.current.find(enemy => enemy.id === preferredTargetId && enemy.hp > 0);
+    if (preferred) return preferred.id;
+    return enemiesRef.current.find(enemy => enemy.hp > 0)?.id ?? null;
+  }
+
+  function runPartyFollowUps(preferredTargetId: number): number {
+    const activeMonsters = party
+      .slice(0, 3)
+      .filter((monster): monster is MonsterData => Boolean(monster));
+    if (activeMonsters.length === 0) return 0;
+
+    let totalDamage = 0;
+    activeMonsters.forEach((monster, index) => {
+      const targetId = getLiveFollowUpTargetId(preferredTargetId);
+      if (targetId === null) return;
+      const target = enemiesRef.current.find(enemy => enemy.id === targetId);
+      if (!target) return;
+
+      const attackProfile = calculateMonsterAttackProfile(monster, { awakened: Boolean(player?.isAwakened) });
+      const result = calculateBattleDamage({
+        attackerStats: attackProfile.stats,
+        attackerElementBoosts: {},
+        defenderStats: toEnemyBattleStats(target),
+        defenderResistances: target.resistances ?? {},
+        powerMultiplier: 1.0,
+        element: attackProfile.element,
+        synergyBonus: battleSynergyBonus,
+      });
+      const colors = ['#f97316', '#06b6d4', '#a78bfa'];
+      const actualDamage = damageEnemy(targetId, result.damage, {
+        color: colors[index] ?? '#d8b4fe',
+        element: attackProfile.element,
+        crit: result.isCritical,
+        isWeakness: result.isWeakness,
+        isResisted: result.isResisted,
+      });
+      totalDamage += actualDamage;
+      addLog(`${monster.name}の追撃！${attackProfile.spiritCoreName ? ` 霊核「${attackProfile.spiritCoreName}」が共鳴。` : ''} ${target.name}に ${actualDamage}ダメージ！`);
+    });
+
+    return totalDamage;
+  }
+
   function damageEnemy(
     targetId: number,
     dmg: number,
@@ -2694,6 +2739,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       setTimeout(() => {
         addLog(`${enemy?.name}に 合計${totalDamage}ダメージ！`);
         applyAilmentToEnemy(tid, { element: attackElement, attackType: 'SLASH' });
+        runPartyFollowUps(tid);
         if (demonized) {
           applyDemonRiskFeedback('SLASH');
         }
@@ -2774,7 +2820,11 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         applyDemonRiskFeedback(skill.attackType);
       }
       // スキルはSP一部回復（通常攻撃より少ない）
-      setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(demonized ? 0 : 10); }, targets.length * targetInterval + speedMs * 0.3);
+      setTimeout(() => {
+        runPartyFollowUps(targets[0] ?? getTargetId());
+        setPhase('playerTurn');
+        endPlayerTurn(demonized ? 0 : 10);
+      }, targets.length * targetInterval + speedMs * 0.3);
     }, speedMs * 0.4);
   }
 
