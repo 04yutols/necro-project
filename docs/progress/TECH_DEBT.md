@@ -167,7 +167,7 @@ BattleCanvas は敵ターンで HP を減らすが、`playerHp <= 0` になっ�
 
 ---
 
-### NC-2. ボスギミック REVIVE / SUMMON_MINIONS が未実装
+### ✅ NC-2. ボスギミック REVIVE / SUMMON_MINIONS が未実装（2026-05-24 完了）
 
 **問題：**  
 `enemies.json` にボスの REVIVE（第2形態移行）と SUMMON_MINIONS が定義されているが、  
@@ -183,6 +183,13 @@ BattleEngine にはロジックがあるが BattleCanvas には接続されて�
 - `src/data/master/enemies.json` — REVIVE/SUMMON_MINIONS 定義
 - `src/components/battle/BattleCanvas.tsx` — `damageEnemy()` の HP 0 分岐
 - `src/logic/BattleEngine.ts` — `applyBossGimmickEffect()` に参考実装あり
+
+**完了内容：**
+- `docs/設計書/42_ボスギミックREVIVE_SUMMON設計.md` に REVIVE / SUMMON_MINIONS の詳細仕様、Canvas適用順、増援プール、テスト方針を追加。
+- `src/logic/BossGimmickSystem.ts` を追加し、発火済みキー、REVIVE HP、SUMMON 増援ID解決を共通化。
+- `BattleEngine` の REVIVE を HP0限定へ修正し、HP50%跨ぎで復活しないようにした。
+- `BattleCanvas` の `damageEnemy()` に、WAVE CLEAR 判定前の REVIVE / SUMMON_MINIONS 解決を接続。
+- `src/logic/BossGimmickSystem.test.ts` と `BattleEngine.test.ts` にギミック検証を追加。
 
 ---
 

@@ -18,6 +18,13 @@ import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/
 import { calculateBattleDamage, type BattleDamageResult } from '../../logic/BattleDamage';
 import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
 import { calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilPlayer, type TurnOrderActor } from '../../logic/TurnOrderSystem';
+import {
+  bossGimmickKey,
+  findReviveGimmick,
+  getReviveHp,
+  resolveSummonMinionIds,
+  shouldTriggerBossGimmick,
+} from '../../logic/BossGimmickSystem';
 import { applyPlayerDamage, isPlayerDead } from '../../logic/PlayerDefeat';
 import type { StageResultMeta } from '../../types/online';
 import {
@@ -1823,6 +1830,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const demonBurstIdRef = useRef(0);
   const enemyTurnSerialRef = useRef(0);
   const battleAvRef = useRef<BattleAvState>({ player: 0, enemies: {} });
+  const bossGimmickFiredRef = useRef<Set<string>>(new Set());
 
   // Build battle party from store
   const battleParty: BattlePartyMember[] = [
@@ -1916,6 +1924,115 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       .join(' → ');
   }
 
+  function getCanvasBossGimmickId(enemy: EnemyState) {
+    return enemy.sourceId ?? enemy.id;
+  }
+
+  function createSummonedEnemyState(enemyId: string, runtimeId: number, pos: EnemyState['pos']): EnemyState | null {
+    const master = ENEMIES[enemyId];
+    if (!master) return null;
+    const summoned = toEnemyState(master, 0, 1);
+    return {
+      ...summoned,
+      id: runtimeId,
+      pos,
+      targeted: false,
+      hit: false,
+      size: Math.min(summoned.size, 0.76),
+    };
+  }
+
+  function appendSummonedMinions(current: EnemyState[], boss: EnemyState, gimmick: BossGimmick): EnemyState[] {
+    const aliveCount = current.filter((enemy) => enemy.hp > 0).length;
+    const availableSlots = Math.max(0, 3 - aliveCount);
+    const minionIds = resolveSummonMinionIds(boss.sourceId, gimmick.value, availableSlots);
+
+    if (minionIds.length === 0) {
+      addLog(`【召喚】${boss.name}が増援を呼ぶが、戦場は既に満ちている。`);
+      return current;
+    }
+
+    const nextRuntimeId = Math.max(-1, ...current.map((enemy) => enemy.id)) + 1;
+    const positions: EnemyState['pos'][] = boss.pos === 'center'
+      ? ['left', 'right']
+      : ['right', 'left', 'center'].filter((pos) => pos !== boss.pos) as EnemyState['pos'][];
+    const summoned = minionIds
+      .map((enemyId, index) => createSummonedEnemyState(enemyId, nextRuntimeId + index, positions[index] ?? 'right'))
+      .filter((enemy): enemy is EnemyState => Boolean(enemy));
+
+    if (summoned.length === 0) return current;
+
+    summoned.forEach((enemy) => {
+      battleAvRef.current.enemies[enemy.id] = calculateInitialActionValue(getEnemyActionSpd(enemy));
+    });
+    setFlashColor('rgba(168,85,247,0.26)');
+    window.setTimeout(() => setFlashColor(null), 480);
+    addLog(`【召喚】${boss.name}が${summoned.map((enemy) => enemy.name).join(' / ')}を呼び出した！`);
+
+    return [
+      ...current.map((enemy) => enemy.id === boss.id ? { ...enemy, pos: 'center' as const } : enemy),
+      ...summoned,
+    ];
+  }
+
+  function resolveBossGimmicksAfterDamage(
+    current: EnemyState[],
+    targetBefore: EnemyState,
+    targetAfter: EnemyState,
+    options: { shieldJustBroken: boolean },
+  ): EnemyState[] {
+    if (!targetAfter.gimmicks?.length) return current;
+
+    const bossId = getCanvasBossGimmickId(targetAfter);
+    let next = current;
+    let runtimeTarget = targetAfter;
+    const maxHp = Math.max(1, targetAfter.maxHp);
+    const prevHpPct = (Math.max(0, targetBefore.hp) / maxHp) * 100;
+    const newHpPct = (Math.max(0, targetAfter.hp) / maxHp) * 100;
+
+    for (const gimmick of targetAfter.gimmicks) {
+      if (gimmick.effect !== 'SUMMON_MINIONS') continue;
+      const key = bossGimmickKey(bossId, gimmick);
+      if (bossGimmickFiredRef.current.has(key)) continue;
+      const shouldFire = shouldTriggerBossGimmick(gimmick, {
+        prevHpPct,
+        newHpPct,
+        turn: actionCountRef.current,
+        shieldBroken: options.shieldJustBroken,
+      });
+      if (!shouldFire) continue;
+
+      bossGimmickFiredRef.current.add(key);
+      next = appendSummonedMinions(next, runtimeTarget, gimmick);
+      runtimeTarget = next.find((enemy) => enemy.id === targetAfter.id) ?? runtimeTarget;
+    }
+
+    if (runtimeTarget.hp <= 0) {
+      const reviveGimmick = findReviveGimmick(targetAfter.gimmicks, bossId, bossGimmickFiredRef.current);
+      if (reviveGimmick) {
+        bossGimmickFiredRef.current.add(bossGimmickKey(bossId, reviveGimmick));
+        const revivedHp = getReviveHp(maxHp, reviveGimmick);
+        const restoredShield = runtimeTarget.maxShieldHp ?? 0;
+        next = next.map((enemy) => enemy.id === runtimeTarget.id ? {
+          ...enemy,
+          hp: revivedHp,
+          shieldHp: restoredShield,
+          shieldBroken: restoredShield <= 0,
+          hit: false,
+        } : enemy);
+        battleAvRef.current.enemies[runtimeTarget.id] = Math.min(
+          battleAvRef.current.enemies[runtimeTarget.id] ?? calculateInitialActionValue(getEnemyActionSpd(runtimeTarget)),
+          calculateInitialActionValue(getEnemyActionSpd(runtimeTarget)),
+        );
+        setFlashColor('rgba(239,68,68,0.32)');
+        window.setTimeout(() => setFlashColor(null), 640);
+        addLog(`【REVIVE】${runtimeTarget.name}が怨念を纏い第2形態へ移行！ HPと防壁が再生した。`);
+      }
+    }
+
+    return next;
+  }
+
   useEffect(() => {
     if (stageId) startTutorialBattlePhase(stageId);
   }, [stageId]);
@@ -1930,6 +2047,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     waveIndexRef.current = 0;
     enemiesRef.current = firstEnemies;
     battleAvRef.current = createInitialAvState(firstEnemies);
+    bossGimmickFiredRef.current = new Set();
     playerHpRef.current = playerMaxHp;
     setPlayerHp(playerMaxHp);
     setWaveIndex(0);
@@ -2028,6 +2146,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       const nextEnemies = cloneEnemies(nextWave.enemies);
       enemiesRef.current = nextEnemies;
       battleAvRef.current = createInitialAvState(nextEnemies);
+      bossGimmickFiredRef.current = new Set();
       setWaveIndex(nextIndex);
       setEnemies(nextEnemies);
       setPhase('playerTurn');
@@ -2118,6 +2237,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     let finalDmg = dmg;
     let nextShieldHp = target?.shieldHp ?? 0;
     let shieldBroken = target?.shieldBroken ?? false;
+    let didBreakShield = false;
     const hasShield = target && (target.maxShieldHp ?? 0) > 0 && (target.shieldHp ?? 0) > 0 && !target.shieldBroken;
 
     if (hasShield && target && !opts.ignoreShield) {
@@ -2128,6 +2248,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         nextShieldHp = Math.max(0, (target.shieldHp ?? 0) - shieldDamage);
         if (nextShieldHp <= 0) {
           shieldBroken = true;
+          didBreakShield = true;
           finalDmg = Math.round(finalDmg * 1.45);
           addLog(`◇ 霊魂砕き！ ${target.name}の防壁が崩れた。`);
           setSoul(prev => Math.min(100, prev + 30));
@@ -2151,12 +2272,19 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     spawnFloat(pos.x, pos.y, finalDmg, { crit: isCrit, color: opts.color || '#fff' });
     totalDamageRef.current += Math.max(0, finalDmg);
     setEnemies(prev => {
-      const next = prev.map(e => e.id === targetId ? {
+      const targetBefore = prev.find(e => e.id === targetId);
+      let next = prev.map(e => e.id === targetId ? {
         ...e,
         hp: Math.max(0, e.hp - finalDmg),
         shieldHp: nextShieldHp,
         shieldBroken,
       } : e);
+      const targetAfter = next.find(e => e.id === targetId);
+      if (targetBefore && targetAfter) {
+        next = resolveBossGimmicksAfterDamage(next, targetBefore, targetAfter, {
+          shieldJustBroken: didBreakShield,
+        });
+      }
       enemiesRef.current = next;
       if (next.every(e => e.hp <= 0)) {
         window.setTimeout(resolveWaveClear, 380);

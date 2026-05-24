@@ -39,6 +39,12 @@ import {
   type WeaponPassiveResult,
 } from './WeaponPassive';
 import { calculateBattleDamage, type BattleDamageResult } from './BattleDamage';
+import {
+  bossGimmickKey,
+  findReviveGimmick,
+  getReviveHp,
+  shouldTriggerBossGimmick,
+} from './BossGimmickSystem';
 
 /**
  * Necromance Brave Battle Engine
@@ -328,11 +334,9 @@ export class BattleEngine {
     this.checkBossGimmicks(target, prevHpPct, newHpPct);
 
     if (target.stats.hp <= 0) {
-      const reviveGimmick = target.gimmicks?.find(
-        (g) => g.effect === 'REVIVE' && !this.firedGimmicks.has(`${target.id}:HP_BELOW_50:REVIVE`)
-      );
+      const reviveGimmick = findReviveGimmick(target.gimmicks, target.id, this.firedGimmicks);
       if (reviveGimmick) {
-        this.firedGimmicks.add(`${target.id}:HP_BELOW_50:REVIVE`);
+        this.firedGimmicks.add(bossGimmickKey(target.id, reviveGimmick));
         this.applyBossGimmickEffect(target, reviveGimmick);
       }
     }
@@ -568,15 +572,12 @@ export class BattleEngine {
       const key = `${boss.id}:${g.trigger}:${g.effect}`;
       if (this.firedGimmicks.has(key)) continue;
 
-      const shouldFire = (() => {
-        switch (g.trigger) {
-          case 'HP_BELOW_50':     return prevHpPct > 50 && newHpPct <= 50;
-          case 'TURN_3':          return this.state.turn === 3;
-          case 'ON_SHIELD_BREAK': return boss.shieldBroken === true;
-          case 'ON_REVIVE':       return false;
-          default:                return false;
-        }
-      })();
+      const shouldFire = shouldTriggerBossGimmick(g, {
+        prevHpPct,
+        newHpPct,
+        turn: this.state.turn,
+        shieldBroken: boss.shieldBroken,
+      });
 
       if (!shouldFire) continue;
       this.firedGimmicks.add(key);
@@ -608,12 +609,12 @@ export class BattleEngine {
       }
 
       case 'REVIVE':
-        boss.stats = { ...boss.stats, hp: Math.floor((this.enemyMaxHp[boss.id] ?? boss.stats.hp) * 0.5) };
+        boss.stats = { ...boss.stats, hp: getReviveHp(this.enemyMaxHp[boss.id] ?? boss.stats.hp, g) };
         boss.shieldBroken = false;
         boss.shieldHp = boss.maxShieldHp ?? 0;
         for (const g2 of boss.gimmicks ?? []) {
           if (g2.trigger === 'ON_REVIVE') {
-            this.firedGimmicks.delete(`${boss.id}:${g2.trigger}:${g2.effect}`);
+            this.firedGimmicks.delete(bossGimmickKey(boss.id, g2));
           }
         }
         this.addLog('BOSS_REVIVE', boss.name, boss.name,

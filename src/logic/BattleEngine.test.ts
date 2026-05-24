@@ -143,4 +143,71 @@ describe('BattleEngine', () => {
     expect(attackLog?.description).toContain('霊魂砕き');
     expect(player.currentEnergy).toBe(133);
   });
+
+  test('REVIVE fires only at HP 0 and restores boss to second phase HP', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      stats: { ...mockPlayer.stats, atk: 1000, critRate: 0 },
+      currentEnergy: 0,
+    };
+    const boss: MonsterData = {
+      ...mockTarget,
+      id: 'revive-boss',
+      name: 'Revive Boss',
+      tier: 'BOSS',
+      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+      gimmicks: [{ trigger: 'HP_BELOW_50', effect: 'REVIVE', value: 1 }],
+    };
+
+    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', boss);
+
+    expect(boss.stats.hp).toBe(500);
+    expect(logs.some((log) => log.action === 'BOSS_REVIVE')).toBe(true);
+  });
+
+  test('REVIVE does not fire just because boss crosses below 50 percent HP', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      stats: { ...mockPlayer.stats, atk: 600, critRate: 0 },
+      currentEnergy: 0,
+    };
+    const boss: MonsterData = {
+      ...mockTarget,
+      id: 'revive-boss-threshold',
+      name: 'Revive Boss',
+      tier: 'BOSS',
+      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+      gimmicks: [{ trigger: 'HP_BELOW_50', effect: 'REVIVE', value: 1 }],
+    };
+
+    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', boss);
+
+    expect(boss.stats.hp).toBe(400);
+    expect(logs.some((log) => log.action === 'BOSS_REVIVE')).toBe(false);
+  });
+
+  test('SUMMON_MINIONS fires when spiritual shield breaks', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      currentEnergy: 100,
+      stats: { ...mockPlayer.stats, critRate: 0 },
+    };
+    const boss: MonsterData = {
+      ...mockTarget,
+      id: 'summon-boss',
+      name: 'Summon Boss',
+      tier: 'BOSS',
+      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+      shieldHp: 20,
+      maxShieldHp: 20,
+      weaknesses: ['FIRE'],
+      resistances: { FIRE: -30 },
+      gimmicks: [{ trigger: 'ON_SHIELD_BREAK', effect: 'SUMMON_MINIONS', value: 2 }],
+    };
+
+    const logs = new BattleEngine(player, []).simulateAction('MAGIC_SKILL', boss, 'skill_mage_1');
+
+    expect(boss.shieldBroken).toBe(true);
+    expect(logs.some((log) => log.action === 'BOSS_SUMMON')).toBe(true);
+  });
 });
