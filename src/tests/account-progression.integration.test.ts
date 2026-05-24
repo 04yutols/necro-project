@@ -103,6 +103,8 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(created.data.player.necroBaseStatsBonus).toBe(created.data.necroStatus.baseStatsBonus);
     expect(created.data.player.currentJobId).toBe('warrior');
     expect(created.data.player.jobs).toEqual([{ jobId: 'warrior', level: 1, exp: 0 }]);
+    expect(created.data.player.currentEnergy).toBe(40);
+    expect(created.data.player.maxEnergy).toBe(100);
     expect(created.data.inventoryItems).toHaveLength(1);
     expect(created.data.inventoryItems[0].type).toBe('WEAPON');
     expect(created.data.inventoryItems[0].name).toBe('骨砕きの短剣');
@@ -118,6 +120,7 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(changedToMage.data.player.currentJobId).toBe('mage');
     expect(changedToMage.data.player.jobs).toContainEqual({ jobId: 'mage', level: 1, exp: 0 });
     expect(changedToMage.data.player.maxEnergy).toBe(80);
+    expect(changedToMage.data.player.currentEnergy).toBe(48);
 
     const persistedMage = await prisma.character.findUnique({
       where: { id: created.data.player.id },

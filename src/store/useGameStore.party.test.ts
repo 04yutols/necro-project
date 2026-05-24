@@ -40,4 +40,11 @@ describe('useGameStore party formation actions', () => {
     expect(useGameStore.getState().consumeInventoryItem('underworld_potion')).toBe(true);
     expect(useGameStore.getState().inventoryItems.find(item => item.id === 'underworld_potion')?.quantity).toBe(4);
   });
+
+  test('initializes player SP from current job energy curve', () => {
+    const player = useGameStore.getState().player;
+
+    expect(player?.currentEnergy).toBe(40);
+    expect(player?.maxEnergy).toBe(100);
+  });
 });

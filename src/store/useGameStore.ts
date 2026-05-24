@@ -3,6 +3,7 @@ import jobsData from '../data/master/jobs.json';
 import itemsData from '../data/master/items.json';
 import demonFormsData from '../data/master/demonForms.json';
 import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
+import { calculateEnergyState } from '../logic/EnergySystem';
 import { DEMON_ACTION_LIMIT, clampDemonGauge } from '../logic/DemonizationSystem';
 import { isResidueSlotCompatible } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
@@ -516,15 +517,26 @@ export const useGameStore = create<GameState>((set) => ({
   }),
   addExp: (amount) => set((state) => {
     if (!state.player) return { player: null };
+    let activeJobLevel = 1;
     const newJobs = state.player.jobs.map(j => {
       if (j.jobId === state.player?.currentJobId) {
         const newExp = j.exp + amount;
         const newLevel = Math.floor(newExp / 100) + 1; // 簡易レベルアップロジック
+        activeJobLevel = newLevel;
         return { ...j, exp: newExp, level: newLevel };
       }
       return j;
     });
-    return { player: { ...state.player, jobs: newJobs } };
+    const activeJob = JOBS[state.player.currentJobId];
+    const energyState = calculateEnergyState(activeJob, activeJobLevel);
+    return {
+      player: {
+        ...state.player,
+        jobs: newJobs,
+        maxEnergy: energyState.maxEnergy,
+        currentEnergy: Math.min(state.player.currentEnergy, energyState.maxEnergy),
+      }
+    };
   }),
   addGold: (amount) => set((state) => {
     if (!state.player) return { player: null };
@@ -553,7 +565,8 @@ export const useGameStore = create<GameState>((set) => ({
       ? state.player.jobs
       : [...state.player.jobs, { jobId, level: 1, exp: 0 }];
 
-    const nextMaxEnergy = nextJob.energyCurve?.baseMaxEnergy ?? state.player.maxEnergy;
+    const nextJobLevel = Math.max(1, nextJobs.find(job => job.jobId === jobId)?.level ?? 1);
+    const energyState = calculateEnergyState(nextJob, nextJobLevel);
     const nextPlayer = withDerivedElementBoosts({
         ...state.player,
         currentJobId: jobId,
@@ -561,8 +574,8 @@ export const useGameStore = create<GameState>((set) => ({
         baseStats,
         stats: calculateJobAdjustedStats(baseStats, nextJob),
         jobs: nextJobs,
-        maxEnergy: nextMaxEnergy,
-        currentEnergy: Math.min(state.player.currentEnergy, nextMaxEnergy),
+        maxEnergy: energyState.maxEnergy,
+        currentEnergy: Math.min(state.player.currentEnergy, energyState.maxEnergy),
       }, state.equippedResidueSlots);
 
     return {
@@ -736,8 +749,8 @@ export const useGameStore = create<GameState>((set) => ({
       clearedStages: [],
       gold: 50000,
       statusEffects: [],
-      currentEnergy: 0,
-      maxEnergy: 100,
+      currentEnergy: calculateEnergyState(JOBS.warrior, 1).currentEnergy,
+      maxEnergy: calculateEnergyState(JOBS.warrior, 1).maxEnergy,
       elementDmgBoosts: {},
     },
     necroStatus: {

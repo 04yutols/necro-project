@@ -69,6 +69,8 @@ export interface JobData {
     baseMaxEnergy: number; // スキルSPの最大値
     energyRegen: number;   // 通常攻撃1回ごとのSP回復量
     ultimateCost: number;  // 奥義コスト（未使用・将来用）
+    initialSpPct: number;  // バトル開始時SP%
+    spGrowthPerLevel: number; // レベルごとの最大SP成長値
   };
   growthModifiers?: JobGrowthModifiers;
   levelBonuses: Record<string, Partial<PassiveBonuses>>;
@@ -250,7 +252,7 @@ export interface CharacterData {
   // エネルギーシステム（ランタイム状態 — DB非保存）
   // スキルポイント（バトルランタイム）— 魔神化ゲージとは別リソース
   currentEnergy: number; // 現在SP：0から溜まる、スキル使用で消費
-  maxEnergy:     number; // 最大SP：job.energyCurve.baseMaxEnergy が設定値
+  maxEnergy:     number; // 最大SP：job.energyCurve.baseMaxEnergy + 成長値
   // 属性ダメージ加成（装備・残滓から集計）
   elementDmgBoosts: Partial<Record<ElementType, number>>;
 }

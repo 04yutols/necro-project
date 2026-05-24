@@ -46,6 +46,7 @@ import {
   shouldTriggerBossGimmick,
 } from './BossGimmickSystem';
 import { calculateMonsterAttackProfile } from './MonsterAttackSystem';
+import { getEnergyRegen } from './EnergySystem';
 
 /**
  * Necromance Brave Battle Engine
@@ -249,7 +250,8 @@ export class BattleEngine {
     let actionName = '攻撃';
     let element: ElementType = 'NONE';
     let attackType: SkillAttackType = 'SLASH';
-    let energyGain = 20;
+    const currentJob = this.masterData.getJob(player.currentJobId);
+    let energyGain = getEnergyRegen(currentJob);
     let skillData = null;
 
     if (actionType === 'PHYSICAL_ATTACK') {

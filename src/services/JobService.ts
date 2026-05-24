@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { CharacterData, UserJobState } from '../types/game';
 import { MasterDataService } from './MasterDataService';
 import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
+import { calculateEnergyState } from '../logic/EnergySystem';
 
 /**
  * 職業に関するビジネスロジックを担当するサービス (GDD-004)
@@ -34,8 +35,12 @@ export class JobService {
       character.currentJobId = nextJobId;
       character.category = jobData.category;
       const baseStats = character.baseStats ?? character.stats;
+      const nextLevel = Math.max(1, character.jobs.find(job => job.jobId === nextJobId)?.level ?? 1);
+      const energyState = calculateEnergyState(jobData, nextLevel);
       character.baseStats = baseStats;
       character.stats = calculateJobAdjustedStats(baseStats, jobData);
+      character.maxEnergy = energyState.maxEnergy;
+      character.currentEnergy = Math.min(character.currentEnergy, energyState.maxEnergy);
       return;
     }
 
@@ -99,6 +104,9 @@ export class JobService {
   private toCharacterDataForUnlock(character: any): CharacterData {
     const currentJobId = character.currentJobId ?? 'warrior';
     const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior')!;
+    const jobs = (character.jobs ?? []).map((job: UserJobState) => ({ jobId: job.jobId, level: job.level, exp: job.exp }));
+    const currentJobLevel = Math.max(1, jobs.find((job: { jobId: string; level: number; exp: number }) => job.jobId === currentJobId)?.level ?? 1);
+    const energyState = calculateEnergyState(currentJob, currentJobLevel);
     const baseStats = {
       hp: character.hp,
       atk: character.atk,
@@ -127,12 +135,12 @@ export class JobService {
       },
       equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
       baseResistances: {},
-      jobs: (character.jobs ?? []).map((job: UserJobState) => ({ jobId: job.jobId, level: job.level, exp: job.exp })),
+      jobs,
       isAwakened: false,
       clearedStages: character.clearedStages ?? [],
       gold: character.gold ?? 0,
-      currentEnergy: 0,
-      maxEnergy: currentJob.energyCurve?.baseMaxEnergy ?? 100,
+      currentEnergy: energyState.currentEnergy,
+      maxEnergy: energyState.maxEnergy,
       elementDmgBoosts: {},
     };
   }

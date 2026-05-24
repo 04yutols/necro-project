@@ -78,6 +78,20 @@ describe('BattleEngine', () => {
     expect(mockPlayer.currentEnergy).toBe(20); // 0 + 20
   });
 
+  test('normal attack SP gain uses current job energyRegen', () => {
+    const roguePlayer: CharacterData = {
+      ...mockPlayer,
+      currentJobId: 'rogue',
+      currentEnergy: 0,
+      maxEnergy: 90,
+    };
+    const engine = new BattleEngine(roguePlayer, []);
+
+    engine.simulateAction('PHYSICAL_ATTACK', mockTarget);
+
+    expect(roguePlayer.currentEnergy).toBe(22);
+  });
+
   test('Element damage boosts increase matching elemental skill damage', () => {
     const basePlayer: CharacterData = {
       ...mockPlayer,

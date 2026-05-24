@@ -4,6 +4,7 @@ import { RewardService } from '../services/RewardService';
 import { MasterDataService } from '../services/MasterDataService';
 import { BattleEngine } from './BattleEngine';
 import { calculateJobGrowthIncrements } from './JobGrowthSystem';
+import { calculateEnergyState } from './EnergySystem';
 import { prisma } from '../lib/prisma';
 import { CharacterData, MonsterData } from '../types/game';
 
@@ -57,11 +58,16 @@ export class GameManager {
     if (!stageData) throw new Error("Stage not found");
 
     // CharacterData 型への変換
+    const currentJobId = char.currentJobId || 'warrior';
+    const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior');
+    const jobs = char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp }));
+    const currentJobLevel = Math.max(1, jobs.find((job: any) => job.jobId === currentJobId)?.level ?? 1);
+    const energyState = calculateEnergyState(currentJob, currentJobLevel);
     const player: CharacterData = {
       id: char.id,
       name: char.name,
-      currentJobId: char.currentJobId || 'warrior',
-      category: (this.masterData.getJob(char.currentJobId || 'warrior')?.category as any) || 'PHYSICAL',
+      currentJobId,
+      category: (currentJob?.category as any) || 'PHYSICAL',
       necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
       stats: {
         hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
@@ -78,12 +84,12 @@ export class GameManager {
       },
       baseResistances: {},
       equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
-      jobs: char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
+      jobs,
       isAwakened: false,
       clearedStages: char.clearedStages,
       gold: (char as any).gold ?? 0,
-      currentEnergy: 0,
-      maxEnergy: 100,
+      currentEnergy: energyState.currentEnergy,
+      maxEnergy: energyState.maxEnergy,
       elementDmgBoosts: {},
     };
 
@@ -189,11 +195,16 @@ export class GameManager {
   }
 
   private convertToCharacterData(char: any): CharacterData {
+    const currentJobId = char.currentJobId || 'warrior';
+    const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior');
+    const jobs = char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp }));
+    const currentJobLevel = Math.max(1, jobs.find((job: any) => job.jobId === currentJobId)?.level ?? 1);
+    const energyState = calculateEnergyState(currentJob, currentJobLevel);
     return {
       id: char.id,
       name: char.name,
-      currentJobId: char.currentJobId || 'warrior',
-      category: (this.masterData.getJob(char.currentJobId || 'warrior')?.category as any) || 'PHYSICAL',
+      currentJobId,
+      category: (currentJob?.category as any) || 'PHYSICAL',
       necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
       stats: {
         hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
@@ -210,12 +221,12 @@ export class GameManager {
       },
       baseResistances: {},
       equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
-      jobs: char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
+      jobs,
       isAwakened: false,
       clearedStages: char.clearedStages || [],
       gold: (char as any).gold ?? 0,
-      currentEnergy: 0,
-      maxEnergy: 100,
+      currentEnergy: energyState.currentEnergy,
+      maxEnergy: energyState.maxEnergy,
       elementDmgBoosts: {},
     };
   }

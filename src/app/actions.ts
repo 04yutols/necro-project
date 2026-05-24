@@ -10,6 +10,7 @@ import { RankingService } from '@/services/RankingService';
 import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventService';
 import { JobService } from '@/services/JobService';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
+import { calculateEnergyState } from '@/logic/EnergySystem';
 import { calculateJobAdjustedStats } from '@/logic/JobSystem';
 import { calculateJobGrowthIncrements } from '@/logic/JobGrowthSystem';
 import type {
@@ -290,6 +291,9 @@ function toServerUser(sessionUser: { id?: string; name?: string | null; email?: 
 function toServerGameData(character: any, inventoryItems: any[], inventoryMonsters: any[]): ServerGameData {
   const currentJobId = character.currentJobId ?? 'warrior';
   const currentJob = getJobData(currentJobId);
+  const jobs = (character.jobs ?? []).map((job: any) => ({ jobId: job.jobId, level: job.level, exp: job.exp }));
+  const currentJobLevel = Math.max(1, jobs.find((job: { jobId: string; level: number; exp: number }) => job.jobId === currentJobId)?.level ?? 1);
+  const energyState = calculateEnergyState(currentJob, currentJobLevel);
   const baseStats = toBaseStats(character);
   const equippedResidueSlots = [
     toResidueSlot(character.equippedResidue0),
@@ -326,12 +330,12 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
       acc2: character.equipAcc2 ? toItemData(character.equipAcc2) : null,
     },
     baseResistances: {},
-    jobs: (character.jobs ?? []).map((job: any) => ({ jobId: job.jobId, level: job.level, exp: job.exp })),
+    jobs,
     isAwakened: false,
     clearedStages: character.clearedStages ?? [],
     gold: character.gold ?? 50000,
-    currentEnergy: 0,
-    maxEnergy: currentJob.energyCurve?.baseMaxEnergy ?? 100,
+    currentEnergy: energyState.currentEnergy,
+    maxEnergy: energyState.maxEnergy,
     elementDmgBoosts: {},
   };
   const monsters = inventoryMonsters.map(toMonsterData);

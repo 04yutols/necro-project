@@ -16,6 +16,7 @@ import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { RewardService, type StageDropResult } from '../../services/RewardService';
 import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/StatSystem';
 import { calculateBattleDamage, type BattleDamageResult } from '../../logic/BattleDamage';
+import { calculateInitialEnergy } from '../../logic/EnergySystem';
 import { calculateMonsterAttackProfile } from '../../logic/MonsterAttackSystem';
 import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
 import { applyAreaGimmickToPlayer, getAreaGimmickMeta, resolveStageAreaGimmick } from '../../logic/AreaGimmickSystem';
@@ -2098,7 +2099,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setWaveIndex(0);
     setEnemies(firstEnemies);
     setSoul(0);
-    updateEnergy(0); // SPもバトル開始時に0にリセット
+    const initialEnergy = calculateInitialEnergy(currentJobData, currentJobLevel);
+    updateEnergy(initialEnergy);
     setPhase('playerTurn');
     setDemonized(false);
     setDemonActionsRemaining(0);
@@ -2114,9 +2116,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setLog([
       `戦闘開始！${battleWaves[0].title}へ侵攻する。`,
       ...(areaGimmick !== 'NONE' ? [`エリアギミック発生：${areaGimmickMeta.label} — ${areaGimmickMeta.description}`] : []),
-      `${battleWaves[0].label} 開始。骸骨騎士のターン。`,
+      `${battleWaves[0].label} 開始。骸骨騎士のターン。SP ${initialEnergy}/${player?.maxEnergy ?? currentJobData.energyCurve?.baseMaxEnergy ?? 100} で開戦。`,
     ]);
-  }, [areaGimmick, areaGimmickMeta.description, areaGimmickMeta.label, battleWaves, playerMaxHp, updateEnergy]);
+  }, [areaGimmick, areaGimmickMeta.description, areaGimmickMeta.label, battleWaves, currentJobData, currentJobLevel, player?.maxEnergy, playerMaxHp, updateEnergy]);
 
   useEffect(() => { waveIndexRef.current = waveIndex; }, [waveIndex]);
   useEffect(() => { enemiesRef.current = enemies; }, [enemies]);
