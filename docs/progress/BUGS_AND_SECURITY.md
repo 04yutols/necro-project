@@ -368,21 +368,30 @@ private getMutableStats(player: CharacterData): BaseStats {
 
 ---
 
-### 🟡 BUG-8: プレイヤーが麻痺しても `skipAction` が上位で無視される可能性
+### ✅ BUG-8: プレイヤーが麻痺しても `skipAction` が上位で無視される可能性
 
-**ファイル:** `src/logic/BattleEngine.ts:116–123`
+**ファイル:** `src/logic/BattleEngine.ts:116–145`
 
 ```typescript
 const playerStatus = this.processRuntimeStatus(player.name, player.stats, player.statusEffects);
 player.statusEffects = playerStatus.effects;
 if (playerStatus.skipAction) {
   this.addLog('STATUS_SKIP', ...);
-  this.updateState();
-  return this.logs;
+  playerActionSkipped = true;
 }
 ```
 
 プレイヤーが行動スキップになると `return this.logs` で早期終了するが、この後の「モンスターの追撃フェーズ」と「敵の反撃フェーズ」が実行されない。ゲームデザインによっては敵の反撃は発生すべきかもしれない。
+
+**修正:** `skipAction` はプレイヤー行動と行動後追撃だけを止め、敵の反撃フェーズとターン進行は継続するようにした。
+
+**対応内容:**
+- `simulateAction()` に `playerActionSkipped` フラグを追加。
+- 麻痺/凍結などで行動不能の場合、`processPlayerAction()` と `processMonsterActions()` をスキップ。
+- 敵反撃 `processEnemyCounterAttack()` は通常通り実行。
+- `BattleEngine.test.ts` に麻痺時の `STATUS_SKIP`、攻撃なし、追撃なし、敵反撃あり、SP増加なしの回帰テストを追加。
+
+**設計:** `docs/設計書/60_BUG8_状態異常行動スキップターン進行設計.md`
 
 ---
 
@@ -483,3 +492,4 @@ if (typeof characterOrId !== 'string') {
 | BUG-5 | ✅ | `StatusAilmentSystem.ts:199` | BURN の免疫チェック欠落 |
 | BUG-6 | ✅ | `BattleEngine.ts` | 敵HPオブジェクトの直接書き換え |
 | BUG-7 | ✅ | `BattleEngine.ts:826` | getMutableStats の any キャスト削除 |
+| BUG-8 | ✅ | `BattleEngine.ts:116` | 状態異常行動スキップ時も敵反撃を継続 |

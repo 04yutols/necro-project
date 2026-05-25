@@ -123,6 +123,7 @@ export class BattleEngine {
 
     // 2. 状態異常のターン開始処理 (docs/設計書/17)
     const isDemonActive = this.demonState?.isDemonMode ?? false;
+    let playerActionSkipped = false;
     if (isDemonActive && isDemonStatusImmune(this.demonState!)) {
       // 魔神化中は状態異常をスキップ
     } else {
@@ -130,18 +131,19 @@ export class BattleEngine {
       player.statusEffects = playerStatus.effects;
       if (this.isPlayerDefeated()) return this.logs;
       if (playerStatus.skipAction) {
+        playerActionSkipped = true;
         this.addLog('STATUS_SKIP', player.name, player.name, `${player.name}は状態異常で行動できない。`);
-        this.updateState();
-        return this.logs;
       }
     }
 
     // 3. プレイヤー行動 (GDD-003)
-    this.processPlayerAction(actionType, target, skillId);
-    if (this.isPlayerDefeated()) return this.logs;
+    if (!playerActionSkipped) {
+      this.processPlayerAction(actionType, target, skillId);
+      if (this.isPlayerDefeated()) return this.logs;
 
-    // 4. 軍団の追撃・シナジー (GDD-005)
-    this.processMonsterActions(target);
+      // 4. 軍団の追撃・シナジー (GDD-005)
+      this.processMonsterActions(target);
+    }
 
     // 5. 敵の反撃 (docs/設計書/26)
     this.processEnemyCounterAttack(target);

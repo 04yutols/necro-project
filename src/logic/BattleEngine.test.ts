@@ -262,6 +262,36 @@ describe('BattleEngine', () => {
     expect(logs.find(log => log.action === 'PLAYER_DEFEATED')?.description).toContain('状態異常');
   });
 
+  test('paralysis skip loses only the player action while enemy counterattack still resolves', () => {
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.25);
+    const player = createPlayer(
+      { hp: 200, atk: 50, def: 0, critRate: 0 },
+      {
+        statusEffects: [{
+          type: 'PARALYSIS',
+          remainingTurns: 2,
+          stackCount: 1,
+        }],
+      },
+    );
+    const enemy = createEnemy({ hp: 500, atk: 60, def: 10 });
+
+    try {
+      const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+      expect(logs.some(log => log.action === 'AILMENT_SKIP')).toBe(true);
+      expect(logs.some(log => log.action === 'STATUS_SKIP')).toBe(true);
+      expect(logs.some(log => log.action === 'PHYSICAL_ATTACK')).toBe(false);
+      expect(logs.some(log => log.action === 'MONSTER_ATTACK')).toBe(false);
+      expect(logs.some(log => log.action === 'ENEMY_ATTACK')).toBe(true);
+      expect(player.stats.hp).toBeLessThan(200);
+      expect(player.currentEnergy).toBe(0);
+      expect(player.statusEffects?.[0]?.remainingTurns).toBe(1);
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
+
   test('Spiritual shield heavily reduces non-weak attacks', () => {
     const player: CharacterData = {
       ...mockPlayer,
