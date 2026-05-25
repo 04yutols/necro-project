@@ -60,6 +60,7 @@ export class BattleEngine {
   private synergyBonus: SynergyBonus;
   private playerInitialMaxHp: number;
   private monsterCurrentHp: Record<string, number> = {};
+  private enemyCurrentHp: Record<string, number> = {};
   private firedGimmicks: Set<string> = new Set();
   private enemyMaxHp: Record<string, number> = {};
   private demonState: DemonRuntimeState | null = null;
@@ -78,6 +79,8 @@ export class BattleEngine {
       turn: 1,
       areaGimmick,
       monsterCurrentHp: {},
+      enemyCurrentHp: {},
+      enemyMaxHp: {},
     };
     this.masterData = MasterDataService.getInstance();
     this.synergyBonus = calculatePartyTribeSynergy(
@@ -90,6 +93,8 @@ export class BattleEngine {
       if (m) this.monsterCurrentHp[m.id] = m.stats.hp;
     }
     this.state.monsterCurrentHp = this.monsterCurrentHp;
+    this.state.enemyCurrentHp = this.enemyCurrentHp;
+    this.state.enemyMaxHp = this.enemyMaxHp;
   }
 
   /**
@@ -189,8 +194,7 @@ export class BattleEngine {
       );
       const shieldResult = this.applySpiritualShield(t, damage, ult.damage.element);
 
-      this.enemyMaxHp[t.id] = this.enemyMaxHp[t.id] ?? t.stats.hp;
-      t.stats.hp = Math.max(0, t.stats.hp - shieldResult.damage);
+      this.applyDamageToEnemy(t, shieldResult.damage);
 
       this.addLog(
         'DEMON_ULTIMATE',
@@ -346,14 +350,10 @@ export class BattleEngine {
     }
 
     // HP 変化 + ボスギミックチェック
-    this.enemyMaxHp[target.id] = this.enemyMaxHp[target.id] ?? target.stats.hp;
-    const maxHp = this.enemyMaxHp[target.id];
-    const prevHpPct = maxHp > 0 ? (target.stats.hp / maxHp) * 100 : 100;
-    target.stats.hp = Math.max(0, target.stats.hp - shieldResult.damage);
-    const newHpPct = maxHp > 0 ? (target.stats.hp / maxHp) * 100 : 0;
-    this.checkBossGimmicks(target, prevHpPct, newHpPct);
+    const hpChange = this.applyDamageToEnemy(target, shieldResult.damage);
+    this.checkBossGimmicks(target, hpChange.prevHpPct, hpChange.newHpPct);
 
-    if (target.stats.hp <= 0) {
+    if (hpChange.nextHp <= 0) {
       const reviveGimmick = findReviveGimmick(target.gimmicks, target.id, this.firedGimmicks);
       if (reviveGimmick) {
         this.firedGimmicks.add(bossGimmickKey(target.id, reviveGimmick));
@@ -422,7 +422,7 @@ export class BattleEngine {
     target: MonsterData,
   ): void {
     if (result.bonusDamage) {
-      target.stats.hp = Math.max(0, target.stats.hp - result.bonusDamage);
+      this.applyDamageToEnemy(target, result.bonusDamage);
     }
     if (result.demonGaugeDelta) {
       this.addDemonGauge(result.demonGaugeDelta);
@@ -503,8 +503,7 @@ export class BattleEngine {
       );
       const shieldResult = this.applySpiritualShield(target, damage, attackProfile.element);
 
-      this.enemyMaxHp[target.id] = this.enemyMaxHp[target.id] ?? target.stats.hp;
-      target.stats.hp = Math.max(0, target.stats.hp - shieldResult.damage);
+      this.applyDamageToEnemy(target, shieldResult.damage);
 
       const desc = shieldResult.wasShielded
         ? `${monster.name}の追撃！ 霊的防壁に阻まれた。`
@@ -637,7 +636,7 @@ export class BattleEngine {
       }
 
       case 'REVIVE':
-        boss.stats = { ...boss.stats, hp: getReviveHp(this.enemyMaxHp[boss.id] ?? boss.stats.hp, g) };
+        this.setEnemyCurrentHp(boss, getReviveHp(this.getEnemyMaxHp(boss), g));
         boss.shieldBroken = false;
         boss.shieldHp = boss.maxShieldHp ?? 0;
         for (const g2 of boss.gimmicks ?? []) {
@@ -772,6 +771,56 @@ export class BattleEngine {
 
   getDemonGauge(): number {
     return this.demonState?.gauge ?? 0;
+  }
+
+  public getEnemyCurrentHp(enemyId: string): number | undefined {
+    return this.enemyCurrentHp[enemyId];
+  }
+
+  private ensureEnemyRuntimeHp(enemy: MonsterData): void {
+    if (this.enemyMaxHp[enemy.id] === undefined) {
+      this.enemyMaxHp[enemy.id] = enemy.stats.hp;
+    }
+    if (this.enemyCurrentHp[enemy.id] === undefined) {
+      this.enemyCurrentHp[enemy.id] = enemy.stats.hp;
+    }
+    this.state.enemyCurrentHp = this.enemyCurrentHp;
+    this.state.enemyMaxHp = this.enemyMaxHp;
+  }
+
+  private getEnemyMaxHp(enemy: MonsterData): number {
+    this.ensureEnemyRuntimeHp(enemy);
+    return this.enemyMaxHp[enemy.id] ?? enemy.stats.hp;
+  }
+
+  private getEnemyRuntimeHp(enemy: MonsterData): number {
+    this.ensureEnemyRuntimeHp(enemy);
+    return this.enemyCurrentHp[enemy.id] ?? enemy.stats.hp;
+  }
+
+  private setEnemyCurrentHp(enemy: MonsterData, hp: number): number {
+    this.ensureEnemyRuntimeHp(enemy);
+    const maxHp = this.getEnemyMaxHp(enemy);
+    const nextHp = Math.max(0, Math.min(maxHp, Math.floor(hp)));
+    this.enemyCurrentHp[enemy.id] = nextHp;
+    this.state.enemyCurrentHp = this.enemyCurrentHp;
+    return nextHp;
+  }
+
+  private applyDamageToEnemy(
+    enemy: MonsterData,
+    damage: number,
+  ): { prevHp: number; nextHp: number; maxHp: number; prevHpPct: number; newHpPct: number } {
+    const maxHp = this.getEnemyMaxHp(enemy);
+    const prevHp = this.getEnemyRuntimeHp(enemy);
+    const nextHp = this.setEnemyCurrentHp(enemy, prevHp - Math.max(0, Math.floor(damage)));
+    return {
+      prevHp,
+      nextHp,
+      maxHp,
+      prevHpPct: maxHp > 0 ? (prevHp / maxHp) * 100 : 100,
+      newHpPct: maxHp > 0 ? (nextHp / maxHp) * 100 : 0,
+    };
   }
 
   private getMutableStats(player: CharacterData): BaseStats {

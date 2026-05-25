@@ -98,6 +98,27 @@ describe('BattleEngine', () => {
     expect(attackLog?.damage).toBeLessThanOrEqual(80); // crit ceiling (×1.5)
   });
 
+  test('tracks enemy current HP without mutating shared enemy stats', () => {
+    const player = createPlayer({ hp: 500, atk: 50, def: 30, critRate: 0 });
+    const enemy = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const originalStats = enemy.stats;
+    const engine = new BattleEngine(player, []);
+
+    const firstLogs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+    const firstDamage = firstLogs.find(log => log.action === 'PHYSICAL_ATTACK')?.damage ?? 0;
+
+    expect(enemy.stats).toBe(originalStats);
+    expect(enemy.stats.hp).toBe(500);
+    expect(engine.getEnemyCurrentHp(enemy.id)).toBe(500 - firstDamage);
+
+    const secondLogs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+    const secondDamage = secondLogs.find(log => log.action === 'PHYSICAL_ATTACK')?.damage ?? 0;
+
+    expect(enemy.stats).toBe(originalStats);
+    expect(enemy.stats.hp).toBe(500);
+    expect(engine.getEnemyCurrentHp(enemy.id)).toBe(500 - firstDamage - secondDamage);
+  });
+
   test('Energy is gained on attack', () => {
     const engine = new BattleEngine(mockPlayer, []);
     engine.simulateAction('PHYSICAL_ATTACK', mockTarget);
@@ -289,9 +310,11 @@ describe('BattleEngine', () => {
       gimmicks: [{ trigger: 'HP_BELOW_50', effect: 'REVIVE', value: 1 }],
     };
 
-    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', boss);
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', boss);
 
-    expect(boss.stats.hp).toBe(500);
+    expect(engine.getEnemyCurrentHp(boss.id)).toBe(500);
+    expect(boss.stats.hp).toBe(1000);
     expect(logs.some((log) => log.action === 'BOSS_REVIVE')).toBe(true);
   });
 
@@ -310,9 +333,11 @@ describe('BattleEngine', () => {
       gimmicks: [{ trigger: 'HP_BELOW_50', effect: 'REVIVE', value: 1 }],
     };
 
-    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', boss);
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', boss);
 
-    expect(boss.stats.hp).toBe(400);
+    expect(engine.getEnemyCurrentHp(boss.id)).toBe(400);
+    expect(boss.stats.hp).toBe(1000);
     expect(logs.some((log) => log.action === 'BOSS_REVIVE')).toBe(false);
   });
 

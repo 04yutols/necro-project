@@ -409,6 +409,8 @@ export interface BattleState {
   turn: number;
   areaGimmick?: AreaGimmickType;
   monsterCurrentHp: Record<string, number>;
+  enemyCurrentHp: Record<string, number>;
+  enemyMaxHp: Record<string, number>;
 }
 
 export interface BattleLog {

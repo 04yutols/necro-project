@@ -323,17 +323,25 @@ if (effect.type === 'BURN') damage = isImmune ? 0 : Math.floor(target.maxHp * 0.
 
 ---
 
-### 🟠 BUG-6: 敵HP が共有オブジェクトを直接書き換える
+### ✅ BUG-6: 敵HP が共有オブジェクトを直接書き換える
 
-**ファイル:** `src/logic/BattleEngine.ts:335, 489`
+**ファイル:** `src/logic/BattleEngine.ts`
 
 ```typescript
-target.stats.hp = Math.max(0, target.stats.hp - shieldResult.damage);
+const hpChange = this.applyDamageToEnemy(target, shieldResult.damage);
 ```
 
 `target` は `MonsterData` オブジェクトへの参照であり、Zustand ストアや React コンポーネントと共有されている可能性がある。直接書き換えると参照を持つ全体に副作用が生じ、レンダリング問題やバトル終了後のHPリセット忘れを引き起こす。
 
-**修正:** BattleEngine 内で `target` をコピーしてから書き換えるか、HPを `monsterCurrentHp` に一元管理する。
+**修正:** 敵HPを `enemyCurrentHp` / `enemyMaxHp` のランタイムマップに分離し、`MonsterData.stats.hp` は最大HPスナップショットとして維持する。
+
+**対応内容:**
+- `BattleState` に `enemyCurrentHp` / `enemyMaxHp` を追加。
+- プレイヤー攻撃、魔神技、味方魔物追撃、武器パッシブ追加ダメージを `applyDamageToEnemy()` に統一。
+- `REVIVE` は `boss.stats.hp` を書き換えず、ランタイム現在HPだけを回復する。
+- `BattleEngine.test.ts` で敵HP非破壊、連続攻撃のランタイムHP継続、REVIVE挙動を確認。
+
+**設計:** `docs/設計書/58_BUG6_敵HPランタイム分離設計.md`
 
 ---
 
@@ -464,4 +472,4 @@ if (typeof characterOrId !== 'string') {
 | SEC-5 | ✅ | `GameManager.ts` / `RewardService.ts` | 2026-05-24 完了。critRate とドロップ補正を分離 |
 | BUG-4 | ✅ | `useGameStore.ts` | 2026-05-24 完了。残滓強化素材を1個単位で消費 |
 | BUG-5 | ✅ | `StatusAilmentSystem.ts:199` | BURN の免疫チェック欠落 |
-| BUG-6 | 🟠 | `BattleEngine.ts:335` | 敵HPオブジェクトの直接書き換え |
+| BUG-6 | ✅ | `BattleEngine.ts` | 敵HPオブジェクトの直接書き換え |
