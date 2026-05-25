@@ -83,6 +83,7 @@
 | 残滓強化素材スタックの1個単位消費・BUG-4対応を知りたい | [56_BUG4_残滓強化素材スタック消費設計.md](56_BUG4_残滓強化素材スタック消費設計.md) |
 | BURN持続ダメージの免疫チェック・BUG-5対応を知りたい | [57_BUG5_BURN免疫チェック設計.md](57_BUG5_BURN免疫チェック設計.md) |
 | 敵HPのランタイム分離・BUG-6対応を知りたい | [58_BUG6_敵HPランタイム分離設計.md](58_BUG6_敵HPランタイム分離設計.md) |
+| `getMutableStats` の型安全化・BUG-7対応を知りたい | [59_BUG7_getMutableStats型安全化設計.md](59_BUG7_getMutableStats型安全化設計.md) |
 
 ## 重要ファイルパス一覧
 

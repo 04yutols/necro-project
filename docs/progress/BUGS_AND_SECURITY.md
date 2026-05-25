@@ -345,17 +345,26 @@ const hpChange = this.applyDamageToEnemy(target, shieldResult.damage);
 
 ---
 
-### 🟡 BUG-7: `getMutableStats` の不正なキャスト
+### ✅ BUG-7: `getMutableStats` の不正なキャスト
 
-**ファイル:** `src/logic/BattleEngine.ts:756`
+**ファイル:** `src/logic/BattleEngine.ts:826`
 
 ```typescript
 private getMutableStats(player: CharacterData): BaseStats {
-  return ((player as any).stats ?? (player as any).baseStats) as BaseStats;
+  return player.stats;
 }
 ```
 
 `any` キャストで TypeScript の型安全を回避している。`player.stats` は `BaseStats` 型として宣言されており、直接 `player.stats` を参照すれば十分。不要な `as any` は将来的なバグの温床になる。
+
+**修正:** BattleEngineの入力契約を正規化済み `CharacterData` に固定し、プレイヤーのランタイムHP更新対象を `stats` に一本化した。
+
+**対応内容:**
+- `getMutableStats()` から `as any` と `baseStats` フォールバックを削除。
+- `baseStats` は職業変更・成長計算元として維持し、BattleEngineでは更新対象にしないことを設計化。
+- `BattleEngine.test.ts` に `stats.hp` のみが戦闘で減り、`baseStats.hp` が維持される回帰テストを追加。
+
+**設計:** `docs/設計書/59_BUG7_getMutableStats型安全化設計.md`
 
 ---
 
@@ -473,3 +482,4 @@ if (typeof characterOrId !== 'string') {
 | BUG-4 | ✅ | `useGameStore.ts` | 2026-05-24 完了。残滓強化素材を1個単位で消費 |
 | BUG-5 | ✅ | `StatusAilmentSystem.ts:199` | BURN の免疫チェック欠落 |
 | BUG-6 | ✅ | `BattleEngine.ts` | 敵HPオブジェクトの直接書き換え |
+| BUG-7 | ✅ | `BattleEngine.ts:826` | getMutableStats の any キャスト削除 |

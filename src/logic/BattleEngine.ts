@@ -824,7 +824,7 @@ export class BattleEngine {
   }
 
   private getMutableStats(player: CharacterData): BaseStats {
-    return ((player as any).stats ?? (player as any).baseStats) as BaseStats;
+    return player.stats;
   }
 
   private applyDamageToPlayer(damage: number): number {

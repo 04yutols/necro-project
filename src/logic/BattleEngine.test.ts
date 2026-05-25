@@ -227,6 +227,18 @@ describe('BattleEngine', () => {
     expect(logs.find(log => log.action === 'PLAYER_DEFEATED')?.description).toContain('倒れた');
   });
 
+  test('player runtime HP mutations use CharacterData.stats without touching baseStats', () => {
+    const player = createPlayer({ hp: 30, atk: 1, def: 0, critRate: 0 });
+    player.baseStats = { ...player.baseStats!, hp: 999 };
+    const enemy = createEnemy({ hp: 500, atk: 90, def: 999 });
+
+    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+    expect(player.stats.hp).toBe(0);
+    expect(player.baseStats?.hp).toBe(999);
+    expect(logs.find(log => log.action === 'PLAYER_DEFEATED')?.playerHP).toBe(0);
+  });
+
   test('lethal player status damage stops the action and emits defeat log', () => {
     const player = createPlayer(
       { hp: 10, atk: 50, def: 30, critRate: 0 },
