@@ -85,6 +85,7 @@
 | 敵HPのランタイム分離・BUG-6対応を知りたい | [58_BUG6_敵HPランタイム分離設計.md](58_BUG6_敵HPランタイム分離設計.md) |
 | `getMutableStats` の型安全化・BUG-7対応を知りたい | [59_BUG7_getMutableStats型安全化設計.md](59_BUG7_getMutableStats型安全化設計.md) |
 | 状態異常行動スキップ時のターン進行・BUG-8対応を知りたい | [60_BUG8_状態異常行動スキップターン進行設計.md](60_BUG8_状態異常行動スキップターン進行設計.md) |
+| `NecroStatus.exp` テストモック欠落・BUG-9対応を知りたい | [61_BUG9_NecroStatus_expテストモック整合設計.md](61_BUG9_NecroStatus_expテストモック整合設計.md) |
 
 ## 重要ファイルパス一覧
 

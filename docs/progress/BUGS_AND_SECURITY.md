@@ -395,21 +395,31 @@ if (playerStatus.skipAction) {
 
 ---
 
-### 🟡 BUG-9: `NecroStatus.exp` がテストモックから欠落
+### ✅ BUG-9: `NecroStatus.exp` がテストモックから欠落
 
 **ファイル:** `src/services/NecroService.test.ts:16–22`
 
 ```typescript
-const mockNecroStatus: NecroStatus = {
+const createNecroStatus = (overrides: Partial<NecroStatus> = {}): NecroStatus => ({
   level: 1,
   rank: 1,
   maxCost: 10,
-  baseStatsBonus: 1.0
-  // exp フィールドが欠落（NecroStatus 型では必須）
-};
+  baseStatsBonus: 1.0,
+  exp: 0,
+  ...overrides,
+});
 ```
 
 `NecroStatus` 型に `exp: number` が追加されているが、テストのモックが更新されておらず TypeScript エラーになる。
+
+**修正:** `NecroService.test.ts` の `NecroStatus` モックを `createNecroStatus()` ファクトリへ集約し、全モックに `exp` を含めた。
+
+**対応内容:**
+- `mockNecroStatus` とRankUp用ステータスを `createNecroStatus()` で生成。
+- RankUp成功テストで `exp: 999` が `exp: 0` にリセットされることを確認。
+- `docs/設計書/04_データモデル.md` / `05_死霊術システム.md` / `08_テスト戦略.md` の `NecroStatus` 例を `exp` ありに更新。
+
+**設計:** `docs/設計書/61_BUG9_NecroStatus_expテストモック整合設計.md`
 
 ---
 
@@ -493,3 +503,4 @@ if (typeof characterOrId !== 'string') {
 | BUG-6 | ✅ | `BattleEngine.ts` | 敵HPオブジェクトの直接書き換え |
 | BUG-7 | ✅ | `BattleEngine.ts:826` | getMutableStats の any キャスト削除 |
 | BUG-8 | ✅ | `BattleEngine.ts:116` | 状態異常行動スキップ時も敵反撃を継続 |
+| BUG-9 | ✅ | `NecroService.test.ts` | NecroStatus.exp をテストモックへ追加 |
