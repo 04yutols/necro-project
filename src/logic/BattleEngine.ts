@@ -105,9 +105,11 @@ export class BattleEngine {
     actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL',
     target: MonsterData,
     skillId?: string,
+    enemyCandidates?: MonsterData[],
   ): BattleLog[] {
     this.logs = [];
     const { player } = this.state;
+    const turnEnemies = this.resolveEnemyCandidates(target, enemyCandidates);
 
     // 1. ターン開始時のエリアギミック判定 (GDD-006)
     if (this.isPlayerDefeated()) {
@@ -142,7 +144,7 @@ export class BattleEngine {
       if (this.isPlayerDefeated()) return this.logs;
 
       // 4. 軍団の追撃・シナジー (GDD-005)
-      this.processMonsterActions(target);
+      this.processMonsterActions(target, turnEnemies);
     }
 
     // 5. 敵の反撃 (docs/設計書/26)
@@ -488,11 +490,15 @@ export class BattleEngine {
     }
   }
 
-  private processMonsterActions(target: MonsterData): void {
+  private processMonsterActions(preferredTarget: MonsterData, enemyCandidates: MonsterData[] = [preferredTarget]): void {
     const { player, monsters } = this.state;
 
+    let followUpIndex = 0;
     monsters.forEach(monster => {
       if (!monster) return;
+      const target = this.selectFollowUpTarget(preferredTarget, enemyCandidates, followUpIndex);
+      if (!target) return;
+      followUpIndex += 1;
 
       const attackProfile = calculateMonsterAttackProfile(monster, { awakened: player.isAwakened });
       const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(
@@ -512,6 +518,35 @@ export class BattleEngine {
         : `${monster.name}の追撃！${attackProfile.spiritCoreName ? ` 霊核「${attackProfile.spiritCoreName}」が共鳴。` : ''}`;
       this.addLog('MONSTER_ATTACK', monster.name, target.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, attackProfile.element, 'STRIKE');
     });
+  }
+
+  private resolveEnemyCandidates(primaryTarget: MonsterData, enemyCandidates?: MonsterData[]): MonsterData[] {
+    const candidatesById = new Map<string, MonsterData>();
+    candidatesById.set(primaryTarget.id, primaryTarget);
+    for (const enemy of enemyCandidates ?? []) {
+      candidatesById.set(enemy.id, enemy);
+    }
+    return Array.from(candidatesById.values());
+  }
+
+  private getOrderedAliveFollowUpTargets(preferredTarget: MonsterData, enemyCandidates: MonsterData[]): MonsterData[] {
+    const aliveCandidates = enemyCandidates.filter(enemy => this.getEnemyRuntimeHp(enemy) > 0);
+    const preferred = aliveCandidates.find(enemy => enemy.id === preferredTarget.id);
+    if (!preferred) return aliveCandidates;
+    return [
+      preferred,
+      ...aliveCandidates.filter(enemy => enemy.id !== preferredTarget.id),
+    ];
+  }
+
+  private selectFollowUpTarget(
+    preferredTarget: MonsterData,
+    enemyCandidates: MonsterData[],
+    followUpIndex: number,
+  ): MonsterData | null {
+    const aliveTargets = this.getOrderedAliveFollowUpTargets(preferredTarget, enemyCandidates);
+    if (aliveTargets.length === 0) return null;
+    return aliveTargets[followUpIndex % aliveTargets.length];
   }
 
   /**

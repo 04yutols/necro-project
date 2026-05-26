@@ -423,21 +423,30 @@ const createNecroStatus = (overrides: Partial<NecroStatus> = {}): NecroStatus =>
 
 ---
 
-### 🟡 BUG-10: 同一ターゲットへの全モンスター追撃
+### ✅ BUG-10: 同一ターゲットへの全モンスター追撃
 
-**ファイル:** `src/logic/BattleEngine.ts:471–495`
+**ファイル:** `src/logic/BattleEngine.ts:491–545`, `src/components/battle/BattleCanvas.tsx`
 
 ```typescript
-private processMonsterActions(target: MonsterData): void {
-  const { player, monsters } = this.state;
-  monsters.forEach(monster => {
-    // 全モンスターが同じ `target` を攻撃する
-    target.stats.hp = Math.max(0, target.stats.hp - shieldResult.damage);
-  });
+private processMonsterActions(preferredTarget: MonsterData, enemyCandidates: MonsterData[]): void {
+  // 生存敵を preferredTarget 起点で並べ、followUpIndex でローテーションする
+  const target = this.selectFollowUpTarget(preferredTarget, enemyCandidates, followUpIndex);
 }
 ```
 
 複数の敵が存在するWAVEでも、プレイヤーが選択したターゲット以外には追撃が飛ばない。WAVE構成が複数敵になった場合に問題となる。
+
+**修正:** 追撃対象候補 `enemyCandidates` を導入し、複数敵が生存している場合は追撃ごとに対象をローテーションするようにした。
+
+**対応内容:**
+- `BattleEngine.simulateAction()` に任意の `enemyCandidates` を追加し、既存単体敵呼び出しは互換維持。
+- `resolveEnemyCandidates()` / `selectFollowUpTarget()` を追加。
+- プレイヤー選択敵を先頭優先にしつつ、生存敵へ追撃を A/B/C の順で分散。
+- 選択敵がプレイヤー攻撃で倒れた場合、生存敵へ追撃を再選択。
+- UI側 `BattleCanvas.runPartyFollowUps()` も同じローテーションルールへ更新。
+- `BattleEngine.test.ts` に複数敵分散と選択敵撃破後リターゲットの回帰テストを追加。
+
+**設計:** `docs/設計書/62_BUG10_軍団追撃ターゲット分散設計.md`
 
 ---
 
@@ -504,3 +513,4 @@ if (typeof characterOrId !== 'string') {
 | BUG-7 | ✅ | `BattleEngine.ts:826` | getMutableStats の any キャスト削除 |
 | BUG-8 | ✅ | `BattleEngine.ts:116` | 状態異常行動スキップ時も敵反撃を継続 |
 | BUG-9 | ✅ | `NecroService.test.ts` | NecroStatus.exp をテストモックへ追加 |
+| BUG-10 | ✅ | `BattleEngine.ts` / `BattleCanvas.tsx` | 軍団追撃を複数敵へ分散 |

@@ -2278,10 +2278,14 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     });
   }
 
-  function getLiveFollowUpTargetId(preferredTargetId: number): number | null {
-    const preferred = enemiesRef.current.find(enemy => enemy.id === preferredTargetId && enemy.hp > 0);
-    if (preferred) return preferred.id;
-    return enemiesRef.current.find(enemy => enemy.hp > 0)?.id ?? null;
+  function getLiveFollowUpTargetId(preferredTargetId: number, followUpIndex: number): number | null {
+    const aliveEnemies = enemiesRef.current.filter(enemy => enemy.hp > 0);
+    const preferred = aliveEnemies.find(enemy => enemy.id === preferredTargetId);
+    const orderedTargets = preferred
+      ? [preferred, ...aliveEnemies.filter(enemy => enemy.id !== preferredTargetId)]
+      : aliveEnemies;
+    if (orderedTargets.length === 0) return null;
+    return orderedTargets[followUpIndex % orderedTargets.length]?.id ?? null;
   }
 
   function runPartyFollowUps(preferredTargetId: number): number {
@@ -2291,11 +2295,13 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     if (activeMonsters.length === 0) return 0;
 
     let totalDamage = 0;
+    let followUpIndex = 0;
     activeMonsters.forEach((monster, index) => {
-      const targetId = getLiveFollowUpTargetId(preferredTargetId);
+      const targetId = getLiveFollowUpTargetId(preferredTargetId, followUpIndex);
       if (targetId === null) return;
       const target = enemiesRef.current.find(enemy => enemy.id === targetId);
       if (!target) return;
+      followUpIndex += 1;
 
       const attackProfile = calculateMonsterAttackProfile(monster, { awakened: Boolean(player?.isAwakened) });
       const result = calculateBattleDamage({

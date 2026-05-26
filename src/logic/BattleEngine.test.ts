@@ -408,6 +408,51 @@ describe('BattleEngine', () => {
     expect(logs.some((log) => log.action === 'BOSS_SUMMON')).toBe(true);
   });
 
+  test('party follow-ups spread across alive enemy candidates', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const enemyA = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyB = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyC = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const ally1 = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    const ally2 = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    const ally3 = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    ally1.name = 'Ally-1';
+    ally2.name = 'Ally-2';
+    ally3.name = 'Ally-3';
+    enemyA.name = 'Enemy-A';
+    enemyB.name = 'Enemy-B';
+    enemyC.name = 'Enemy-C';
+
+    const logs = new BattleEngine(player, [ally1, ally2, ally3])
+      .simulateAction('PHYSICAL_ATTACK', enemyA, undefined, [enemyA, enemyB, enemyC]);
+    const followUps = logs.filter(log => log.action === 'MONSTER_ATTACK');
+
+    expect(followUps.map(log => log.targetName)).toEqual(['Enemy-A', 'Enemy-B', 'Enemy-C']);
+  });
+
+  test('party follow-ups retarget alive enemies after the preferred target falls', () => {
+    const player = createPlayer({ hp: 500, atk: 1000, def: 999, critRate: 0 });
+    const defeatedTarget = createEnemy({ hp: 20, atk: 1, def: 0 });
+    const aliveTarget = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const ally1 = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    const ally2 = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    defeatedTarget.name = 'Fallen Target';
+    aliveTarget.name = 'Alive Target';
+
+    const engine = new BattleEngine(player, [ally1, ally2]);
+    const logs = engine.simulateAction(
+      'PHYSICAL_ATTACK',
+      defeatedTarget,
+      undefined,
+      [defeatedTarget, aliveTarget],
+    );
+    const followUps = logs.filter(log => log.action === 'MONSTER_ATTACK');
+
+    expect(engine.getEnemyCurrentHp(defeatedTarget.id)).toBe(0);
+    expect(followUps).toHaveLength(2);
+    expect(followUps.every(log => log.targetName === 'Alive Target')).toBe(true);
+  });
+
   test('SpiritCore atkMultiplier increases party monster follow-up damage', () => {
     const player: CharacterData = {
       ...mockPlayer,
