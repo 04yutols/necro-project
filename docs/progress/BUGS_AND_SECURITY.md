@@ -452,15 +452,26 @@ private processMonsterActions(preferredTarget: MonsterData, enemyCandidates: Mon
 
 ## パフォーマンス・品質上の懸念
 
-### 🟢 PERF-1: 残滓シャッフルの Fisher-Yates 非準拠
+### ✅ PERF-1: 残滓シャッフルの Fisher-Yates 非準拠（2026-05-26 完了）
 
-**ファイル:** `src/services/RewardService.ts:105`
+**旧ファイル位置:** `src/services/RewardService.ts:105`
+**対応後:** `src/services/RewardService.ts`
 
 ```typescript
-const shuffled = [...available].sort(() => rng() - 0.5);
+const shuffled = shuffleFisherYates(available, rng);
 ```
 
 `Array.sort` による疑似シャッフルは分布が偏る（非 Fisher-Yates）。サブオプションの選出に偏りが生じる可能性がある。ゲームバランスへの影響は限定的だが公平性に関わる。
+
+**修正:** 残滓サブオプション候補の並べ替えを Fisher-Yates に変更した。
+
+**対応内容:**
+- `shuffleFisherYates<T>()` を追加し、入力配列を破壊しないコピー上でシャッフルするようにした。
+- `processDropTable()` から注入された `rng` をそのまま使い、`Math.random()` へ依存しない決定論的抽選を維持。
+- 長さ `n` の候補配列で `rng` 呼び出しが常に `n-1` 回になるため、テストとリプレイ検証の再現性が向上。
+- `RewardService.test.ts` に Fisher-Yates の順列、非破壊性、rng 消費回数のテストを追加。
+
+**設計:** `docs/設計書/63_PERF1_残滓シャッフルFisherYates設計.md`
 
 ---
 
@@ -514,3 +525,4 @@ if (typeof characterOrId !== 'string') {
 | BUG-8 | ✅ | `BattleEngine.ts:116` | 状態異常行動スキップ時も敵反撃を継続 |
 | BUG-9 | ✅ | `NecroService.test.ts` | NecroStatus.exp をテストモックへ追加 |
 | BUG-10 | ✅ | `BattleEngine.ts` / `BattleCanvas.tsx` | 軍団追撃を複数敵へ分散 |
+| PERF-1 | ✅ | `RewardService.ts` | 残滓サブオプション抽選を Fisher-Yates に変更 |

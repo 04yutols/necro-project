@@ -110,6 +110,15 @@ function generateInstanceId(prefix: string): string {
   return `${prefix}_${secureUuid()}`;
 }
 
+export function shuffleFisherYates<T>(items: readonly T[], rng: () => number): T[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export class RewardService {
   private static generateResidueId(): string {
     return generateInstanceId('res');
@@ -129,7 +138,7 @@ export class RewardService {
 
     // シャッフルしてメイン型と重複しない候補から取得
     const available = SUB_OPTION_POOL.filter(s => s.type !== mainDef.type);
-    const shuffled  = [...available].sort(() => rng() - 0.5);
+    const shuffled  = shuffleFisherYates(available, rng);
     const subOptions = shuffled.slice(0, subCount).map(s => ({
       type:  s.type,
       value: rollValue(s.range, rng),

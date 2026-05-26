@@ -128,7 +128,7 @@ private static generateResidue(
 
   // 4. サブオプション抽選（メイン型と重複除外）
   const available = SUB_OPTION_POOL.filter(s => s.type !== mainDef.type);
-  const shuffled = [...available].sort(() => rng() - 0.5);
+  const shuffled = shuffleFisherYates(available, rng);
   const subOptions = shuffled.slice(0, subCount).map(s => ({
     type: s.type,
     value: parseFloat((s.range[0] + rng() * (s.range[1] - s.range[0])).toFixed(1)),
@@ -276,6 +276,8 @@ DB 連携前は全てクライアント側（Phase A の DB タスクとは独�
 | 9 | 同一 rng() で決定論的に同じ結果 | 2回呼び出し結果が一致 |
 | 10 | RESIDUE メインとサブが重複しない | mainStat.type ∉ subOptions.map(s=>s.type) |
 | 11 | calculateExp — MAGICAL 1.1× | result = Math.floor(baseExp × levelFactor × 1.1) |
+| 12 | Fisher-Yates helper | 入力配列を変更せず、固定 rng で決定論的な順列を返す |
+| 13 | Fisher-Yates rng 消費回数 | 長さ n の配列で rng 呼び出しが n-1 回 |
 
 ---
 

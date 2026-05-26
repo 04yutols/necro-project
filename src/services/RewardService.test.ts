@@ -1,4 +1,4 @@
-import { RewardService, StageDropResult } from './RewardService';
+import { RewardService, shuffleFisherYates } from './RewardService';
 import { DropEntry } from '../types/game';
 
 // 決定論的な乱数生成器（シーケンス指定）
@@ -8,6 +8,24 @@ function makeSeqRng(values: number[]): () => number {
 }
 
 const svc = new RewardService();
+
+describe('shuffleFisherYates', () => {
+  test('入力配列を変更せず、注入rngで決定論的な順列を返す', () => {
+    const source = ['A', 'B', 'C', 'D'];
+    const shuffled = shuffleFisherYates(source, makeSeqRng([0, 0, 0]));
+
+    expect(shuffled).toEqual(['B', 'C', 'D', 'A']);
+    expect(source).toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  test('長さnの配列に対してrngをn-1回だけ呼ぶ', () => {
+    const rng = jest.fn(() => 0);
+
+    shuffleFisherYates([1, 2, 3, 4, 5], rng);
+
+    expect(rng).toHaveBeenCalledTimes(4);
+  });
+});
 
 describe('RewardService.processDropTable', () => {
   // 1. WEAPON rate=1.0 → 必ずドロップ、新規インスタンス ID を持つ
