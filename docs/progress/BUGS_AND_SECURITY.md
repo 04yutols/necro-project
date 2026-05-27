@@ -475,17 +475,29 @@ const shuffled = shuffleFisherYates(available, rng);
 
 ---
 
-### 🟢 QUALITY-1: `MasterDataService` の全メソッドが `any` を返す
+### ✅ QUALITY-1: `MasterDataService` の全メソッドが `any` を返す（2026-05-26 完了）
 
-**ファイル:** `src/services/MasterDataService.ts:23–44`
+**旧ファイル位置:** `src/services/MasterDataService.ts:23–44`
+**対応後:** `src/services/MasterDataService.ts`
 
 ```typescript
-public getJob(id: string) {
-  return (jobs as any)[id]; // 型情報なし
+public getJob(id: string): JobData | undefined {
+  return JOBS[id];
 }
 ```
 
 全ての `get*` メソッドが `any` を返すため、呼び出し側での型誤りがコンパイル時に検出されない。
+
+**修正:** `MasterDataService` のJSON境界を `src/types/game.ts` の正典型へ集約し、全 public getter に明示的な戻り値型を付けた。
+
+**対応内容:**
+- `JobData` / `MonsterData` / `EnemyData` / `ItemData` / `StageData` / `SkillData` / `DemonFormData` / `ResidueMatData` の型付き `Record<string, T>` を導入。
+- 単体 getter は `T | undefined`、全件 getter は `Record<string, T>` に統一。
+- `monsters.json` はキーがIDで値に `id` がないため、`getMonster()` / `getAllMonsters()` で `MonsterData.id` を補完。
+- `RewardService` / `actions.ts` / `GameManager` の不要な型キャストを削減。
+- `MasterDataService.test.ts` に getter 戻り値が `any` ではないことのコンパイル時テストと、代表マスターデータのランタイムテストを追加。
+
+**設計:** `docs/設計書/64_QUALITY1_MasterDataService型安全化設計.md`
 
 ---
 
@@ -526,3 +538,4 @@ if (typeof characterOrId !== 'string') {
 | BUG-9 | ✅ | `NecroService.test.ts` | NecroStatus.exp をテストモックへ追加 |
 | BUG-10 | ✅ | `BattleEngine.ts` / `BattleCanvas.tsx` | 軍団追撃を複数敵へ分散 |
 | PERF-1 | ✅ | `RewardService.ts` | 残滓サブオプション抽選を Fisher-Yates に変更 |
+| QUALITY-1 | ✅ | `MasterDataService.ts` | 全getterを正典型の戻り値へ変更 |

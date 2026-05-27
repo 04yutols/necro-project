@@ -6,7 +6,32 @@ import materials from '../data/master/materials.json';
 import stages from '../data/master/stages.json';
 import skills from '../data/master/skills.json';
 import demonForms from '../data/master/demonForms.json';
-import type { ResidueMatData } from '../types/game';
+import type {
+  DemonFormData,
+  EnemyData,
+  ItemData,
+  JobData,
+  MonsterData,
+  ResidueMatData,
+  SkillData,
+  StageData,
+} from '../types/game';
+
+type MasterRecord<T> = Record<string, T>;
+type MonsterMasterEntry = Omit<MonsterData, 'id'> & Partial<Pick<MonsterData, 'id'>>;
+
+const JOBS = jobs as unknown as MasterRecord<JobData>;
+const MONSTERS = monsters as unknown as MasterRecord<MonsterMasterEntry>;
+const ENEMIES = enemies as unknown as MasterRecord<EnemyData>;
+const ITEMS = items as unknown as MasterRecord<ItemData>;
+const MATERIALS = materials as unknown as MasterRecord<ResidueMatData>;
+const STAGES = stages as unknown as MasterRecord<StageData>;
+const SKILLS = skills as unknown as MasterRecord<SkillData>;
+const DEMON_FORMS = demonForms as unknown as MasterRecord<DemonFormData>;
+
+function withMonsterId(id: string, monster: MonsterMasterEntry): MonsterData {
+  return { ...monster, id: monster.id ?? id };
+}
 
 export class MasterDataService {
   private static instance: MasterDataService;
@@ -20,67 +45,70 @@ export class MasterDataService {
     return MasterDataService.instance;
   }
 
-  public getJob(id: string) {
-    return (jobs as any)[id];
+  public getJob(id: string): JobData | undefined {
+    return JOBS[id];
   }
 
-  public getMonster(id: string) {
-    return (monsters as any)[id];
+  public getMonster(id: string): MonsterData | undefined {
+    const monster = MONSTERS[id];
+    return monster ? withMonsterId(id, monster) : undefined;
   }
 
-  public getEnemy(id: string) {
-    return (enemies as any)[id];
+  public getEnemy(id: string): EnemyData | undefined {
+    return ENEMIES[id];
   }
 
-  public getItem(id: string) {
-    return (items as any)[id];
+  public getItem(id: string): ItemData | undefined {
+    return ITEMS[id];
   }
 
-  public getStage(id: string) {
-    return (stages as any)[id];
+  public getStage(id: string): StageData | undefined {
+    return STAGES[id];
   }
 
-  public getSkill(id: string) {
-    return (skills as any)[id];
+  public getSkill(id: string): SkillData | undefined {
+    return SKILLS[id];
   }
 
-  public getDemonForm(jobId: string) {
-    return (demonForms as any)[jobId];
+  public getDemonForm(jobId: string): DemonFormData | undefined {
+    return DEMON_FORMS[jobId];
   }
 
-  public getAllJobs() {
-    return jobs;
+  public getAllJobs(): MasterRecord<JobData> {
+    return JOBS;
   }
 
-  public getAllMonsters() {
-    return monsters;
+  public getAllMonsters(): MasterRecord<MonsterData> {
+    return Object.fromEntries(
+      Object.entries(MONSTERS).map(([id, monster]) => [id, withMonsterId(id, monster)])
+    ) as MasterRecord<MonsterData>;
   }
 
-  public getAllEnemies() {
-    return enemies;
+  public getAllEnemies(): MasterRecord<EnemyData> {
+    return ENEMIES;
   }
 
-  public getAllItems() {
-    return items;
+  public getAllItems(): MasterRecord<ItemData> {
+    return ITEMS;
   }
 
-  public getAllStages() {
-    return stages;
+  public getAllStages(): MasterRecord<StageData> {
+    return STAGES;
   }
 
-  public getAllSkills() {
-    return skills;
+  public getAllSkills(): MasterRecord<SkillData> {
+    return SKILLS;
   }
 
-  public getAllDemonForms() {
-    return demonForms;
+  public getAllDemonForms(): MasterRecord<DemonFormData> {
+    return DEMON_FORMS;
   }
 
   public getMaterial(id: string): ResidueMatData | undefined {
-    return (materials as Record<string, ResidueMatData>)[id];
+    return MATERIALS[id];
   }
 
-  public getAllMaterials(): Record<string, ResidueMatData> {
-    return materials as Record<string, ResidueMatData>;
+  public getAllMaterials(): MasterRecord<ResidueMatData> {
+    return MATERIALS;
   }
 }

@@ -68,7 +68,7 @@ export class GameManager {
       id: char.id,
       name: char.name,
       currentJobId,
-      category: (currentJob?.category as any) || 'PHYSICAL',
+      category: currentJob?.category ?? 'PHYSICAL',
       necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
       stats: {
         hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
@@ -205,7 +205,7 @@ export class GameManager {
       id: char.id,
       name: char.name,
       currentJobId,
-      category: (currentJob?.category as any) || 'PHYSICAL',
+      category: currentJob?.category ?? 'PHYSICAL',
       necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
       stats: {
         hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,

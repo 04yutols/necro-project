@@ -309,7 +309,9 @@ function toMonsterData(row: any): MonsterData {
 
 function getJobData(jobId: string): JobData {
   const mds = MasterDataService.getInstance();
-  return (mds.getJob(jobId) ?? mds.getJob('warrior')) as JobData;
+  const job = mds.getJob(jobId) ?? mds.getJob('warrior');
+  if (!job) throw new Error(`Job ${jobId} not found in master data`);
+  return job;
 }
 
 function toServerUser(sessionUser: { id?: string; name?: string | null; email?: string | null }): ServerGameUser {
@@ -676,7 +678,7 @@ export async function processStageResultForUser(
       });
 
       if (levelsGained > 0) {
-        const currentJobData = mds.getJob(currentJob.jobId) as JobData | undefined;
+        const currentJobData = mds.getJob(currentJob.jobId);
         const growth = calculateJobGrowthIncrements(currentJobData, levelsGained);
         await tx.character.update({
           where: { id: char.id },
@@ -875,7 +877,7 @@ export async function createCharacterForUser(
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await ensureJobRow(tx, jobId);
 
-    const starterWeapon = mds.getItem(getStarterWeaponId(jobId)) as ItemData | undefined;
+    const starterWeapon = mds.getItem(getStarterWeaponId(jobId));
     const createdWeapon = starterWeapon
       ? await tx.item.create({ data: itemCreateDataFromMaster(starterWeapon, userId), select: { id: true } })
       : null;

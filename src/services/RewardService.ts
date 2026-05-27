@@ -177,7 +177,7 @@ export class RewardService {
       switch (entry.type) {
         case 'WEAPON': {
           if (!entry.itemId) break;
-          const master = mds.getItem(entry.itemId) as ItemData | undefined;
+          const master = mds.getItem(entry.itemId);
           if (!master) break;
           result.weapons.push({
             ...master,
@@ -188,7 +188,7 @@ export class RewardService {
         }
         case 'CONSUMABLE': {
           if (!entry.itemId) break;
-          const master = mds.getItem(entry.itemId) as ItemData | undefined;
+          const master = mds.getItem(entry.itemId);
           if (!master || master.type !== 'CONSUMABLE') break;
           result.consumables.push({
             ...master,

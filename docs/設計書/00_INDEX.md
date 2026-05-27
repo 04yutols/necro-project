@@ -88,6 +88,7 @@
 | `NecroStatus.exp` テストモック欠落・BUG-9対応を知りたい | [61_BUG9_NecroStatus_expテストモック整合設計.md](61_BUG9_NecroStatus_expテストモック整合設計.md) |
 | 軍団追撃の複数敵ターゲット分散・BUG-10対応を知りたい | [62_BUG10_軍団追撃ターゲット分散設計.md](62_BUG10_軍団追撃ターゲット分散設計.md) |
 | 残滓サブオプションシャッフルのFisher-Yates準拠・PERF-1対応を知りたい | [63_PERF1_残滓シャッフルFisherYates設計.md](63_PERF1_残滓シャッフルFisherYates設計.md) |
+| MasterDataService getterの型安全化・QUALITY-1対応を知りたい | [64_QUALITY1_MasterDataService型安全化設計.md](64_QUALITY1_MasterDataService型安全化設計.md) |
 
 ## 重要ファイルパス一覧
 
