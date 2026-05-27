@@ -501,20 +501,28 @@ public getJob(id: string): JobData | undefined {
 
 ---
 
-### 🟢 QUALITY-2: `JobService.changeJob` のキャラクター直接変異
+### ✅ QUALITY-2: `JobService.changeJob` のキャラクター直接変異（2026-05-27 完了）
 
-**ファイル:** `src/services/JobService.ts:32–44`
+**旧ファイル位置:** `src/services/JobService.ts:32–44`
+**対応後:** `src/services/JobService.ts`
 
 ```typescript
-if (typeof characterOrId !== 'string') {
-  const character = characterOrId;
-  character.jobs.push(...);     // 引数を直接変異
-  character.currentJobId = ...; // 引数を直接変異
-  return;
-}
+public async changeJob(character: CharacterData, nextJobId: string): Promise<CharacterData>;
+public async changeJob(characterId: string, nextJobId: string): Promise<void>;
 ```
 
 `CharacterData` オブジェクトを直接書き換えることで、Zustand ストアなど外部参照先のオブジェクトが予期しないタイミングで変化する可能性がある。
+
+**修正:** `CharacterData` を受け取るインメモリ転職経路を不変更新化し、新しい `CharacterData` を返す overload に変更した。DB永続化経路は `Promise<void>` のまま維持。
+
+**対応内容:**
+- `buildChangedCharacter()` を追加し、転職後の `CharacterData` を新規オブジェクトとして構築。
+- `jobs` / `stats` / `passives` / `equipment` / `baseResistances` / `clearedStages` / `statusEffects` / `elementDmgBoosts` を別参照で返す。
+- 未所持職業はコピー後の `jobs` に Lv1 / exp0 として追加し、入力 `jobs` には `push()` しない。
+- 既存の `changeJob(characterId, jobId)` DB保存経路は戻り値と挙動を維持。
+- `JobService.test.ts` に入力不変性、返り値参照分離、パッシブ維持のテストを追加。
+
+**設計:** `docs/設計書/65_QUALITY2_JobService_changeJob不変更新設計.md`
 
 ---
 
@@ -539,3 +547,4 @@ if (typeof characterOrId !== 'string') {
 | BUG-10 | ✅ | `BattleEngine.ts` / `BattleCanvas.tsx` | 軍団追撃を複数敵へ分散 |
 | PERF-1 | ✅ | `RewardService.ts` | 残滓サブオプション抽選を Fisher-Yates に変更 |
 | QUALITY-1 | ✅ | `MasterDataService.ts` | 全getterを正典型の戻り値へ変更 |
+| QUALITY-2 | ✅ | `JobService.ts` | changeJob のインメモリ経路を不変更新化 |

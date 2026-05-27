@@ -504,7 +504,7 @@ public advanceWave(): void {
 
 ---
 
-## 🟢 QUALITY-2: JobService.changeJobの引数直接変異
+## ✅ QUALITY-2: JobService.changeJobの引数直接変異（2026-05-27 完了）
 
 **ファイル:** `src/services/JobService.ts:32–44`
 
@@ -519,22 +519,16 @@ if (typeof characterOrId !== 'string') {
 
 Zustandストアから渡された `CharacterData` を直接変異させているため、Immerを使わないパスで予期しないレンダリングや状態の汚染が起こり得る。
 
-**具体案:** 変異ではなく新しいオブジェクトを返す純粋関数化する。
+**対応:** 変異ではなく新しいオブジェクトを返す不変更新に変更した。
 
 ```typescript
-function changeJobImmutable(
-  character: CharacterData,
-  jobId: string,
-): CharacterData {
-  return {
-    ...character,
-    currentJobId: jobId,
-    jobs: [...character.jobs, newJobEntry],
-  };
-}
+public async changeJob(character: CharacterData, nextJobId: string): Promise<CharacterData>;
+public async changeJob(characterId: string, nextJobId: string): Promise<void>;
 ```
 
-呼び出し側で返り値を `set()` する。
+インメモリ経路は `buildChangedCharacter()` で `jobs` / `stats` / `passives` などを別参照にして返す。DB永続化経路は既存通り `Promise<void>` を返す。
+
+**設計:** `docs/設計書/65_QUALITY2_JobService_changeJob不変更新設計.md`
 
 ---
 
