@@ -217,20 +217,29 @@ ms.hp = Math.max(1, ms.hp - rawDmg);  // ← HPが1未満にならない
 
 ---
 
-### 🔴 BUG-2: ステータス異常ダメージが「現在HP」を maxHp として計算する
+### ✅ BUG-2: ステータス異常ダメージが「現在HP」を maxHp として計算する（2026-05-27 完了）
 
-**ファイル:** `src/logic/BattleEngine.ts:773–775`
+**旧ファイル位置:** `src/logic/BattleEngine.ts:773–775`
+**対応後:** `src/logic/BattleEngine.ts`
 
 ```typescript
 const result = processStatusEffects(
   effects,
-  { maxHp: targetStats.hp },  // ← targetStats.hp は現在HPであり最大HPではない
+  { maxHp: targetMaxHp },
   Math.random,
 ```
 
 `targetStats.hp` はバトル中に直接書き換えられているため（例: `targetStats.hp -= damage`）、POISON（最大HPの3%）や BURN（最大HPの5%）のダメージ計算が戦闘の進行とともに小さくなっていく。序盤は重いが後半は軽くなる意図しない挙動になる。
 
-**修正:** `playerInitialMaxHp` をプレイヤー用として使い、敵には別途 `this.enemyMaxHp[target.id]` を参照する。
+**修正:** `BattleEngine.processRuntimeStatus()` に `targetMaxHp` を渡す設計へ変更し、プレイヤー状態異常処理では `playerInitialMaxHp` を参照するようにした。
+
+**対応内容:**
+- `processRuntimeStatus(targetName, targetStats, effects, targetMaxHp)` にシグネチャ変更。
+- プレイヤー呼び出し時は `this.playerInitialMaxHp` を渡し、現在HPを `maxHp` として使わない。
+- POISON / BURN など最大HP割合DoTの計算は `StatusAilmentSystem` の責務を維持。
+- `BattleEngine.test.ts` に「最大HP1000・現在HP100のPOISONが30ダメージになる」回帰テストを追加。
+
+**設計:** `docs/設計書/66_BUG2_状態異常DoT最大HP参照設計.md`
 
 ---
 
@@ -532,7 +541,7 @@ public async changeJob(characterId: string, nextJobId: string): Promise<void>;
 |----|--------|----------|------|
 | SEC-1 | ✅ | `actions.ts` | 2026-05-24 完了。認証・所有者確認・DB更新を実装 |
 | BUG-1 | ✅ | `BattleEngine.ts` | 2026-05-24 完了。HP 0 到達と `PLAYER_DEFEATED` ログを実装 |
-| BUG-2 | 🔴 | `BattleEngine.ts:773` | 状態異常ダメージが現在HP を maxHp として計算 |
+| BUG-2 | ✅ | `BattleEngine.ts` | 状態異常DoTを現在HPではなく最大HP基準へ修正 |
 | BUG-3 | ✅ | `ExperienceSystem.ts` | 2026-05-24 完了。EXP→レベル式を共通化 |
 | SEC-2 | ✅ | `actions.ts` | 2026-05-24 完了。認証・所有者確認・DB実データ取得を実装 |
 | SEC-3 | ✅ | `GameManager.ts` | 2026-05-24 完了。パーティ3スロットのDB保存を実装 |

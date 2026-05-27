@@ -10,7 +10,7 @@
 
 | ID | 深刻度 | カテゴリ | タイトル | 対応状況 |
 |----|--------|----------|----------|----------|
-| BUG-2   | 🔴 | バトルロジック | 状態異常ダメージが現在HPをmaxHpとして計算 | 未対応 |
+| BUG-2   | ✅ | バトルロジック | 状態異常ダメージが現在HPをmaxHpとして計算 | 2026-05-27 完了 |
 | IMP-1   | 🟠 | バトルロジック | AoEスキルがBattleEngineで単体攻撃になる | 未対応 |
 | IMP-2   | 🟠 | バトルロジック | SUMMON_MINIONSがBattleEngineではログのみ | 未対応 |
 | IMP-3   | 🟠 | コンテンツ | ボスが直前の精鋭より弱い（stat逆転） | 未対応 |
@@ -27,7 +27,7 @@
 
 ---
 
-## 🔴 BUG-2: 状態異常ダメージが現在HPをmaxHpとして計算
+## ✅ BUG-2: 状態異常ダメージが現在HPをmaxHpとして計算（2026-05-27 完了）
 
 **ファイル:** `src/logic/BattleEngine.ts:898`
 
@@ -46,7 +46,7 @@ POISON（maxHPの3%）やBURN（maxHPの5%）のダメージ計算が、戦闘�
 「3ターン目にPOISON付与 → 毎ターン弱体化していく状態異常」という意図しない動作になっている。  
 HP 100 → 50 に削られた後にPOISONのtickが入ると、3%の基準が50になってしまう。
 
-**具体案:**  
+**対応:**
 プレイヤー側は `this.playerInitialMaxHp`、敵側は `this.enemyMaxHp[enemy.id]` を参照して `maxHp` に渡す。
 
 ```typescript
@@ -62,9 +62,13 @@ const maxHp = this.getEnemyMaxHp(enemy);
 const result = processStatusEffects(effects, { maxHp }, Math.random);
 ```
 
+現実装ではプレイヤー状態異常処理に `targetMaxHp` 引数を追加し、`this.playerInitialMaxHp` を渡すようにした。敵のターン開始状態異常を追加する場合は同じ引数へ `this.getEnemyMaxHp(enemy)` を渡す。
+
 **関連ファイル:**
 - `src/logic/BattleEngine.ts:898` — `processRuntimeStatus()`
 - `src/logic/StatusAilmentSystem.ts` — `processStatusEffects()` の `maxHp` 引数
+
+**設計:** `docs/設計書/66_BUG2_状態異常DoT最大HP参照設計.md`
 
 ---
 

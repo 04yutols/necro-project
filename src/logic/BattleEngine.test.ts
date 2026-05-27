@@ -262,6 +262,26 @@ describe('BattleEngine', () => {
     expect(logs.find(log => log.action === 'PLAYER_DEFEATED')?.description).toContain('状態異常');
   });
 
+  test('player poison damage uses battle-start max HP instead of current HP', () => {
+    const player = createPlayer({ hp: 1000, atk: 1, def: 999, critRate: 0 });
+    const ally = createEnemy({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const enemy = createEnemy({ hp: 500, atk: 1, def: 999 });
+    const engine = new BattleEngine(player, [ally]);
+
+    player.stats.hp = 100;
+    player.statusEffects = [{
+      type: 'POISON',
+      remainingTurns: 2,
+      stackCount: 1,
+    }];
+
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+    const tick = logs.find(log => log.action === 'AILMENT_TICK' && log.ailmentTick === 'POISON');
+
+    expect(tick?.damage).toBe(30);
+    expect(player.stats.hp).toBe(70);
+  });
+
   test('paralysis skip loses only the player action while enemy counterattack still resolves', () => {
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.25);
     const player = createPlayer(

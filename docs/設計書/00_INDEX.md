@@ -90,6 +90,7 @@
 | 残滓サブオプションシャッフルのFisher-Yates準拠・PERF-1対応を知りたい | [63_PERF1_残滓シャッフルFisherYates設計.md](63_PERF1_残滓シャッフルFisherYates設計.md) |
 | MasterDataService getterの型安全化・QUALITY-1対応を知りたい | [64_QUALITY1_MasterDataService型安全化設計.md](64_QUALITY1_MasterDataService型安全化設計.md) |
 | JobService.changeJobの不変更新化・QUALITY-2対応を知りたい | [65_QUALITY2_JobService_changeJob不変更新設計.md](65_QUALITY2_JobService_changeJob不変更新設計.md) |
+| 状態異常DoTの最大HP参照・BUG-2対応を知りたい | [66_BUG2_状態異常DoT最大HP参照設計.md](66_BUG2_状態異常DoT最大HP参照設計.md) |
 
 ## 重要ファイルパス一覧
 

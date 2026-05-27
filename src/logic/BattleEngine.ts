@@ -129,7 +129,12 @@ export class BattleEngine {
     if (isDemonActive && isDemonStatusImmune(this.demonState!)) {
       // 魔神化中は状態異常をスキップ
     } else {
-      const playerStatus = this.processRuntimeStatus(player.name, player.stats, player.statusEffects);
+      const playerStatus = this.processRuntimeStatus(
+        player.name,
+        player.stats,
+        player.statusEffects,
+        this.playerInitialMaxHp,
+      );
       player.statusEffects = playerStatus.effects;
       if (this.isPlayerDefeated()) return this.logs;
       if (playerStatus.skipAction) {
@@ -892,11 +897,12 @@ export class BattleEngine {
     targetName: string,
     targetStats: BaseStats,
     effects: StatusEffect[] | undefined,
+    targetMaxHp: number,
   ): { effects: StatusEffect[]; skipAction: boolean } {
     const isPlayer = targetName === this.state.player.name;
     const result = processStatusEffects(
       effects,
-      { maxHp: targetStats.hp },
+      { maxHp: targetMaxHp },
       Math.random,
       isPlayer ? { immuneTypes: this.synergyBonus.ailmentImmune as AilmentType[] } : undefined,
     );
