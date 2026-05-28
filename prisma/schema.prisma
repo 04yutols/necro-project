@@ -54,6 +54,7 @@ model User {
   image         String?
   displayName   String?
   passwordHash  String?   // ID/PW 認証用（bcrypt ハッシュ）
+  sessionVersion Int      @default(1) // JWT セッション一括失効用
   createdAt     DateTime  @default(now())
 
   accounts      Account[]

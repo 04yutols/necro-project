@@ -161,17 +161,29 @@ if (roll >= adjustedRate) continue;
 
 ---
 
-### 🟡 SEC-6: JWT セッションの失効不可
+### ✅ SEC-6: JWT セッションの失効不可（2026-05-27 完了）
 
-**ファイル:** `src/auth.ts:33`
+**旧ファイル位置:** `src/auth.ts:33`
+**対応後:** `src/auth.ts` / `src/services/SessionSecurityService.ts` / `src/app/api/auth/logout/route.ts`
 
 ```typescript
-session: { strategy: 'jwt', maxAge: 60 * 60 * 24 },
+token.sessionVersion = user.sessionVersion;
 ```
 
 JWT セッションはサーバー側でブラックリスト管理をしない限り無効化できない。パスワード変更やアカウント削除後も 24時間はトークンが有効なまま残る。
 
-**修正:** 重要操作時は再認証を要求するか、Redis によるセッション管理に移行する。
+**修正:** Credentials provider のJWT戦略を維持しつつ、`User.sessionVersion` とJWT内 `sessionVersion` を照合する失効方式を追加した。
+
+**対応内容:**
+- `User.sessionVersion Int @default(1)` と migration を追加。
+- `SessionSecurityService` を追加し、現行version照合と `invalidateAllUserSessions(userId)` を実装。
+- NextAuth `jwt` callback でログイン時に `sessionVersion` を埋め込み、セッション確認時にDBの現行versionと照合。
+- 不一致またはversion欠落のJWTは `null` を返してCookie破棄・未認証扱いにする。
+- `/api/auth/login` の手製JWT発行にも `sessionVersion` を追加。
+- `/api/auth/logout` を追加し、通常ログアウト時にも `sessionVersion` を進めて旧JWTを一括失効。
+- `SessionSecurityService.test.ts` と `api/auth/logout/route.test.ts` で失効前後のversion照合・ログアウト失効を確認。
+
+**設計:** `docs/設計書/67_SEC6_JWTセッション失効設計.md`
 
 ---
 
@@ -547,6 +559,7 @@ public async changeJob(characterId: string, nextJobId: string): Promise<void>;
 | SEC-3 | ✅ | `GameManager.ts` | 2026-05-24 完了。パーティ3スロットのDB保存を実装 |
 | SEC-4 | ✅ | `RewardService.ts` | 2026-05-24 完了。Web CryptoベースのID生成へ移行 |
 | SEC-5 | ✅ | `GameManager.ts` / `RewardService.ts` | 2026-05-24 完了。critRate とドロップ補正を分離 |
+| SEC-6 | ✅ | `auth.ts` / `SessionSecurityService.ts` / `api/auth/logout` | JWT sessionVersion による一括失効を実装 |
 | BUG-4 | ✅ | `useGameStore.ts` | 2026-05-24 完了。残滓強化素材を1個単位で消費 |
 | BUG-5 | ✅ | `StatusAilmentSystem.ts:199` | BURN の免疫チェック欠落 |
 | BUG-6 | ✅ | `BattleEngine.ts` | 敵HPオブジェクトの直接書き換え |

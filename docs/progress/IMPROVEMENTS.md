@@ -18,7 +18,7 @@
 | IMP-5   | 🟡 | バトルロジック | 通常攻撃のattackTypeが全職業でSLASH固定 | 未対応 |
 | IMP-6   | 🟡 | UX | ターン順序プレビューUI が存在しない | 未対応 |
 | IMP-7   | 🟡 | ゲームデザイン | node1→node2の難易度崖（案内なし） | 未対応 |
-| SEC-6   | 🟡 | セキュリティ | JWTセッションの失効不可 | 未対応 |
+| SEC-6   | ✅ | セキュリティ | JWTセッションの失効不可 | 2026-05-27 完了 |
 | SEC-7   | 🟡 | セキュリティ | パスワードポリシーが弱い | 未対応 |
 | NL-1    | 🟢 | コード品質 | SynergyBonus未使用フィールド3種 | 未対応 |
 | NL-2    | 🟢 | コード品質 | isAwakenedが常にfalse | 未対応 |
@@ -381,7 +381,7 @@ area1_node1クリア時に確定でSR武器残滓をドロップする「初回�
 
 ---
 
-## 🟡 SEC-6: JWTセッションの失効不可
+## ✅ SEC-6: JWTセッションの失効不可（2026-05-27 完了）
 
 **ファイル:** `src/auth.ts:33`
 
@@ -390,28 +390,32 @@ session: { strategy: 'jwt', maxAge: 60 * 60 * 24 }
 ```
 
 パスワード変更やアカウント削除後も最大24時間、トークンが有効なまま残る。  
-Upstash Redis はすでにランキング用に導入済みなので、セッション無効化リストに転用できる。
+Credentials provider は Auth.js v5 の制約により database session へ単純移行できないため、JWT戦略を維持したまま `User.sessionVersion` で失効できるようにした。
 
-**具体案:**  
-Next-Auth の `jwt` コールバックで Redis に `jti`（JWT ID）を保存し、  
-毎リクエストで `auth()` を呼ぶ Server Action の冒頭でブラックリストを確認する。
+**対応:**
+NextAuth の `jwt` callback と手製 `/api/auth/login` のJWT payload に `sessionVersion` を入れ、セッション確認時にDB上の `User.sessionVersion` と照合する。通常ログアウト時も `/api/auth/logout` で `sessionVersion` を進め、旧JWTを一括失効する。
 
 ```typescript
-// src/lib/sessionBlacklist.ts
-export async function invalidateSession(jti: string): Promise<void> {
-  await redis.set(`session:blacklist:${jti}`, '1', { ex: 86400 });
-}
-export async function isSessionBlacklisted(jti: string): Promise<boolean> {
-  return (await redis.get(`session:blacklist:${jti}`)) === '1';
+export async function invalidateAllUserSessions(userId: string): Promise<number | null> {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { sessionVersion: { increment: 1 } },
+    select: { sessionVersion: true },
+  });
+  return user.sessionVersion;
 }
 ```
 
-パスワード変更・アカウント削除時に `invalidateSession(session.jti)` を呼ぶ。
+パスワード変更・アカウント削除時に `invalidateAllUserSessions(userId)` を呼ぶことで、そのユーザーの旧JWTを一括で無効化できる。
 
 **関連ファイル:**
-- `src/auth.ts` — `jwt` コールバックで `jti` を付与
-- `src/lib/redis.ts` — Upstash クライアント（既存）
-- `src/app/actions.ts` — 認証要求アクションの冒頭に blacklist チェックを追加
+- `src/auth.ts` — `jwt` callbackで `sessionVersion` を付与・照合
+- `src/services/SessionSecurityService.ts` — version照合と一括失効
+- `src/app/api/auth/login/route.ts` — 手製JWTにも `sessionVersion` を付与
+- `src/app/api/auth/logout/route.ts` — ログアウト時に旧JWTを一括失効
+- `prisma/schema.prisma` — `User.sessionVersion`
+
+**設計:** `docs/設計書/67_SEC6_JWTセッション失効設計.md`
 
 ---
 
