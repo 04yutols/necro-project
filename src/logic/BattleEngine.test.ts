@@ -160,6 +160,63 @@ describe('BattleEngine', () => {
     expect(boostedDamage).toBeGreaterThan(baseDamage);
   });
 
+  test('ALL_ENEMIES skills damage every alive enemy candidate with one energy payment', () => {
+    const player = createPlayer(
+      { hp: 500, atk: 120, def: 999, critRate: 0 },
+      { currentEnergy: 50, maxEnergy: 100 },
+    );
+    const enemyA = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyB = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyC = createEnemy({ hp: 500, atk: 1, def: 0 });
+    enemyA.name = 'Enemy-A';
+    enemyB.name = 'Enemy-B';
+    enemyC.name = 'Enemy-C';
+
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction(
+      'MAGIC_SKILL',
+      enemyA,
+      'skill_warrior_wind_slash',
+      [enemyA, enemyB, enemyC],
+    );
+    const skillLogs = logs.filter(log => log.action === 'MAGIC_SKILL');
+
+    expect(skillLogs.map(log => log.targetName)).toEqual(['Enemy-A', 'Enemy-B', 'Enemy-C']);
+    expect(skillLogs.every(log => log.description.includes('敵全体'))).toBe(true);
+    expect(engine.getEnemyCurrentHp(enemyA.id)).toBeLessThan(500);
+    expect(engine.getEnemyCurrentHp(enemyB.id)).toBeLessThan(500);
+    expect(engine.getEnemyCurrentHp(enemyC.id)).toBeLessThan(500);
+    expect(player.currentEnergy).toBe(61);
+  });
+
+  test('single target skills keep damaging only the selected enemy even with enemy candidates', () => {
+    const player = createPlayer(
+      { hp: 500, atk: 120, def: 999, critRate: 0 },
+      { currentEnergy: 50, maxEnergy: 100 },
+    );
+    const enemyA = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyB = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyC = createEnemy({ hp: 500, atk: 1, def: 0 });
+    enemyA.name = 'Enemy-A';
+    enemyB.name = 'Enemy-B';
+    enemyC.name = 'Enemy-C';
+
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction(
+      'MAGIC_SKILL',
+      enemyA,
+      'skill_mage_1',
+      [enemyA, enemyB, enemyC],
+    );
+    const skillLogs = logs.filter(log => log.action === 'MAGIC_SKILL');
+
+    expect(skillLogs.map(log => log.targetName)).toEqual(['Enemy-A']);
+    expect(engine.getEnemyCurrentHp(enemyA.id)).toBeLessThan(500);
+    expect(engine.getEnemyCurrentHp(enemyB.id)).toBeUndefined();
+    expect(engine.getEnemyCurrentHp(enemyC.id)).toBeUndefined();
+    expect(player.currentEnergy).toBe(53);
+  });
+
   test('Necro rank bonus increases outgoing battle damage', () => {
     const basePlayer: CharacterData = {
       ...mockPlayer,

@@ -93,6 +93,7 @@
 | 状態異常DoTの最大HP参照・BUG-2対応を知りたい | [66_BUG2_状態異常DoT最大HP参照設計.md](66_BUG2_状態異常DoT最大HP参照設計.md) |
 | JWTセッションの一括失効・SEC-6対応を知りたい | [67_SEC6_JWTセッション失効設計.md](67_SEC6_JWTセッション失効設計.md) |
 | ステージ開始トークン・不正クリア防止・SEC-8対応を知りたい | [68_SEC8_ステージ開始トークン設計.md](68_SEC8_ステージ開始トークン設計.md) |
+| BattleEngineのAoEスキル対象解決・IMP-1対応を知りたい | [69_IMP1_BattleEngine_AoEスキル対象解決設計.md](69_IMP1_BattleEngine_AoEスキル対象解決設計.md) |
 
 ## 重要ファイルパス一覧
 

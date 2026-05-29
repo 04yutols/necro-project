@@ -11,7 +11,7 @@
 | ID | 深刻度 | カテゴリ | タイトル | 対応状況 |
 |----|--------|----------|----------|----------|
 | BUG-2   | ✅ | バトルロジック | 状態異常ダメージが現在HPをmaxHpとして計算 | 2026-05-27 完了 |
-| IMP-1   | 🟠 | バトルロジック | AoEスキルがBattleEngineで単体攻撃になる | 未対応 |
+| IMP-1   | ✅ | バトルロジック | AoEスキルがBattleEngineで単体攻撃になる | 2026-05-30 完了 |
 | IMP-2   | 🟠 | バトルロジック | SUMMON_MINIONSがBattleEngineではログのみ | 未対応 |
 | IMP-3   | 🟠 | コンテンツ | ボスが直前の精鋭より弱い（stat逆転） | 未対応 |
 | IMP-4   | 🟡 | バトルロジック | ドレインスキルのHP回復が未実装 | 未対応 |
@@ -72,7 +72,7 @@ const result = processStatusEffects(effects, { maxHp }, Math.random);
 
 ---
 
-## 🟠 IMP-1: AoEスキルがBattleEngineで単体攻撃になる
+## ✅ IMP-1: AoEスキルがBattleEngineで単体攻撃になる（2026-05-30 完了）
 
 **ファイル:** `src/logic/BattleEngine.ts:257–420`
 
@@ -92,20 +92,17 @@ BattleCanvasは正しく `skill.aoe ? enemies.filter(e => e.hp > 0) : [getTarget
 | skill_darkpriest_curse_bind | 呪縛 | 暗黒司祭 |
 | skill_darkknight_grave_cross | 墓標十字 | 暗黒騎士 |
 
-**具体案:**
+**修正方針:**
 
 ```typescript
 private processPlayerAction(
   actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL',
   target: MonsterData,
   skillId?: string,
-  allEnemies?: MonsterData[], // 追加
+  enemyCandidates?: MonsterData[],
 ): void {
   // ...
-  const isAoe = skillData?.targetType === 'ALL_ENEMIES';
-  const targets = isAoe && allEnemies
-    ? allEnemies.filter(e => this.getEnemyRuntimeHp(e) > 0)
-    : [target];
+  const targets = this.resolvePlayerActionTargets(target, skillData, enemyCandidates);
 
   for (const t of targets) {
     const shieldResult = this.applySpiritualShield(t, totalDamage, element);
@@ -116,7 +113,15 @@ private processPlayerAction(
 }
 ```
 
-`simulateAction()` シグネチャに `allEnemies` を渡す変更と、テストを追加する。
+`simulateAction()` が既に受け取っている `enemyCandidates` をプレイヤー攻撃にも渡し、`SkillData.targetType === 'ALL_ENEMIES'` の場合のみ生存候補全体へ展開する。SP消費・魔神化行動消費・SELF_DAMAGE は行動単位のため1回だけ実行し、ダメージ・防壁・状態異常・武器パッシブ・ログは対象ごとに実行する。
+
+**対応内容:**
+- `processPlayerAction()` に `enemyCandidates` を渡すよう変更。
+- `resolvePlayerActionTargets()` を追加し、AoEは生存敵候補、単体は選択対象のみへ解決。
+- AoE命中対象ごとに BattleLog / HPランタイム更新 / ボスギミック / 状態異常 / 武器パッシブを処理。
+- `BattleEngine.test.ts` に AoE 3体命中・SP 1回消費・単体スキル非AoEの回帰テストを追加。
+
+**設計:** `docs/設計書/69_IMP1_BattleEngine_AoEスキル対象解決設計.md`
 
 **関連ファイル:**
 - `src/logic/BattleEngine.ts:257` — `processPlayerAction()`

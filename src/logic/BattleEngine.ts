@@ -7,6 +7,7 @@ import {
   Resistances,
   ElementType,
   SkillAttackType,
+  SkillData,
   AilmentType,
   StatusEffect,
   BossGimmick,
@@ -145,7 +146,7 @@ export class BattleEngine {
 
     // 3. プレイヤー行動 (GDD-003)
     if (!playerActionSkipped) {
-      this.processPlayerAction(actionType, target, skillId);
+      this.processPlayerAction(actionType, target, skillId, turnEnemies);
       if (this.isPlayerDefeated()) return this.logs;
 
       // 4. 軍団の追撃・シナジー (GDD-005)
@@ -263,6 +264,7 @@ export class BattleEngine {
     actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL',
     target: MonsterData,
     skillId?: string,
+    enemyCandidates: MonsterData[] = [target],
   ): void {
     const { player } = this.state;
     const profile = calculateCharacterStatProfile(player);
@@ -282,7 +284,7 @@ export class BattleEngine {
     let attackType: SkillAttackType = 'SLASH';
     const currentJob = this.masterData.getJob(player.currentJobId);
     let energyGain = getEnergyRegen(currentJob);
-    let skillData = null;
+    let skillData: SkillData | undefined;
 
     if (actionType === 'PHYSICAL_ATTACK') {
       energyCost = 0;
@@ -328,45 +330,89 @@ export class BattleEngine {
     const gaugeGain = actionType === 'PHYSICAL_ATTACK' ? 10 : 5;
     this.addDemonGauge(gaugeGain);
 
-    // ── ダメージ計算（hitCount 回ループ）────────────
-    let totalDamage = 0;
-    let isCritical = false;
-    let isWeakness = false;
-    let isResisted = false;
+    const actionTargets = this.resolvePlayerActionTargets(target, skillData, enemyCandidates);
 
-    for (let hit = 0; hit < hitCount; hit++) {
-      const resistances = ignoreRes ? {} : (target.resistances ?? {});
-      const defStats = ignoreDef ? { ...target.stats, def: 0 } : target.stats;
-      const result = this.calculateDamage(
-        { ...stats, atk: Math.floor(stats.atk * demonDmgMult) },
-        elementBoosts,
-        defStats,
-        resistances,
-        power,
-        element,
-      );
-      totalDamage += result.damage;
-      if (result.isCritical) this.addDemonGauge(5); // 会心時ボーナス
-      isCritical = isCritical || result.isCritical;
-      isWeakness = isWeakness || result.isWeakness;
-      isResisted = isResisted || result.isResisted;
-    }
+    for (const currentTarget of actionTargets) {
+      // ── ダメージ計算（hitCount 回ループ）────────────
+      let totalDamage = 0;
+      let isCritical = false;
+      let isWeakness = false;
+      let isResisted = false;
 
-    const shieldResult = this.applySpiritualShield(target, totalDamage, element);
-    if (shieldResult.didBreak) {
-      player.currentEnergy = Math.min(player.maxEnergy, player.currentEnergy + 30);
-      this.addDemonGauge(20); // 霊魂砕きボーナス
-    }
+      for (let hit = 0; hit < hitCount; hit++) {
+        const resistances = ignoreRes ? {} : (currentTarget.resistances ?? {});
+        const defStats = ignoreDef ? { ...currentTarget.stats, def: 0 } : currentTarget.stats;
+        const result = this.calculateDamage(
+          { ...stats, atk: Math.floor(stats.atk * demonDmgMult) },
+          elementBoosts,
+          defStats,
+          resistances,
+          power,
+          element,
+        );
+        totalDamage += result.damage;
+        if (result.isCritical) this.addDemonGauge(5); // 会心時ボーナス
+        isCritical = isCritical || result.isCritical;
+        isWeakness = isWeakness || result.isWeakness;
+        isResisted = isResisted || result.isResisted;
+      }
 
-    // HP 変化 + ボスギミックチェック
-    const hpChange = this.applyDamageToEnemy(target, shieldResult.damage);
-    this.checkBossGimmicks(target, hpChange.prevHpPct, hpChange.newHpPct);
+      const shieldResult = this.applySpiritualShield(currentTarget, totalDamage, element);
+      if (shieldResult.didBreak) {
+        player.currentEnergy = Math.min(player.maxEnergy, player.currentEnergy + 30);
+        this.addDemonGauge(20); // 霊魂砕きボーナス
+      }
 
-    if (hpChange.nextHp <= 0) {
-      const reviveGimmick = findReviveGimmick(target.gimmicks, target.id, this.firedGimmicks);
-      if (reviveGimmick) {
-        this.firedGimmicks.add(bossGimmickKey(target.id, reviveGimmick));
-        this.applyBossGimmickEffect(target, reviveGimmick);
+      // HP 変化 + ボスギミックチェック
+      const hpChange = this.applyDamageToEnemy(currentTarget, shieldResult.damage);
+      this.checkBossGimmicks(currentTarget, hpChange.prevHpPct, hpChange.newHpPct);
+
+      if (hpChange.nextHp <= 0) {
+        const reviveGimmick = findReviveGimmick(currentTarget.gimmicks, currentTarget.id, this.firedGimmicks);
+        if (reviveGimmick) {
+          this.firedGimmicks.add(bossGimmickKey(currentTarget.id, reviveGimmick));
+          this.applyBossGimmickEffect(currentTarget, reviveGimmick);
+        }
+      }
+
+      let desc = `${player.name}の${actionName}！`;
+      if (skillData?.targetType === 'ALL_ENEMIES') desc += ` 敵全体を巻き込んだ。`;
+      if (hitCount > 1) desc += ` ${hitCount}ヒット！`;
+      if (isWeakness) desc += ` 弱点を突いた！`;
+      else if (isResisted) desc += ` 効果はいまひとつのようだ。`;
+      if (shieldResult.wasShielded) {
+        desc += shieldResult.didBreak
+          ? ` 霊魂砕きが発生し、防壁が崩壊した！`
+          : shieldResult.wasWeakShieldHit
+            ? ` 霊的防壁を削った。`
+            : ` 霊的防壁に阻まれた。`;
+      }
+
+      this.addLog(actionType, player.name, currentTarget.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, element, attackType);
+      this.tryApplyActionAilment(player, currentTarget, skillId, element, attackType);
+
+      // 武器パッシブ
+      const weapon = player.equipment?.weapon;
+      if (weapon) {
+        for (const passive of [weapon.passiveA, weapon.passiveB]) {
+          if (!passive) continue;
+          const attackCtx: WeaponPassiveContext = {
+            trigger: 'ON_ATTACK',
+            actor: player,
+            target: currentTarget,
+            isCritical,
+            didBreakShield: shieldResult.didBreak,
+            isDemonMode: this.demonState?.isDemonMode ?? false,
+          };
+          const passiveResult = evaluateWeaponPassive(passive, attackCtx);
+          if (passiveResult) this.applyPassiveResult(passiveResult, player, currentTarget);
+
+          if (shieldResult.didBreak) {
+            const shieldCtx: WeaponPassiveContext = { ...attackCtx, trigger: 'ON_SHIELD_BREAK' };
+            const shieldPassiveResult = evaluateWeaponPassive(passive, shieldCtx);
+            if (shieldPassiveResult) this.applyPassiveResult(shieldPassiveResult, player, currentTarget);
+          }
+        }
       }
     }
 
@@ -384,45 +430,18 @@ export class BattleEngine {
     if (isDemonActive && this.demonState) {
       this.demonState = consumeDemonAction(this.demonState);
     }
+  }
 
-    let desc = `${player.name}の${actionName}！`;
-    if (hitCount > 1) desc += ` ${hitCount}ヒット！`;
-    if (isWeakness) desc += ` 弱点を突いた！`;
-    else if (isResisted) desc += ` 効果はいまひとつのようだ。`;
-    if (shieldResult.wasShielded) {
-      desc += shieldResult.didBreak
-        ? ` 霊魂砕きが発生し、防壁が崩壊した！`
-        : shieldResult.wasWeakShieldHit
-          ? ` 霊的防壁を削った。`
-          : ` 霊的防壁に阻まれた。`;
-    }
+  private resolvePlayerActionTargets(
+    primaryTarget: MonsterData,
+    skillData: SkillData | undefined,
+    enemyCandidates: MonsterData[],
+  ): MonsterData[] {
+    if (skillData?.targetType !== 'ALL_ENEMIES') return [primaryTarget];
 
-    this.addLog(actionType, player.name, target.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, element, attackType);
-    this.tryApplyActionAilment(player, target, skillId, element, attackType);
-
-    // 武器パッシブ
-    const weapon = player.equipment?.weapon;
-    if (weapon) {
-      for (const passive of [weapon.passiveA, weapon.passiveB]) {
-        if (!passive) continue;
-        const attackCtx: WeaponPassiveContext = {
-          trigger: 'ON_ATTACK',
-          actor: player,
-          target,
-          isCritical,
-          didBreakShield: shieldResult.didBreak,
-          isDemonMode: this.demonState?.isDemonMode ?? false,
-        };
-        const passiveResult = evaluateWeaponPassive(passive, attackCtx);
-        if (passiveResult) this.applyPassiveResult(passiveResult, player, target);
-
-        if (shieldResult.didBreak) {
-          const shieldCtx: WeaponPassiveContext = { ...attackCtx, trigger: 'ON_SHIELD_BREAK' };
-          const shieldPassiveResult = evaluateWeaponPassive(passive, shieldCtx);
-          if (shieldPassiveResult) this.applyPassiveResult(shieldPassiveResult, player, target);
-        }
-      }
-    }
+    const uniqueTargets = this.resolveEnemyCandidates(primaryTarget, enemyCandidates);
+    const aliveTargets = uniqueTargets.filter(enemy => this.getEnemyRuntimeHp(enemy) > 0);
+    return aliveTargets.length > 0 ? aliveTargets : [primaryTarget];
   }
 
   private applyPassiveResult(
