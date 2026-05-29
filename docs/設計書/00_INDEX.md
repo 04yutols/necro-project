@@ -94,6 +94,7 @@
 | JWTセッションの一括失効・SEC-6対応を知りたい | [67_SEC6_JWTセッション失効設計.md](67_SEC6_JWTセッション失効設計.md) |
 | ステージ開始トークン・不正クリア防止・SEC-8対応を知りたい | [68_SEC8_ステージ開始トークン設計.md](68_SEC8_ステージ開始トークン設計.md) |
 | BattleEngineのAoEスキル対象解決・IMP-1対応を知りたい | [69_IMP1_BattleEngine_AoEスキル対象解決設計.md](69_IMP1_BattleEngine_AoEスキル対象解決設計.md) |
+| BattleEngineのSUMMON_MINIONS実体化・IMP-2対応を知りたい | [70_IMP2_BattleEngine_SUMMON_MINIONS実体化設計.md](70_IMP2_BattleEngine_SUMMON_MINIONS実体化設計.md) |
 
 ## 重要ファイルパス一覧
 

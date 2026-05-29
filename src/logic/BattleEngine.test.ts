@@ -460,7 +460,7 @@ describe('BattleEngine', () => {
     expect(logs.some((log) => log.action === 'BOSS_REVIVE')).toBe(false);
   });
 
-  test('SUMMON_MINIONS fires when spiritual shield breaks', () => {
+  test('SUMMON_MINIONS materializes minions when spiritual shield breaks', () => {
     const player: CharacterData = {
       ...mockPlayer,
       currentEnergy: 100,
@@ -468,8 +468,8 @@ describe('BattleEngine', () => {
     };
     const boss: MonsterData = {
       ...mockTarget,
-      id: 'summon-boss',
-      name: 'Summon Boss',
+      id: 'blood_mire_queen',
+      name: 'Bloodmire Queen',
       tier: 'BOSS',
       stats: { ...mockTarget.stats, hp: 1000, def: 0 },
       shieldHp: 20,
@@ -479,10 +479,54 @@ describe('BattleEngine', () => {
       gimmicks: [{ trigger: 'ON_SHIELD_BREAK', effect: 'SUMMON_MINIONS', value: 2 }],
     };
 
-    const logs = new BattleEngine(player, []).simulateAction('MAGIC_SKILL', boss, 'skill_mage_1');
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction('MAGIC_SKILL', boss, 'skill_mage_1');
+    const summoned = engine.getSummonedEnemies();
 
     expect(boss.shieldBroken).toBe(true);
     expect(logs.some((log) => log.action === 'BOSS_SUMMON')).toBe(true);
+    expect(summoned.map(enemy => enemy.name)).toEqual(['血沼の蛭', '腐敗猟犬']);
+    expect(engine.getPendingSummons()).toEqual(summoned.map(enemy => enemy.id));
+    expect(engine.consumePendingSummons()).toEqual(summoned.map(enemy => enemy.id));
+    expect(engine.getPendingSummons()).toEqual([]);
+    expect(summoned.every(enemy => engine.getEnemyCurrentHp(enemy.id) === enemy.stats.hp)).toBe(true);
+  });
+
+  test('summoned minions join later player AoE and follow-up target candidates', () => {
+    const player = createPlayer(
+      { hp: 500, atk: 120, def: 999, critRate: 0 },
+      { currentEnergy: 100, maxEnergy: 100 },
+    );
+    const boss: MonsterData = {
+      ...mockTarget,
+      id: 'blood_mire_queen',
+      name: 'Bloodmire Queen',
+      tier: 'BOSS',
+      stats: { ...mockTarget.stats, hp: 1000, atk: 1, def: 0 },
+      shieldHp: 20,
+      maxShieldHp: 20,
+      weaknesses: ['FIRE'],
+      resistances: { FIRE: -30 },
+      gimmicks: [{ trigger: 'ON_SHIELD_BREAK', effect: 'SUMMON_MINIONS', value: 2 }],
+    };
+    const ally1 = createEnemy({ hp: 300, atk: 30, def: 10, critRate: 0 });
+    const ally2 = createEnemy({ hp: 300, atk: 30, def: 10, critRate: 0 });
+    const engine = new BattleEngine(player, [ally1, ally2]);
+
+    engine.simulateAction('MAGIC_SKILL', boss, 'skill_mage_1');
+    const summoned = engine.getSummonedEnemies();
+    expect(summoned).toHaveLength(2);
+
+    const logs = engine.simulateAction('MAGIC_SKILL', boss, 'skill_warrior_wind_slash');
+    const skillTargets = logs
+      .filter(log => log.action === 'MAGIC_SKILL')
+      .map(log => log.targetName);
+    const followUpTargets = logs
+      .filter(log => log.action === 'MONSTER_ATTACK')
+      .map(log => log.targetName);
+
+    expect(skillTargets).toEqual(['Bloodmire Queen', '血沼の蛭', '腐敗猟犬']);
+    expect(followUpTargets).toEqual(['Bloodmire Queen', '血沼の蛭']);
   });
 
   test('party follow-ups spread across alive enemy candidates', () => {

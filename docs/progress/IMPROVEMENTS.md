@@ -12,7 +12,7 @@
 |----|--------|----------|----------|----------|
 | BUG-2   | ✅ | バトルロジック | 状態異常ダメージが現在HPをmaxHpとして計算 | 2026-05-27 完了 |
 | IMP-1   | ✅ | バトルロジック | AoEスキルがBattleEngineで単体攻撃になる | 2026-05-30 完了 |
-| IMP-2   | 🟠 | バトルロジック | SUMMON_MINIONSがBattleEngineではログのみ | 未対応 |
+| IMP-2   | ✅ | バトルロジック | SUMMON_MINIONSがBattleEngineではログのみ | 2026-05-30 完了 |
 | IMP-3   | 🟠 | コンテンツ | ボスが直前の精鋭より弱い（stat逆転） | 未対応 |
 | IMP-4   | 🟡 | バトルロジック | ドレインスキルのHP回復が未実装 | 未対応 |
 | IMP-5   | 🟡 | バトルロジック | 通常攻撃のattackTypeが全職業でSLASH固定 | 未対応 |
@@ -130,7 +130,7 @@ private processPlayerAction(
 
 ---
 
-## 🟠 IMP-2: SUMMON_MINIONSがBattleEngineではログのみ（敵が実際に増えない）
+## ✅ IMP-2: SUMMON_MINIONSがBattleEngineではログのみ（敵が実際に増えない）（2026-05-30 完了）
 
 **ファイル:** `src/logic/BattleEngine.ts:688`
 
@@ -154,25 +154,38 @@ BattleEngineのテストをすると、防壁破壊後もモンスターが増�
 export function resolveSummonMinionIds(boss: MonsterData, gimmick: BossGimmick): string[]
 ```
 
-**具体案:**  
-BattleEngine の `state` に `pendingSummons: string[]` フィールドを追加し、  
-`applyBossGimmickEffect()` の SUMMON_MINIONS ケースで増援IDを `pendingSummons` にプッシュ。  
-`simulateAction()` の呼び出し元が `pendingSummons` を読んで敵を追加する設計にする。
+**修正方針:**
+BattleEngine の `state` に `pendingSummons: string[]` と `summonedEnemies: MonsterData[]` を追加し、
+`applyBossGimmickEffect()` の SUMMON_MINIONS ケースで増援を `MonsterData` として実体化する。
 
 ```typescript
 case 'SUMMON_MINIONS': {
-  const ids = resolveSummonMinionIds(boss, g);
-  this.state.pendingSummons = [...(this.state.pendingSummons ?? []), ...ids];
+  const ids = resolveSummonMinionIds(boss.id, g.value, availableSlots);
+  const summoned = ids.map(id => createSummonedEnemy(id, boss));
+  this.state.summonedEnemies = [...this.state.summonedEnemies, ...summoned];
+  this.state.pendingSummons = [...this.state.pendingSummons, ...summoned.map(e => e.id)];
   this.addLog('BOSS_SUMMON', boss.name, 'FIELD',
-    `【召喚】${boss.name}が手下を呼んだ！（${ids.join(', ')}）`);
+    `【召喚】${boss.name}が${summoned.map(e => e.name).join(' / ')}を呼び出した！`);
   break;
 }
 ```
 
+`resolveEnemyCandidates()` で `summonedEnemies` を候補へマージすることで、次回以降の AoE / 軍団追撃対象にも増援が入る。
+
+**対応内容:**
+- `BattleState` に `pendingSummons` / `summonedEnemies` を追加。
+- `applySummonMinions()` で enemy master から増援を `MonsterData` として生成。
+- 増援を `enemyCurrentHp` / `enemyMaxHp` に登録。
+- `getPendingSummons()` / `consumePendingSummons()` / `getSummonedEnemies()` を追加。
+- 後続ターンの `resolveEnemyCandidates()` に増援を混ぜる。
+- `BattleEngine.test.ts` に実体化・pending取得・後続AoE/追撃候補化の回帰テストを追加。
+
+**設計:** `docs/設計書/70_IMP2_BattleEngine_SUMMON_MINIONS実体化設計.md`
+
 **関連ファイル:**
 - `src/logic/BattleEngine.ts:688` — `applyBossGimmickEffect()` SUMMON_MINIONS ケース
 - `src/logic/BossGimmickSystem.ts` — `resolveSummonMinionIds()`
-- `src/types/game.ts:BattleState` — `pendingSummons?: string[]` を追加
+- `src/types/game.ts:BattleState` — `pendingSummons` / `summonedEnemies` を追加
 
 ---
 

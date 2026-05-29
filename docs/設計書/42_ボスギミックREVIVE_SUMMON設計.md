@@ -59,10 +59,11 @@
 発火時:
 
 - 発火済みキーを登録する。
-- BattleEngine は `BOSS_SUMMON` ログを出す。
+- BattleEngine は `BOSS_SUMMON` ログを出し、`summonedEnemies` として増援を実体化する。
 - BattleCanvas は実際に敵リストへ増援を追加する。
 - 画面上の敵は最大3体までとし、既に枠が埋まっている場合はログのみ表示する。
-- 召喚された敵は `TurnOrderSystem` の初期AVを持ち、SPDに応じて次の敵フェーズから行動できる。
+- BattleCanvas で召喚された敵は `TurnOrderSystem` の初期AVを持ち、SPDに応じて次の敵フェーズから行動できる。
+- BattleEngine で召喚された敵は、次回以降の `simulateAction()` で AoE / 軍団追撃対象候補に入る。
 
 ## 増援プール
 
@@ -93,4 +94,4 @@
 - legacy `value: 1` でも HP50%復活として扱う。
 - `SUMMON_MINIONS` はシールド破壊時に発火する。
 - ボスごとの増援プールと空き枠制限を検証する。
-- BattleEngine のログでも `BOSS_REVIVE` / `BOSS_SUMMON` が確認できる。
+- BattleEngine のログでも `BOSS_REVIVE` / `BOSS_SUMMON` が確認でき、`getSummonedEnemies()` で実体化した増援を確認できる。

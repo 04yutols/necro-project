@@ -4,6 +4,7 @@ import {
   BattleState,
   BattleLog,
   BaseStats,
+  EnemyData,
   Resistances,
   ElementType,
   SkillAttackType,
@@ -44,6 +45,7 @@ import {
   bossGimmickKey,
   findReviveGimmick,
   getReviveHp,
+  resolveSummonMinionIds,
   shouldTriggerBossGimmick,
 } from './BossGimmickSystem';
 import { calculateMonsterAttackProfile } from './MonsterAttackSystem';
@@ -64,6 +66,10 @@ export class BattleEngine {
   private enemyCurrentHp: Record<string, number> = {};
   private firedGimmicks: Set<string> = new Set();
   private enemyMaxHp: Record<string, number> = {};
+  private pendingSummons: string[] = [];
+  private summonedEnemies: MonsterData[] = [];
+  private activeEnemyCandidates: MonsterData[] = [];
+  private summonSequence = 0;
   private demonState: DemonRuntimeState | null = null;
   private playerDefeatLogged = false;
 
@@ -82,6 +88,8 @@ export class BattleEngine {
       monsterCurrentHp: {},
       enemyCurrentHp: {},
       enemyMaxHp: {},
+      pendingSummons: [],
+      summonedEnemies: [],
     };
     this.masterData = MasterDataService.getInstance();
     this.synergyBonus = calculatePartyTribeSynergy(
@@ -96,6 +104,8 @@ export class BattleEngine {
     this.state.monsterCurrentHp = this.monsterCurrentHp;
     this.state.enemyCurrentHp = this.enemyCurrentHp;
     this.state.enemyMaxHp = this.enemyMaxHp;
+    this.state.pendingSummons = this.pendingSummons;
+    this.state.summonedEnemies = this.summonedEnemies;
   }
 
   /**
@@ -111,6 +121,7 @@ export class BattleEngine {
     this.logs = [];
     const { player } = this.state;
     const turnEnemies = this.resolveEnemyCandidates(target, enemyCandidates);
+    this.activeEnemyCandidates = turnEnemies;
 
     // 1. ターン開始時のエリアギミック判定 (GDD-006)
     if (this.isPlayerDefeated()) {
@@ -550,6 +561,9 @@ export class BattleEngine {
     for (const enemy of enemyCandidates ?? []) {
       candidatesById.set(enemy.id, enemy);
     }
+    for (const enemy of this.summonedEnemies) {
+      candidatesById.set(enemy.id, enemy);
+    }
     return Array.from(candidatesById.values());
   }
 
@@ -710,10 +724,69 @@ export class BattleEngine {
         break;
 
       case 'SUMMON_MINIONS':
-        this.addLog('BOSS_SUMMON', boss.name, 'FIELD',
-          `【召喚】${boss.name}が手下を呼んだ！`);
+        this.applySummonMinions(boss, g);
         break;
     }
+  }
+
+  private applySummonMinions(boss: MonsterData, g: BossGimmick): void {
+    const aliveCount = this.activeEnemyCandidates.filter(enemy => this.getEnemyRuntimeHp(enemy) > 0).length;
+    const availableSlots = Math.max(0, 3 - aliveCount);
+    const minionSourceIds = resolveSummonMinionIds(boss.id, g.value, availableSlots);
+
+    if (minionSourceIds.length === 0) {
+      this.addLog('BOSS_SUMMON', boss.name, 'FIELD',
+        `【召喚】${boss.name}が手下を呼ぶが、戦場は既に満ちている。`);
+      return;
+    }
+
+    const summoned = minionSourceIds
+      .map(sourceId => this.createSummonedEnemy(sourceId, boss))
+      .filter((enemy): enemy is MonsterData => Boolean(enemy));
+
+    if (summoned.length === 0) {
+      this.addLog('BOSS_SUMMON', boss.name, 'FIELD',
+        `【召喚】${boss.name}が手下を呼ぶが、召喚対象を解決できない。`);
+      return;
+    }
+
+    for (const enemy of summoned) {
+      this.summonedEnemies.push(enemy);
+      this.activeEnemyCandidates.push(enemy);
+      this.ensureEnemyRuntimeHp(enemy);
+    }
+    this.pendingSummons.push(...summoned.map(enemy => enemy.id));
+    this.state.summonedEnemies = this.summonedEnemies;
+    this.state.pendingSummons = this.pendingSummons;
+
+    this.addLog('BOSS_SUMMON', boss.name, 'FIELD',
+      `【召喚】${boss.name}が${summoned.map(enemy => enemy.name).join(' / ')}を呼び出した！`);
+  }
+
+  private createSummonedEnemy(sourceId: string, boss: MonsterData): MonsterData | null {
+    const enemy = this.masterData.getEnemy(sourceId);
+    if (!enemy) return null;
+
+    const runtimeId = `${boss.id}:summon:${sourceId}:${this.summonSequence++}`;
+    return this.enemyDataToMonster(enemy, runtimeId);
+  }
+
+  private enemyDataToMonster(enemy: EnemyData, runtimeId: string): MonsterData {
+    return {
+      id: runtimeId,
+      name: enemy.nameJa ?? enemy.name,
+      tribe: enemy.tribe,
+      cost: 0,
+      tier: enemy.tier,
+      stats: { ...enemy.stats },
+      resistances: { ...enemy.resistances },
+      weaknesses: [...enemy.weaknesses],
+      shieldHp: enemy.shieldHp,
+      maxShieldHp: enemy.maxShieldHp,
+      shieldBroken: (enemy.shieldHp ?? 0) <= 0,
+      gimmicks: enemy.gimmicks ? enemy.gimmicks.map(gimmick => ({ ...gimmick })) : undefined,
+      statusEffects: [],
+    };
   }
 
   private applySpiritualShield(
@@ -832,6 +905,31 @@ export class BattleEngine {
 
   getDemonGauge(): number {
     return this.demonState?.gauge ?? 0;
+  }
+
+  public getPendingSummons(): string[] {
+    return [...this.pendingSummons];
+  }
+
+  public consumePendingSummons(): string[] {
+    const pending = [...this.pendingSummons];
+    this.pendingSummons = [];
+    this.state.pendingSummons = this.pendingSummons;
+    return pending;
+  }
+
+  public getSummonedEnemies(): MonsterData[] {
+    return this.summonedEnemies.map(enemy => ({
+      ...enemy,
+      stats: { ...enemy.stats },
+      resistances: { ...enemy.resistances },
+      weaknesses: enemy.weaknesses ? [...enemy.weaknesses] : undefined,
+      gimmicks: enemy.gimmicks ? enemy.gimmicks.map(gimmick => ({ ...gimmick })) : undefined,
+      statusEffects: enemy.statusEffects ? enemy.statusEffects.map(effect => ({
+        ...effect,
+        stacks: effect.stacks ? effect.stacks.map(stack => ({ ...stack })) : undefined,
+      })) : undefined,
+    }));
   }
 
   public getEnemyCurrentHp(enemyId: string): number | undefined {

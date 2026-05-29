@@ -411,6 +411,8 @@ export interface BattleState {
   monsterCurrentHp: Record<string, number>;
   enemyCurrentHp: Record<string, number>;
   enemyMaxHp: Record<string, number>;
+  pendingSummons: string[];
+  summonedEnemies: MonsterData[];
 }
 
 export interface BattleLog {
