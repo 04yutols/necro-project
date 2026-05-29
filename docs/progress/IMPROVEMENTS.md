@@ -17,13 +17,26 @@
 | IMP-4   | 🟡 | バトルロジック | ドレインスキルのHP回復が未実装 | 未対応 |
 | IMP-5   | 🟡 | バトルロジック | 通常攻撃のattackTypeが全職業でSLASH固定 | 未対応 |
 | IMP-6   | 🟡 | UX | ターン順序プレビューUI が存在しない | 未対応 |
-| IMP-7   | 🟡 | ゲームデザイン | node1→node2の難易度崖（案内なし） | 未対応 |
+| IMP-7   | 🟡 | ゲームデザイン | node1→node2の難易度崖（案内なし） | 未対応（調整支援追加） |
 | SEC-6   | ✅ | セキュリティ | JWTセッションの失効不可 | 2026-05-27 完了 |
 | SEC-7   | ✅ | セキュリティ | パスワードポリシーが弱い | 2026-05-28 完了 |
 | NL-1    | 🟢 | コード品質 | SynergyBonus未使用フィールド3種 | 未対応 |
 | NL-2    | 🟢 | コード品質 | isAwakenedが常にfalse | 未対応 |
 | L-2     | 🟢 | コード品質 | BattleEngineのWAVE進行が10ターン経過トリガー | 未対応 |
 | QUALITY-2 | 🟢 | コード品質 | JobService.changeJobの引数直接変異 | 未対応 |
+
+---
+
+## コンテンツ制作・調整支援（2026-05-30）
+
+今後の敵・ダンジョン・ドロップ・スキル追加を楽にするため、マスターデータを直接編集し、雛形生成と監査レポートで安全確認できる運用を追加した。
+
+| 対象 | 手順書 | レポートコマンド | 目的 |
+|---|---|---|---|
+| マスターデータ制作全体 | `docs/設計書/75_マスターデータ制作運用手順.md` | `npm run data:audit` / `npm run data:template` | 敵・ステージ・武器・素材・魔物・スキルの作成手順と参照整合性チェック |
+| ステージ進行・難易度導線 | `docs/設計書/72_IMP7_ステージ難易度導線手動調整手順.md` | `npm run balance:progression` | 新規ステージ追加時のEHP/脅威度の急上昇と推奨導線を検出 |
+| ドロップ経済 | `docs/設計書/73_ドロップ経済手動調整手順.md` | `npm run balance:drops` | R/SR/SSR/UR武器・残滓・素材の期待値と参照切れを検出 |
+| スキル倍率 | `docs/設計書/74_スキル倍率手動調整手順.md` | `npm run balance:skills` | 設計書19のpower範囲、状態異常budget、説明文と効果定義のズレを検出 |
 
 ---
 
@@ -225,6 +238,11 @@ REVIVE時のHP回復量と合わせて、2フェーズ制の緊張感を演出�
 - `src/data/master/enemies.json` — `ossuary_wyrm_lord.stats`
 - `src/logic/BalanceTuning.test.ts` — 期待値を更新
 
+**調整支援:**
+- `docs/設計書/71_IMP3_敵ボスバランス手動調整手順.md` — 手動調整手順
+- `scripts/balance-report.mjs` — ボス逆転検出レポート
+- `npm run balance:report -- --stage=area1_node2 --all` — 特定ステージ確認
+
 ---
 
 ## 🟡 IMP-4: ドレインスキルのHP回復が未実装
@@ -396,6 +414,11 @@ area1_node1クリア時に確定でSR武器残滓をドロップする「初回�
 - `src/data/master/stages.json` — `recommendedLevel` フィールドを追加
 - `src/types/game.ts:StageData` — 型拡張
 - `src/components/map/AreaMap.tsx` — ノードツールチップに推奨情報表示
+
+**調整支援:**
+- `docs/設計書/72_IMP7_ステージ難易度導線手動調整手順.md` — ステージ難易度導線の手動調整手順
+- `scripts/progression-report.mjs` — ステージ間のEHP/脅威度急上昇検出レポート
+- `npm run balance:progression -- --stage=area1_node2 --all` — node1→node2周辺の確認
 
 ---
 

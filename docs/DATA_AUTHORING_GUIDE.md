@@ -28,6 +28,21 @@
 - JSON 追加後は `npx tsc --noEmit` で型エラーがないか確認する
 - `any` キャストで読んでいるので JSON の型ミスはランタイムまで検出されない。値の型は各節のフィールド表に従うこと
 
+### 制作支援コマンド
+
+今後の敵・ステージ・ドロップ追加では、まず雛形を出してから編集し、最後に監査する。
+
+```bash
+# 敵・ステージ・武器などのJSON断片を出力する（ファイルは書き換えない）
+npm run data:template -- --type=enemy --id=grave_mason --tier=ELITE --tribe=UNDEAD --element=EARTH --nameJa=墓所の石工
+
+# 参照切れ、ID不一致、WAVE構成、ドロップ参照、UR非掲載などを確認
+npm run data:audit
+npm run data:audit -- --type=stage --id=area1_node2
+```
+
+詳しい運用は `docs/設計書/75_マスターデータ制作運用手順.md` を参照。
+
 ---
 
 ## 2. `enemies.json` — 敵データ
