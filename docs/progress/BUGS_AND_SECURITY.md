@@ -187,9 +187,10 @@ JWT セッションはサーバー側でブラックリスト管理をしない�
 
 ---
 
-### 🟡 SEC-7: パスワードポリシーが弱い
+### ✅ SEC-7: パスワードポリシーが弱い（2026-05-28 完了）
 
-**ファイル:** `src/services/AuthService.ts:30`
+**旧ファイル位置:** `src/services/AuthService.ts:28`
+**対応後:** `src/services/AuthService.ts`
 
 ```typescript
 if (password.length < 8) {
@@ -199,7 +200,14 @@ if (password.length < 8) {
 
 8文字最低限のみで、大文字・数字・記号の要件がない。ブルートフォース攻撃への耐性が低い。
 
-**修正:** 最低12文字、または数字・記号を含む複合要件を追加する。
+**修正:** `validatePassword()` を追加し「12文字以上 **または** 英数混合8文字以上」の双方ポリシーを実装した。
+
+**対応内容:**
+- `validatePassword(password: string): string | null` をエクスポート関数として追加（テスト可能な純粋関数）。
+- 判定ロジック: `password.length >= 12` OR `/^(?=.*[a-zA-Z])(?=.*\d).{8,}$/`。
+- `createCredentialsUser()` の旧 `password.length < 8` チェックを `validatePassword()` 呼び出しに差し替え。
+- 既存統合テストのパスワード `'CodexPass123'`（英数混合11文字）は新ポリシーを通過するため変更不要。
+- `src/services/AuthService.test.ts` を新規追加し、合格6ケース・不合格7ケース・エラーメッセージ2ケースの計15テストを確認。
 
 ---
 
@@ -570,3 +578,4 @@ public async changeJob(characterId: string, nextJobId: string): Promise<void>;
 | PERF-1 | ✅ | `RewardService.ts` | 残滓サブオプション抽選を Fisher-Yates に変更 |
 | QUALITY-1 | ✅ | `MasterDataService.ts` | 全getterを正典型の戻り値へ変更 |
 | QUALITY-2 | ✅ | `JobService.ts` | changeJob のインメモリ経路を不変更新化 |
+| SEC-7 | ✅ | `AuthService.ts` | 2026-05-28 完了。12文字以上または英数混合8文字以上ポリシーを実装 |

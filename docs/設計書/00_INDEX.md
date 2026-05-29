@@ -92,6 +92,7 @@
 | JobService.changeJobの不変更新化・QUALITY-2対応を知りたい | [65_QUALITY2_JobService_changeJob不変更新設計.md](65_QUALITY2_JobService_changeJob不変更新設計.md) |
 | 状態異常DoTの最大HP参照・BUG-2対応を知りたい | [66_BUG2_状態異常DoT最大HP参照設計.md](66_BUG2_状態異常DoT最大HP参照設計.md) |
 | JWTセッションの一括失効・SEC-6対応を知りたい | [67_SEC6_JWTセッション失効設計.md](67_SEC6_JWTセッション失効設計.md) |
+| ステージ開始トークン・不正クリア防止・SEC-8対応を知りたい | [68_SEC8_ステージ開始トークン設計.md](68_SEC8_ステージ開始トークン設計.md) |
 
 ## 重要ファイルパス一覧
 
