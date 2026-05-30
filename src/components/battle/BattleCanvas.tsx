@@ -20,7 +20,7 @@ import { calculateInitialEnergy } from '../../logic/EnergySystem';
 import { calculateMonsterAttackProfile } from '../../logic/MonsterAttackSystem';
 import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
 import { applyAreaGimmickToPlayer, getAreaGimmickMeta, resolveStageAreaGimmick } from '../../logic/AreaGimmickSystem';
-import { calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilPlayer, type TurnOrderActor } from '../../logic/TurnOrderSystem';
+import { buildTurnOrderPreview, calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilPlayer, type TurnOrderActor, type TurnOrderEntry } from '../../logic/TurnOrderSystem';
 import {
   bossGimmickKey,
   calculateBossAvDelay,
@@ -1080,36 +1080,79 @@ function DemonizeBurstOverlay({ burst }: { burst: DemonBurstState | null }) {
 }
 
 // ── TURN ORDER STRIP ──────────────────────────────────────────────────────────
-function TurnOrderStrip() {
-  const items = [
-    { id: 'p0', name: '骸骨騎士', icon: '💀', color: '#8A2BE2', isPlayer: true },
-    { id: 'p1', name: '腐乱兵',   icon: '🧟', color: '#22c55e', isPlayer: true },
-    { id: 'e1', name: '骨巨人',   icon: '💀', color: '#8A2BE2', isPlayer: false },
-    { id: 'p2', name: 'リッチ',   icon: '🧙', color: '#06b6d4', isPlayer: true },
-    { id: 'e0', name: '霊体騎士', icon: '⚔',  color: '#06b6d4', isPlayer: false },
-    { id: 'e2', name: '死骨竜',   icon: '🐉', color: '#ef4444', isPlayer: false },
-  ];
+function TurnOrderStrip({ order }: { order: TurnOrderEntry[] }) {
   return (
-    <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '4px 14px', overflowX: 'auto' }}>
-      {items.map((item, i) => (
-        <div key={item.id} style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-          animation: `turnChipIn 0.3s ease-out ${i * 0.04}s both`, flexShrink: 0,
-        }}>
-          <div style={{
-            width: i === 0 ? 38 : 28, height: i === 0 ? 38 : 28, borderRadius: '50%',
-            background: item.isPlayer ? `radial-gradient(circle, ${item.color}30, #0a0515)` : 'rgba(200,50,50,0.12)',
-            border: `${i === 0 ? 2.5 : 1.5}px solid ${i === 0 ? item.color : (item.isPlayer ? item.color + '80' : '#ef444460')}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: i === 0 ? 18 : 13,
-            boxShadow: i === 0 ? `0 0 12px ${item.color}80` : 'none',
-            transition: 'all 0.3s ease',
-          }}>{item.icon}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 7, color: i === 0 ? item.color : '#4a3a5a', letterSpacing: '0.04em' }}>
-            {i === 0 ? '▶' : ''}
+    <div
+      data-testid="turn-order-strip"
+      aria-label="行動順"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+        minHeight: 48,
+        padding: '4px 0 6px',
+        overflow: 'hidden',
+      }}
+    >
+      <div style={{
+        width: 34,
+        flexShrink: 0,
+        fontFamily: "'Cinzel', serif",
+        fontSize: 7,
+        fontWeight: 800,
+        letterSpacing: '0.12em',
+        lineHeight: 1.25,
+        color: '#6b5f7a',
+      }}>
+        TURN
+        <div style={{ color: '#BC00FB' }}>ORDER</div>
+      </div>
+      {order.slice(0, 5).map((actor, index) => {
+        const isCurrent = index === 0;
+        const isPlayer = actor.side === 'PLAYER';
+        const color = isPlayer ? '#BC00FB' : '#ef4444';
+        const label = isPlayer ? '勇' : actor.name.slice(0, 1);
+        const actorName = isPlayer ? '骸骨騎士' : actor.name;
+        return (
+          <div
+            key={`${actor.id}-${index}`}
+            title={`${actorName} / AV ${Math.round(actor.currentAv)}`}
+            aria-label={`${index + 1}: ${actorName} AV ${Math.round(actor.currentAv)}`}
+            style={{
+              width: isCurrent ? 40 : 34,
+              height: 40,
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1,
+              borderRadius: 6,
+              background: isPlayer
+                ? `linear-gradient(135deg, ${color}2E, rgba(5,1,12,0.9))`
+                : 'linear-gradient(135deg, rgba(239,68,68,0.2), rgba(5,1,12,0.9))',
+              border: `1px solid ${isCurrent ? color : `${color}66`}`,
+              boxShadow: isCurrent ? `0 0 12px ${color}66, inset 0 1px 0 rgba(255,255,255,0.08)` : 'none',
+              animation: `turnChipIn 0.3s ease-out ${index * 0.04}s both`,
+              transition: 'all 0.25s ease',
+            }}
+          >
+            <div style={{
+              fontFamily: "'Noto Sans JP', sans-serif",
+              fontSize: isCurrent ? 14 : 12,
+              fontWeight: 900,
+              lineHeight: 1,
+              color: isCurrent ? '#F0EAFF' : color,
+              textShadow: isCurrent ? `0 0 8px ${color}` : 'none',
+            }}>
+              {label}
+            </div>
+            <div style={{ fontFamily: 'monospace', fontSize: 7, lineHeight: 1, color: isCurrent ? color : '#6b5f7a' }}>
+              {isCurrent ? '▶ ' : ''}{Math.round(actor.currentAv)}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -1775,6 +1818,7 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
 
 // ── MAIN BATTLE CANVAS ────────────────────────────────────────────────────────
 export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
+  console.log('[BattleCanvas] render at', Date.now());
   const {
     player, party, equippedResidueSlots, inventoryItems,
     addExp, addGold, addClearedStage, updateEnergy, updateEnergyBy,
@@ -1816,6 +1860,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const [screenShake, setScreenShake] = useState(false);
   const [skillEffect, setSkillEffect] = useState<ActiveSkillEffect | null>(null);
   const [demonBurst, setDemonBurst] = useState<DemonBurstState | null>(null);
+  const [turnOrderPreview, setTurnOrderPreview] = useState<TurnOrderEntry[]>([]);
 
   const [showResult, setShowResult] = useState(false);
   const [battleResult, setBattleResult] = useState<{
@@ -1907,7 +1952,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     };
   }
 
-  function buildEnemyAvActors(nextEnemies: EnemyState[]): TurnOrderActor[] {
+  function buildEnemyAvActors(nextEnemies: EnemyState[], avState: BattleAvState = battleAvRef.current): TurnOrderActor[] {
     return nextEnemies
       .filter((enemy) => enemy.hp > 0)
       .map((enemy) => {
@@ -1917,10 +1962,34 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           name: enemy.name,
           side: 'ENEMY' as const,
           spd,
-          currentAv: battleAvRef.current.enemies[enemy.id] ?? calculateInitialActionValue(spd),
+          currentAv: avState.enemies[enemy.id] ?? calculateInitialActionValue(spd),
           tieBreaker: enemy.id + 1,
         };
       });
+  }
+
+  function buildCanvasTurnOrderPreview(
+    nextEnemies: EnemyState[] = enemiesRef.current,
+    avState: BattleAvState = battleAvRef.current,
+  ) {
+    const playerActor: TurnOrderActor = {
+      id: 'player',
+      name: '骸骨騎士',
+      side: 'PLAYER',
+      spd: getPlayerActionSpd(),
+      currentAv: avState.player,
+      tieBreaker: 0,
+    };
+    return buildTurnOrderPreview([playerActor, ...buildEnemyAvActors(nextEnemies, avState)]);
+  }
+
+  function commitBattleAvState(nextState: BattleAvState, nextEnemies: EnemyState[] = enemiesRef.current) {
+    battleAvRef.current = nextState;
+    setTurnOrderPreview(buildCanvasTurnOrderPreview(nextEnemies, nextState));
+  }
+
+  function refreshTurnOrderPreview(nextEnemies: EnemyState[] = enemiesRef.current) {
+    setTurnOrderPreview(buildCanvasTurnOrderPreview(nextEnemies));
   }
 
   function persistAvSchedule(playerActor: TurnOrderActor, enemyActors: TurnOrderActor[]) {
@@ -1962,10 +2031,10 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       const baseDelay = getBossAvDelayBase(gimmick);
       const actualDelay = calculateBossAvDelay(gimmick, playerStats?.effectRes ?? 0);
       if (actualDelay > 0) {
-        battleAvRef.current = {
+        commitBattleAvState({
           ...battleAvRef.current,
           player: battleAvRef.current.player + actualDelay,
-        };
+        }, nextAlive);
         addLog(`【AV遅延】${enemy.name}が時の鎖を放つ！ 骸骨騎士の行動値 +${actualDelay}（基礎${baseDelay}）。`);
       } else {
         addLog(`【AV遅延】${enemy.name}の時の鎖を効果抵抗で完全に弾いた。`);
@@ -2087,6 +2156,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   }, [stageId]);
 
   useEffect(() => {
+    console.log('[initBattle] running at', Date.now(), { areaGimmick, battleWavesLength: battleWaves?.length, currentJobLevel, playerMaxHp, maxEnergy: player?.maxEnergy, updateEnergyRef: updateEnergy.toString().slice(0, 40) });
     const firstEnemies = cloneEnemies(battleWaves[0].enemies);
     waveResolvingRef.current = false;
     battleTotalsRef.current = { exp: 0, gold: 0, waves: 0 };
@@ -2095,7 +2165,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     battleStartedAtRef.current = Date.now();
     waveIndexRef.current = 0;
     enemiesRef.current = firstEnemies;
-    battleAvRef.current = createInitialAvState(firstEnemies);
+    commitBattleAvState(createInitialAvState(firstEnemies), firstEnemies);
     bossGimmickFiredRef.current = new Set();
     playerHpRef.current = playerMaxHp;
     setPlayerHp(playerMaxHp);
@@ -2124,7 +2194,10 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   }, [areaGimmick, areaGimmickMeta.description, areaGimmickMeta.label, battleWaves, currentJobData, currentJobLevel, player?.maxEnergy, playerMaxHp, updateEnergy]);
 
   useEffect(() => { waveIndexRef.current = waveIndex; }, [waveIndex]);
-  useEffect(() => { enemiesRef.current = enemies; }, [enemies]);
+  useEffect(() => {
+    enemiesRef.current = enemies;
+    refreshTurnOrderPreview(enemies);
+  }, [enemies]);
   useEffect(() => { playerHpRef.current = playerHp; }, [playerHp]);
   useEffect(() => {
     sfx.setDemonOverlay(demonized);
@@ -2199,7 +2272,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       const nextWave = battleWaves[nextIndex];
       const nextEnemies = cloneEnemies(nextWave.enemies);
       enemiesRef.current = nextEnemies;
-      battleAvRef.current = createInitialAvState(nextEnemies);
+      commitBattleAvState(createInitialAvState(nextEnemies), nextEnemies);
       bossGimmickFiredRef.current = new Set();
       setWaveIndex(nextIndex);
       setEnemies(nextEnemies);
@@ -2656,10 +2729,10 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       setSoul(prev => Math.min(100, prev + 10)); // 魔神化ゲージ +10/ターン
       if (spGain > 0) updateEnergyBy(spGain);   // SP回復（SPとゲージは別）
     }
-    battleAvRef.current = {
+    commitBattleAvState({
       ...battleAvRef.current,
       player: battleAvRef.current.player + calculateActionDelay(getPlayerActionSpd()),
-    };
+    });
     setTimeout(() => runEnemyTurn(demonFormForEnemyTurn), speedMs * 0.25);
   }
 
@@ -2692,6 +2765,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       skippedEnemyIds: new Set(Array.from(statusPhase.skippedIds).map(String)),
     });
     persistAvSchedule(schedule.player, schedule.enemies);
+    setTurnOrderPreview(schedule.orderPreview);
 
     const orderText = formatAvOrder(schedule.orderPreview);
     if (orderText) addLog(`行動順(AV): ${orderText}`);
@@ -2733,6 +2807,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setTimeout(() => {
       if (turnToken !== enemyTurnSerialRef.current) return;
       setPhase('playerTurn');
+      refreshTurnOrderPreview();
       addLog('骸骨騎士のターン。コマンドを選択しろ。');
     }, delay + speedMs * 0.28);
   }
@@ -2953,7 +3028,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setDemonActionsRemaining(DEMON_ACTION_LIMIT);
     setDemonUltimateUsed(false);
     setSoul(0);
-    battleAvRef.current = { ...battleAvRef.current, player: 0 };
+    commitBattleAvState({ ...battleAvRef.current, player: 0 });
     setDemonBurst({ id: burstId, form: demonForm });
     setScreenShake(true);
     window.setTimeout(() => setScreenShake(false), battleDelay(520, 260));
@@ -2983,6 +3058,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   // Auto battle
   useEffect(() => {
+    console.log('[AUTO effect]', { auto, phase, speedMs });
     if (!auto || phase !== 'playerTurn') return;
     const t = setTimeout(() => handleAttack(), speedMs * 0.4);
     return () => clearTimeout(t);
@@ -3060,7 +3136,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
             {areaGimmickMeta.shortLabel} / {areaGimmickMeta.label}
           </div>
         )}
-        <TurnOrderStrip/>
+        <TurnOrderStrip order={turnOrderPreview}/>
       </div>
 
       {/* ── BATTLE ARENA ── */}

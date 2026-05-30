@@ -366,42 +366,41 @@ export function getBaseAttackType(
 
 ---
 
-## 🟡 IMP-6: ターン順序プレビューUIが存在しない
+## ✅ IMP-6: ターン順序プレビューUIが存在しない（2026-05-30 完了）
 
 **ファイル:** `src/logic/TurnOrderSystem.ts`, `src/components/battle/BattleCanvas.tsx`
 
-`TurnOrderSystem.scheduleEnemiesUntilPlayer()` は `orderPreview` を返すが、  
-BattleCanvasは `formatAvOrder(schedule.orderPreview)` でテキスト変換してログに流すのみ。  
+`TurnOrderSystem.scheduleEnemiesUntilPlayer()` は `orderPreview` を返すが、
+BattleCanvasは `formatAvOrder(schedule.orderPreview)` でテキスト変換してログに流すのみだった。
+画面上部には `TurnOrderStrip` が存在したが、実AVと接続されていない固定表示だった。
 プレイヤーは「次に誰が動くか」を視覚的に把握できない。
 
 HSR / FGOなどのターン制ゲームではターン順アイコン列が戦略の根幹になっている。
 
-**具体案:**  
-バトル画面の上部 or 右端に行動順バッジ列を表示する：
+**対応方針:**
+バトル画面上部に、実AVから計算した最大5件の行動順バッジ列を表示する。
 
 ```tsx
-// コンパクトな横並びアイコン（最大5件）
-<div style={{ display: 'flex', gap: 4 }}>
-  {orderPreview.slice(0, 5).map((actor, i) => (
-    <div key={i} style={{
-      width: 28, height: 28, borderRadius: 6,
-      background: actor.side === 'PLAYER' ? '#8B00FF' : '#ef4444',
-      opacity: i === 0 ? 1 : 0.6,
-      border: i === 0 ? '1px solid rgba(255,255,255,0.5)' : 'none',
-    }}>
-      <span style={{ fontSize: 9 }}>
-        {actor.side === 'PLAYER' ? '⚔' : actor.name.slice(0,2)}
-      </span>
-    </div>
-  ))}
-</div>
+<TurnOrderStrip order={turnOrderPreview}/>
 ```
 
-`battleAvRef` の状態変化ごとに `orderPreview` を再計算して表示を更新。
+`battleAvRef` を戦闘ロジックの正本として維持し、`buildTurnOrderPreview()` でUI用の投影を作る。
+初期化・ウェーブ遷移・通常ターン終了・AV遅延・魔神化割り込み・敵増減のたびに再計算する。
+
+**対応内容:**
+- `TurnOrderSystem.buildTurnOrderPreview()` を追加し、AV昇順・同値時SPD優先の既存規則を再利用した。
+- `scheduleEnemiesUntilPlayer()` も同じ共通関数から最大5件のプレビューを返すように統一した。
+- BattleCanvasの固定 `TurnOrderStrip` を実データ受け取り型へ変更した。
+- 先頭手番を発光枠と `▶` で強調し、プレイヤーを紫、敵を赤で識別した。
+- 各バッジに丸めたAV値を表示し、`title` と `aria-label` にアクター名とAVを保持した。
+- `TurnOrderSystem.test.ts` に最大5件の切り詰めと表示件数0の境界値テストを追加した。
+
+**設計:** `docs/設計書/78_IMP6_ターン順序プレビューUI設計.md`
 
 **関連ファイル:**
-- `src/logic/TurnOrderSystem.ts` — `orderPreview` は実装済み
-- `src/components/battle/BattleCanvas.tsx:2675` — `formatAvOrder()` をUIに差し替え
+- `src/logic/TurnOrderSystem.ts` — `buildTurnOrderPreview()`
+- `src/logic/TurnOrderSystem.test.ts` — 最大件数・境界値の回帰テスト
+- `src/components/battle/BattleCanvas.tsx` — `TurnOrderStrip` / AV同期処理
 
 ---
 
