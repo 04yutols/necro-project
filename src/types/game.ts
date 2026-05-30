@@ -58,6 +58,7 @@ export interface JobData {
   title?: string;
   tier: number;
   category: ClassCategory;
+  baseAttackType?: SkillAttackType; // 通常攻撃の演出・状態異常推論に使う攻撃種別
   role?: string;
   description?: string;
   unlock?: {
@@ -103,6 +104,7 @@ export interface SkillData {
   isUltimate?: boolean; // 奥義フラグ — true のとき maxEnergy を全消費
   ailmentType?: AilmentType;
   ailmentBaseRate?: number;
+  healSelfPct?: number; // 与えた実HPダメージに対する自己回復率%
   description: string;
 }
 

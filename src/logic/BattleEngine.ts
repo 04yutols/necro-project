@@ -51,6 +51,7 @@ import {
 import { calculateMonsterAttackProfile } from './MonsterAttackSystem';
 import { getEnergyRegen } from './EnergySystem';
 import { applyPlayerDamage as reducePlayerHp, isPlayerDead } from './PlayerDefeat';
+import { getBaseAttackType } from './JobSystem';
 
 /**
  * Necromance Brave Battle Engine
@@ -294,12 +295,13 @@ export class BattleEngine {
     let element: ElementType = 'NONE';
     let attackType: SkillAttackType = 'SLASH';
     const currentJob = this.masterData.getJob(player.currentJobId);
+    const baseAttackType = getBaseAttackType(currentJob);
     let energyGain = getEnergyRegen(currentJob);
     let skillData: SkillData | undefined;
 
     if (actionType === 'PHYSICAL_ATTACK') {
       energyCost = 0;
-      attackType = 'SLASH';
+      attackType = baseAttackType;
     } else if (actionType === 'MAGIC_SKILL' && skillId) {
       skillData = this.masterData.getSkill(skillId);
       if (skillData) {
@@ -312,7 +314,7 @@ export class BattleEngine {
       }
     } else {
       energyCost = 0;
-      attackType = 'SLASH';
+      attackType = baseAttackType;
     }
 
     // ── 魔神化バフ ──────────────────────────────────
@@ -377,6 +379,7 @@ export class BattleEngine {
       // HP 変化 + ボスギミックチェック
       const hpChange = this.applyDamageToEnemy(currentTarget, shieldResult.damage);
       this.checkBossGimmicks(currentTarget, hpChange.prevHpPct, hpChange.newHpPct);
+      const actualHpDamage = Math.max(0, hpChange.prevHp - hpChange.nextHp);
 
       if (hpChange.nextHp <= 0) {
         const reviveGimmick = findReviveGimmick(currentTarget.gimmicks, currentTarget.id, this.firedGimmicks);
@@ -400,6 +403,7 @@ export class BattleEngine {
       }
 
       this.addLog(actionType, player.name, currentTarget.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, element, attackType);
+      this.applySkillSelfHeal(skillData, actualHpDamage);
       this.tryApplyActionAilment(player, currentTarget, skillId, element, attackType);
 
       // 武器パッシブ
@@ -453,6 +457,34 @@ export class BattleEngine {
     const uniqueTargets = this.resolveEnemyCandidates(primaryTarget, enemyCandidates);
     const aliveTargets = uniqueTargets.filter(enemy => this.getEnemyRuntimeHp(enemy) > 0);
     return aliveTargets.length > 0 ? aliveTargets : [primaryTarget];
+  }
+
+  private applySkillSelfHeal(skillData: SkillData | undefined, damageDealt: number): void {
+    const healSelfPct = skillData?.healSelfPct ?? 0;
+    if (healSelfPct <= 0 || damageDealt <= 0) return;
+
+    const healAmount = Math.floor(damageDealt * healSelfPct / 100);
+    if (healAmount <= 0) return;
+
+    const { player } = this.state;
+    const playerStats = this.getMutableStats(player);
+    const prevHp = playerStats.hp;
+    playerStats.hp = Math.min(this.playerInitialMaxHp, playerStats.hp + healAmount);
+    const actualHeal = playerStats.hp - prevHp;
+    if (actualHeal <= 0) return;
+
+    this.addLog(
+      'HEAL',
+      player.name,
+      player.name,
+      `${skillData?.name ?? '吸収'}：HP +${actualHeal} 回復。`,
+      actualHeal,
+      false,
+      false,
+      false,
+      'NONE',
+      'HEAL',
+    );
   }
 
   private applyPassiveResult(

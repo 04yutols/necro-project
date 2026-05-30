@@ -1,5 +1,5 @@
 import { BattleEngine } from './BattleEngine';
-import { CharacterData, MonsterData } from '../types/game';
+import { CharacterData, MonsterData, SkillAttackType } from '../types/game';
 
 describe('BattleEngine', () => {
   beforeEach(() => {
@@ -86,6 +86,21 @@ describe('BattleEngine', () => {
     stats: { ...mockTarget.stats, ...stats },
   });
 
+  const expectedBaseAttackTypes: Record<string, SkillAttackType> = {
+    warrior: 'SLASH',
+    mage: 'MAGIC',
+    dark_priest: 'MAGIC',
+    rogue: 'STRIKE',
+    dark_knight: 'SLASH',
+    berserker: 'SLASH',
+    archmage: 'MAGIC',
+    sorcerer: 'PROJECTILE',
+    warlock: 'MAGIC',
+    necromancer: 'SUMMON',
+    assassin: 'SLASH',
+    trickster: 'PROJECTILE',
+  };
+
   test('Damage calculation uses HSR-style defMult', () => {
     const engine = new BattleEngine(mockPlayer, []);
     const logs = engine.simulateAction('PHYSICAL_ATTACK', mockTarget);
@@ -137,6 +152,33 @@ describe('BattleEngine', () => {
     engine.simulateAction('PHYSICAL_ATTACK', mockTarget);
 
     expect(roguePlayer.currentEnergy).toBe(22);
+  });
+
+  test.each(Object.entries(expectedBaseAttackTypes))(
+    'normal attack log uses %s base attack type',
+    (jobId, expectedAttackType) => {
+      const player = createPlayer(
+        { hp: 500, atk: 50, def: 999, critRate: 0 },
+        { currentJobId: jobId },
+      );
+      const enemy = createEnemy({ hp: 500, atk: 1, def: 0, effectRes: 100 });
+
+      const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+      expect(logs.find(log => log.action === 'PHYSICAL_ATTACK')?.attackType).toBe(expectedAttackType);
+    },
+  );
+
+  test('normal attack log falls back to slash for unknown legacy jobs', () => {
+    const player = createPlayer(
+      { hp: 500, atk: 50, def: 999, critRate: 0 },
+      { currentJobId: 'legacy_job_without_master' },
+    );
+    const enemy = createEnemy({ hp: 500, atk: 1, def: 0, effectRes: 100 });
+
+    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+    expect(logs.find(log => log.action === 'PHYSICAL_ATTACK')?.attackType).toBe('SLASH');
   });
 
   test('Element damage boosts increase matching elemental skill damage', () => {
@@ -215,6 +257,65 @@ describe('BattleEngine', () => {
     expect(engine.getEnemyCurrentHp(enemyB.id)).toBeUndefined();
     expect(engine.getEnemyCurrentHp(enemyC.id)).toBeUndefined();
     expect(player.currentEnergy).toBe(53);
+  });
+
+  test('drain skill restores HP from actual HP damage dealt', () => {
+    const player = createPlayer(
+      { hp: 100, atk: 120, def: 999, critRate: 0 },
+      { currentJobId: 'dark_priest', category: 'MAGICAL', currentEnergy: 100, maxEnergy: 100 },
+    );
+    const ally = createEnemy({ hp: 300, atk: 0, def: 999, critRate: 0 });
+    const enemy = createEnemy({ hp: 1000, atk: 1, def: 0 });
+    const engine = new BattleEngine(player, [ally]);
+    player.stats.hp = 50;
+
+    const logs = engine.simulateAction('MAGIC_SKILL', enemy, 'skill_darkpriest_1');
+    const attackLog = logs.find(log => log.action === 'MAGIC_SKILL');
+    const healLog = logs.find(log => log.action === 'HEAL');
+    const expectedHeal = Math.floor((attackLog?.damage ?? 0) * 0.3);
+
+    expect(healLog?.damage).toBe(expectedHeal);
+    expect(healLog?.description).toContain('ドレイン');
+    expect(healLog?.playerHP).toBe(50 + expectedHeal);
+    expect(player.stats.hp).toBe(50 + expectedHeal);
+  });
+
+  test('drain skill healing is capped by battle-start player max HP', () => {
+    const player = createPlayer(
+      { hp: 100, atk: 120, def: 999, critRate: 0 },
+      { currentJobId: 'dark_priest', category: 'MAGICAL', currentEnergy: 100, maxEnergy: 100 },
+    );
+    const ally = createEnemy({ hp: 300, atk: 0, def: 999, critRate: 0 });
+    const enemy = createEnemy({ hp: 1000, atk: 1, def: 0 });
+    const engine = new BattleEngine(player, [ally]);
+    player.stats.hp = 95;
+
+    const logs = engine.simulateAction('MAGIC_SKILL', enemy, 'skill_darkpriest_1');
+    const healLog = logs.find(log => log.action === 'HEAL');
+
+    expect(healLog?.damage).toBe(5);
+    expect(healLog?.playerHP).toBe(100);
+    expect(player.stats.hp).toBe(100);
+  });
+
+  test('drain skill ignores overkill damage when calculating healing', () => {
+    const player = createPlayer(
+      { hp: 100, atk: 120, def: 999, critRate: 0 },
+      { currentJobId: 'dark_priest', category: 'MAGICAL', currentEnergy: 100, maxEnergy: 100 },
+    );
+    const ally = createEnemy({ hp: 300, atk: 0, def: 999, critRate: 0 });
+    const enemy = createEnemy({ hp: 10, atk: 1, def: 0 });
+    const engine = new BattleEngine(player, [ally]);
+    player.stats.hp = 10;
+
+    const logs = engine.simulateAction('MAGIC_SKILL', enemy, 'skill_darkpriest_1');
+    const attackLog = logs.find(log => log.action === 'MAGIC_SKILL');
+    const healLog = logs.find(log => log.action === 'HEAL');
+
+    expect(attackLog?.damage).toBeGreaterThan(10);
+    expect(healLog?.damage).toBe(3);
+    expect(healLog?.playerHP).toBe(13);
+    expect(player.stats.hp).toBe(13);
   });
 
   test('Necro rank bonus increases outgoing battle damage', () => {

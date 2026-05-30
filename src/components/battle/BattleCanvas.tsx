@@ -10,7 +10,7 @@ import stagesData from '../../data/master/stages.json';
 import enemiesData from '../../data/master/enemies.json';
 import itemsData from '../../data/master/items.json';
 import demonFormsData from '../../data/master/demonForms.json';
-import { getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
+import { getBaseAttackType, getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
 import { startTutorialBattlePhase } from '../../hooks/useTutorialTrigger';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { RewardService, type StageDropResult } from '../../services/RewardService';
@@ -71,6 +71,7 @@ type BattleSkill = {
   attackType: SkillAttackType;
   ailmentType?: AilmentType;
   ailmentBaseRate?: number;
+  healSelfPct?: number;
 };
 
 interface ActiveSkillEffect {
@@ -254,6 +255,7 @@ function toBattleSkill(skill: SkillData): BattleSkill {
     attackType,
     ailmentType: skill.ailmentType,
     ailmentBaseRate: skill.ailmentBaseRate,
+    healSelfPct: skill.healSelfPct,
   };
 }
 
@@ -1870,6 +1872,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const currentWave = battleWaves[waveIndex] ?? battleWaves[0];
   const currentJobId = player?.currentJobId ?? 'warrior';
   const currentJobData = JOBS[currentJobId] ?? JOBS.warrior;
+  const baseAttackType = getBaseAttackType(currentJobData);
   const currentJobLevel = player && currentJobData ? Math.max(1, getJobLevel(player, currentJobId)) : 1;
   const demonForm = DEMON_FORMS[currentJobId] ?? DEMON_FORMS.warrior;
   const demonColor = demonForm.visual?.color ?? '#dc2626';
@@ -2216,6 +2219,23 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), battleDelay(1200, 450));
   }
 
+  function applySkillSelfHeal(skill: BattleSkill, damageDealt: number) {
+    const healSelfPct = skill.healSelfPct ?? 0;
+    if (healSelfPct <= 0 || damageDealt <= 0) return;
+
+    const healAmount = Math.floor(damageDealt * healSelfPct / 100);
+    if (healAmount <= 0) return;
+
+    const nextHp = Math.min(playerMaxHp, playerHpRef.current + healAmount);
+    const actualHeal = nextHp - playerHpRef.current;
+    if (actualHeal <= 0) return;
+
+    playerHpRef.current = nextHp;
+    setPlayerHp(nextHp);
+    spawnFloat('42%', '52%', actualHeal, { heal: true, color: '#4ade80' });
+    addLog(`${skill.name}：HP +${actualHeal} 回復。`);
+  }
+
   function triggerSkillEffect(skill: Pick<BattleSkill, 'name' | 'element' | 'attackType' | 'aoe'>, targetIds: number[]) {
     const id = ++effectIdRef.current;
     setSkillEffect({
@@ -2380,13 +2400,14 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     doEnemyHit(targetId);
     const positions: Record<number, { x: string; y: string }> = { 0: { x: '12%', y: '18%' }, 1: { x: '36%', y: '12%' }, 2: { x: '62%', y: '16%' } };
     const pos = positions[targetId] || { x: '40%', y: '15%' };
-    spawnFloat(pos.x, pos.y, finalDmg, { crit: isCrit, color: opts.color || '#fff' });
-    totalDamageRef.current += Math.max(0, finalDmg);
+    const actualDamage = Math.max(0, Math.min(target?.hp ?? finalDmg, finalDmg));
+    spawnFloat(pos.x, pos.y, actualDamage, { crit: isCrit, color: opts.color || '#fff' });
+    totalDamageRef.current += actualDamage;
     setEnemies(prev => {
       const targetBefore = prev.find(e => e.id === targetId);
       let next = prev.map(e => e.id === targetId ? {
         ...e,
-        hp: Math.max(0, e.hp - finalDmg),
+        hp: Math.max(0, e.hp - actualDamage),
         shieldHp: nextShieldHp,
         shieldBroken,
       } : e);
@@ -2402,7 +2423,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       }
       return next;
     });
-    return finalDmg;
+    return actualDamage;
   }
 
   function getSkillAilmentType(skill: Pick<BattleSkill, 'ailmentType' | 'element' | 'attackType'>): AilmentType | null {
@@ -2725,11 +2746,11 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     const tid = getTargetId();
     const enemy = enemies.find(e => e.id === tid);
     const attackElement = demonized ? demonForm.ultimateSkill.damage.element : 'NONE';
-    const hitCount = demonized ? getDemonActionHitCount(demonForm, 'SLASH') : 1;
+    const hitCount = demonized ? getDemonActionHitCount(demonForm, baseAttackType) : 1;
     triggerSkillEffect({
       name: demonized ? demonForm.formName : '攻撃',
       element: attackElement,
-      attackType: 'SLASH',
+      attackType: baseAttackType,
       aoe: false,
     }, [tid]);
     addLog(demonized ? `魔神化『${demonForm.formName}』の攻撃！ ${enemy?.name}へ${hitCount > 1 ? `${hitCount}連撃` : '深淵の一撃'}！` : `骸骨騎士の攻撃！ ${enemy?.name}を狙う！`);
@@ -2741,7 +2762,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           const result = calculatePlayerHitDamage(tid, {
             powerMultiplier: 1.0,
             element: attackElement,
-            attackType: 'SLASH',
+            attackType: baseAttackType,
           });
           if (result.isCritical) setSoul(prev => Math.min(100, prev + 5));
           totalDamage += damageEnemy(tid, result.damage, {
@@ -2756,10 +2777,10 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       if (demonized) { setFlashColor(demonForm.visual?.soft ?? 'rgba(220,38,38,0.3)'); setTimeout(() => setFlashColor(null), 350); }
       setTimeout(() => {
         addLog(`${enemy?.name}に 合計${totalDamage}ダメージ！`);
-        applyAilmentToEnemy(tid, { element: attackElement, attackType: 'SLASH' });
+        applyAilmentToEnemy(tid, { element: attackElement, attackType: baseAttackType });
         runPartyFollowUps(tid);
         if (demonized) {
-          applyDemonRiskFeedback('SLASH');
+          applyDemonRiskFeedback(baseAttackType);
         }
         const attackSpGain = currentJobData?.energyCurve?.energyRegen ?? 20;
         setPhase('playerTurn');
@@ -2830,6 +2851,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           });
           setTimeout(() => {
             addLog(`${enemies.find(e => e.id === tid)?.name}に 合計${totalDamage}ダメージ！`);
+            applySkillSelfHeal(skill, totalDamage);
             applyAilmentToEnemy(tid, skill);
           }, hitCount * hitInterval + battleDelay(40, 25));
         }, i * targetInterval);

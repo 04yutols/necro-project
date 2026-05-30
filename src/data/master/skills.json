@@ -123,7 +123,8 @@
     "effectKey": "dark_magic",
     "ailmentType": "POISON",
     "ailmentBaseRate": 0.30,
-    "description": "対象の生命力を吸収する。敵単体に魔法ダメージを与え、自身のHPを回復。"
+    "healSelfPct": 30,
+    "description": "対象の生命力を吸収する。敵単体に魔法ダメージを与え、与えたダメージの30%分HPを回復。"
   },
   "skill_darkpriest_curse_bind": {
     "id": "skill_darkpriest_curse_bind",

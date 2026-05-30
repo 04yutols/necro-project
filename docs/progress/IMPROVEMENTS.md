@@ -14,8 +14,8 @@
 | IMP-1   | ✅ | バトルロジック | AoEスキルがBattleEngineで単体攻撃になる | 2026-05-30 完了 |
 | IMP-2   | ✅ | バトルロジック | SUMMON_MINIONSがBattleEngineではログのみ | 2026-05-30 完了 |
 | IMP-3   | 🟠 | コンテンツ | ボスが直前の精鋭より弱い（stat逆転） | 未対応 |
-| IMP-4   | 🟡 | バトルロジック | ドレインスキルのHP回復が未実装 | 未対応 |
-| IMP-5   | 🟡 | バトルロジック | 通常攻撃のattackTypeが全職業でSLASH固定 | 未対応 |
+| IMP-4   | ✅ | バトルロジック | ドレインスキルのHP回復が未実装 | 2026-05-30 完了 |
+| IMP-5   | ✅ | バトルロジック | 通常攻撃のattackTypeが全職業でSLASH固定 | 2026-05-30 完了 |
 | IMP-6   | 🟡 | UX | ターン順序プレビューUI が存在しない | 未対応 |
 | IMP-7   | 🟡 | ゲームデザイン | node1→node2の難易度崖（案内なし） | 未対応（調整支援追加） |
 | SEC-6   | ✅ | セキュリティ | JWTセッションの失効不可 | 2026-05-27 完了 |
@@ -245,7 +245,7 @@ REVIVE時のHP回復量と合わせて、2フェーズ制の緊張感を演出�
 
 ---
 
-## 🟡 IMP-4: ドレインスキルのHP回復が未実装
+## ✅ IMP-4: ドレインスキルのHP回復が未実装（2026-05-30 完了）
 
 **ファイル:** `src/data/master/skills.json:114–127`, `src/logic/BattleEngine.ts:257`
 
@@ -259,7 +259,7 @@ REVIVE時のHP回復量と合わせて、2フェーズ制の緊張感を演出�
 スキルデータに `healSelf` フィールドがなく、`processPlayerAction()` にも自己回復処理がない。  
 暗黒司祭のアイデンティティとなるスキルが、ただの単体魔法攻撃になっている。
 
-**具体案:**
+**対応方針:**
 
 skills.json に `healSelfPct` フィールドを追加:
 
@@ -270,29 +270,41 @@ skills.json に `healSelfPct` フィールドを追加:
 }
 ```
 
-BattleEngineで処理:
+BattleEngineでは、最終ダメージ値ではなく敵ランタイムHPの差分を回復原資にする:
 
 ```typescript
-if (skillData?.healSelfPct && totalDamage > 0) {
-  const healAmount = Math.floor(totalDamage * skillData.healSelfPct / 100);
+const actualHpDamage = Math.max(0, hpChange.prevHp - hpChange.nextHp);
+if (skillData?.healSelfPct && actualHpDamage > 0) {
+  const healAmount = Math.floor(actualHpDamage * skillData.healSelfPct / 100);
   const playerStats = this.getMutableStats(player);
+  const prevHp = playerStats.hp;
   playerStats.hp = Math.min(this.playerInitialMaxHp, playerStats.hp + healAmount);
+  const actualHeal = playerStats.hp - prevHp;
   this.addLog('HEAL', player.name, player.name,
-    `ドレイン：${healAmount}HP回復。`, healAmount);
+    `ドレイン：HP +${actualHeal} 回復。`, actualHeal);
 }
 ```
 
-BattleCanvasでも同様にフローティングHPテキスト（緑）を表示。
+BattleCanvasでも同様にフローティングHPテキスト（緑）を表示する。
+
+**対応内容:**
+- `SkillData` に `healSelfPct?: number` を追加。
+- `skill_darkpriest_1` に `healSelfPct: 30` を追加し、説明文を実効果に合わせた。
+- BattleEngineで実HPダメージの30%を自己回復し、`HEAL` ログを出すようにした。
+- BattleCanvasでドレイン回復のHP更新・回復float・ログ表示を追加した。
+- `BattleEngine.test.ts` に、通常回復・最大HP上限・オーバーキル除外の回帰テストを追加した。
+
+**設計:** `docs/設計書/76_IMP4_ドレインスキルHP吸収設計.md`
 
 **関連ファイル:**
 - `src/data/master/skills.json:114` — `skill_darkpriest_1`
 - `src/types/game.ts:SkillData` — `healSelfPct?: number` を追加
-- `src/logic/BattleEngine.ts:257` — `processPlayerAction()` にヒール処理を追加
+- `src/logic/BattleEngine.ts` — `processPlayerAction()` / `applySkillSelfHeal()` にヒール処理を追加
 - `src/components/battle/BattleCanvas.tsx` — `handleSkill()` に回復float追加
 
 ---
 
-## 🟡 IMP-5: 通常攻撃のattackTypeが全職業でSLASH固定
+## ✅ IMP-5: 通常攻撃のattackTypeが全職業でSLASH固定（2026-05-30 完了）
 
 **ファイル:** `src/logic/BattleEngine.ts:282`, `src/components/battle/BattleCanvas.tsx:2732`
 
@@ -308,34 +320,49 @@ attackType: 'SLASH', // ← ハードコード
 ```
 
 **影響:**
-- ローグが「STRIKE」ではなく「SLASH」で通常攻撃 → 武器パッシブ `BLEED_ON_STRIKE` が発動しない
-- 魔術師が「MAGIC」ではなく「SLASH」で通常攻撃 → WEAKEN状態異常の発動トリガーがずれる
+- ローグが「STRIKE」ではなく「SLASH」で通常攻撃 → ログと衝撃VFXが職業コンセプトと一致しない
+- 魔術師や闇術師も「SLASH」扱い → 術式VFXと状態異常推論が職業コンセプトと一致しない
+- 魔神化の連撃数・倍率・リスク表示も固定された攻撃種別を参照する
 - VFXも全員が斬撃アニメーションになる
 
-**具体案:**  
-`jobs.json` に `baseAttackType` フィールドを追加:
+**対応方針:**
+`jobs.json` の全12職に `baseAttackType` フィールドを追加:
 
 ```json
 "warrior":    { "baseAttackType": "SLASH" },
 "mage":       { "baseAttackType": "MAGIC" },
 "dark_priest":{ "baseAttackType": "MAGIC" },
-"rogue":      { "baseAttackType": "STRIKE" }
+"rogue":      { "baseAttackType": "STRIKE" },
+"necromancer":{ "baseAttackType": "SUMMON" },
+"trickster":  { "baseAttackType": "PROJECTILE" }
 ```
 
-`processPlayerAction()` で取得:
+`JobSystem` に共通解決関数を追加:
 
 ```typescript
-const currentJob = this.masterData.getJob(player.currentJobId);
-if (actionType === 'PHYSICAL_ATTACK') {
-  attackType = (currentJob?.baseAttackType as SkillAttackType) ?? 'SLASH';
+export function getBaseAttackType(
+  job: Pick<JobData, 'baseAttackType'> | null | undefined,
+): SkillAttackType {
+  return job?.baseAttackType ?? 'SLASH';
 }
 ```
+
+**対応内容:**
+- `JobData` に `baseAttackType?: SkillAttackType` を追加。
+- `jobs.json` の全12職に職業コンセプトに沿った `baseAttackType` を設定。
+- `JobSystem.getBaseAttackType()` に旧データ向け `SLASH` フォールバックを集約。
+- BattleEngineの通常攻撃ログ・状態異常推論・魔神化分岐を職業別攻撃種別へ接続。
+- BattleCanvasの通常攻撃VFX・ダメージ計算・状態異常推論・魔神化分岐を同じ解決関数へ接続。
+- `JobSystem.test.ts` と `BattleEngine.test.ts` に全12職・フォールバックの回帰テストを追加。
+
+**設計:** `docs/設計書/77_IMP5_職業別通常攻撃種別設計.md`
 
 **関連ファイル:**
 - `src/data/master/jobs.json` — 全12職業に `baseAttackType` を追加
 - `src/types/game.ts:JobData` — `baseAttackType?: SkillAttackType` を追加
-- `src/logic/BattleEngine.ts:282` — `processPlayerAction()`
-- `src/components/battle/BattleCanvas.tsx:2732` — 通常攻撃ハンドラ
+- `src/logic/JobSystem.ts` — `getBaseAttackType()`
+- `src/logic/BattleEngine.ts` — `processPlayerAction()`
+- `src/components/battle/BattleCanvas.tsx` — `handleAttack()`
 
 ---
 
