@@ -1,4 +1,9 @@
-import { calculateCharacterStatProfile, getCanonicalOptionType } from './StatSystem';
+import {
+  calculateCharacterStatProfile,
+  calculateNecroBaseStatsContribution,
+  getCanonicalOptionType,
+  normalizeNecroBaseStatsBonus,
+} from './StatSystem';
 import type { CharacterData } from '../types/game';
 
 const basePlayer: CharacterData = {
@@ -56,5 +61,42 @@ describe('StatSystem', () => {
     expect(profile.total.critDmg).toBe(160);
     expect(profile.elementDmgBoosts.FIRE).toBe(12);
     expect(profile.elementDmgBoosts.DARK).toBe(8);
+  });
+
+  test('applies necro rank bonus to base combat stats before equipment and residues', () => {
+    const rankedPlayer: CharacterData = {
+      ...basePlayer,
+      necroBaseStatsBonus: 1.5,
+    };
+
+    const profile = calculateCharacterStatProfile(rankedPlayer, [
+      {
+        id: 'r1',
+        name: 'Residue',
+        itemId: 'r1',
+        rarity: 'RARE',
+        mainStat: { type: 'ATK%', value: 10 },
+        subOptions: [],
+        level: 1,
+        exp: 0,
+        maxExp: 100,
+      },
+    ]);
+
+    expect(profile.necro.hp).toBe(500);
+    expect(profile.necro.atk).toBe(50);
+    expect(profile.necro.def).toBe(25);
+    expect(profile.necro.spd).toBe(50);
+    expect(profile.necro.critRate).toBe(0);
+    expect(profile.total.hp).toBe(1600);
+    expect(profile.total.atk).toBe(190);
+    expect(profile.total.def).toBe(78);
+    expect(profile.total.spd).toBe(152);
+  });
+
+  test('normalizes invalid necro rank bonuses to neutral multiplier', () => {
+    expect(normalizeNecroBaseStatsBonus(undefined)).toBe(1);
+    expect(normalizeNecroBaseStatsBonus(0)).toBe(1);
+    expect(calculateNecroBaseStatsContribution(basePlayer.stats, undefined).atk).toBe(0);
   });
 });

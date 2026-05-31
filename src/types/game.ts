@@ -48,6 +48,8 @@ export interface JobUnlockRequirement {
   minLevel: number;
 }
 
+export type JobGrowthModifiers = Partial<Record<'hp' | 'atk' | 'def', number>>;
+
 export interface JobData {
   id?: string;
   name: string;
@@ -56,6 +58,7 @@ export interface JobData {
   title?: string;
   tier: number;
   category: ClassCategory;
+  baseAttackType?: SkillAttackType; // 通常攻撃の演出・状態異常推論に使う攻撃種別
   role?: string;
   description?: string;
   unlock?: {
@@ -64,10 +67,11 @@ export interface JobData {
   };
   statModifiers?: Partial<BaseStats>;
   energyCurve: {
-    baseMaxEnergy: number; // スキルSPの最大値
-    energyRegen: number;   // 通常攻撃1回ごとのSP回復量
+    baseMaxEnergy: number; // 最大MP
     ultimateCost: number;  // 奥義コスト（未使用・将来用）
+    spGrowthPerLevel: number; // レベルごとの最大MP成長値（互換フィールド名）
   };
+  growthModifiers?: JobGrowthModifiers;
   levelBonuses: Record<string, Partial<PassiveBonuses>>;
   skills: JobSkillUnlock[];
 }
@@ -88,7 +92,7 @@ export interface StatusEffect {
 export interface SkillData {
   id: string;
   name: string;
-  mpCost: number;       // エネルギーコスト（旧 mpCost の名称を維持）
+  mpCost: number;       // MPコスト
   power: number;
   type: 'PHYSICAL' | 'MAGICAL' | 'HEAL';
   element?: ElementType;
@@ -98,6 +102,7 @@ export interface SkillData {
   isUltimate?: boolean; // 奥義フラグ — true のとき maxEnergy を全消費
   ailmentType?: AilmentType;
   ailmentBaseRate?: number;
+  healSelfPct?: number; // 与えた実HPダメージに対する自己回復率%
   description: string;
 }
 
@@ -233,6 +238,8 @@ export interface CharacterData {
   currentJobId: string;
   category: ClassCategory;
   baseStats?: BaseStats;
+  // ネクロランクによる基礎ステータス倍率補正（Character.necroBaseStatsBonus のスナップショット）
+  necroBaseStatsBonus?: number;
   stats: BaseStats;
   passives: PassiveBonuses;
   equipment: EquipmentSlots;
@@ -242,10 +249,9 @@ export interface CharacterData {
   clearedStages: string[];
   gold: number;
   statusEffects?: StatusEffect[];
-  // エネルギーシステム（ランタイム状態 — DB非保存）
-  // スキルポイント（バトルランタイム）— 魔神化ゲージとは別リソース
-  currentEnergy: number; // 現在SP：0から溜まる、スキル使用で消費
-  maxEnergy:     number; // 最大SP：job.energyCurve.baseMaxEnergy が設定値
+  // MP（ランタイム状態 — DB非保存、魔神化ゲージとは別リソース）
+  currentEnergy: number; // 現在MP（互換フィールド名）
+  maxEnergy:     number; // 最大MP：job.energyCurve.baseMaxEnergy + 成長値
   // 属性ダメージ加成（装備・残滓から集計）
   elementDmgBoosts: Partial<Record<ElementType, number>>;
 }
@@ -342,6 +348,7 @@ export interface EnemyData {
   resistances: Resistances;
   weaknesses: ElementType[];
   shieldHp?: number;
+  maxShieldHp?: number;
   gimmicks?: BossGimmick[];
   dropTable: DropEntry[];
   battle?: {
@@ -354,10 +361,12 @@ export interface EnemyData {
 
 export interface StageWaveData {
   label: string;
-  role: 'WARMUP' | 'SHIELD' | 'BOSS';
+  role: 'WARMUP' | 'SHIELD' | 'ELITE' | 'BOSS';
   enemyIds: string[];
   intent: string;
 }
+
+export type AreaGimmickType = 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE';
 
 export interface StageData {
   id: string;
@@ -372,6 +381,7 @@ export interface StageData {
   difficulty: number;
   description: string;
   waveCount: number;
+  areaGimmick?: AreaGimmickType;
   unlockRequires: string[];
   waves: StageWaveData[];
   rewards: {
@@ -396,8 +406,12 @@ export interface BattleState {
   monsters: (MonsterData | null)[];
   wave: number;
   turn: number;
-  areaGimmick?: 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE';
+  areaGimmick?: AreaGimmickType;
   monsterCurrentHp: Record<string, number>;
+  enemyCurrentHp: Record<string, number>;
+  enemyMaxHp: Record<string, number>;
+  pendingSummons: string[];
+  summonedEnemies: MonsterData[];
 }
 
 export interface BattleLog {
@@ -415,7 +429,7 @@ export interface BattleLog {
   ailmentApplied?: AilmentType;
   ailmentTick?: AilmentType;
   ailmentClearedBy?: 'DEMONIZE' | 'TURN_END';
-  playerSp: number;         // スキルポイント（スキル使用リソース）
+  playerSp: number;         // 現在MP（互換ログフィールド名）
   playerDemonGauge: number; // 魔神化ゲージ 0-100（別リソース）
   playerHP: number;
   description: string;

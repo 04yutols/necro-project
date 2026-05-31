@@ -176,7 +176,7 @@ export function NewScreen() {
 
 ## 規約
 
-- UI テキスト: 直接的な日本語動詞 — 装備, 強化, 攻撃, 術, 魔神化
+- UI テキスト: 直接的な日本語動詞 — 装備, 強化, 攻撃, スキル, 魔神化
 - パーティは常に 3 スロット `(MonsterData | null)[]`
 - コスト検証: `NecroStatus.maxCost` に対して検証してから編成
 - GDD 参照: コメントに `GDD-003` 等を記載 (docs/requirements.md)

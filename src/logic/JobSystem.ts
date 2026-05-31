@@ -1,4 +1,4 @@
-import type { BaseStats, CharacterData, JobData, SkillData } from '../types/game';
+import type { BaseStats, CharacterData, JobData, SkillAttackType, SkillData } from '../types/game';
 
 export const STAT_KEYS: (keyof BaseStats)[] = ['hp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
 
@@ -42,6 +42,12 @@ export const DEFAULT_JOB_STYLE = {
 
 export function getJobStyle(jobId: string) {
   return JOB_STYLE[jobId] ?? DEFAULT_JOB_STYLE;
+}
+
+export function getBaseAttackType(
+  job: Pick<JobData, 'baseAttackType'> | null | undefined,
+): SkillAttackType {
+  return job?.baseAttackType ?? 'SLASH';
 }
 
 export function normalizeJobData(jobId: string, job: JobData): JobData {

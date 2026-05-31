@@ -54,6 +54,7 @@ model User {
   image         String?
   displayName   String?
   passwordHash  String?   // ID/PW 認証用（bcrypt ハッシュ）
+  sessionVersion Int      @default(1) // JWT セッション一括失効用
   createdAt     DateTime  @default(now())
 
   accounts      Account[]
@@ -134,6 +135,7 @@ model Character {
 
   // 進行管理
   clearedStages   String[] @default([])
+  soulShards      SoulShard[] @relation("CharacterSoulShards")
 
   // 深淵の残滓（5部位）
   abyssalResidues AbyssalResidue[] @relation("CharacterResidues")
@@ -268,11 +270,15 @@ model Monster {
 
 model SoulShard {
   id              String    @id @default(uuid())
+  characterId     String?
+  character       Character? @relation("CharacterSoulShards", fields: [characterId], references: [id], onDelete: SetNull)
   originMonster   String
   atkBonus        Int       @default(0)
   elementDmgBoost Int       @default(0)
   specialAbility  String?
   monsters        Monster[]
+
+  @@index([characterId])
 }
 
 model SpiritCore {

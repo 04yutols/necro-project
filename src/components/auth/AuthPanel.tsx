@@ -165,6 +165,7 @@ export function AuthPanel() {
     setSubmitting(true);
     setMessage(null);
     try {
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => null);
       await signOut({ redirect: false });
       setStatus('guest');
       setUser(null);

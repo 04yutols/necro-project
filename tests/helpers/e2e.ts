@@ -30,6 +30,14 @@ const COMPLETED_TUTORIAL_PHASES = [
 ];
 
 export async function prepareE2EPage(page: Page) {
+  // intercept auth session to force guest mode (no DB needed in E2E)
+  await page.route('**/api/auth/session', (route) => {
+    route.fulfill({ status: 200, contentType: 'text/html', body: '' });
+  });
+  await page.route('**/api/auth/**', (route) => {
+    route.fulfill({ status: 200, contentType: 'text/html', body: '' });
+  });
+
   await page.addInitScript(({ storyScenes, tutorialPhases }) => {
     window.localStorage.setItem('necro-story-store-v2', JSON.stringify({
       state: {

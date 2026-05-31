@@ -1,7 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { CharacterData, UserJobState } from '../types/game';
+import { CharacterData, JobData, UserJobState } from '../types/game';
 import { MasterDataService } from './MasterDataService';
 import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
+import { calculateEnergyState } from '../logic/EnergySystem';
 
 /**
  * 職業に関するビジネスロジックを担当するサービス (GDD-004)
@@ -18,7 +19,9 @@ export class JobService {
    * 転職処理。
    * トランザクションを用いて UserJob の生成・更新を行う。
    */
-  public async changeJob(characterOrId: string | CharacterData, nextJobId: string): Promise<void> {
+  public async changeJob(character: CharacterData, nextJobId: string): Promise<CharacterData>;
+  public async changeJob(characterId: string, nextJobId: string): Promise<void>;
+  public async changeJob(characterOrId: string | CharacterData, nextJobId: string): Promise<CharacterData | void> {
     const jobData = this.masterData.getJob(nextJobId);
     if (!jobData) throw new Error(`Job ${nextJobId} not found in master data`);
 
@@ -27,16 +30,7 @@ export class JobService {
       const unlock = getJobUnlockStatus(character, jobData);
       if (!unlock.unlocked) throw new Error(`Job ${nextJobId} is locked`);
 
-      const existing = character.jobs.find(job => job.jobId === nextJobId);
-      if (!existing) {
-        character.jobs.push({ jobId: nextJobId, level: 1, exp: 0 });
-      }
-      character.currentJobId = nextJobId;
-      character.category = jobData.category;
-      const baseStats = character.baseStats ?? character.stats;
-      character.baseStats = baseStats;
-      character.stats = calculateJobAdjustedStats(baseStats, jobData);
-      return;
+      return this.buildChangedCharacter(character, nextJobId, jobData);
     }
 
     if (!this.prisma) throw new Error('PrismaClient is required for persistent job changes.');
@@ -96,9 +90,43 @@ export class JobService {
     });
   }
 
+  private buildChangedCharacter(character: CharacterData, nextJobId: string, jobData: JobData): CharacterData {
+    const nextJobs: UserJobState[] = character.jobs.map(job => ({ ...job }));
+    if (!nextJobs.some(job => job.jobId === nextJobId)) {
+      nextJobs.push({ jobId: nextJobId, level: 1, exp: 0 });
+    }
+
+    const baseStats = { ...(character.baseStats ?? character.stats) };
+    const nextLevel = Math.max(1, nextJobs.find(job => job.jobId === nextJobId)?.level ?? 1);
+    const energyState = calculateEnergyState(jobData, nextLevel);
+
+    return {
+      ...character,
+      currentJobId: nextJobId,
+      category: jobData.category,
+      baseStats,
+      stats: calculateJobAdjustedStats(baseStats, jobData),
+      passives: { ...character.passives },
+      equipment: { ...character.equipment },
+      baseResistances: { ...character.baseResistances },
+      jobs: nextJobs,
+      clearedStages: [...character.clearedStages],
+      statusEffects: character.statusEffects?.map(effect => ({
+        ...effect,
+        stacks: effect.stacks?.map(stack => ({ ...stack })),
+      })),
+      currentEnergy: Math.min(character.currentEnergy, energyState.maxEnergy),
+      maxEnergy: energyState.maxEnergy,
+      elementDmgBoosts: { ...character.elementDmgBoosts },
+    };
+  }
+
   private toCharacterDataForUnlock(character: any): CharacterData {
     const currentJobId = character.currentJobId ?? 'warrior';
     const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior')!;
+    const jobs = (character.jobs ?? []).map((job: UserJobState) => ({ jobId: job.jobId, level: job.level, exp: job.exp }));
+    const currentJobLevel = Math.max(1, jobs.find((job: { jobId: string; level: number; exp: number }) => job.jobId === currentJobId)?.level ?? 1);
+    const energyState = calculateEnergyState(currentJob, currentJobLevel);
     const baseStats = {
       hp: character.hp,
       atk: character.atk,
@@ -127,12 +155,12 @@ export class JobService {
       },
       equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
       baseResistances: {},
-      jobs: (character.jobs ?? []).map((job: UserJobState) => ({ jobId: job.jobId, level: job.level, exp: job.exp })),
+      jobs,
       isAwakened: false,
       clearedStages: character.clearedStages ?? [],
       gold: character.gold ?? 0,
-      currentEnergy: 0,
-      maxEnergy: currentJob.energyCurve?.baseMaxEnergy ?? 100,
+      currentEnergy: energyState.currentEnergy,
+      maxEnergy: energyState.maxEnergy,
       elementDmgBoosts: {},
     };
   }

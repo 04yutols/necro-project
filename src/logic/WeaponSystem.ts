@@ -13,10 +13,10 @@ export const WEAPON_MAX_ILV = 90;
 export const WEAPON_MAX_RANK = 5;
 
 export const WEAPON_LV90_BASE_ATK: Record<WeaponRarity, Record<WeaponArchetype, number | null>> = {
-  R:   { LOW: 354, MID: 401, HIGH: 448, MYTHIC: null },
-  SR:  { LOW: 454, MID: 510, HIGH: 565, MYTHIC: null },
-  SSR: { LOW: 542, MID: 608, HIGH: 674, MYTHIC: null },
-  UR:  { LOW: null, MID: null, HIGH: null, MYTHIC: 780 },
+  R:   { LOW: 45, MID: 60, HIGH: 75, MYTHIC: null },
+  SR:  { LOW: 58, MID: 78, HIGH: 97, MYTHIC: null },
+  SSR: { LOW: 68, MID: 92, HIGH: 115, MYTHIC: null },
+  UR:  { LOW: null, MID: null, HIGH: null, MYTHIC: 130 },
 };
 
 export const WEAPON_SUBSTAT_COEFFICIENT: Record<WeaponArchetype, number> = {
@@ -132,7 +132,7 @@ export function getWeaponLv90BaseAttack(item: ItemData): number {
   const archetype = getWeaponArchetype(item);
   const base = WEAPON_LV90_BASE_ATK[rarity][archetype];
   if (typeof base === 'number') return base;
-  return WEAPON_LV90_BASE_ATK[rarity].MID ?? WEAPON_LV90_BASE_ATK.UR.MYTHIC ?? 780;
+  return WEAPON_LV90_BASE_ATK[rarity].MID ?? WEAPON_LV90_BASE_ATK.UR.MYTHIC ?? 130;
 }
 
 export function calculateWeaponBaseAttack(item: ItemData): number {
@@ -140,7 +140,7 @@ export function calculateWeaponBaseAttack(item: ItemData): number {
 
   const ilv = getWeaponIlv(item);
   const lv90Base = getWeaponLv90BaseAttack(item);
-  const ilvScale = 0.58 + (ilv / WEAPON_MAX_ILV) * 0.42;
+  const ilvScale = ilv / WEAPON_MAX_ILV;
 
   return Math.round(lv90Base * ilvScale);
 }

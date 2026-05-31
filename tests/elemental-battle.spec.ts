@@ -10,19 +10,20 @@ test.describe('Elemental battle UX', () => {
     await startFirstDungeonBattle(page);
   });
 
-  test('shows elemental and attack-type metadata for available battle skills', async ({ page }) => {
+  test('shows attack-type metadata for the currently unlocked battle skill', async ({ page }) => {
     await page.locator('#tut-skill-btn').click();
 
-    await expect(page.getByText(/炎\/斬撃|雷\/斬撃|風\/斬撃|光\/斬撃/)).toBeVisible();
-    await expect(page.getByText('雷鳴斬り')).toBeVisible();
-    await expect(page.getByText('ホーリークロス')).toBeVisible();
+    await expect(page.getByText(/無\/斬撃/)).toBeVisible();
+    await expect(page.getByText('渾身斬り')).toBeVisible();
+    await expect(page.getByText('雷鳴斬り')).toHaveCount(0);
   });
 
   test('tracks soul gauge progression after attacks', async ({ page }) => {
-    await expect(page.locator('#tut-soul-gauge')).toContainText('45%');
+    const soulGauge = page.locator('#tut-soul-gauge');
+    await expect(soulGauge).toContainText('0%');
 
     await page.locator('#tut-attack-btn').click();
     await expect(page.getByTestId('battle-log')).toContainText('骸骨騎士の攻撃', { timeout: 5000 });
-    await expect(page.locator('#tut-soul-gauge')).toContainText(/55%|63%|MAX/, { timeout: 10000 });
+    await expect(soulGauge).toContainText(/[1-9]\d?%|100%/, { timeout: 10000 });
   });
 });

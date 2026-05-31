@@ -9,8 +9,13 @@ import { MasterDataService } from '@/services/MasterDataService';
 import { RankingService } from '@/services/RankingService';
 import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventService';
 import { JobService } from '@/services/JobService';
+import { NecroService } from '@/services/NecroService';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
+import { INITIAL_PLAYER_BASE_STATS } from '@/logic/BalanceConfig';
+import { calculateEnergyState } from '@/logic/EnergySystem';
+import { levelFromTotalExp } from '@/logic/ExperienceSystem';
 import { calculateJobAdjustedStats } from '@/logic/JobSystem';
+import { calculateJobGrowthIncrements } from '@/logic/JobGrowthSystem';
 import type {
   AbyssalResidueData,
   BaseStats,
@@ -55,6 +60,16 @@ export interface StageResultPayload {
   error?:    string;
 }
 
+export type GrowthActionType = 'RANK_UP' | 'CHANGE_JOB';
+
+export type SoulStoneActionResult =
+  | { success: false; error: string }
+  | { success: true; data: SoulShardData };
+
+export type FetchPlayerActionResult =
+  | { success: false; error: string }
+  | { success: true; data: CharacterData };
+
 function emptyDrop(): StageDropResult {
   return { weapons: [], consumables: [], residues: [], materials: [], monsters: [] };
 }
@@ -71,38 +86,28 @@ const STAGE_ID_ALIASES: Record<string, string> = {
   '1-1': 'area1_node1',
 };
 
-// レベル1基礎ステータス（職業補正前）
-// 戦士の場合: HP×1.14→912, ATK×1.20→144, DEF×1.15→92
-const DEFAULT_BASE_STATS: BaseStats = {
-  hp: 800,
-  atk: 120,
-  def: 80,
-  spd: 100,
-  critRate: 5,
-  critDmg: 150,
-  effectHit: 0,
-  effectRes: 0,
-};
+const CHARACTER_GAME_DATA_INCLUDE = {
+  jobs: true,
+  equipWeapon: true,
+  equipSub: true,
+  equipHead: true,
+  equipBody: true,
+  equipArms: true,
+  equipLegs: true,
+  equipAcc1: true,
+  equipAcc2: true,
+  abyssalResidues: true,
+  partySlot0: { include: { soulShard: true, spiritCore: true } },
+  partySlot1: { include: { soulShard: true, spiritCore: true } },
+  partySlot2: { include: { soulShard: true, spiritCore: true } },
+  soulShards: true,
+  equippedResidue0: true,
+  equippedResidue1: true,
+  equippedResidue2: true,
+  equippedResidue3: true,
+  equippedResidue4: true,
+} satisfies Prisma.CharacterInclude;
 
-// レベルアップごとのステータス成長量（職業補正前の生値）
-const STAT_GROWTH_PER_LEVEL = {
-  hp:  40,
-  atk: 6,
-  def: 4,
-} as const;
-
-// 累積EXP必要量: expForLevel(n) = 50*(n-1)*(n+8)
-// Lv2: 500, Lv3: 1100, Lv4: 1800, Lv5: 2600, ...
-function expForLevel(n: number): number {
-  if (n <= 1) return 0;
-  return 50 * (n - 1) * (n + 8);
-}
-
-function levelFromTotalExp(totalExp: number): number {
-  let level = 1;
-  while (level < 99 && expForLevel(level + 1) <= totalExp) level++;
-  return level;
-}
 const EMPTY_EQUIPMENT: EquipmentSlots = {
   weapon: null,
   sub: null,
@@ -249,6 +254,16 @@ function toSpiritCoreData(row: {
   };
 }
 
+function deriveSoulShardAbility(tribe: string): string | undefined {
+  switch (tribe) {
+    case 'UNDEAD': return 'REGENERATE_SOUL';
+    case 'DEMON': return 'BANE_OF_LIGHT';
+    case 'DRAGON': return 'ELEMENTAL_SURGE';
+    case 'ORC': return 'IRON_HIDE';
+    default: return undefined;
+  }
+}
+
 function toSoulShardData(row: {
   id: string;
   originMonster: string;
@@ -282,7 +297,9 @@ function toMonsterData(row: any): MonsterData {
 
 function getJobData(jobId: string): JobData {
   const mds = MasterDataService.getInstance();
-  return (mds.getJob(jobId) ?? mds.getJob('warrior')) as JobData;
+  const job = mds.getJob(jobId) ?? mds.getJob('warrior');
+  if (!job) throw new Error(`Job ${jobId} not found in master data`);
+  return job;
 }
 
 function toServerUser(sessionUser: { id?: string; name?: string | null; email?: string | null }): ServerGameUser {
@@ -296,6 +313,9 @@ function toServerUser(sessionUser: { id?: string; name?: string | null; email?: 
 function toServerGameData(character: any, inventoryItems: any[], inventoryMonsters: any[]): ServerGameData {
   const currentJobId = character.currentJobId ?? 'warrior';
   const currentJob = getJobData(currentJobId);
+  const jobs = (character.jobs ?? []).map((job: any) => ({ jobId: job.jobId, level: job.level, exp: job.exp }));
+  const currentJobLevel = Math.max(1, jobs.find((job: { jobId: string; level: number; exp: number }) => job.jobId === currentJobId)?.level ?? 1);
+  const energyState = calculateEnergyState(currentJob, currentJobLevel);
   const baseStats = toBaseStats(character);
   const equippedResidueSlots = [
     toResidueSlot(character.equippedResidue0),
@@ -310,6 +330,7 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
     currentJobId,
     category: currentJob.category,
     baseStats,
+    necroBaseStatsBonus: character.necroBaseStatsBonus ?? 1,
     stats: calculateJobAdjustedStats(baseStats, currentJob),
     passives: {
       passiveAtkBonus: character.passiveAtkBonus,
@@ -331,16 +352,19 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
       acc2: character.equipAcc2 ? toItemData(character.equipAcc2) : null,
     },
     baseResistances: {},
-    jobs: (character.jobs ?? []).map((job: any) => ({ jobId: job.jobId, level: job.level, exp: job.exp })),
+    jobs,
     isAwakened: false,
     clearedStages: character.clearedStages ?? [],
     gold: character.gold ?? 50000,
-    currentEnergy: 0,
-    maxEnergy: currentJob.energyCurve?.baseMaxEnergy ?? 100,
+    currentEnergy: energyState.currentEnergy,
+    maxEnergy: energyState.maxEnergy,
     elementDmgBoosts: {},
   };
   const monsters = inventoryMonsters.map(toMonsterData);
   const soulShards = new Map<string, SoulShardData>();
+  (character.soulShards ?? []).forEach((shard: any) => {
+    soulShards.set(shard.id, toSoulShardData(shard));
+  });
   inventoryMonsters.forEach((monster) => {
     if (monster.soulShard) soulShards.set(monster.soulShard.id, toSoulShardData(monster.soulShard));
   });
@@ -449,6 +473,14 @@ function jobChangeErrorMessage(error: unknown): string {
   if (message.includes('is locked')) return '解放条件を満たしていません';
   if (message.includes('Character') && message.includes('not found')) return 'キャラクターが見つかりません';
   return '転職の保存に失敗しました';
+}
+
+function rankUpErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('Lv.99') || message.includes('99')) return 'ランクアップには死霊術Lv.99到達が必要です';
+  if (message.includes('試練')) return 'ランクアップには試練のクリアが必要です';
+  if (message.includes('Character') && message.includes('not found')) return 'キャラクターが見つかりません';
+  return 'ランクアップに失敗しました';
 }
 
 async function getAuthorizedUser(userId: string): Promise<ServerGameUser | null> {
@@ -625,7 +657,7 @@ export async function processStageResultForUser(
     if (currentJob) {
       const newExp      = currentJob.exp + expGain;
       const oldLevel    = currentJob.level as number;
-      const newLevel    = Math.min(99, levelFromTotalExp(newExp));
+      const newLevel    = levelFromTotalExp(newExp);
       const levelsGained = newLevel - oldLevel;
 
       await tx.userJob.update({
@@ -634,12 +666,14 @@ export async function processStageResultForUser(
       });
 
       if (levelsGained > 0) {
+        const currentJobData = mds.getJob(currentJob.jobId);
+        const growth = calculateJobGrowthIncrements(currentJobData, oldLevel, newLevel);
         await tx.character.update({
           where: { id: char.id },
           data: {
-            hp:  { increment: STAT_GROWTH_PER_LEVEL.hp  * levelsGained },
-            atk: { increment: STAT_GROWTH_PER_LEVEL.atk * levelsGained },
-            def: { increment: STAT_GROWTH_PER_LEVEL.def * levelsGained },
+            hp:  { increment: growth.hp },
+            atk: { increment: growth.atk },
+            def: { increment: growth.def },
           },
         });
       }
@@ -737,26 +771,7 @@ export async function loadCharacterForUser(user: ServerGameUser): Promise<LoadCh
 
   const character = await prisma.character.findFirst({
     where: { userId: authorizedUser.id },
-    include: {
-      jobs: true,
-      equipWeapon: true,
-      equipSub: true,
-      equipHead: true,
-      equipBody: true,
-      equipArms: true,
-      equipLegs: true,
-      equipAcc1: true,
-      equipAcc2: true,
-      abyssalResidues: true,
-      partySlot0: { include: { soulShard: true, spiritCore: true } },
-      partySlot1: { include: { soulShard: true, spiritCore: true } },
-      partySlot2: { include: { soulShard: true, spiritCore: true } },
-      equippedResidue0: true,
-      equippedResidue1: true,
-      equippedResidue2: true,
-      equippedResidue3: true,
-      equippedResidue4: true,
-    },
+    include: CHARACTER_GAME_DATA_INCLUDE,
   });
   if (!character) {
     return { success: true, status: 'NO_CHARACTER', user: authorizedUser };
@@ -850,7 +865,7 @@ export async function createCharacterForUser(
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await ensureJobRow(tx, jobId);
 
-    const starterWeapon = mds.getItem(getStarterWeaponId(jobId)) as ItemData | undefined;
+    const starterWeapon = mds.getItem(getStarterWeaponId(jobId));
     const createdWeapon = starterWeapon
       ? await tx.item.create({ data: itemCreateDataFromMaster(starterWeapon, userId), select: { id: true } })
       : null;
@@ -861,14 +876,14 @@ export async function createCharacterForUser(
         userId,
         currentJobId: jobId,
         gold: 50000,
-        hp: DEFAULT_BASE_STATS.hp,
-        atk: DEFAULT_BASE_STATS.atk,
-        def: DEFAULT_BASE_STATS.def,
-        spd: DEFAULT_BASE_STATS.spd,
-        critRate: DEFAULT_BASE_STATS.critRate,
-        critDmg: DEFAULT_BASE_STATS.critDmg,
-        effectHit: DEFAULT_BASE_STATS.effectHit,
-        effectRes: DEFAULT_BASE_STATS.effectRes,
+        hp: INITIAL_PLAYER_BASE_STATS.hp,
+        atk: INITIAL_PLAYER_BASE_STATS.atk,
+        def: INITIAL_PLAYER_BASE_STATS.def,
+        spd: INITIAL_PLAYER_BASE_STATS.spd,
+        critRate: INITIAL_PLAYER_BASE_STATS.critRate,
+        critDmg: INITIAL_PLAYER_BASE_STATS.critDmg,
+        effectHit: INITIAL_PLAYER_BASE_STATS.effectHit,
+        effectRes: INITIAL_PLAYER_BASE_STATS.effectRes,
         equipWeaponId: createdWeapon?.id ?? null,
         jobs: { create: { jobId, level: 1, exp: 0 } },
       },
@@ -886,24 +901,117 @@ export async function loadGameStateAction() {
   return loadCharacterAction();
 }
 
-export async function fetchPlayerAction(characterId: string) {
+export async function fetchPlayerAction(characterId: string): Promise<FetchPlayerActionResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return fetchPlayerForUser(toServerUser(session.user), characterId);
+}
+
+export async function fetchPlayerForUser(
+  user: ServerGameUser,
+  characterId: string,
+): Promise<FetchPlayerActionResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    include: CHARACTER_GAME_DATA_INCLUDE,
+  });
+  if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+
+  const [inventoryItems, inventoryMonsters] = await Promise.all([
+    prisma.item.findMany({
+      where: { ownerId: authorizedUser.id },
+      orderBy: { id: 'desc' },
+    }),
+    prisma.monster.findMany({
+      where: { characterId: character.id },
+      include: { soulShard: true, spiritCore: true },
+      orderBy: { id: 'asc' },
+    }),
+  ]);
+
   return {
     success: true,
-    data: {
-      id:    characterId,
-      name:  'アルド',
-      stats: { hp: 100, atk: 20, def: 10, spd: 100, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 0 },
-    },
+    data: toServerGameData(character, inventoryItems, inventoryMonsters).player,
   };
 }
 
-export async function processGrowthAction(characterId: string, type: 'RANK_UP' | 'CHANGE_JOB') {
-  return { success: true, message: `${type} completed.` };
+export async function processGrowthAction(characterId: string, type: GrowthActionType): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return processGrowthForUser(toServerUser(session.user), characterId, type);
 }
 
-export async function soulStoneAction(monsterId: string) {
-  const id = `shard-${Math.random().toString(36).substr(2, 9)}`;
-  return { success: true, data: { id, originMonsterName: 'Goblin', effect: { atkBonus: 5, elementDmgBoost: 0 } } };
+export async function processGrowthForUser(
+  user: ServerGameUser,
+  characterId: string,
+  type: GrowthActionType,
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    select: { id: true },
+  });
+  if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+
+  if (type === 'CHANGE_JOB') {
+    return { success: false, error: '転職は changeJobAction(characterId, jobId) を使用してください' };
+  }
+
+  try {
+    await new NecroService(prisma).performRankUp(character.id, true);
+  } catch (error) {
+    return { success: false, error: rankUpErrorMessage(error) };
+  }
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
+}
+
+export async function soulStoneAction(monsterId: string): Promise<SoulStoneActionResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return soulStoneForUser(toServerUser(session.user), monsterId);
+}
+
+export async function soulStoneForUser(
+  user: ServerGameUser,
+  monsterId: string,
+): Promise<SoulStoneActionResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const monster = await prisma.monster.findFirst({
+    where: { id: monsterId, character: { is: { userId: authorizedUser.id } } },
+    select: {
+      id: true,
+      characterId: true,
+      name: true,
+      tribe: true,
+      atk: true,
+      effectHit: true,
+    },
+  });
+  if (!monster?.characterId) return { success: false, error: '所有していない魔物です' };
+
+  const soulShard = await prisma.$transaction(async (tx) => {
+    const created = await tx.soulShard.create({
+      data: {
+        characterId: monster.characterId,
+        originMonster: monster.name,
+        atkBonus: Math.floor(monster.atk * 0.1),
+        elementDmgBoost: Math.floor((monster.effectHit ?? 0) * 0.1),
+        specialAbility: deriveSoulShardAbility(monster.tribe),
+      },
+    });
+    await tx.monster.delete({ where: { id: monster.id } });
+    return created;
+  });
+
+  return { success: true, data: toSoulShardData(soulShard) };
 }
 
 export async function updatePartyAction(characterId: string, monsterIds: (string | null)[]): Promise<SaveGameStateResult> {
@@ -912,8 +1020,38 @@ export async function updatePartyAction(characterId: string, monsterIds: (string
   return updatePartyForUser(toServerUser(session.user), characterId, monsterIds);
 }
 
-export async function equipShardAction(monsterId: string, shardId: string) {
-  return { success: true };
+export async function equipShardAction(monsterId: string, shardId: string): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return equipShardForUser(toServerUser(session.user), monsterId, shardId);
+}
+
+export async function equipShardForUser(
+  user: ServerGameUser,
+  monsterId: string,
+  shardId: string,
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const monster = await prisma.monster.findFirst({
+    where: { id: monsterId, character: { is: { userId: authorizedUser.id } } },
+    select: { id: true, characterId: true },
+  });
+  if (!monster?.characterId) return { success: false, error: '所有していない魔物です' };
+
+  const shard = await prisma.soulShard.findFirst({
+    where: { id: shardId, characterId: monster.characterId },
+    select: { id: true },
+  });
+  if (!shard) return { success: false, error: '所有していない魂片です' };
+
+  await prisma.monster.update({
+    where: { id: monster.id },
+    data: { soulShardId: shard.id },
+  });
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
 }
 
 export async function equipItemAction(characterId: string, slot: string, itemId: string): Promise<SaveGameStateResult> {

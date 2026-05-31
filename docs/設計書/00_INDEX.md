@@ -1,6 +1,6 @@
 # Necromance Brave — 設計書インデックス
 
-> 最終更新: 2026-05-17
+> 最終更新: 2026-05-26
 > AIエージェントの新セッション開始時はまずこのファイルを読む。
 
 ## プロジェクト概要
@@ -76,6 +76,36 @@
 | 第1章オンライン機能の保存・ランキング・世界ログ実装を知りたい | [36_オンライン機能実装設計.md](36_オンライン機能実装設計.md) |
 | ログインフロー・キャラ作成・DB同期の全体アーキテクチャを知りたい | [37_オンラインゲームアーキテクチャ再設計.md](37_オンラインゲームアーキテクチャ再設計.md) |
 | 登録/ログイン/キャラ作成の画面遷移・DBバインディング・エラー処理を知りたい | [38_ログイン登録フロー設計.md](38_ログイン登録フロー設計.md) |
+| `fetchPlayerAction` のIDOR対策・所有者確認実装を知りたい | [52_SEC2_fetchPlayerAction_IDOR設計.md](52_SEC2_fetchPlayerAction_IDOR設計.md) |
+| `GameManager.updateParty` のDB保存・所有魔物検証を知りたい | [53_SEC3_GameManager_updateParty永続化設計.md](53_SEC3_GameManager_updateParty永続化設計.md) |
+| 報酬インスタンスIDの暗号論的生成・SEC-4対応を知りたい | [54_SEC4_暗号論的ID生成設計.md](54_SEC4_暗号論的ID生成設計.md) |
+| `critRate` とドロップ率ボーナスの分離・SEC-5対応を知りたい | [55_SEC5_ドロップ率ボーナスcritRate分離設計.md](55_SEC5_ドロップ率ボーナスcritRate分離設計.md) |
+| 残滓強化素材スタックの1個単位消費・BUG-4対応を知りたい | [56_BUG4_残滓強化素材スタック消費設計.md](56_BUG4_残滓強化素材スタック消費設計.md) |
+| BURN持続ダメージの免疫チェック・BUG-5対応を知りたい | [57_BUG5_BURN免疫チェック設計.md](57_BUG5_BURN免疫チェック設計.md) |
+| 敵HPのランタイム分離・BUG-6対応を知りたい | [58_BUG6_敵HPランタイム分離設計.md](58_BUG6_敵HPランタイム分離設計.md) |
+| `getMutableStats` の型安全化・BUG-7対応を知りたい | [59_BUG7_getMutableStats型安全化設計.md](59_BUG7_getMutableStats型安全化設計.md) |
+| 状態異常行動スキップ時のターン進行・BUG-8対応を知りたい | [60_BUG8_状態異常行動スキップターン進行設計.md](60_BUG8_状態異常行動スキップターン進行設計.md) |
+| `NecroStatus.exp` テストモック欠落・BUG-9対応を知りたい | [61_BUG9_NecroStatus_expテストモック整合設計.md](61_BUG9_NecroStatus_expテストモック整合設計.md) |
+| 軍団追撃の複数敵ターゲット分散・BUG-10対応を知りたい | [62_BUG10_軍団追撃ターゲット分散設計.md](62_BUG10_軍団追撃ターゲット分散設計.md) |
+| 残滓サブオプションシャッフルのFisher-Yates準拠・PERF-1対応を知りたい | [63_PERF1_残滓シャッフルFisherYates設計.md](63_PERF1_残滓シャッフルFisherYates設計.md) |
+| MasterDataService getterの型安全化・QUALITY-1対応を知りたい | [64_QUALITY1_MasterDataService型安全化設計.md](64_QUALITY1_MasterDataService型安全化設計.md) |
+| JobService.changeJobの不変更新化・QUALITY-2対応を知りたい | [65_QUALITY2_JobService_changeJob不変更新設計.md](65_QUALITY2_JobService_changeJob不変更新設計.md) |
+| 状態異常DoTの最大HP参照・BUG-2対応を知りたい | [66_BUG2_状態異常DoT最大HP参照設計.md](66_BUG2_状態異常DoT最大HP参照設計.md) |
+| JWTセッションの一括失効・SEC-6対応を知りたい | [67_SEC6_JWTセッション失効設計.md](67_SEC6_JWTセッション失効設計.md) |
+| ステージ開始トークン・不正クリア防止・SEC-8対応を知りたい | [68_SEC8_ステージ開始トークン設計.md](68_SEC8_ステージ開始トークン設計.md) |
+| BattleEngineのAoEスキル対象解決・IMP-1対応を知りたい | [69_IMP1_BattleEngine_AoEスキル対象解決設計.md](69_IMP1_BattleEngine_AoEスキル対象解決設計.md) |
+| BattleEngineのSUMMON_MINIONS実体化・IMP-2対応を知りたい | [70_IMP2_BattleEngine_SUMMON_MINIONS実体化設計.md](70_IMP2_BattleEngine_SUMMON_MINIONS実体化設計.md) |
+| 敵・ボスバランスを手動調整する手順を知りたい | [71_IMP3_敵ボスバランス手動調整手順.md](71_IMP3_敵ボスバランス手動調整手順.md) |
+| ステージ進行・推奨Lv導線を手動調整したい | [72_IMP7_ステージ難易度導線手動調整手順.md](72_IMP7_ステージ難易度導線手動調整手順.md) |
+| ドロップ期待値・UR非掲載・報酬経済を手動調整したい | [73_ドロップ経済手動調整手順.md](73_ドロップ経済手動調整手順.md) |
+| スキル倍率・コスト・状態異常率を手動調整したい | [74_スキル倍率手動調整手順.md](74_スキル倍率手動調整手順.md) |
+| 敵・ダンジョン・ドロップなどマスターデータを新規作成したい | [75_マスターデータ制作運用手順.md](75_マスターデータ制作運用手順.md) |
+| ドレインスキルのHP吸収・IMP-4対応を知りたい | [76_IMP4_ドレインスキルHP吸収設計.md](76_IMP4_ドレインスキルHP吸収設計.md) |
+| 職業別の通常攻撃種別・IMP-5対応を知りたい | [77_IMP5_職業別通常攻撃種別設計.md](77_IMP5_職業別通常攻撃種別設計.md) |
+| ターン順序プレビューUI・IMP-6対応を知りたい | [78_IMP6_ターン順序プレビューUI設計.md](78_IMP6_ターン順序プレビューUI設計.md) |
+| 最終WAVEクリアループと攻撃連打防止・BUG-11対応を知りたい | [79_BUG11_最終WAVEクリアループと多重入力防止設計.md](79_BUG11_最終WAVEクリアループと多重入力防止設計.md) |
+| スキルMPリソース再設計・IMP-8対応を知りたい | [80_IMP8_スキルMPリソース再設計.md](80_IMP8_スキルMPリソース再設計.md) |
+| 序盤バランス・EXP曲線・戦闘後MP全回復・IMP-9対応を知りたい | [81_IMP9_序盤バランスと戦闘後MP全回復再設計.md](81_IMP9_序盤バランスと戦闘後MP全回復再設計.md) |
 
 ## 重要ファイルパス一覧
 

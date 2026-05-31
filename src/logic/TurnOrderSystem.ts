@@ -59,6 +59,13 @@ export function buildTurnOrder(actors: TurnOrderActor[]): TurnOrderEntry[] {
     });
 }
 
+export function buildTurnOrderPreview(
+  actors: TurnOrderActor[],
+  maxEntries = 5,
+): TurnOrderEntry[] {
+  return buildTurnOrder(actors).slice(0, Math.max(0, Math.floor(maxEntries)));
+}
+
 export function scheduleEnemiesUntilPlayer({
   player,
   enemies,
@@ -74,7 +81,7 @@ export function scheduleEnemiesUntilPlayer({
   let nextEnemies = enemies.map((enemy) => ({ ...enemy }));
   const enemyActions: TurnOrderActor[] = [];
   const skippedEnemyTurns: TurnOrderActor[] = [];
-  const orderPreview = buildTurnOrder([nextPlayer, ...nextEnemies]).slice(0, 5);
+  const orderPreview = buildTurnOrderPreview([nextPlayer, ...nextEnemies]);
 
   for (let guard = 0; guard < maxEnemyActions; guard++) {
     const nextActor = buildTurnOrder([nextPlayer, ...nextEnemies])[0];

@@ -31,15 +31,13 @@ describe('calculatePartyTribeSynergy', () => {
   it('BEAST×2 → spdBonus=15 (Layer1のみ)', () => {
     const b = calculatePartyTribeSynergy([makeMonster('BEAST'), makeMonster('BEAST')]);
     expect(b.spdBonus).toBe(15);
-    expect(b.energyPerTurn).toBeUndefined();
   });
 
-  it('BEAST×3 → Layer2: spdBonus=30, energyPerTurn=15', () => {
+  it('BEAST×3 → Layer2: spdBonus=30', () => {
     const b = calculatePartyTribeSynergy([
       makeMonster('BEAST'), makeMonster('BEAST'), makeMonster('BEAST'),
     ]);
     expect(b.spdBonus).toBe(30);
-    expect(b.energyPerTurn).toBe(15);
   });
 
   it('HUMANOID×3 → critRateBonus=10, critDmgBonus=30', () => {

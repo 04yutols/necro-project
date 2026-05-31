@@ -2,6 +2,7 @@ import {
   applyActionDelay,
   applyStatusActionDelay,
   buildTurnOrder,
+  buildTurnOrderPreview,
   calculateActionDelay,
   calculateInitialActionValue,
   scheduleEnemiesUntilPlayer,
@@ -23,6 +24,28 @@ describe('TurnOrderSystem', () => {
     ]);
 
     expect(order.map((actor) => actor.id)).toEqual(['player', 'fast', 'slow']);
+  });
+
+  test('builds a compact turn-order preview capped at five actors', () => {
+    const preview = buildTurnOrderPreview([
+      { id: 'sixth', name: 'Sixth', side: 'ENEMY', spd: 70, currentAv: 60 },
+      { id: 'first', name: 'First', side: 'PLAYER', spd: 120, currentAv: 10 },
+      { id: 'third', name: 'Third', side: 'ENEMY', spd: 90, currentAv: 30 },
+      { id: 'second', name: 'Second', side: 'ENEMY', spd: 100, currentAv: 20 },
+      { id: 'fifth', name: 'Fifth', side: 'ENEMY', spd: 75, currentAv: 50 },
+      { id: 'fourth', name: 'Fourth', side: 'ENEMY', spd: 80, currentAv: 40 },
+    ]);
+
+    expect(preview.map((actor) => actor.id)).toEqual(['first', 'second', 'third', 'fourth', 'fifth']);
+    expect(preview.every((actor) => actor.actionDelay > 0)).toBe(true);
+  });
+
+  test('turn-order preview accepts a zero-length display limit', () => {
+    const preview = buildTurnOrderPreview([
+      { id: 'player', name: 'Player', side: 'PLAYER', spd: 100, currentAv: 0 },
+    ], 0);
+
+    expect(preview).toEqual([]);
   });
 
   test('schedules only enemies that act before the next player turn', () => {
@@ -57,5 +80,16 @@ describe('TurnOrderSystem', () => {
 
     expect(applyActionDelay(actor).currentAv).toBe(110);
     expect(applyStatusActionDelay(actor, 40, 50).currentAv).toBe(30);
+  });
+
+  test('delayed player AV lets an enemy act before the next player turn', () => {
+    const player: TurnOrderActor = { id: 'player', name: 'Player', side: 'PLAYER', spd: 100, currentAv: 120 };
+    const delayedPlayer = applyStatusActionDelay(player, 40, 0);
+    const enemy: TurnOrderActor = { id: 'boss', name: 'Boss', side: 'ENEMY', spd: 100, currentAv: 130 };
+
+    const schedule = scheduleEnemiesUntilPlayer({ player: delayedPlayer, enemies: [enemy] });
+
+    expect(delayedPlayer.currentAv).toBe(160);
+    expect(schedule.enemyActions.map((actor) => actor.id)).toEqual(['boss']);
   });
 });

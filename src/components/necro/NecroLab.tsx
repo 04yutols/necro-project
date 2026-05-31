@@ -655,7 +655,7 @@ function EnhanceTab({ abyssalResidues, residueMaterials, selectedId, onEnhance, 
   const totalExpGain = useMemo(() =>
     [...selectedMatIds].reduce((acc, id) => {
       const mat = residueMaterials.find(m => m.id === id);
-      return acc + (mat ? mat.expValue * mat.quantity : 0);
+      return acc + (mat ? mat.expValue : 0);
     }, 0),
     [selectedMatIds, residueMaterials],
   );
@@ -666,11 +666,11 @@ function EnhanceTab({ abyssalResidues, residueMaterials, selectedId, onEnhance, 
     const needed = selectedResidue.maxExp - selectedResidue.exp;
     let remaining = needed;
     const next = new Set<string>();
-    const sorted = [...residueMaterials].sort((a, b) => b.expValue * b.quantity - a.expValue * a.quantity);
+    const sorted = [...residueMaterials].sort((a, b) => b.expValue - a.expValue);
     for (const mat of sorted) {
       if (remaining <= 0) break;
       next.add(mat.id);
-      remaining -= mat.expValue * mat.quantity;
+      remaining -= mat.expValue;
     }
     setSelectedMatIds(next);
   }, [selectedResidue, residueMaterials, sound]);

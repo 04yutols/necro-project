@@ -10,7 +10,6 @@ export interface SynergyBonus {
   critDmgBonus?: number;
   defenseReducePct?: number;
   effectHitBonus?: number;
-  energyPerTurn?: number;
   demonGaugePerTurn?: number;
   avBonus?: number;
   atkBonus?: number;
@@ -86,7 +85,6 @@ function applyFullSynergy(tribe: Tribe, bonus: SynergyBonus): void {
       break;
     case 'BEAST':
       addBonus(bonus, 'spdBonus', 30);
-      addBonus(bonus, 'energyPerTurn', 15);
       break;
     case 'HUMANOID':
       addBonus(bonus, 'critRateBonus', 10);
@@ -159,7 +157,7 @@ const LAYER1_META: Record<Tribe, { name: string; nameEn: string; effectDesc: str
 const LAYER2_META: Record<Tribe, { name: string; nameEn: string; effectDesc: string }> = {
   UNDEAD:   { name: '骸軍の不滅陣', nameEn: 'UNDYING VANGUARD',   effectDesc: 'HP +5%/T · 毒/出血 無効' },
   DEMON:    { name: '魔族の悪意',   nameEn: 'DEMONIC MALICE',     effectDesc: '闇DMG +20% · effectHit +25%' },
-  BEAST:    { name: '野獣の本能',   nameEn: 'PRIMAL INSTINCT',    effectDesc: 'SPD +30 · エネルギー +15/T' },
+  BEAST:    { name: '野獣の本能',   nameEn: 'PRIMAL INSTINCT',    effectDesc: 'SPD +30' },
   HUMANOID: { name: '英雄の末裔',   nameEn: 'HERO\'S LINEAGE',    effectDesc: '会心率 +10% · 会心DMG +30%' },
   DRAGON:   { name: '天上の覇竜陣', nameEn: 'CELESTIAL DRAGON',   effectDesc: '全属性DMG +25% · 魔神化G +5/T' },
   ORC:      { name: '鉄城の守護陣', nameEn: 'IRON FORTRESS',      effectDesc: '被ダメ -25% · 吸収 10%' },

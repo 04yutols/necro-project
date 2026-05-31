@@ -31,8 +31,8 @@ describe('WeaponSystem', () => {
       flatAtk: 120,
     });
 
-    expect(breakdown.weaponBaseAtk).toBe(608);
-    expect(breakdown.finalAtk).toBe(2050);
+    expect(breakdown.weaponBaseAtk).toBe(92);
+    expect(breakdown.finalAtk).toBe(1430);
   });
 
   test('applies archetype substat coefficients to weapon sub options', () => {
@@ -84,4 +84,3 @@ describe('WeaponSystem', () => {
     expect(calculateWeaponBaseAttack(urWeapon)).toBeGreaterThan(calculateWeaponBaseAttack(ssrMidWeapon));
   });
 });
-

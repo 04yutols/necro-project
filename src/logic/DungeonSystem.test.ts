@@ -44,7 +44,7 @@ describe('DungeonSystem', () => {
 
   test('prioritizes boss and elite weaknesses for party preparation', () => {
     expect(getPrimaryWeaknesses(STAGES.area1_boss, ENEMIES)).toEqual(
-      expect.arrayContaining(['LIGHT', 'THUNDER'])
+      expect.arrayContaining(['LIGHT', 'FIRE'])
     );
   });
 });

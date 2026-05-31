@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { encode } from 'next-auth/jwt';
 import { prisma } from '@/lib/prisma';
+import { SESSION_MAX_AGE_SECONDS } from '@/services/SessionSecurityService';
 
 const isSecure = process.env.AUTH_URL?.startsWith('https://') ?? false;
 const COOKIE_NAME = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token';
-const MAX_AGE = 60 * 60 * 24;
 
 export async function POST(req: NextRequest) {
   console.log('[LOGIN] POST /api/auth/login called');
@@ -47,9 +47,10 @@ export async function POST(req: NextRequest) {
         id: user.id,
         email: user.email ?? email,
         name: user.displayName ?? user.name ?? email,
+        sessionVersion: user.sessionVersion,
       },
       secret: process.env.AUTH_SECRET!,
-      maxAge: MAX_AGE,
+      maxAge: SESSION_MAX_AGE_SECONDS,
       salt: COOKIE_NAME,
     });
 
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
       value: token,
       httpOnly: true,
       sameSite: 'lax',
-      maxAge: MAX_AGE,
+      maxAge: SESSION_MAX_AGE_SECONDS,
       path: '/',
       secure: isSecure,
     });

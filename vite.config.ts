@@ -8,6 +8,10 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 3000,
   },
+  define: {
+    // Next.js の process.env.* 参照をブラウザ環境で安全にする
+    'process.env': JSON.stringify({}),
+  },
   resolve: {
     alias: {
       // @/* → src/* (tsconfig の paths と同期)

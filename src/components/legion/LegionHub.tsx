@@ -604,7 +604,7 @@ function StatusDetailSheet({ open, name, subtitle, stats, profile, currentEnergy
         <section style={{ borderRadius: 16, padding: 12, background: 'rgba(10,5,26,0.78)', border: `1px solid ${color}30`, boxShadow: `0 0 22px ${color}12` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.12em' }}>MAIN STATUS</div>
-            {maxEnergy && <div style={{ fontFamily: 'monospace', fontSize: 10, color }}>{currentEnergy ?? 0}/{maxEnergy} EN</div>}
+            {maxEnergy && <div style={{ fontFamily: 'monospace', fontSize: 10, color }}>{currentEnergy ?? 0}/{maxEnergy} MP</div>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
             {primaryKeys.map((key) => <StatusRow key={key} statKey={key} total={stats} profile={profile} color={color} />)}
@@ -2237,7 +2237,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   );
   const activeEquippedResidue = equippedResidueSlots[activeResidueSlotIndex] ?? null;
   const totalExpGain = useMemo(() =>
-    [...selectedMatIds].reduce((acc, id) => { const mat = residueMaterials.find(m => m.id === id); return acc + (mat ? mat.expValue * mat.quantity : 0); }, 0),
+    [...selectedMatIds].reduce((acc, id) => { const mat = residueMaterials.find(m => m.id === id); return acc + (mat ? mat.expValue : 0); }, 0),
     [selectedMatIds, residueMaterials],
   );
 
@@ -2326,8 +2326,8 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     const needed = selectedResidue.maxExp - selectedResidue.exp;
     let remaining = needed;
     const next = new Set<string>();
-    const sorted = [...residueMaterials].sort((a, b) => b.expValue * b.quantity - a.expValue * a.quantity);
-    for (const mat of sorted) { if (remaining <= 0) break; next.add(mat.id); remaining -= mat.expValue * mat.quantity; }
+    const sorted = [...residueMaterials].sort((a, b) => b.expValue - a.expValue);
+    for (const mat of sorted) { if (remaining <= 0) break; next.add(mat.id); remaining -= mat.expValue; }
     setSelectedMatIds(next);
   };
 

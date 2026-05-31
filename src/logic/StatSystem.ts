@@ -25,6 +25,8 @@ export const COMBAT_STAT_KEYS: (keyof BaseStats)[] = [
   'effectRes',
 ];
 
+const NECRO_BASE_STAT_KEYS: (keyof BaseStats)[] = ['hp', 'atk', 'def', 'spd'];
+
 export const ELEMENT_DAMAGE_KEYS: Exclude<ElementType, 'NONE'>[] = [
   'FIRE',
   'WATER',
@@ -60,6 +62,7 @@ export const ELEMENT_VIEW_META: Record<Exclude<ElementType, 'NONE'>, { label: st
 
 export interface StatBreakdown {
   job: BaseStats;
+  necro: BaseStats;
   passives: BaseStats;
   equipment: BaseStats;
   residues: BaseStats;
@@ -106,6 +109,11 @@ function addInto(target: BaseStats, source: Partial<BaseStats>) {
   COMBAT_STAT_KEYS.forEach((key) => {
     target[key] += source[key] ?? 0;
   });
+}
+
+export function normalizeNecroBaseStatsBonus(value: number | undefined): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 1;
+  return value;
 }
 
 function normalizeOptionType(type: string): string {
@@ -227,6 +235,18 @@ export function passiveBonusesToStats(passives: PassiveBonuses): BaseStats {
   };
 }
 
+export function calculateNecroBaseStatsContribution(
+  baseStats: BaseStats,
+  baseStatsBonus?: number,
+): BaseStats {
+  const multiplier = normalizeNecroBaseStatsBonus(baseStatsBonus);
+  const stats = cloneZeroStats();
+  NECRO_BASE_STAT_KEYS.forEach((key) => {
+    stats[key] = baseStats[key] * (multiplier - 1);
+  });
+  return roundStatsForBonus(stats);
+}
+
 export function calculateEquipmentContribution(
   equipment: EquipmentSlots,
   baseStats: BaseStats,
@@ -296,18 +316,24 @@ export function calculateCharacterStatProfile(
   residues: (AbyssalResidueData | null)[] = [],
 ): StatBreakdown {
   const job = { ...character.stats };
+  const necro = calculateNecroBaseStatsContribution(job, character.necroBaseStatsBonus);
+  const rankedJob = cloneZeroStats();
+  addInto(rankedJob, job);
+  addInto(rankedJob, necro);
+
   const passives = passiveBonusesToStats(character.passives);
-  const equipment = calculateEquipmentContribution(character.equipment, job);
-  const residue = calculateResidueContribution(residues, job);
+  const equipment = calculateEquipmentContribution(character.equipment, rankedJob);
+  const residue = calculateResidueContribution(residues, rankedJob);
 
   const total = cloneZeroStats();
-  addInto(total, job);
+  addInto(total, rankedJob);
   addInto(total, passives);
   addInto(total, equipment.stats);
   addInto(total, residue.stats);
 
   return {
     job: roundStats(job),
+    necro,
     passives: roundStatsForBonus(passives),
     equipment: equipment.stats,
     residues: residue.stats,

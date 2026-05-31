@@ -93,10 +93,17 @@ const RESIDUE_NAMES: Record<AbyssalResidueData['rarity'], string[]> = {
 ### 4-a. `generateResidueId()`（private static）
 
 ```typescript
+function secureUuid(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  // randomUUID 非対応環境では getRandomValues() で UUID v4 を生成する。
+}
+
+function generateInstanceId(prefix: string): string {
+  return `${prefix}_${secureUuid()}`;
+}
+
 private static generateResidueId(): string {
-  // crypto.randomUUID() はNext.jsサーバーサイドで使用可。
-  // クライアント（BattleCanvas）でも Web Crypto API により使用可。
-  return `res_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+  return generateInstanceId('res');
 }
 ```
 
@@ -121,7 +128,7 @@ private static generateResidue(
 
   // 4. サブオプション抽選（メイン型と重複除外）
   const available = SUB_OPTION_POOL.filter(s => s.type !== mainDef.type);
-  const shuffled = [...available].sort(() => rng() - 0.5);
+  const shuffled = shuffleFisherYates(available, rng);
   const subOptions = shuffled.slice(0, subCount).map(s => ({
     type: s.type,
     value: parseFloat((s.range[0] + rng() * (s.range[1] - s.range[0])).toFixed(1)),
@@ -162,7 +169,8 @@ public processDropTable(
     if (entry.isHidden) continue;
 
     const roll = rng();
-    if (roll >= entry.rate * multiplier) continue;
+    const adjustedRate = Math.max(0, Math.min(1, entry.rate * multiplier));
+    if (roll >= adjustedRate) continue;
 
     switch (entry.type) {
       case 'WEAPON': {
@@ -172,7 +180,7 @@ public processDropTable(
         // インスタンス ID を付与してコピー生成（rank=0 初期状態）
         const weapon: ItemData = {
           ...master,
-          id:   `${master.id}_${Date.now()}_${Math.floor(rng() * 1e5)}`,
+          id:   generateInstanceId(master.id),
           rank: 0,
         };
         result.weapons.push(weapon);
@@ -186,7 +194,7 @@ public processDropTable(
       case 'MATERIAL': {
         if (!entry.itemId) break;
         const mat = mds.getMaterial(entry.itemId);
-        if (mat) result.materials.push({ ...mat, id: `${mat.id}_${Date.now()}` });
+        if (mat) result.materials.push({ ...mat, id: generateInstanceId(mat.id) });
         break;
       }
       case 'MONSTER': {
@@ -262,11 +270,14 @@ DB 連携前は全てクライアント側（Phase A の DB タスクとは独�
 | 3 | RESIDUE RARE 生成 | rarity='RARE', subOptions.length∈[2,3], level=1, maxExp=2500 |
 | 4 | RESIDUE EPIC 生成 | rarity='EPIC', subOptions.length∈[3,4] |
 | 5 | MATERIAL ドロップ | materials[0].id が 'bone_chip_' で始まる, expValue=120 |
-| 6 | isHidden=true → スキップ | weapons.length=0（rate=1.0 でも） |
-| 7 | discoveryBonusRate=50 で rate=0.68 のドロップ → 命中 | rng()=0.99 で rate×1.5=1.02 → roll < 1.02 → 取得 |
-| 8 | 同一 rng() で決定論的に同じ結果 | 2回呼び出し結果が一致 |
-| 9 | RESIDUE メインとサブが重複しない | mainStat.type ∉ subOptions.map(s=>s.type) |
-| 10 | calculateExp — MAGICAL 1.1× | result = Math.floor(baseExp × levelFactor × 1.1) |
+| 6 | isHidden=true → 秘匿ユニークも抽選対象 | roll 成功時に weapons.length=1 |
+| 7 | discoveryBonusRate=50 で rate=0.68 のドロップ → 命中 | rng()=0.99 で min(1, rate×1.5)=1.0 → 取得 |
+| 8 | discoveryBonusRate で 100% を超えない | rng()=1.0 では adjustedRate=1.0 でも取得しない |
+| 9 | 同一 rng() で決定論的に同じ結果 | 2回呼び出し結果が一致 |
+| 10 | RESIDUE メインとサブが重複しない | mainStat.type ∉ subOptions.map(s=>s.type) |
+| 11 | calculateExp — MAGICAL 1.1× | result = Math.floor(baseExp × levelFactor × 1.1) |
+| 12 | Fisher-Yates helper | 入力配列を変更せず、固定 rng で決定論的な順列を返す |
+| 13 | Fisher-Yates rng 消費回数 | 長さ n の配列で rng 呼び出しが n-1 回 |
 
 ---
 

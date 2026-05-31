@@ -17,6 +17,8 @@ test.describe('Result and appraisal UX', () => {
     await expect(page.getByTestId('result-summary')).toBeVisible({ timeout: 70000 });
     await expect(page.getByText('VICTORY')).toBeVisible();
     await expect(page.getByText('BATTLE REWARDS')).toBeVisible();
+    await page.waitForTimeout(1500);
+    await expect(page.getByTestId('result-summary')).toBeVisible();
 
     await page.getByRole('button', { name: '鑑定へ進む' }).click();
     await expect(page.getByTestId('appraisal-screen')).toBeVisible();

@@ -3,6 +3,9 @@ import jobsData from '../data/master/jobs.json';
 import itemsData from '../data/master/items.json';
 import demonFormsData from '../data/master/demonForms.json';
 import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
+import { calculateEnergyState } from '../logic/EnergySystem';
+import { INITIAL_PLAYER_BASE_STATS } from '../logic/BalanceConfig';
+import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import { DEMON_ACTION_LIMIT, clampDemonGauge } from '../logic/DemonizationSystem';
 import { isResidueSlotCompatible } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
@@ -14,23 +17,12 @@ import {
   getReforgeCost,
   hasEnoughWeaponMaterials,
 } from '../logic/WeaponSystem';
-import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData, BaseStats, JobData, WeaponMaterialData, WeaponMaterialType, DemonFormData, DemonRiskType } from '../types/game';
+import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData, JobData, WeaponMaterialData, WeaponMaterialType, DemonFormData, DemonRiskType } from '../types/game';
 import type { ServerGameData } from '../types/serverGame';
 
 const JOBS = jobsData as Record<string, JobData>;
 const ITEMS = itemsData as Record<string, ItemData>;
 const DEMON_FORMS = demonFormsData as Record<string, DemonFormData>;
-
-const INITIAL_PLAYER_BASE_STATS: BaseStats = {
-  hp:        7200,
-  atk:       1250,
-  def:        720,
-  spd:        110,
-  critRate:     8,   // 8%
-  critDmg:    165,   // 165% (1.65×)
-  effectHit:    0,
-  effectRes:    5,
-};
 
 const MOCK_WEAPONS: ItemData[] = [
   {
@@ -40,8 +32,8 @@ const MOCK_WEAPONS: ItemData[] = [
     rarity: 'R',
     weaponRarity: 'R',
     archetype: 'MID',
-    rank: 2,
-    ilv: 46,
+    rank: 1,
+    ilv: 1,
     icon: '⚔',
     stats: {},
     subOptions: [{ type: 'ATK%', value: 6.2 }],
@@ -126,10 +118,22 @@ function mergeInventoryItems(current: ItemData[], incoming: ItemData[]): ItemDat
   }, current);
 }
 
-function withDerivedElementBoosts(player: CharacterData, residues: (AbyssalResidueData | null)[]): CharacterData {
+function withNecroBaseStatsBonus(player: CharacterData, necroStatus?: NecroStatus | null): CharacterData {
   return {
     ...player,
-    elementDmgBoosts: calculateCharacterStatProfile(player, residues).elementDmgBoosts,
+    necroBaseStatsBonus: necroStatus?.baseStatsBonus ?? player.necroBaseStatsBonus ?? 1,
+  };
+}
+
+function withDerivedElementBoosts(
+  player: CharacterData,
+  residues: (AbyssalResidueData | null)[],
+  necroStatus?: NecroStatus | null,
+): CharacterData {
+  const playerWithNecro = withNecroBaseStatsBonus(player, necroStatus);
+  return {
+    ...playerWithNecro,
+    elementDmgBoosts: calculateCharacterStatProfile(playerWithNecro, residues).elementDmgBoosts,
   };
 }
 
@@ -166,6 +170,25 @@ function addWeaponMaterials(materials: WeaponMaterialData[], rewards: { type: We
   }, materials);
 }
 
+function spendResidueMaterials(
+  materials: ResidueMatData[],
+  matIds: string[],
+): { expGain: number; materials: ResidueMatData[] } {
+  const requested = matIds.reduce((counts, id) => counts.set(id, (counts.get(id) ?? 0) + 1), new Map<string, number>());
+  let expGain = 0;
+
+  const nextMaterials = materials.flatMap((material) => {
+    const consume = Math.min(requested.get(material.id) ?? 0, material.quantity);
+    if (consume <= 0) return [material];
+
+    expGain += material.expValue * consume;
+    const nextQuantity = material.quantity - consume;
+    return nextQuantity > 0 ? [{ ...material, quantity: nextQuantity }] : [];
+  });
+
+  return { expGain, materials: nextMaterials };
+}
+
 interface GameState {
   player: CharacterData | null;
   necroStatus: NecroStatus | null;
@@ -200,6 +223,7 @@ interface GameState {
   updateHP: (hp: number) => void;
   updateEnergy: (energy: number) => void;
   updateEnergyBy: (delta: number) => void;
+  restoreEnergy: () => void;
   addExp: (amount: number) => void;
   addGold: (amount: number) => void;
   addClearedStage: (stageId: string) => void;
@@ -360,8 +384,15 @@ export const useGameStore = create<GameState>((set) => ({
   }),
   currentTab: 'HOME',
 
-  setPlayer: (player) => set({ player }),
-  setNecroStatus: (status) => set({ necroStatus: status }),
+  setPlayer: (player) => set((state) => ({
+    player: withDerivedElementBoosts(player, state.equippedResidueSlots, state.necroStatus),
+  })),
+  setNecroStatus: (status) => set((state) => ({
+    necroStatus: status,
+    player: state.player
+      ? withDerivedElementBoosts(state.player, state.equippedResidueSlots, status)
+      : state.player,
+  })),
   setParty: (party) => set({ party }),
   setInventoryMonsters: (monsters) => set({ inventoryMonsters: monsters }),
   setSoulShards: (shards) => set({ soulShards: shards }),
@@ -403,10 +434,10 @@ export const useGameStore = create<GameState>((set) => ({
   upgradeResidue: (residueId, matIds) => set((state) => {
     const residue = state.abyssalResidues.find(r => r.id === residueId);
     if (!residue) return state;
-    const expGain = matIds.reduce((acc, id) => {
-      const mat = state.residueMaterials.find(m => m.id === id);
-      return acc + (mat ? mat.expValue * mat.quantity : 0);
-    }, 0);
+    const spent = spendResidueMaterials(state.residueMaterials, matIds);
+    if (spent.expGain <= 0) return state;
+
+    const expGain = spent.expGain;
     let newExp = residue.exp + expGain;
     let newLevel = residue.level;
     let newMaxExp = residue.maxExp;
@@ -422,7 +453,7 @@ export const useGameStore = create<GameState>((set) => ({
     const updatedEquippedSlots = state.equippedResidueSlots.map(s =>
       s?.id === residueId ? { ...s, level: newLevel, exp: newExp, maxExp: newMaxExp } : s
     ) as (AbyssalResidueData | null)[];
-    const remainingMaterials = state.residueMaterials.filter(m => !matIds.includes(m.id));
+    const remainingMaterials = spent.materials;
     return { abyssalResidues: updatedResidues, equippedResidueSlots: updatedEquippedSlots, residueMaterials: remainingMaterials };
   }),
   rankUpWeapon: (weaponId) => set((state) => {
@@ -495,17 +526,31 @@ export const useGameStore = create<GameState>((set) => ({
     const next = Math.max(0, Math.min(state.player.currentEnergy + delta, state.player.maxEnergy));
     return { player: { ...state.player, currentEnergy: next } };
   }),
+  restoreEnergy: () => set((state) => ({
+    player: state.player ? { ...state.player, currentEnergy: state.player.maxEnergy } : null,
+  })),
   addExp: (amount) => set((state) => {
     if (!state.player) return { player: null };
+    let activeJobLevel = 1;
     const newJobs = state.player.jobs.map(j => {
       if (j.jobId === state.player?.currentJobId) {
         const newExp = j.exp + amount;
-        const newLevel = Math.floor(newExp / 100) + 1; // 簡易レベルアップロジック
+        const newLevel = levelFromTotalExp(newExp);
+        activeJobLevel = newLevel;
         return { ...j, exp: newExp, level: newLevel };
       }
       return j;
     });
-    return { player: { ...state.player, jobs: newJobs } };
+    const activeJob = JOBS[state.player.currentJobId];
+    const energyState = calculateEnergyState(activeJob, activeJobLevel);
+    return {
+      player: {
+        ...state.player,
+        jobs: newJobs,
+        maxEnergy: energyState.maxEnergy,
+        currentEnergy: Math.min(state.player.currentEnergy, energyState.maxEnergy),
+      }
+    };
   }),
   addGold: (amount) => set((state) => {
     if (!state.player) return { player: null };
@@ -534,7 +579,8 @@ export const useGameStore = create<GameState>((set) => ({
       ? state.player.jobs
       : [...state.player.jobs, { jobId, level: 1, exp: 0 }];
 
-    const nextMaxEnergy = nextJob.energyCurve?.baseMaxEnergy ?? state.player.maxEnergy;
+    const nextJobLevel = Math.max(1, nextJobs.find(job => job.jobId === jobId)?.level ?? 1);
+    const energyState = calculateEnergyState(nextJob, nextJobLevel);
     const nextPlayer = withDerivedElementBoosts({
         ...state.player,
         currentJobId: jobId,
@@ -542,8 +588,8 @@ export const useGameStore = create<GameState>((set) => ({
         baseStats,
         stats: calculateJobAdjustedStats(baseStats, nextJob),
         jobs: nextJobs,
-        maxEnergy: nextMaxEnergy,
-        currentEnergy: Math.min(state.player.currentEnergy, nextMaxEnergy),
+        maxEnergy: energyState.maxEnergy,
+        currentEnergy: Math.min(state.player.currentEnergy, energyState.maxEnergy),
       }, state.equippedResidueSlots);
 
     return {
@@ -626,37 +672,40 @@ export const useGameStore = create<GameState>((set) => ({
     };
   }),
 
-  loadFromServer: (data) => set({
-    player: withDerivedElementBoosts(data.player, data.equippedResidueSlots),
-    necroStatus: data.necroStatus,
-    party: [data.party[0] ?? null, data.party[1] ?? null, data.party[2] ?? null],
-    inventoryMonsters: data.inventoryMonsters,
-    soulShards: data.soulShards,
-    inventoryItems: data.inventoryItems,
-    abyssalResidues: data.abyssalResidues,
-    equippedResidueSlots: [
+  loadFromServer: (data) => set(() => {
+    const equippedResidueSlots = [
       data.equippedResidueSlots[0] ?? null,
       data.equippedResidueSlots[1] ?? null,
       data.equippedResidueSlots[2] ?? null,
       data.equippedResidueSlots[3] ?? null,
       data.equippedResidueSlots[4] ?? null,
-    ],
-    residueMaterials: [],
-    weaponMaterials: [],
-    transmutationPoints: 0,
-    monsterCurrentHp: {},
-    equippingMonsterId: null,
-    battleLogs: ['CLOUD SAVE LOADED...'],
-    actionTrigger: null,
-    currentTab: 'HOME',
-    demonGauge: 0,
-    isDemonMode: false,
-    demonActionsRemaining: 0,
-    demonUltimateUsed: false,
-    demonFormJobId: null,
-    demonEffectBFlag: null,
-    demonRiskType: null,
-    demonRiskValue: 0,
+    ] as (AbyssalResidueData | null)[];
+    return {
+      player: withDerivedElementBoosts(data.player, equippedResidueSlots, data.necroStatus),
+      necroStatus: data.necroStatus,
+      party: [data.party[0] ?? null, data.party[1] ?? null, data.party[2] ?? null],
+      inventoryMonsters: data.inventoryMonsters,
+      soulShards: data.soulShards,
+      inventoryItems: data.inventoryItems,
+      abyssalResidues: data.abyssalResidues,
+      equippedResidueSlots,
+      residueMaterials: [],
+      weaponMaterials: [],
+      transmutationPoints: 0,
+      monsterCurrentHp: {},
+      equippingMonsterId: null,
+      battleLogs: ['CLOUD SAVE LOADED...'],
+      actionTrigger: null,
+      currentTab: 'HOME',
+      demonGauge: 0,
+      isDemonMode: false,
+      demonActionsRemaining: 0,
+      demonUltimateUsed: false,
+      demonFormJobId: null,
+      demonEffectBFlag: null,
+      demonRiskType: null,
+      demonRiskValue: 0,
+    };
   }),
 
   clearServerData: () => set({
@@ -693,28 +742,29 @@ export const useGameStore = create<GameState>((set) => ({
       currentJobId: 'warrior',
       category: 'PHYSICAL',
       baseStats: INITIAL_PLAYER_BASE_STATS,
+      necroBaseStatsBonus: 1.0,
       stats: calculateJobAdjustedStats(INITIAL_PLAYER_BASE_STATS, JOBS.warrior),
       baseResistances: {},
       passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveSpdBonus: 0, passiveCritRateBonus: 0, passiveCritDmgBonus: 0, passiveHpBonus: 0 },
       equipment: {
-        weapon: MOCK_WEAPONS[2],
+        weapon: MOCK_WEAPONS[0],
         sub: null, head: null,
         body: null,
         arms: null, legs: null, acc1: null, acc2: null,
       },
       jobs: [
-        { jobId: 'warrior', level: 72, exp: 0 },
-        { jobId: 'mage', level: 22, exp: 1300 },
-        { jobId: 'dark_priest', level: 21, exp: 900 },
-        { jobId: 'rogue', level: 9, exp: 700 },
+        { jobId: 'warrior', level: 1, exp: 0 },
+        { jobId: 'mage', level: 1, exp: 0 },
+        { jobId: 'dark_priest', level: 1, exp: 0 },
+        { jobId: 'rogue', level: 1, exp: 0 },
         { jobId: 'necromancer', level: 1, exp: 0 }
       ],
       isAwakened: false,
       clearedStages: [],
       gold: 50000,
       statusEffects: [],
-      currentEnergy: 0,
-      maxEnergy: 100,
+      currentEnergy: calculateEnergyState(JOBS.warrior, 1).currentEnergy,
+      maxEnergy: calculateEnergyState(JOBS.warrior, 1).maxEnergy,
       elementDmgBoosts: {},
     },
     necroStatus: {
@@ -749,13 +799,7 @@ export const useGameStore = create<GameState>((set) => ({
       { id: 'r9', name: '深淵王の帯', itemId: 'waist', rarity: 'LEGENDARY', mainStat: { type: 'DARK_DMG_BOOST', value: 38.8 }, subOptions: [{ type: 'CRIT_RATE', value: 8.8 }, { type: 'CRIT_DMG', value: 16.2 }, { type: 'ATK%', value: 7.4 }, { type: 'EFFECT_HIT', value: 4.4 }], level: 18, exp: 2600, maxExp: 7000, tierHistory: [4, 3, 4, 4] },
       { id: 'r10', name: '忘却の兜', itemId: 'head', rarity: 'RARE', mainStat: { type: 'HP_FLAT', value: 620 }, subOptions: [{ type: 'CRIT_DMG', value: 6.4 }, { type: 'DEF%', value: 4.6 }, { type: 'EFFECT_RES', value: 3.4 }], level: 5, exp: 500, maxExp: 2200, tierHistory: [2] },
     ],
-    equippedResidueSlots: [
-      { id: 'r7', name: '死霊の印璽', itemId: 'head', rarity: 'COMMON', mainStat: { type: 'HP_FLAT', value: 380 }, subOptions: [{ type: 'DEF_FLAT', value: 25 }, { type: 'ATK_FLAT', value: 12 }], level: 1, exp: 0, maxExp: 800 },
-      { id: 'r6', name: '魂の骨牌', itemId: 'arms', rarity: 'RARE', mainStat: { type: 'ATK_FLAT', value: 120 }, subOptions: [{ type: 'CRIT_RATE', value: 4.9 }, { type: 'ATK%', value: 5.8 }, { type: 'HP_FLAT', value: 96 }], level: 6, exp: 1800, maxExp: 2500, tierHistory: [3] },
-      { id: 'r1', name: '深淵の指輪', itemId: 'chest', rarity: 'EPIC', mainStat: { type: 'ATK%', value: 35.2 }, subOptions: [{ type: 'CRIT_RATE', value: 7.8 }, { type: 'HP%', value: 6.2 }, { type: 'DEF_FLAT', value: 32 }, { type: 'FIRE_DMG_BOOST', value: 4.1 }], level: 12, exp: 2400, maxExp: 4000, tierHistory: [2, 3, 1] },
-      { id: 'r5', name: '漆黒の霊核', itemId: 'waist', rarity: 'RARE', mainStat: { type: 'WATER_DMG_BOOST', value: 28.4 }, subOptions: [{ type: 'CRIT_RATE', value: 6.0 }, { type: 'CRIT_DMG', value: 5.1 }, { type: 'HP%', value: 4.3 }, { type: 'EFFECT_HIT', value: 3.2 }], level: 10, exp: 800, maxExp: 3500, tierHistory: [2, 2] },
-      { id: 'r8', name: '虚空の瞳', itemId: 'legs', rarity: 'EPIC', mainStat: { type: 'CRIT_RATE', value: 15.5 }, subOptions: [{ type: 'ATK%', value: 8.3 }, { type: 'CRIT_DMG', value: 12.4 }, { type: 'THUNDER_DMG_BOOST', value: 6.0 }, { type: 'EFFECT_HIT', value: 5.5 }], level: 20, exp: 3500, maxExp: 8000, tierHistory: [4, 4, 3, 2, 4] },
-    ],
+    equippedResidueSlots: [null, null, null, null, null],
     weaponMaterials: [
       { type: 'IDEA_COMMON', name: '凡骨のイデア', quantity: 38 },
       { type: 'IDEA_SR', name: '業物のイデア', quantity: 14 },

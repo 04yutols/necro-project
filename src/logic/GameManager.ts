@@ -3,6 +3,9 @@ import { NecroService } from '../services/NecroService';
 import { RewardService } from '../services/RewardService';
 import { MasterDataService } from '../services/MasterDataService';
 import { BattleEngine } from './BattleEngine';
+import { calculateJobGrowthIncrements } from './JobGrowthSystem';
+import { calculateEnergyState } from './EnergySystem';
+import { levelFromTotalExp } from './ExperienceSystem';
 import { prisma } from '../lib/prisma';
 import { CharacterData, MonsterData } from '../types/game';
 
@@ -49,17 +52,24 @@ export class GameManager {
 
     const monsterData = await prisma.monster.findMany({
       where: { id: { in: partyMonsterIds } },
+      include: { spiritCore: true },
     });
 
     const stageData = this.masterData.getStage(stageId);
     if (!stageData) throw new Error("Stage not found");
 
     // CharacterData 型への変換
+    const currentJobId = char.currentJobId || 'warrior';
+    const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior');
+    const jobs = char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp }));
+    const currentJobLevel = Math.max(1, jobs.find((job: any) => job.jobId === currentJobId)?.level ?? 1);
+    const energyState = calculateEnergyState(currentJob, currentJobLevel);
     const player: CharacterData = {
       id: char.id,
       name: char.name,
-      currentJobId: char.currentJobId || 'warrior',
-      category: (this.masterData.getJob(char.currentJobId || 'warrior')?.category as any) || 'PHYSICAL',
+      currentJobId,
+      category: currentJob?.category ?? 'PHYSICAL',
+      necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
       stats: {
         hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
         critRate: char.critRate, critDmg: char.critDmg,
@@ -75,12 +85,12 @@ export class GameManager {
       },
       baseResistances: {},
       equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
-      jobs: char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
+      jobs,
       isAwakened: false,
       clearedStages: char.clearedStages,
       gold: (char as any).gold ?? 0,
-      currentEnergy: 0,
-      maxEnergy: 100,
+      currentEnergy: energyState.currentEnergy,
+      maxEnergy: energyState.maxEnergy,
       elementDmgBoosts: {},
     };
 
@@ -96,7 +106,14 @@ export class GameManager {
           critRate: m.critRate ?? 0, critDmg: m.critDmg ?? 150,
           effectHit: m.effectHit ?? 0, effectRes: m.effectRes ?? 0,
         },
-        resistances: mMaster ? mMaster.resistances || {} : {}
+        resistances: mMaster ? mMaster.resistances || {} : {},
+        spiritCore: m.spiritCore ? {
+          id: m.spiritCore.id,
+          name: m.spiritCore.name,
+          element: m.spiritCore.element ?? undefined,
+          skillChangeId: m.spiritCore.skillChangeId ?? undefined,
+          atkMultiplier: m.spiritCore.atkMultiplier ?? 1,
+        } : undefined,
       };
     });
 
@@ -120,7 +137,7 @@ export class GameManager {
     // 1. 経験値と報酬の計算
     const playerConverted = this.convertToCharacterData(char);
     const expGain = this.rewardService.calculateExp(stage.rewards.baseExp, playerConverted);
-    const rewards = this.rewardService.processDropTable(stage.rewards.dropTable, char.critRate ?? 5);
+    const rewards = this.rewardService.processDropTable(stage.rewards.dropTable);
 
     // 2. DBへの反映 (トランザクション)
     await prisma.$transaction(async (tx: any) => {
@@ -128,12 +145,28 @@ export class GameManager {
       const currentJob = char.jobs.find((j: any) => j.jobId === char.currentJobId);
       if (currentJob) {
         const newExp = currentJob.exp + expGain;
-        const newLevel = Math.floor(newExp / 100) + 1; // 簡易的なレベルアップ式
+        const newLevel = levelFromTotalExp(newExp);
         
         await tx.userJob.update({
           where: { characterId_jobId: { characterId, jobId: char.currentJobId! } },
           data: { exp: newExp, level: newLevel }
         });
+
+        if (newLevel > currentJob.level) {
+          const growth = calculateJobGrowthIncrements(
+            this.masterData.getJob(char.currentJobId || 'warrior'),
+            currentJob.level,
+            newLevel,
+          );
+          await tx.character.update({
+            where: { id: characterId },
+            data: {
+              hp: { increment: growth.hp },
+              atk: { increment: growth.atk },
+              def: { increment: growth.def },
+            },
+          });
+        }
 
         // パッシブ加算チェック (JobServiceのロジックを流用)
         // 本来は JobService を tx 内で呼ぶべき
@@ -164,11 +197,17 @@ export class GameManager {
   }
 
   private convertToCharacterData(char: any): CharacterData {
+    const currentJobId = char.currentJobId || 'warrior';
+    const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior');
+    const jobs = char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp }));
+    const currentJobLevel = Math.max(1, jobs.find((job: any) => job.jobId === currentJobId)?.level ?? 1);
+    const energyState = calculateEnergyState(currentJob, currentJobLevel);
     return {
       id: char.id,
       name: char.name,
-      currentJobId: char.currentJobId || 'warrior',
-      category: (this.masterData.getJob(char.currentJobId || 'warrior')?.category as any) || 'PHYSICAL',
+      currentJobId,
+      category: currentJob?.category ?? 'PHYSICAL',
+      necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
       stats: {
         hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
         critRate: char.critRate, critDmg: char.critDmg,
@@ -184,12 +223,12 @@ export class GameManager {
       },
       baseResistances: {},
       equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
-      jobs: char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
+      jobs,
       isAwakened: false,
       clearedStages: char.clearedStages || [],
       gold: (char as any).gold ?? 0,
-      currentEnergy: 0,
-      maxEnergy: 100,
+      currentEnergy: energyState.currentEnergy,
+      maxEnergy: energyState.maxEnergy,
       elementDmgBoosts: {},
     };
   }
@@ -198,27 +237,45 @@ export class GameManager {
    * パーティ編成の更新 (GDD-005)
    */
   public async updateParty(characterId: string, monsterIds: (string | null)[]): Promise<void> {
-    // 3枠固定のバリデーション
     if (monsterIds.length !== 3) throw new Error("Party must have 3 slots.");
 
-    const char = await prisma.character.findUnique({
-      where: { id: characterId }
-    });
-    if (!char) throw new Error("Character not found.");
-
-    // コスト計算
-    const monsters = await prisma.monster.findMany({
-      where: { id: { in: monsterIds.filter(id => id !== null) as string[] } }
-    });
-    const totalCost = monsters.reduce((acc: any, m: any) => acc + m.cost, 0);
-
-    if (totalCost > char.necroMaxCost) {
-      throw new Error(`Cost limit exceeded: ${totalCost} / ${char.necroMaxCost}`);
+    const slotIds = [monsterIds[0] ?? null, monsterIds[1] ?? null, monsterIds[2] ?? null];
+    const selectedIds = slotIds.filter((id): id is string => Boolean(id));
+    if (new Set(selectedIds).size !== selectedIds.length) {
+      throw new Error("Duplicate monsters cannot be assigned to multiple party slots.");
     }
 
-    // 本来はパーティ編成をDBに保存するテーブルが必要だが、
-    // ここでは簡易的にログ出力のみ、またはCharacterモデルにID配列を持たせる等の対応
-    console.log(`Party updated for ${characterId}: ${monsterIds.join(', ')}`);
+    await prisma.$transaction(async (tx: any) => {
+      const char = await tx.character.findUnique({
+        where: { id: characterId },
+        select: { id: true, necroMaxCost: true },
+      });
+      if (!char) throw new Error("Character not found.");
+
+      const monsters = selectedIds.length > 0
+        ? await tx.monster.findMany({
+            where: { id: { in: selectedIds }, characterId: char.id },
+            select: { id: true, cost: true },
+          })
+        : [];
+      if (monsters.length !== selectedIds.length) {
+        throw new Error("Party contains monsters not owned by character.");
+      }
+
+      const totalCost = monsters.reduce((acc: number, monster: { cost: number }) => acc + monster.cost, 0);
+      if (totalCost > char.necroMaxCost) {
+        throw new Error(`Cost limit exceeded: ${totalCost} / ${char.necroMaxCost}`);
+      }
+
+      await tx.character.update({
+        where: { id: char.id },
+        data: {
+          partySlot0Id: slotIds[0],
+          partySlot1Id: slotIds[1],
+          partySlot2Id: slotIds[2],
+        },
+      });
+    });
   }
 
   /**

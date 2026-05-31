@@ -1,4 +1,4 @@
-import { RewardService, StageDropResult } from './RewardService';
+import { RewardService, shuffleFisherYates } from './RewardService';
 import { DropEntry } from '../types/game';
 
 // 決定論的な乱数生成器（シーケンス指定）
@@ -8,6 +8,24 @@ function makeSeqRng(values: number[]): () => number {
 }
 
 const svc = new RewardService();
+
+describe('shuffleFisherYates', () => {
+  test('入力配列を変更せず、注入rngで決定論的な順列を返す', () => {
+    const source = ['A', 'B', 'C', 'D'];
+    const shuffled = shuffleFisherYates(source, makeSeqRng([0, 0, 0]));
+
+    expect(shuffled).toEqual(['B', 'C', 'D', 'A']);
+    expect(source).toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  test('長さnの配列に対してrngをn-1回だけ呼ぶ', () => {
+    const rng = jest.fn(() => 0);
+
+    shuffleFisherYates([1, 2, 3, 4, 5], rng);
+
+    expect(rng).toHaveBeenCalledTimes(4);
+  });
+});
 
 describe('RewardService.processDropTable', () => {
   // 1. WEAPON rate=1.0 → 必ずドロップ、新規インスタンス ID を持つ
@@ -71,6 +89,42 @@ describe('RewardService.processDropTable', () => {
     expect(result.materials[0].expValue).toBe(120);
   });
 
+  test('generated instance ids do not depend on Date.now or Math.random', () => {
+    const table: DropEntry[] = [
+      { type: 'WEAPON', itemId: 'bone_cleaver', rate: 1.0 },
+      { type: 'RESIDUE', rarity: 'RARE', rate: 1.0 },
+      { type: 'MATERIAL', itemId: 'bone_chip', rate: 1.0 },
+    ];
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(123456789);
+    const mathRandomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.1234);
+
+    try {
+      const result = svc.processDropTable(table, 0, makeSeqRng([
+        0.0,
+        0.0,
+        0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7,
+        0.0,
+      ]));
+      const ids = [
+        result.weapons[0].id,
+        result.residues[0].id,
+        result.materials[0].id,
+      ];
+
+      expect(ids).toHaveLength(3);
+      expect(new Set(ids).size).toBe(3);
+      ids.forEach((id) => {
+        expect(id).not.toContain('123456789');
+        expect(id).toMatch(/_[0-9a-f-]{36}$/);
+      });
+      expect(mathRandomSpy).not.toHaveBeenCalled();
+      expect(nowSpy).not.toHaveBeenCalled();
+    } finally {
+      mathRandomSpy.mockRestore();
+      nowSpy.mockRestore();
+    }
+  });
+
   test('CONSUMABLE underworld_potion → consumables に数量付きで入る', () => {
     const table: DropEntry[] = [
       { type: 'CONSUMABLE', itemId: 'underworld_potion', quantity: 2, rate: 1.0 },
@@ -94,14 +148,22 @@ describe('RewardService.processDropTable', () => {
     expect(result.weapons[0].isUnique).toBe(true);
   });
 
-  // 7. discoveryBonusRate=50 → rate×1.5 に補正 (rate=0.68 → 0.68×1.5=1.02、roll=0.99 → 命中)
+  // 7. discoveryBonusRate=50 → rate×1.5 に補正しつつ、最終確率は100%で打ち止め
   test('discoveryBonusRate=50 で rate=0.68 → roll=0.99 で命中', () => {
     const table: DropEntry[] = [
       { type: 'RESIDUE', rarity: 'RARE', rate: 0.68 },
     ];
-    // roll=0.99 < 0.68×1.5=1.02 → 命中
+    // adjustedRate は min(1, 0.68×1.5) = 1 → roll=0.99 で命中
     const result = svc.processDropTable(table, 50, makeSeqRng([0.99, 0.1]));
     expect(result.residues).toHaveLength(1);
+  });
+
+  test('discoveryBonusRate cannot raise the effective drop rate above 100%', () => {
+    const table: DropEntry[] = [
+      { type: 'WEAPON', itemId: 'bone_cleaver', rate: 0.9 },
+    ];
+    const result = svc.processDropTable(table, 50, makeSeqRng([1.0]));
+    expect(result.weapons).toHaveLength(0);
   });
 
   // 8. 同一 rng で決定論的に同じ結果

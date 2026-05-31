@@ -2,6 +2,11 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import {
+  SESSION_MAX_AGE_SECONDS,
+  getUserSessionVersion,
+  validateVersionedSessionToken,
+} from '@/services/SessionSecurityService';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -26,19 +31,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id:    user.id,
           name:  user.displayName ?? user.name ?? email,
           email: user.email ?? email,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
   ],
-  session: { strategy: 'jwt', maxAge: 60 * 60 * 24 },
+  session: { strategy: 'jwt', maxAge: SESSION_MAX_AGE_SECONDS },
   callbacks: {
-    jwt: ({ token, user }) => {
-      if (user?.id) token.id = user.id;
+    jwt: async ({ token, user }) => {
+      if (user?.id) {
+        const sessionVersion = user.sessionVersion ?? await getUserSessionVersion(user.id);
+        if (!sessionVersion) return null;
+        token.id = user.id;
+        token.sessionVersion = sessionVersion;
+        return token;
+      }
+
+      const validated = await validateVersionedSessionToken(token);
+      if (!validated.valid) return null;
+      token.id = validated.userId;
+      token.sessionVersion = validated.sessionVersion;
       return token;
     },
     session: ({ session, token }) => ({
       ...session,
-      user: { ...session.user, id: token.id as string },
+      user: {
+        ...session.user,
+        id: token.id,
+        sessionVersion: token.sessionVersion,
+      },
     }),
   },
   // 将来 Google/Discord を追加する場合はここに providers を追記するだけでOK

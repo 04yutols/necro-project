@@ -20,11 +20,13 @@ Reference this file for exact field types and design criteria when authoring gam
 | `battle` | object | `{ color (HEX), sprite (WRAITH\|GIANT\|WYRM), size (0.5-1.1) }` |
 
 ### Stats Criteria
-| Tier | HP Range | Shield HP |
+| Tier | Chapter 1 Early HP | Chapter 1 Early Shield HP |
 |---|---|---|
-| `MINION` | 200 - 400 | None |
-| `ELITE` | 500 - 900 | 150 - 280 |
-| `BOSS` | 900 - 2000 | 280 - 400 |
+| `MINION` | 12 - 46 | None |
+| `ELITE` | 36 - 72 | 18 - 24 |
+| `BOSS` | 90 - 150 | 34 - 48 |
+
+These are Chapter 1 early-game bands. Scale later chapters gradually and keep adjacent-stage total EHP increases below 2.5x unless the stage declares an explicit recommendation gate.
 
 ## 2. stages.json (StageData)
 | Field | Type | Description |
