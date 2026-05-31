@@ -86,11 +86,13 @@ npm run data:audit -- --type=stage --id=area1_node2
 
 ### tier 設計基準
 
-| tier | HP目安 | 役割 | shieldHp |
+| tier | Chapter 1序盤HP目安 | 役割 | Chapter 1序盤shieldHp |
 |---|---|---|---|
-| `MINION` | 200〜400 | WAVE1の露払い・ゲージ蓄積 | なし |
-| `ELITE` | 500〜900 | WAVE2の防壁持ち精鋭 | 150〜280 |
-| `BOSS` | 900〜2000 | WAVE3の章ボス | 280〜400 |
+| `MINION` | 12〜46 | WAVE1の露払い・ゲージ蓄積 | なし |
+| `ELITE` | 36〜72 | WAVE2の防壁持ち精鋭 | 18〜24 |
+| `BOSS` | 90〜150 | WAVE3の章ボス | 34〜48 |
+
+上記はChapter 1序盤の基準値。後続章では隣接ステージの総EHP上昇を原則2.5倍未満に保ちながら段階的に引き上げる。
 
 ### gimmick 種別
 
@@ -139,7 +141,7 @@ npm run data:audit -- --type=stage --id=area1_node2
     }
   ],
   "rewards": {
-    "baseExp": 620,
+    "baseExp": 12,
     "baseGold": 1180,
     "dropTable": [
       { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.55 },

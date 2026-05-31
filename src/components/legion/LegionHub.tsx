@@ -604,7 +604,7 @@ function StatusDetailSheet({ open, name, subtitle, stats, profile, currentEnergy
         <section style={{ borderRadius: 16, padding: 12, background: 'rgba(10,5,26,0.78)', border: `1px solid ${color}30`, boxShadow: `0 0 22px ${color}12` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.12em' }}>MAIN STATUS</div>
-            {maxEnergy && <div style={{ fontFamily: 'monospace', fontSize: 10, color }}>{currentEnergy ?? 0}/{maxEnergy} EN</div>}
+            {maxEnergy && <div style={{ fontFamily: 'monospace', fontSize: 10, color }}>{currentEnergy ?? 0}/{maxEnergy} MP</div>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
             {primaryKeys.map((key) => <StatusRow key={key} statKey={key} total={stats} profile={profile} color={color} />)}

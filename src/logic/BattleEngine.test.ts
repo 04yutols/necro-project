@@ -134,24 +134,25 @@ describe('BattleEngine', () => {
     expect(engine.getEnemyCurrentHp(enemy.id)).toBe(500 - firstDamage - secondDamage);
   });
 
-  test('Energy is gained on attack', () => {
+  test('normal attacks do not restore MP', () => {
+    mockPlayer.currentEnergy = 35;
     const engine = new BattleEngine(mockPlayer, []);
     engine.simulateAction('PHYSICAL_ATTACK', mockTarget);
-    expect(mockPlayer.currentEnergy).toBe(20); // 0 + 20
+    expect(mockPlayer.currentEnergy).toBe(35);
   });
 
-  test('normal attack SP gain uses current job energyRegen', () => {
+  test('normal attacks do not restore MP for jobs that previously had regen', () => {
     const roguePlayer: CharacterData = {
       ...mockPlayer,
       currentJobId: 'rogue',
-      currentEnergy: 0,
+      currentEnergy: 7,
       maxEnergy: 90,
     };
     const engine = new BattleEngine(roguePlayer, []);
 
     engine.simulateAction('PHYSICAL_ATTACK', mockTarget);
 
-    expect(roguePlayer.currentEnergy).toBe(22);
+    expect(roguePlayer.currentEnergy).toBe(7);
   });
 
   test.each(Object.entries(expectedBaseAttackTypes))(
@@ -228,7 +229,7 @@ describe('BattleEngine', () => {
     expect(engine.getEnemyCurrentHp(enemyA.id)).toBeLessThan(500);
     expect(engine.getEnemyCurrentHp(enemyB.id)).toBeLessThan(500);
     expect(engine.getEnemyCurrentHp(enemyC.id)).toBeLessThan(500);
-    expect(player.currentEnergy).toBe(61);
+    expect(player.currentEnergy).toBe(46);
   });
 
   test('single target skills keep damaging only the selected enemy even with enemy candidates', () => {
@@ -256,7 +257,7 @@ describe('BattleEngine', () => {
     expect(engine.getEnemyCurrentHp(enemyA.id)).toBeLessThan(500);
     expect(engine.getEnemyCurrentHp(enemyB.id)).toBeUndefined();
     expect(engine.getEnemyCurrentHp(enemyC.id)).toBeUndefined();
-    expect(player.currentEnergy).toBe(53);
+    expect(player.currentEnergy).toBe(38);
   });
 
   test('drain skill restores HP from actual HP damage dealt', () => {
@@ -491,7 +492,7 @@ describe('BattleEngine', () => {
     expect(shieldedTarget.shieldHp).toBeLessThan(100);
   });
 
-  test('Weak element breaks spiritual shield and grants extra energy', () => {
+  test('Weak element breaks spiritual shield without restoring MP', () => {
     const player: CharacterData = {
       ...mockPlayer,
       currentEnergy: 100,
@@ -512,7 +513,7 @@ describe('BattleEngine', () => {
     expect(shieldedTarget.shieldBroken).toBe(true);
     expect(shieldedTarget.shieldHp).toBe(0);
     expect(attackLog?.description).toContain('霊魂砕き');
-    expect(player.currentEnergy).toBe(133);
+    expect(player.currentEnergy).toBe(88);
   });
 
   test('REVIVE fires only at HP 0 and restores boss to second phase HP', () => {
@@ -595,7 +596,7 @@ describe('BattleEngine', () => {
 
   test('summoned minions join later player AoE and follow-up target candidates', () => {
     const player = createPlayer(
-      { hp: 500, atk: 120, def: 999, critRate: 0 },
+      { hp: 500, atk: 12, def: 999, critRate: 0 },
       { currentEnergy: 100, maxEnergy: 100 },
     );
     const boss: MonsterData = {

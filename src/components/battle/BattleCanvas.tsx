@@ -232,7 +232,7 @@ function getBattleItemDescription(item: BattleConsumableItem) {
     case 'HEAL_HP':
       return `HP+${item.battleEffect.value} 回復`;
     case 'RESTORE_ENERGY':
-      return item.battleEffect.value >= 100 ? 'EN全回復' : `EN+${item.battleEffect.value}`;
+      return item.battleEffect.value >= 100 ? 'MP全回復' : `MP+${item.battleEffect.value}`;
     case 'RESTORE_SOUL':
       return `ソウル+${item.battleEffect.value}%`;
     default:
@@ -1479,9 +1479,9 @@ function PartyStatusBar({ party, demonized, playerStatusEffects }: { party: Batt
               }}/>
             </div>
           </div>
-          <div style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div data-testid={member.active ? 'player-mp' : undefined} style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#6b5f7a' }}>EN</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#6b5f7a' }}>MP</div>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: '#60a5fa' }}>{member.mp}</div>
             </div>
             <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
@@ -1725,7 +1725,7 @@ function SkillButton({ skill, mp, onClick, demonized }: {
       <div style={{ fontSize: 22, filter: canUse ? `drop-shadow(0 0 8px ${elementStyle.color})` : 'none' }}>{skill.icon}</div>
       <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700, color: canUse ? '#f0ebff' : '#4a3a5a', textAlign: 'center', lineHeight: 1.2 }}>{skill.name}</div>
       <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: canUse ? '#60a5fa' : '#2a1a3a', display: 'flex', alignItems: 'center', gap: 2 }}>
-        {skill.cost ? <span style={{ color: demonized ? '#ef4444' : '#60a5fa' }}>{skill.cost}</span> : `EN ${skill.mp ?? 0}`}
+        {skill.cost ? <span style={{ color: demonized ? '#ef4444' : '#60a5fa' }}>{skill.cost}</span> : `MP ${skill.mp ?? 0}`}
       </div>
       <div style={{
         fontFamily: 'monospace',
@@ -1822,7 +1822,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   console.log('[BattleCanvas] render at', Date.now());
   const {
     player, party, equippedResidueSlots, inventoryItems,
-    addExp, addGold, addClearedStage, updateEnergy, updateEnergyBy,
+    addExp, addGold, addClearedStage, updateEnergy, updateEnergyBy, restoreEnergy,
     addInventoryItems, addAbyssalResidues, addResidueMaterials,
     consumeInventoryItem,
   } = useGameStore();
@@ -2218,7 +2218,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setLog([
       `戦闘開始！${battleWaves[0].title}へ侵攻する。`,
       ...(areaGimmick !== 'NONE' ? [`エリアギミック発生：${areaGimmickMeta.label} — ${areaGimmickMeta.description}`] : []),
-      `${battleWaves[0].label} 開始。骸骨騎士のターン。SP ${initialEnergy}/${player?.maxEnergy ?? currentJobData.energyCurve?.baseMaxEnergy ?? 100} で開戦。`,
+      `${battleWaves[0].label} 開始。骸骨騎士のターン。MP ${initialEnergy}/${player?.maxEnergy ?? currentJobData.energyCurve?.baseMaxEnergy ?? 100} で開戦。`,
     ]);
   }, [areaGimmick, areaGimmickMeta.description, areaGimmickMeta.label, battleWaves, currentJobData, currentJobLevel, player?.maxEnergy, playerMaxHp, stageId, updateEnergy]);
 
@@ -2274,6 +2274,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           addExp(expGain);
           addGold(goldGain);
           if (stageId) addClearedStage(stageId);
+          restoreEnergy();
 
           setBattleResult({
             isVictory:      true,
@@ -2289,6 +2290,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           setShowResult(true);
         }).catch(() => {
           // ネットワーク失敗時フォールバック
+          restoreEnergy();
           setBattleResult({
             isVictory: true, expGained: 0, goldGained: 0,
             itemsGained: [], monstersGained: [], isPurplePillar: false,
@@ -2315,7 +2317,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         window.setTimeout(() => setFlashColor(null), 600);
       }
     }, battleDelay(1200, 520));
-  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, player?.name, sfx, stageId]);
+  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, player?.name, restoreEnergy, sfx, stageId]);
 
   function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
     const id = ++floatId;
@@ -2719,6 +2721,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setAuto(false);
     setBattlePhase('waveTransition'); // プレイヤー入力を無効化
     playerActionLockRef.current = true;
+    restoreEnergy();
     addLog('☠ 骸骨騎士は倒れた... バトル終了。');
     setBattleResult({
       isVictory: false,
@@ -2739,7 +2742,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     return t ? t.id : (enemies.find(e => e.hp > 0)?.id ?? 0);
   }
 
-  function endPlayerTurn(spGain: number = 0) {
+  function endPlayerTurn() {
     if (enemiesRef.current.every(e => e.hp <= 0)) {
       resolveWaveClear();
       return;
@@ -2759,7 +2762,6 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     }
     if (!demonized) {
       setSoul(prev => Math.min(100, prev + 10)); // 魔神化ゲージ +10/ターン
-      if (spGain > 0) updateEnergyBy(spGain);   // SP回復（SPとゲージは別）
     }
     commitBattleAvState({
       ...battleAvRef.current,
@@ -2890,8 +2892,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         if (demonized) {
           applyDemonRiskFeedback(baseAttackType);
         }
-        const attackSpGain = currentJobData?.energyCurve?.energyRegen ?? 20;
-        endPlayerTurn(demonized ? 0 : attackSpGain); // 魔神化中はSP回復なし
+        endPlayerTurn();
       }, hitCount * hitInterval + speedMs * 0.35);
     }, speedMs * 0.3);
   }
@@ -2906,8 +2907,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     }
     if (demonForm.effectB.riskType === 'ENERGY_DRAIN') {
       const drain = Math.max(1, Math.round(demonForm.effectB.riskValue ?? 15));
-      updateEnergyBy(-drain); // SPを削る（魔神化ゲージではなくスキルポイント）
-      addLog(`代償発動: スキルSPが過剰消費され、SP-${drain}。`);
+      updateEnergyBy(-drain); // MPを削る（魔神化ゲージとは別リソース）
+      addLog(`代償発動: MPが過剰消費され、MP-${drain}。`);
       return;
     }
     if (demonForm.effectB.riskType === 'SETUP_DEPENDENT') {
@@ -2919,11 +2920,11 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     if (!tryLockPlayerAction('skillMenu')) return;
     if (resolvePlayerStatusBeforeAction()) return;
     if (skill.mp && (skill.mp > currentMp)) {
-      addLog(`SPが不足しています（必要 ${skill.mp} / 現在 ${currentMp}）`);
+      addLog(`MPが不足しています（必要 ${skill.mp} / 現在 ${currentMp}）`);
       unlockPlayerAction();
       return;
     }
-    // SP消費（魔神化ゲージとは別リソース）
+    // MP消費（魔神化ゲージとは別リソース）
     if (skill.mp) updateEnergyBy(-skill.mp);
     actionCountRef.current += 1;
     sfx.skillCast(skill.element, skill.attackType);
@@ -2932,7 +2933,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     const vfxStyle = ELEMENT_VFX[skill.element];
     const hitCount = demonized ? getDemonActionHitCount(demonForm, skill.attackType) : 1;
     triggerSkillEffect(skill, targets);
-    addLog(`${demonized ? `魔神化『${demonForm.formName}』` : '術'}発動！ ${skill.name}！ ${vfxStyle.label}属性/${ATTACK_TYPE_LABEL[skill.attackType]}`);
+    addLog(`${demonized ? `魔神化『${demonForm.formName}』` : 'スキル'}発動！ ${skill.name}！ ${vfxStyle.label}属性/${ATTACK_TYPE_LABEL[skill.attackType]}`);
     setFlashColor(vfxStyle.soft);
     setTimeout(() => setFlashColor(null), 400);
     setTimeout(() => {
@@ -2968,10 +2969,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       if (demonized) {
         applyDemonRiskFeedback(skill.attackType);
       }
-      // スキルはSP一部回復（通常攻撃より少ない）
       setTimeout(() => {
         runPartyFollowUps(targets[0] ?? getTargetId());
-        endPlayerTurn(demonized ? 0 : 10);
+        endPlayerTurn();
       }, targets.length * targetInterval + speedMs * 0.3);
     }, speedMs * 0.4);
   }
@@ -2994,7 +2994,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     } else if (battleEffect.type === 'RESTORE_ENERGY') {
       updateEnergy((player?.currentEnergy ?? 0) + battleEffect.value);
       spawnFloat('42%', '52%', battleEffect.value, { heal: true, color: '#38bdf8' });
-      addLog(`${item.name}を使用！ EN${battleEffect.value >= 100 ? '全回復' : `+${battleEffect.value}`}！`);
+      addLog(`${item.name}を使用！ MP${battleEffect.value >= 100 ? '全回復' : `+${battleEffect.value}`}！`);
     } else if (battleEffect.type === 'RESTORE_SOUL') {
       setSoul(prev => Math.min(100, prev + battleEffect.value));
       spawnFloat('42%', '52%', battleEffect.value, { heal: true, color: '#c084fc' });
@@ -3217,7 +3217,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600, color: demonized ? '#ef4444' : '#8A2BE2', letterSpacing: '0.1em' }}>
-                {demonized ? '魔神化スキル選択' : '術・スキル選択'}
+                {demonized ? '魔神化スキル選択' : 'スキル選択'}
               </div>
               <div onClick={() => setBattlePhase('playerTurn')} style={{
                 padding: '3px 10px', borderRadius: 6,
@@ -3299,7 +3299,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
                 demonized={demonized} onClick={handleAttack}/>
               <CommandButton
                 id="tut-skill-btn"
-                icon={demonized ? '✦' : '🔮'} label="術"
+                icon={demonized ? '✦' : '🔮'} label="スキル"
                 sublabel={demonized ? 'DISTORT' : 'SKILL'}
                 enabled={phase === 'playerTurn'} color={demonized ? demonColor : '#8A2BE2'}
                 demonized={demonized} onClick={() => setBattlePhase('skillMenu')}/>
@@ -3327,7 +3327,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         auto={auto} speed={speed}
         onAuto={() => setAuto(a => !a)}
         onSpeedChange={setSpeed}
-        onEscape={() => { addLog('逃走した。'); onEnd(); }}
+        onEscape={() => { addLog('逃走した。'); restoreEnergy(); onEnd(); }}
         canEscape={true}/>
 
       {phase === 'waveTransition' && (

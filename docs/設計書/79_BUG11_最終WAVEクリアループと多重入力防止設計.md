@@ -116,7 +116,7 @@ const playerActionLockRef = useRef(false);
 | アクション | 必須phase |
 |---|---|
 | 通常攻撃 | `playerTurn` |
-| 術 | `skillMenu` |
+| スキル | `skillMenu` |
 | 道具 | `itemMenu` |
 | 魔神技 | `playerTurn` |
 
@@ -130,7 +130,7 @@ const playerActionLockRef = useRef(false);
 | 新WAVE開始 | 次WAVEの最初の自ターンを開始する |
 | 敵行動完了 | 通常の次自ターンを開始する |
 | 魔神化発動 | 割り込み後の自ターンを開始する |
-| SP不足、道具消費失敗 | 行動が成立していない |
+| MP不足、道具消費失敗 | 行動が成立していない |
 
 WAVE解決開始と敗北時はロック状態を維持し、遷移中の追加入力を拒否する。
 
@@ -199,5 +199,5 @@ if (!tryLockPlayerAction('playerTurn')) return;
 - node1-1のWAVE 3全滅後にリザルト画面へ遷移する。
 - 報酬適用後にWAVE 1へ戻らない。
 - 攻撃ボタン連打で複数攻撃が予約されない。
-- 術、道具、魔神技も同じ同期ロックを使う。
+- スキル、道具、魔神技も同じ同期ロックを使う。
 - unit test、関連E2E、`npx tsc --noEmit`、全体Jest、build、差分検査が通る。

@@ -4,12 +4,12 @@ export const MAX_JOB_LEVEL = 99;
  * Cumulative EXP required to reach a job level.
  *
  * Lv1 starts at 0 total EXP.
- * Lv2 requires 500, Lv3 requires 1100, Lv4 requires 1800.
+ * Lv2 requires 10, Lv3 requires 22, Lv4 requires 36.
  */
 export function expForLevel(level: number): number {
   const safeLevel = Math.max(1, Math.floor(Number.isFinite(level) ? level : 1));
   if (safeLevel <= 1) return 0;
-  return 50 * (safeLevel - 1) * (safeLevel + 8);
+  return (safeLevel - 1) * (safeLevel + 8);
 }
 
 export function normalizeTotalExp(totalExp: number): number {

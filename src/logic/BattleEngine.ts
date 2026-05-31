@@ -49,7 +49,6 @@ import {
   shouldTriggerBossGimmick,
 } from './BossGimmickSystem';
 import { calculateMonsterAttackProfile } from './MonsterAttackSystem';
-import { getEnergyRegen } from './EnergySystem';
 import { applyPlayerDamage as reducePlayerHp, isPlayerDead } from './PlayerDefeat';
 import { getBaseAttackType } from './JobSystem';
 
@@ -296,7 +295,6 @@ export class BattleEngine {
     let attackType: SkillAttackType = 'SLASH';
     const currentJob = this.masterData.getJob(player.currentJobId);
     const baseAttackType = getBaseAttackType(currentJob);
-    let energyGain = getEnergyRegen(currentJob);
     let skillData: SkillData | undefined;
 
     if (actionType === 'PHYSICAL_ATTACK') {
@@ -310,7 +308,6 @@ export class BattleEngine {
         actionName = skillData.name;
         if (skillData.element) element = skillData.element;
         attackType = skillData.attackType ?? (skillData.type === 'MAGICAL' ? 'MAGIC' : 'SLASH');
-        energyGain = skillData.isUltimate ? 0 : 15;
       }
     } else {
       energyCost = 0;
@@ -332,14 +329,14 @@ export class BattleEngine {
     }
 
     if (player.currentEnergy < totalEnergyCost) {
-      this.addLog('NO_ENERGY', player.name, target.name, `エネルギーが不足しています！（必要: ${totalEnergyCost}）`);
+      this.addLog('NO_ENERGY', player.name, target.name, `MPが不足しています！（必要: ${totalEnergyCost}）`);
       return;
     }
 
-    // SP消費・回復（スキルポイント）
-    player.currentEnergy = Math.min(player.maxEnergy, Math.max(0, player.currentEnergy - totalEnergyCost + energyGain));
+    // MP消費。通常攻撃やスキル使用による暗黙回復は行わない。
+    player.currentEnergy = Math.max(0, player.currentEnergy - totalEnergyCost);
 
-    // 魔神化ゲージ充填（SPとは別リソース）
+    // 魔神化ゲージ充填（MPとは別リソース）
     const gaugeGain = actionType === 'PHYSICAL_ATTACK' ? 10 : 5;
     this.addDemonGauge(gaugeGain);
 
@@ -372,7 +369,6 @@ export class BattleEngine {
 
       const shieldResult = this.applySpiritualShield(currentTarget, totalDamage, element);
       if (shieldResult.didBreak) {
-        player.currentEnergy = Math.min(player.maxEnergy, player.currentEnergy + 30);
         this.addDemonGauge(20); // 霊魂砕きボーナス
       }
 
@@ -915,10 +911,6 @@ export class BattleEngine {
       ms.hp = Math.min(this.playerInitialMaxHp, ms.hp + regen);
       this.addLog('SYNERGY_REGEN', 'SYNERGY', player.name,
         `種族シナジー：HP +${regen} 回復。`);
-    }
-    if (sb.energyPerTurn) {
-      player.currentEnergy = Math.min(player.maxEnergy,
-        player.currentEnergy + sb.energyPerTurn);
     }
     if (sb.demonGaugePerTurn) {
       this.addDemonGauge(sb.demonGaugePerTurn);

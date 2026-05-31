@@ -155,7 +155,8 @@ export class GameManager {
         if (newLevel > currentJob.level) {
           const growth = calculateJobGrowthIncrements(
             this.masterData.getJob(char.currentJobId || 'warrior'),
-            newLevel - currentJob.level,
+            currentJob.level,
+            newLevel,
           );
           await tx.character.update({
             where: { id: characterId },

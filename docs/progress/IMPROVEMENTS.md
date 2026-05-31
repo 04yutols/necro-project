@@ -16,8 +16,10 @@
 | IMP-3   | 🟠 | コンテンツ | ボスが直前の精鋭より弱い（stat逆転） | 未対応 |
 | IMP-4   | ✅ | バトルロジック | ドレインスキルのHP回復が未実装 | 2026-05-30 完了 |
 | IMP-5   | ✅ | バトルロジック | 通常攻撃のattackTypeが全職業でSLASH固定 | 2026-05-30 完了 |
-| IMP-6   | 🟡 | UX | ターン順序プレビューUI が存在しない | 未対応 |
+| IMP-6   | ✅ | UX | ターン順序プレビューUI が存在しない | 2026-05-31 完了 |
 | IMP-7   | 🟡 | ゲームデザイン | node1→node2の難易度崖（案内なし） | 未対応（調整支援追加） |
+| IMP-8   | ✅ | バトルUX | スキル用エナジーがMPとして機能していない | 2026-05-31 完了 |
+| BUG-11  | ✅ | バトルロジック | 最終WAVEクリアループとプレイヤー行動の多重入力 | 2026-05-31 完了 |
 | SEC-6   | ✅ | セキュリティ | JWTセッションの失効不可 | 2026-05-27 完了 |
 | SEC-7   | ✅ | セキュリティ | パスワードポリシーが弱い | 2026-05-28 完了 |
 | NL-1    | 🟢 | コード品質 | SynergyBonus未使用フィールド3種 | 未対応 |
@@ -126,13 +128,13 @@ private processPlayerAction(
 }
 ```
 
-`simulateAction()` が既に受け取っている `enemyCandidates` をプレイヤー攻撃にも渡し、`SkillData.targetType === 'ALL_ENEMIES'` の場合のみ生存候補全体へ展開する。SP消費・魔神化行動消費・SELF_DAMAGE は行動単位のため1回だけ実行し、ダメージ・防壁・状態異常・武器パッシブ・ログは対象ごとに実行する。
+`simulateAction()` が既に受け取っている `enemyCandidates` をプレイヤー攻撃にも渡し、`SkillData.targetType === 'ALL_ENEMIES'` の場合のみ生存候補全体へ展開する。MP消費・魔神化行動消費・SELF_DAMAGE は行動単位のため1回だけ実行し、ダメージ・防壁・状態異常・武器パッシブ・ログは対象ごとに実行する。
 
 **対応内容:**
 - `processPlayerAction()` に `enemyCandidates` を渡すよう変更。
 - `resolvePlayerActionTargets()` を追加し、AoEは生存敵候補、単体は選択対象のみへ解決。
 - AoE命中対象ごとに BattleLog / HPランタイム更新 / ボスギミック / 状態異常 / 武器パッシブを処理。
-- `BattleEngine.test.ts` に AoE 3体命中・SP 1回消費・単体スキル非AoEの回帰テストを追加。
+- `BattleEngine.test.ts` に AoE 3体命中・MP 1回消費・単体スキル非AoEの回帰テストを追加。
 
 **設計:** `docs/設計書/69_IMP1_BattleEngine_AoEスキル対象解決設計.md`
 
@@ -623,17 +625,61 @@ node1-1のWAVE 3を全滅させても、報酬適用後にバトル初期化effe
 - 同一BattleCanvas内では同一ステージキーを一度だけ初期化する。
 - phaseをrefにも同期し、イベントハンドラが最新phaseを即時参照できるようにする。
 - プレイヤーの消費アクションへ同期ロックを追加し、次の自ターンまたは新WAVE開始まで保持する。
-- 通常攻撃だけでなく、術、道具、魔神技にも同じロック規則を適用する。
+- 通常攻撃だけでなく、スキル、道具、魔神技にも同じロック規則を適用する。
 
 **対応内容:**
 - `BattleFlowSystem.shouldInitializeBattle()` で同一ステージの再初期化を拒否した。
 - `BattleFlowSystem.canStartPlayerAction()` にphase一致・ロック未取得・WAVE未解決の判定を集約した。
 - BattleCanvasに `initializedBattleKeyRef`, `phaseRef`, `playerActionLockRef` を追加した。
 - BattleCanvasのphase遷移を `setBattlePhase()` に統一し、イベントハンドラから最新phaseを同期参照できるようにした。
-- 通常攻撃、術、道具、魔神技へ同期ロックを接続した。
+- 通常攻撃、スキル、道具、魔神技へ同期ロックを接続した。
 - Lv.1職業スキルとソウル初期値の現行仕様に合わせ、古いPlaywright期待値を更新した。
 
 **設計:** `docs/設計書/79_BUG11_最終WAVEクリアループと多重入力防止設計.md`
+
+---
+
+## ✅ IMP-8: スキル用エナジーがMPとして機能していない（2026-05-31 完了）
+
+**ファイル:** `src/logic/EnergySystem.ts`, `src/logic/BattleEngine.ts`, `src/components/battle/BattleCanvas.tsx`
+
+現行実装はスキル用リソースをEN / SP / エネルギーと表示し、通常攻撃、スキル使用、防壁破壊、BEASTシナジーで充填する。
+プレイヤーが期待するMP仕様に合わせ、ステージ開始時は満タン、スキル使用時は `mpCost` 分だけ消費、通常攻撃などでは暗黙回復しない有限リソースへ変更する。
+
+内部の `currentEnergy`, `maxEnergy`, `RESTORE_ENERGY`, `ENERGY_DRAIN` は互換用識別子として維持し、画面とルール上の用語をMPへ統一する。
+
+**対応内容:**
+- バトルコマンド、選択見出し、ステータス、ログ、チュートリアルを「スキル」 / 「MP」へ統一した。
+- `calculateInitialEnergy()` を最大MP返却へ変更し、キャラクター作成時とステージ開始時を満タンMPにした。
+- 通常攻撃、スキル使用後、防壁破壊、BEAST × 3シナジーの暗黙MP回復を廃止した。
+- `jobs.json` と `JobData` から不要になった `energyRegen`, `initialSpPct` を削除した。
+- MP回復アイテムの `RESTORE_ENERGY` と魔神化リスクの `ENERGY_DRAIN` は互換用内部IDとして維持した。
+- Unit Test、結合テスト、モバイルPlaywright E2EへMP仕様の回帰確認を追加した。
+
+**設計:** `docs/設計書/80_IMP8_スキルMPリソース再設計.md`
+
+---
+
+## ✅ IMP-9: 序盤バランスと戦闘後MP全回復の再設計（2026-05-31 完了）
+
+**ファイル:** `src/logic/ExperienceSystem.ts`, `src/logic/JobGrowthSystem.ts`, `src/data/master/enemies.json`, `src/data/master/stages.json`, `src/components/battle/BattleCanvas.tsx`
+
+Lv1基礎値、職業EXP、レベルアップ成長、Chapter 1敵データを同じ序盤スケールで再設計する。
+あわせて戦闘終了時のMP全回復を保証し、ローカル勝利時にResultScreenがEXPを二重加算する問題を解消する。
+
+**対応内容:**
+- Lv1基礎値を `HP 30 / ATK 4 / DEF 4` へ変更し、ローカルモックとサーバー作成値を共通定数化した。
+- ローカルモックの強化済み残滓はインベントリへ残し、初回装備枠を空にして実戦値を `HP 34 / ATK 6 / DEF 5` に揃えた。
+- Lv2必要EXPを `10` とする緩やかな累積EXP式へ変更した。
+- ホームの `JOB-EXP` を共通進捗関数へ接続し、Lv1開始時の残り必要EXPを `10` と表示するようにした。
+- 基礎成長を小数係数による累積差分方式へ変更し、分割レベルアップと一括レベルアップの結果を一致させた。
+- Chapter 1敵とステージEXPを再調整し、`area1_node1 → area1_node2` のEHP上昇を `11.46x → 2.27x` に抑えた。
+- 勝利、敗北、逃走で `restoreEnergy()` を呼び、戦闘終了時にMPを最大値へ戻した。
+- ResultScreenのEXP二重加算と、共通終了処理による逃走・敗北時の誤クリア付与を削除した。
+- Unit Test、DB結合テスト、バランス監査、モバイルPlaywright E2E、Next/Viteビルドを実行した。
+
+**設計:** `docs/設計書/81_IMP9_序盤バランスと戦闘後MP全回復再設計.md`
+**レポート:** `docs/progress/IMP9_序盤バランス再調整レポート.md`
 
 ---
 

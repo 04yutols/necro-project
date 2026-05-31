@@ -14,9 +14,7 @@ export function calculateMaxEnergy(job: Pick<JobData, 'energyCurve'> | null | un
 }
 
 export function calculateInitialEnergy(job: Pick<JobData, 'energyCurve'> | null | undefined, level: number): number {
-  const maxEnergy = calculateMaxEnergy(job, level);
-  const initialSpPct = job?.energyCurve?.initialSpPct ?? 40;
-  return Math.max(0, Math.min(maxEnergy, Math.floor(maxEnergy * initialSpPct / 100)));
+  return calculateMaxEnergy(job, level);
 }
 
 export function calculateEnergyState(job: Pick<JobData, 'energyCurve'> | null | undefined, level: number): EnergyState {
@@ -25,8 +23,4 @@ export function calculateEnergyState(job: Pick<JobData, 'energyCurve'> | null | 
     currentEnergy: calculateInitialEnergy(job, level),
     maxEnergy,
   };
-}
-
-export function getEnergyRegen(job: Pick<JobData, 'energyCurve'> | null | undefined): number {
-  return Math.max(0, Math.floor(job?.energyCurve?.energyRegen ?? 20));
 }

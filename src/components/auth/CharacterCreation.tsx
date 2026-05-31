@@ -210,7 +210,7 @@ export function CharacterCreation({ initialName, onCreated }: CharacterCreationP
                         {job.data.role}
                       </span>
                       <span style={{ display: 'block', marginTop: 4, fontSize: 10, lineHeight: 1.5, color: active ? job.style.color : 'rgba(212,175,55,0.55)' }}>
-                        {getPrimarySkill(job.data)?.name ?? '初期術式'} / {getStatTendency(job.data)}
+                        {getPrimarySkill(job.data)?.name ?? '初期スキル'} / {getStatTendency(job.data)}
                       </span>
                     </span>
                     <ChevronRight size={18} color={active ? job.style.color : '#4a3a5a'} />
@@ -245,7 +245,7 @@ export function CharacterCreation({ initialName, onCreated }: CharacterCreationP
                 {selected.data.description}
               </div>
               <div style={{ marginTop: 8, display: 'grid', gap: 4, color: 'rgba(220,210,240,0.68)', fontSize: 11, lineHeight: 1.5 }}>
-                <span>代表スキル: {selectedSkill?.name ?? '初期術式'} {selectedSkill ? ` / ${selectedSkill.description}` : ''}</span>
+                <span>代表スキル: {selectedSkill?.name ?? '初期スキル'} {selectedSkill ? ` / ${selectedSkill.description}` : ''}</span>
                 <span>ステータス傾向: {selectedTendency}</span>
               </div>
             </div>

@@ -47,31 +47,46 @@ describe('useGameStore party formation actions', () => {
     expect(useGameStore.getState().inventoryItems.find(item => item.id === 'underworld_potion')?.quantity).toBe(4);
   });
 
-  test('initializes player SP from current job energy curve', () => {
+  test('initializes player with full MP from current job energy curve', () => {
     const player = useGameStore.getState().player;
 
-    expect(player?.currentEnergy).toBe(40);
+    expect(player?.currentEnergy).toBe(100);
     expect(player?.maxEnergy).toBe(100);
   });
 
   test('addExp uses the shared cumulative EXP level formula', () => {
-    useGameStore.getState().addExp(499);
+    useGameStore.getState().addExp(9);
     let warrior = useGameStore.getState().player?.jobs.find(job => job.jobId === 'warrior');
-    expect(warrior?.exp).toBe(499);
-    expect(warrior?.level).toBe(levelFromTotalExp(499));
+    expect(warrior?.exp).toBe(9);
+    expect(warrior?.level).toBe(levelFromTotalExp(9));
     expect(warrior?.level).toBe(1);
 
     useGameStore.getState().addExp(1);
     const player = useGameStore.getState().player;
     warrior = player?.jobs.find(job => job.jobId === 'warrior');
-    const expectedEnergy = calculateEnergyState(JOBS.warrior, levelFromTotalExp(500));
+    const expectedEnergy = calculateEnergyState(JOBS.warrior, levelFromTotalExp(10));
 
-    expect(warrior?.exp).toBe(500);
+    expect(warrior?.exp).toBe(10);
     expect(warrior?.level).toBe(2);
     expect(player?.maxEnergy).toBe(expectedEnergy.maxEnergy);
   });
 
+  test('restoreEnergy fills MP to the current maximum after battle', () => {
+    useGameStore.getState().updateEnergy(7);
+    expect(useGameStore.getState().player?.currentEnergy).toBe(7);
+
+    useGameStore.getState().restoreEnergy();
+
+    expect(useGameStore.getState().player?.currentEnergy).toBe(useGameStore.getState().player?.maxEnergy);
+  });
+
+  test('starts the local guest profile without pre-equipped endgame residues', () => {
+    expect(useGameStore.getState().equippedResidueSlots).toEqual([null, null, null, null, null]);
+  });
+
   test('upgradeResidue consumes one material unit per selected id instead of the whole stack', () => {
+    const initialResidue = useGameStore.getState().abyssalResidues.find(item => item.id === 'r7');
+    useGameStore.getState().equipResidueToSlot(0, initialResidue!);
     useGameStore.getState().upgradeResidue('r7', ['mat-1']);
 
     const state = useGameStore.getState();

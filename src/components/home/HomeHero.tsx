@@ -5,6 +5,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { motion } from 'framer-motion';
 import { Map, Skull, Sword, Terminal, ChevronRight, Activity, Swords, Settings, Sparkles } from 'lucide-react';
 import { AuthPanel } from '../auth/AuthPanel';
+import { getJobLevelProgress } from '../../logic/ExperienceSystem';
 
 const THEME = {
   primary: '#BC00FB',
@@ -43,9 +44,9 @@ export function HomeHero() {
   if (!player) return null;
 
   const currentJob = player.jobs.find(j => j.jobId === player.currentJobId) || { level: 1, exp: 0 };
-  const jobNextExp = currentJob.level * 1000;
-  const jobExpRemain = Math.max(0, jobNextExp - currentJob.exp);
-  const jobExpPercent = Math.min(100, Math.round((currentJob.exp / jobNextExp) * 100));
+  const jobProgress = getJobLevelProgress(currentJob.exp);
+  const jobExpRemain = jobProgress.expToNextLevel;
+  const jobExpPercent = Math.round(jobProgress.progressRatio * 100);
 
   const necroLevel = necroStatus?.level || 1;
   const necroNextExp = necroLevel * 2000;
@@ -189,7 +190,7 @@ export function HomeHero() {
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                <span style={{ color: '#888', fontSize: '11px' }}>ENERGY</span>
+                <span style={{ color: '#888', fontSize: '11px' }}>MP</span>
                 <span style={{ color: '#4A90E2', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(74,144,226,0.3)', lineHeight: 1 }}>
                   {player.currentEnergy} <span style={{ color: '#555', fontSize: '14px' }}>/ {player.maxEnergy}</span>
                 </span>

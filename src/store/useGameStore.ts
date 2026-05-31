@@ -4,6 +4,7 @@ import itemsData from '../data/master/items.json';
 import demonFormsData from '../data/master/demonForms.json';
 import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
 import { calculateEnergyState } from '../logic/EnergySystem';
+import { INITIAL_PLAYER_BASE_STATS } from '../logic/BalanceConfig';
 import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import { DEMON_ACTION_LIMIT, clampDemonGauge } from '../logic/DemonizationSystem';
 import { isResidueSlotCompatible } from '../logic/ResidueScore';
@@ -16,23 +17,12 @@ import {
   getReforgeCost,
   hasEnoughWeaponMaterials,
 } from '../logic/WeaponSystem';
-import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData, BaseStats, JobData, WeaponMaterialData, WeaponMaterialType, DemonFormData, DemonRiskType } from '../types/game';
+import { CharacterData, NecroStatus, MonsterData, SoulShardData, ItemData, EquipmentSlots, AbyssalResidueData, ResidueMatData, JobData, WeaponMaterialData, WeaponMaterialType, DemonFormData, DemonRiskType } from '../types/game';
 import type { ServerGameData } from '../types/serverGame';
 
 const JOBS = jobsData as Record<string, JobData>;
 const ITEMS = itemsData as Record<string, ItemData>;
 const DEMON_FORMS = demonFormsData as Record<string, DemonFormData>;
-
-const INITIAL_PLAYER_BASE_STATS: BaseStats = {
-  hp:          60,
-  atk:          8,
-  def:         10,
-  spd:        100,
-  critRate:     5,
-  critDmg:    150,
-  effectHit:    0,
-  effectRes:    0,
-};
 
 const MOCK_WEAPONS: ItemData[] = [
   {
@@ -233,6 +223,7 @@ interface GameState {
   updateHP: (hp: number) => void;
   updateEnergy: (energy: number) => void;
   updateEnergyBy: (delta: number) => void;
+  restoreEnergy: () => void;
   addExp: (amount: number) => void;
   addGold: (amount: number) => void;
   addClearedStage: (stageId: string) => void;
@@ -535,6 +526,9 @@ export const useGameStore = create<GameState>((set) => ({
     const next = Math.max(0, Math.min(state.player.currentEnergy + delta, state.player.maxEnergy));
     return { player: { ...state.player, currentEnergy: next } };
   }),
+  restoreEnergy: () => set((state) => ({
+    player: state.player ? { ...state.player, currentEnergy: state.player.maxEnergy } : null,
+  })),
   addExp: (amount) => set((state) => {
     if (!state.player) return { player: null };
     let activeJobLevel = 1;
@@ -805,13 +799,7 @@ export const useGameStore = create<GameState>((set) => ({
       { id: 'r9', name: '深淵王の帯', itemId: 'waist', rarity: 'LEGENDARY', mainStat: { type: 'DARK_DMG_BOOST', value: 38.8 }, subOptions: [{ type: 'CRIT_RATE', value: 8.8 }, { type: 'CRIT_DMG', value: 16.2 }, { type: 'ATK%', value: 7.4 }, { type: 'EFFECT_HIT', value: 4.4 }], level: 18, exp: 2600, maxExp: 7000, tierHistory: [4, 3, 4, 4] },
       { id: 'r10', name: '忘却の兜', itemId: 'head', rarity: 'RARE', mainStat: { type: 'HP_FLAT', value: 620 }, subOptions: [{ type: 'CRIT_DMG', value: 6.4 }, { type: 'DEF%', value: 4.6 }, { type: 'EFFECT_RES', value: 3.4 }], level: 5, exp: 500, maxExp: 2200, tierHistory: [2] },
     ],
-    equippedResidueSlots: [
-      { id: 'r7', name: '死霊の印璽', itemId: 'head', rarity: 'COMMON', mainStat: { type: 'HP_FLAT', value: 380 }, subOptions: [{ type: 'DEF_FLAT', value: 25 }, { type: 'ATK_FLAT', value: 12 }], level: 1, exp: 0, maxExp: 800 },
-      { id: 'r6', name: '魂の骨牌', itemId: 'arms', rarity: 'RARE', mainStat: { type: 'ATK_FLAT', value: 120 }, subOptions: [{ type: 'CRIT_RATE', value: 4.9 }, { type: 'ATK%', value: 5.8 }, { type: 'HP_FLAT', value: 96 }], level: 6, exp: 1800, maxExp: 2500, tierHistory: [3] },
-      { id: 'r1', name: '深淵の指輪', itemId: 'chest', rarity: 'EPIC', mainStat: { type: 'ATK%', value: 35.2 }, subOptions: [{ type: 'CRIT_RATE', value: 7.8 }, { type: 'HP%', value: 6.2 }, { type: 'DEF_FLAT', value: 32 }, { type: 'FIRE_DMG_BOOST', value: 4.1 }], level: 12, exp: 2400, maxExp: 4000, tierHistory: [2, 3, 1] },
-      { id: 'r5', name: '漆黒の霊核', itemId: 'waist', rarity: 'RARE', mainStat: { type: 'WATER_DMG_BOOST', value: 28.4 }, subOptions: [{ type: 'CRIT_RATE', value: 6.0 }, { type: 'CRIT_DMG', value: 5.1 }, { type: 'HP%', value: 4.3 }, { type: 'EFFECT_HIT', value: 3.2 }], level: 10, exp: 800, maxExp: 3500, tierHistory: [2, 2] },
-      { id: 'r8', name: '虚空の瞳', itemId: 'legs', rarity: 'EPIC', mainStat: { type: 'CRIT_RATE', value: 15.5 }, subOptions: [{ type: 'ATK%', value: 8.3 }, { type: 'CRIT_DMG', value: 12.4 }, { type: 'THUNDER_DMG_BOOST', value: 6.0 }, { type: 'EFFECT_HIT', value: 5.5 }], level: 20, exp: 3500, maxExp: 8000, tierHistory: [4, 4, 3, 2, 4] },
-    ],
+    equippedResidueSlots: [null, null, null, null, null],
     weaponMaterials: [
       { type: 'IDEA_COMMON', name: '凡骨のイデア', quantity: 38 },
       { type: 'IDEA_SR', name: '業物のイデア', quantity: 14 },

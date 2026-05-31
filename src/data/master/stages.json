@@ -58,7 +58,7 @@
       }
     ],
     "rewards": {
-      "baseExp": 620,
+      "baseExp": 12,
       "baseGold": 1180,
       "dropTable": [
         { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.55 },
@@ -105,7 +105,7 @@
       }
     ],
     "rewards": {
-      "baseExp": 780,
+      "baseExp": 16,
       "baseGold": 1460,
       "dropTable": [
         { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.45 },
@@ -153,7 +153,7 @@
       }
     ],
     "rewards": {
-      "baseExp": 1320,
+      "baseExp": 24,
       "baseGold": 3600,
       "dropTable": [
         { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.62 },
@@ -204,7 +204,7 @@
       }
     ],
     "rewards": {
-      "baseExp": 1560,
+      "baseExp": 30,
       "baseGold": 4200,
       "dropTable": [
         { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.2 },
@@ -253,7 +253,7 @@
       }
     ],
     "rewards": {
-      "baseExp": 1880,
+      "baseExp": 38,
       "baseGold": 5200,
       "dropTable": [
         { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.016 },

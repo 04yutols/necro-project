@@ -11,6 +11,7 @@ import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventServi
 import { JobService } from '@/services/JobService';
 import { NecroService } from '@/services/NecroService';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
+import { INITIAL_PLAYER_BASE_STATS } from '@/logic/BalanceConfig';
 import { calculateEnergyState } from '@/logic/EnergySystem';
 import { levelFromTotalExp } from '@/logic/ExperienceSystem';
 import { calculateJobAdjustedStats } from '@/logic/JobSystem';
@@ -83,19 +84,6 @@ const STARTER_WEAPON_BY_JOB: Record<string, string> = {
 
 const STAGE_ID_ALIASES: Record<string, string> = {
   '1-1': 'area1_node1',
-};
-
-// レベル1基礎ステータス（職業補正前）
-// 戦士の場合: HP×1.14→68, ATK×1.20→10, DEF×1.15→12
-const DEFAULT_BASE_STATS: BaseStats = {
-  hp: 60,
-  atk: 8,
-  def: 10,
-  spd: 100,
-  critRate: 5,
-  critDmg: 150,
-  effectHit: 0,
-  effectRes: 0,
 };
 
 const CHARACTER_GAME_DATA_INCLUDE = {
@@ -679,7 +667,7 @@ export async function processStageResultForUser(
 
       if (levelsGained > 0) {
         const currentJobData = mds.getJob(currentJob.jobId);
-        const growth = calculateJobGrowthIncrements(currentJobData, levelsGained);
+        const growth = calculateJobGrowthIncrements(currentJobData, oldLevel, newLevel);
         await tx.character.update({
           where: { id: char.id },
           data: {
@@ -888,14 +876,14 @@ export async function createCharacterForUser(
         userId,
         currentJobId: jobId,
         gold: 50000,
-        hp: DEFAULT_BASE_STATS.hp,
-        atk: DEFAULT_BASE_STATS.atk,
-        def: DEFAULT_BASE_STATS.def,
-        spd: DEFAULT_BASE_STATS.spd,
-        critRate: DEFAULT_BASE_STATS.critRate,
-        critDmg: DEFAULT_BASE_STATS.critDmg,
-        effectHit: DEFAULT_BASE_STATS.effectHit,
-        effectRes: DEFAULT_BASE_STATS.effectRes,
+        hp: INITIAL_PLAYER_BASE_STATS.hp,
+        atk: INITIAL_PLAYER_BASE_STATS.atk,
+        def: INITIAL_PLAYER_BASE_STATS.def,
+        spd: INITIAL_PLAYER_BASE_STATS.spd,
+        critRate: INITIAL_PLAYER_BASE_STATS.critRate,
+        critDmg: INITIAL_PLAYER_BASE_STATS.critDmg,
+        effectHit: INITIAL_PLAYER_BASE_STATS.effectHit,
+        effectRes: INITIAL_PLAYER_BASE_STATS.effectRes,
         equipWeaponId: createdWeapon?.id ?? null,
         jobs: { create: { jobId, level: 1, exp: 0 } },
       },

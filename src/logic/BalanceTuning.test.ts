@@ -5,7 +5,9 @@ import stagesData from '../data/master/stages.json';
 import type { BaseStats, CharacterData, EnemyData, ItemData, JobData, MonsterData, StageData } from '../types/game';
 import { calculateBattleDamage } from './BattleDamage';
 import { BattleEngine } from './BattleEngine';
+import { INITIAL_PLAYER_BASE_STATS } from './BalanceConfig';
 import { calculateJobAdjustedStats } from './JobSystem';
+import { calculateCharacterStatProfile } from './StatSystem';
 import { calculateWeaponBaseAttack } from './WeaponSystem';
 
 const ENEMIES = enemiesData as Record<string, EnemyData>;
@@ -13,24 +15,13 @@ const ITEMS = itemsData as Record<string, ItemData>;
 const JOBS = jobsData as Record<string, JobData>;
 const STAGES = stagesData as Record<string, StageData>;
 
-const STARTER_BASE_STATS: BaseStats = {
-  hp: 60,
-  atk: 8,
-  def: 10,
-  spd: 100,
-  critRate: 5,
-  critDmg: 150,
-  effectHit: 0,
-  effectRes: 0,
-};
-
 function makePlayer(finalStats: BaseStats): CharacterData {
   return {
     id: 'balance-player',
     name: 'Balance Player',
     currentJobId: 'warrior',
     category: 'PHYSICAL',
-    baseStats: STARTER_BASE_STATS,
+    baseStats: INITIAL_PLAYER_BASE_STATS,
     stats: finalStats,
     passives: {
       passiveAtkBonus: 0,
@@ -70,14 +61,18 @@ function enemyToMonster(enemyId: string): MonsterData {
 
 describe('Balance tuning for area1_node1', () => {
   test('starter character and weapon use JRPG-scale attack values', () => {
-    const warriorStats = calculateJobAdjustedStats(STARTER_BASE_STATS, JOBS.warrior);
+    const warriorStats = calculateJobAdjustedStats(INITIAL_PLAYER_BASE_STATS, JOBS.warrior);
     const starterWeaponAtk = calculateWeaponBaseAttack(ITEMS.bone_cleaver);
+    const player = makePlayer(warriorStats);
+    player.equipment.weapon = ITEMS.bone_cleaver;
+    const profile = calculateCharacterStatProfile(player, [null, null, null, null, null]);
 
-    expect(warriorStats.hp).toBe(68);
-    expect(warriorStats.atk).toBe(10);
-    expect(warriorStats.def).toBe(12);
+    expect(warriorStats.hp).toBe(34);
+    expect(warriorStats.atk).toBe(5);
+    expect(warriorStats.def).toBe(5);
     expect(starterWeaponAtk).toBe(1);
-    expect(warriorStats.atk + starterWeaponAtk).toBe(11);
+    expect(warriorStats.atk + starterWeaponAtk).toBe(6);
+    expect(profile.total).toMatchObject({ hp: 34, atk: 6, def: 5 });
   });
 
   test('area1_node1 final wave is an elite tutorial fight, not a boss', () => {
@@ -86,12 +81,12 @@ describe('Balance tuning for area1_node1', () => {
       role: 'ELITE',
       enemyIds: ['grave_soldier', 'grave_knight'],
     });
-    expect(ENEMIES.ossuary_wyrm_lord.stats.hp).toBe(180);
-    expect(ENEMIES.grave_knight.stats.hp).toBe(40);
+    expect(ENEMIES.ossuary_wyrm_lord.stats.hp).toBe(90);
+    expect(ENEMIES.grave_knight.stats.hp).toBe(44);
   });
 
   test('starter damage hits area1_node1 kill-count targets without crit variance', () => {
-    const warriorStats = calculateJobAdjustedStats(STARTER_BASE_STATS, JOBS.warrior);
+    const warriorStats = calculateJobAdjustedStats(INITIAL_PLAYER_BASE_STATS, JOBS.warrior);
     const attackerStats = {
       ...warriorStats,
       atk: warriorStats.atk + calculateWeaponBaseAttack(ITEMS.bone_cleaver),
@@ -126,14 +121,14 @@ describe('Balance tuning for area1_node1', () => {
       rng: noCrit,
     });
 
-    expect(graveSoldierAttack.damage).toBe(10);
-    expect(graveSoldierSkill.damage).toBe(16);
-    expect(graveKnightAttack.damage).toBe(10);
-    expect(graveKnightSkill.damage).toBe(15);
+    expect(graveSoldierAttack.damage).toBe(5);
+    expect(graveSoldierSkill.damage).toBe(8);
+    expect(graveKnightAttack.damage).toBe(5);
+    expect(graveKnightSkill.damage).toBe(8);
   });
 
-  test('abyss_warden shield breaks with two starter normal attacks', () => {
-    const warriorStats = calculateJobAdjustedStats(STARTER_BASE_STATS, JOBS.warrior);
+  test('abyss_warden shield breaks with four starter normal attacks', () => {
+    const warriorStats = calculateJobAdjustedStats(INITIAL_PLAYER_BASE_STATS, JOBS.warrior);
     const player = makePlayer({
       ...warriorStats,
       atk: warriorStats.atk + calculateWeaponBaseAttack(ITEMS.bone_cleaver),
@@ -143,7 +138,15 @@ describe('Balance tuning for area1_node1', () => {
     const engine = new BattleEngine(player, []);
 
     engine.simulateAction('PHYSICAL_ATTACK', target);
-    expect(target.shieldHp).toBe(10);
+    expect(target.shieldHp).toBe(13);
+    expect(target.shieldBroken).toBeFalsy();
+
+    engine.simulateAction('PHYSICAL_ATTACK', target);
+    expect(target.shieldHp).toBe(8);
+    expect(target.shieldBroken).toBeFalsy();
+
+    engine.simulateAction('PHYSICAL_ATTACK', target);
+    expect(target.shieldHp).toBe(3);
     expect(target.shieldBroken).toBeFalsy();
 
     engine.simulateAction('PHYSICAL_ATTACK', target);

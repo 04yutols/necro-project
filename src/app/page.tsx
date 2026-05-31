@@ -35,7 +35,7 @@ import { Home as HomeIcon } from 'lucide-react';
 function GameContent() {
   const {
     player, party, equippingMonsterId, inventoryMonsters,
-    setEquippingMonsterId, addClearedStage, battleLogs,
+    setEquippingMonsterId, battleLogs,
     currentTab, setCurrentTab
   } = useGameStore();
   const authFlow = useAuthFlow();
@@ -249,7 +249,6 @@ function GameContent() {
             >
               <BattleCanvas stageId={activeStageId ?? undefined} onEnd={() => {
                 setIsInBattle(false);
-                if (activeStageId) addClearedStage(activeStageId);
                 setCurrentTab('MAP');
               }} />
             </motion.div>

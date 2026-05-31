@@ -104,7 +104,7 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(created.data.player.necroBaseStatsBonus).toBe(created.data.necroStatus.baseStatsBonus);
     expect(created.data.player.currentJobId).toBe('warrior');
     expect(created.data.player.jobs).toEqual([{ jobId: 'warrior', level: 1, exp: 0 }]);
-    expect(created.data.player.currentEnergy).toBe(40);
+    expect(created.data.player.currentEnergy).toBe(100);
     expect(created.data.player.maxEnergy).toBe(100);
     expect(created.data.inventoryItems).toHaveLength(1);
     expect(created.data.inventoryItems[0].type).toBe('WEAPON');
@@ -121,7 +121,7 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(changedToMage.data.player.currentJobId).toBe('mage');
     expect(changedToMage.data.player.jobs).toContainEqual({ jobId: 'mage', level: 1, exp: 0 });
     expect(changedToMage.data.player.maxEnergy).toBe(80);
-    expect(changedToMage.data.player.currentEnergy).toBe(48);
+    expect(changedToMage.data.player.currentEnergy).toBe(80);
 
     const persistedMage = await prisma.character.findUnique({
       where: { id: created.data.player.id },
@@ -162,7 +162,7 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(warriorJob?.exp).toBeGreaterThan(0);
     expect(warriorJob?.level).toBeGreaterThan(1);
     expect(warriorJob?.level).toBe(levelFromTotalExp(warriorJob?.exp ?? 0));
-    const warriorGrowth = calculateJobGrowthIncrements(JOBS.warrior, (warriorJob?.level ?? 1) - 1);
+    const warriorGrowth = calculateJobGrowthIncrements(JOBS.warrior, 1, warriorJob?.level ?? 1);
     expect(afterClear.data.player.baseStats.hp).toBe(initialBaseStats.hp + warriorGrowth.hp);
     expect(afterClear.data.player.baseStats.atk).toBe(initialBaseStats.atk + warriorGrowth.atk);
     expect(afterClear.data.player.baseStats.def).toBe(initialBaseStats.def + warriorGrowth.def);

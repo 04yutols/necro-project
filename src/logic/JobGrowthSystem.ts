@@ -3,9 +3,9 @@ import type { BaseStats, JobData } from '../types/game';
 export type GrowthStatKey = 'hp' | 'atk' | 'def';
 
 export const BASE_STAT_GROWTH_PER_LEVEL: Record<GrowthStatKey, number> = {
-  hp: 40,
-  atk: 6,
-  def: 4,
+  hp: 3,
+  atk: 0.5,
+  def: 0.4,
 };
 
 const DEFAULT_GROWTH_MODIFIERS: Record<GrowthStatKey, number> = {
@@ -27,15 +27,36 @@ export function normalizeJobGrowthModifiers(job?: Pick<JobData, 'growthModifiers
   };
 }
 
-export function calculateJobGrowthIncrements(
+function normalizeLevel(level: number): number {
+  if (!Number.isFinite(level)) return 1;
+  return Math.max(1, Math.floor(level));
+}
+
+export function calculateCumulativeJobGrowth(
   job: Pick<JobData, 'growthModifiers'> | null | undefined,
-  levelsGained: number,
+  level: number,
 ): Pick<BaseStats, GrowthStatKey> {
-  const gained = Math.max(0, Math.floor(levelsGained));
+  const gained = normalizeLevel(level) - 1;
   const modifiers = normalizeJobGrowthModifiers(job);
   return {
     hp: Math.round(BASE_STAT_GROWTH_PER_LEVEL.hp * modifiers.hp * gained),
     atk: Math.round(BASE_STAT_GROWTH_PER_LEVEL.atk * modifiers.atk * gained),
     def: Math.round(BASE_STAT_GROWTH_PER_LEVEL.def * modifiers.def * gained),
+  };
+}
+
+export function calculateJobGrowthIncrements(
+  job: Pick<JobData, 'growthModifiers'> | null | undefined,
+  fromLevel: number,
+  toLevel: number,
+): Pick<BaseStats, GrowthStatKey> {
+  const safeFromLevel = normalizeLevel(fromLevel);
+  const safeToLevel = Math.max(safeFromLevel, normalizeLevel(toLevel));
+  const before = calculateCumulativeJobGrowth(job, safeFromLevel);
+  const after = calculateCumulativeJobGrowth(job, safeToLevel);
+  return {
+    hp: after.hp - before.hp,
+    atk: after.atk - before.atk,
+    def: after.def - before.def,
   };
 }

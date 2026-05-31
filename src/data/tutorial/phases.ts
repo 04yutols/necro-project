@@ -37,8 +37,8 @@ export const PHASE_STEPS: Record<TutorialPhase, TutorialStep[]> = {
     {
       id: 'TUT_B_03',
       targetId: 'tut-skill-btn',
-      title: '術',
-      body: '「術」をタップすると強力なスキルを選べる。ENを消費して使う。',
+      title: 'スキル',
+      body: '「スキル」をタップすると強力な技を選べる。MPを消費して使う。',
       position: 'above',
       requiredTab: 'BATTLE',
     },

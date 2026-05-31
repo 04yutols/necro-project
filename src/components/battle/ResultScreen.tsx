@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ChevronRight, Eye, FastForward, Package, Share2, Skull, Sparkles } from 'lucide-react';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
-import { useGameStore } from '../../store/useGameStore';
 import type { ItemData } from '../../types/game';
 import AppraisalCertificate from './AppraisalCertificate';
 
@@ -679,7 +678,6 @@ export default function ResultScreen({
   const [skipMode, setSkipMode] = useState(false);
   const revealTimerRef = useRef<number | null>(null);
   const skipTimersRef = useRef<number[]>([]);
-  const { addExp } = useGameStore();
   const sfx = useSoundEffects();
 
   const particles = useMemo(() => Array.from({ length: 28 }, (_, i) => ({
@@ -730,10 +728,9 @@ export default function ResultScreen({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setShowContent(true);
-      addExp(expGained);
     }, 450);
     return () => window.clearTimeout(timer);
-  }, [addExp, expGained]);
+  }, []);
 
   const clearSkipTimers = () => {
     skipTimersRef.current.forEach(timer => window.clearTimeout(timer));

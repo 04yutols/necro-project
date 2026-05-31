@@ -6,7 +6,7 @@
     "nameEn": "GRAVE SOLDIER",
     "tier": "MINION",
     "tribe": "UNDEAD",
-    "stats": { "hp": 15, "atk": 3, "def": 3, "spd": 70, "critRate": 0, "critDmg": 150, "effectHit": 0, "effectRes": 0 },
+    "stats": { "hp": 15, "atk": 4, "def": 3, "spd": 70, "critRate": 0, "critDmg": 150, "effectHit": 0, "effectRes": 0 },
     "resistances": { "LIGHT": -30, "DARK": 20 },
     "weaknesses": ["LIGHT"],
     "dropTable": [
@@ -14,7 +14,7 @@
       { "type": "MATERIAL", "itemId": "bone_chip", "rarity": "COMMON", "rate": 0.85 }
     ],
     "battle": { "color": "#9ca3af", "sprite": "WRAITH", "size": 0.72 },
-    "description": "WAVE1の露払い。通常攻撃2回、スキル1回で倒せる導入敵。"
+    "description": "WAVE1の露払い。通常攻撃3回、スキル2回ほどで倒せる導入敵。"
   },
   "rot_hound": {
     "id": "rot_hound",
@@ -23,7 +23,7 @@
     "nameEn": "ROT HOUND",
     "tier": "MINION",
     "tribe": "BEAST",
-    "stats": { "hp": 12, "atk": 4, "def": 2, "spd": 110, "critRate": 0, "critDmg": 150, "effectHit": 0, "effectRes": 0 },
+    "stats": { "hp": 14, "atk": 5, "def": 2, "spd": 110, "critRate": 0, "critDmg": 150, "effectHit": 0, "effectRes": 0 },
     "resistances": { "FIRE": -20, "ICE": -10 },
     "weaknesses": ["FIRE", "ICE"],
     "dropTable": [
@@ -40,7 +40,7 @@
     "nameEn": "HOLLOW HANDMAID",
     "tier": "MINION",
     "tribe": "HUMANOID",
-    "stats": { "hp": 285, "atk": 62, "def": 32, "spd": 76, "critRate": 3, "critDmg": 150, "effectHit": 12, "effectRes": 5 },
+    "stats": { "hp": 42, "atk": 7, "def": 5, "spd": 76, "critRate": 3, "critDmg": 150, "effectHit": 12, "effectRes": 5 },
     "resistances": { "EARTH": 25, "THUNDER": -20, "WIND": -15, "LIGHT": 10 },
     "weaknesses": ["THUNDER", "WIND"],
     "dropTable": [
@@ -57,7 +57,7 @@
     "nameEn": "EARTHBOUND GRUDGE",
     "tier": "MINION",
     "tribe": "UNDEAD",
-    "stats": { "hp": 8, "atk": 2, "def": 2, "spd": 45, "critRate": 0, "critDmg": 150, "effectHit": 10, "effectRes": 0 },
+    "stats": { "hp": 12, "atk": 3, "def": 2, "spd": 45, "critRate": 0, "critDmg": 150, "effectHit": 10, "effectRes": 0 },
     "resistances": { "LIGHT": -40, "DARK": 20 },
     "weaknesses": ["LIGHT"],
     "dropTable": [
@@ -74,7 +74,7 @@
     "nameEn": "BLOODMIRE LEECH",
     "tier": "MINION",
     "tribe": "BEAST",
-    "stats": { "hp": 295, "atk": 76, "def": 18, "spd": 108, "critRate": 5, "critDmg": 155, "effectHit": 0, "effectRes": 5 },
+    "stats": { "hp": 46, "atk": 8, "def": 5, "spd": 108, "critRate": 5, "critDmg": 155, "effectHit": 0, "effectRes": 5 },
     "resistances": { "WATER": 22, "FIRE": -22, "THUNDER": -15, "DARK": 10 },
     "weaknesses": ["FIRE", "THUNDER"],
     "dropTable": [
@@ -91,17 +91,17 @@
     "nameEn": "ABYSS WARDEN",
     "tier": "ELITE",
     "tribe": "UNDEAD",
-    "stats": { "hp": 35, "atk": 5, "def": 6, "spd": 75, "critRate": 0, "critDmg": 150, "effectHit": 10, "effectRes": 20 },
+    "stats": { "hp": 36, "atk": 5, "def": 5, "spd": 75, "critRate": 0, "critDmg": 150, "effectHit": 10, "effectRes": 20 },
     "resistances": { "LIGHT": -30, "DARK": 20, "FIRE": -10 },
     "weaknesses": ["LIGHT", "FIRE"],
-    "shieldHp": 20,
-    "maxShieldHp": 20,
+    "shieldHp": 18,
+    "maxShieldHp": 18,
     "dropTable": [
       { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.145 },
       { "type": "RESIDUE", "rarity": "RARE", "rate": 1.0 }
     ],
     "battle": { "color": "#38bdf8", "sprite": "GIANT", "size": 0.86 },
-    "description": "霊的防壁を持つWAVE2の看守。通常攻撃2回で防壁破壊を学ばせる。"
+    "description": "霊的防壁を持つWAVE2の看守。通常攻撃4回で防壁破壊を学ばせる。"
   },
   "grave_knight": {
     "id": "grave_knight",
@@ -110,7 +110,7 @@
     "nameEn": "GRAVE KNIGHT",
     "tier": "ELITE",
     "tribe": "UNDEAD",
-    "stats": { "hp": 40, "atk": 6, "def": 8, "spd": 65, "critRate": 0, "critDmg": 150, "effectHit": 0, "effectRes": 10 },
+    "stats": { "hp": 44, "atk": 6, "def": 7, "spd": 65, "critRate": 0, "critDmg": 150, "effectHit": 0, "effectRes": 10 },
     "resistances": { "LIGHT": -25, "DARK": 15 },
     "weaknesses": ["LIGHT"],
     "dropTable": [
@@ -118,7 +118,7 @@
       { "type": "RESIDUE", "rarity": "RARE", "rate": 0.35 }
     ],
     "battle": { "color": "#c4b5fd", "sprite": "WRAITH", "size": 0.82 },
-    "description": "area1_node1最終WAVEの強めの雑魚。通常攻撃4回、スキル3回で撃破する想定。"
+    "description": "area1_node1最終WAVEの強めの雑魚。通常攻撃9回、スキル6回ほどで撃破する想定。"
   },
   "bone_colossus": {
     "id": "bone_colossus",
@@ -127,11 +127,11 @@
     "nameEn": "BONE COLOSSUS",
     "tier": "ELITE",
     "tribe": "UNDEAD",
-    "stats": { "hp": 720, "atk": 124, "def": 78, "spd": 68, "critRate": 5, "critDmg": 150, "effectHit": 4, "effectRes": 20 },
+    "stats": { "hp": 72, "atk": 9, "def": 9, "spd": 68, "critRate": 5, "critDmg": 150, "effectHit": 4, "effectRes": 20 },
     "resistances": { "LIGHT": -30, "EARTH": -20, "DARK": 45, "WIND": 10 },
     "weaknesses": ["LIGHT", "EARTH"],
-    "shieldHp": 220,
-    "maxShieldHp": 220,
+    "shieldHp": 24,
+    "maxShieldHp": 24,
     "dropTable": [
       { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.12 },
       { "type": "RESIDUE", "rarity": "RARE", "rate": 1.0 }
@@ -146,11 +146,11 @@
     "nameEn": "OSSUARY WYRM LORD",
     "tier": "BOSS",
     "tribe": "UNDEAD",
-    "stats": { "hp": 180, "atk": 15, "def": 25, "spd": 55, "critRate": 10, "critDmg": 175, "effectHit": 0, "effectRes": 30 },
+    "stats": { "hp": 90, "atk": 14, "def": 10, "spd": 55, "critRate": 10, "critDmg": 175, "effectHit": 0, "effectRes": 30 },
     "resistances": { "LIGHT": -30, "FIRE": -20, "DARK": 25, "ICE": 15 },
     "weaknesses": ["LIGHT", "FIRE"],
-    "shieldHp": 60,
-    "maxShieldHp": 60,
+    "shieldHp": 34,
+    "maxShieldHp": 34,
     "gimmicks": [
       { "trigger": "HP_BELOW_50", "effect": "ENRAGE", "value": 1 },
       { "trigger": "TURN_3", "effect": "AV_DELAY", "value": 40 },
@@ -172,11 +172,11 @@
     "nameEn": "BLOODMIRE QUEEN",
     "tier": "BOSS",
     "tribe": "DEMON",
-    "stats": { "hp": 1380, "atk": 188, "def": 88, "spd": 96, "critRate": 16, "critDmg": 175, "effectHit": 18, "effectRes": 28 },
+    "stats": { "hp": 150, "atk": 14, "def": 13, "spd": 96, "critRate": 16, "critDmg": 175, "effectHit": 18, "effectRes": 28 },
     "resistances": { "WATER": -35, "WIND": -20, "FIRE": 35, "DARK": 30 },
     "weaknesses": ["WATER", "WIND"],
-    "shieldHp": 360,
-    "maxShieldHp": 360,
+    "shieldHp": 48,
+    "maxShieldHp": 48,
     "gimmicks": [
       { "trigger": "HP_BELOW_50", "effect": "ENRAGE", "value": 1 },
       { "trigger": "ON_SHIELD_BREAK", "effect": "SUMMON_MINIONS", "value": 2 }

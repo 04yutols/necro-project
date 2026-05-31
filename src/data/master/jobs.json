@@ -11,7 +11,7 @@
     "description": "勇者の力を最も素直に剣へ流す前衛職。高DEFと安定したATKで長いWAVEを押し切る。",
     "statModifiers": { "hp": 1.14, "atk": 1.20, "def": 1.15, "spd": 0.98, "critRate": 0.95, "critDmg": 1.05, "effectHit": 0.80, "effectRes": 1.05 },
     "growthModifiers": { "hp": 1.20, "atk": 1.15, "def": 1.20 },
-    "energyCurve": { "baseMaxEnergy": 100, "energyRegen": 20, "ultimateCost": 100, "initialSpPct": 40, "spGrowthPerLevel": 1 },
+    "energyCurve": { "baseMaxEnergy": 100, "ultimateCost": 100, "spGrowthPerLevel": 1 },
     "levelBonuses": {
       "10": { "passiveAtkBonus": 5 },
       "20": { "passiveAtkBonus": 10 },
@@ -36,7 +36,7 @@
     "description": "炎・水・雷・土・風を扱う魔法職。高い会心ダメージ修正で弱点を突いた際の瞬間火力が高い。",
     "statModifiers": { "hp": 0.84, "atk": 0.90, "def": 0.78, "spd": 0.95, "critRate": 1.02, "critDmg": 1.38, "effectHit": 1.20, "effectRes": 0.90 },
     "growthModifiers": { "hp": 0.75, "atk": 1.10, "def": 0.75 },
-    "energyCurve": { "baseMaxEnergy": 80, "energyRegen": 15, "ultimateCost": 80, "initialSpPct": 60, "spGrowthPerLevel": 2 },
+    "energyCurve": { "baseMaxEnergy": 80, "ultimateCost": 80, "spGrowthPerLevel": 2 },
     "levelBonuses": {
       "10": { "passiveCritDmgBonus": 8 },
       "20": { "passiveCritDmgBonus": 15 },
@@ -62,7 +62,7 @@
     "description": "勇者の癒やしを魔族の魔力で反転させた職。高い効果命中で状態異常を付与しやすい。",
     "statModifiers": { "hp": 0.96, "atk": 0.72, "def": 0.90, "spd": 0.90, "critRate": 1.08, "critDmg": 1.22, "effectHit": 1.30, "effectRes": 1.10 },
     "growthModifiers": { "hp": 1.00, "atk": 0.85, "def": 1.05 },
-    "energyCurve": { "baseMaxEnergy": 80, "energyRegen": 18, "ultimateCost": 80, "initialSpPct": 55, "spGrowthPerLevel": 2 },
+    "energyCurve": { "baseMaxEnergy": 80, "ultimateCost": 80, "spGrowthPerLevel": 2 },
     "levelBonuses": {
       "10": { "passiveCritRateBonus": 2 },
       "20": { "passiveCritRateBonus": 4 },
@@ -85,7 +85,7 @@
     "description": "SPDと会心率で手数を稼ぐ職。一撃は低めだが先手を取って高頻度で会心を狙える。",
     "statModifiers": { "hp": 0.88, "atk": 1.15, "def": 0.85, "spd": 1.18, "critRate": 1.30, "critDmg": 1.25, "effectHit": 1.15, "effectRes": 1.00 },
     "growthModifiers": { "hp": 0.85, "atk": 1.10, "def": 0.80 },
-    "energyCurve": { "baseMaxEnergy": 90, "energyRegen": 22, "ultimateCost": 90, "initialSpPct": 35, "spGrowthPerLevel": 1 },
+    "energyCurve": { "baseMaxEnergy": 90, "ultimateCost": 90, "spGrowthPerLevel": 1 },
     "levelBonuses": {
       "10": { "passiveCritRateBonus": 3 },
       "20": { "passiveCritRateBonus": 6 },
@@ -109,7 +109,7 @@
     "unlock": { "jobs": [{ "jobId": "warrior", "minLevel": 20 }, { "jobId": "dark_priest", "minLevel": 10 }] },
     "statModifiers": { "hp": 1.08, "atk": 1.10, "def": 1.20, "spd": 0.92, "critRate": 0.90, "critDmg": 1.15, "effectHit": 0.85, "effectRes": 1.15 },
     "growthModifiers": { "hp": 1.15, "atk": 1.10, "def": 1.30 },
-    "energyCurve": { "baseMaxEnergy": 110, "energyRegen": 20, "ultimateCost": 110, "initialSpPct": 30, "spGrowthPerLevel": 1 },
+    "energyCurve": { "baseMaxEnergy": 110, "ultimateCost": 110, "spGrowthPerLevel": 1 },
     "levelBonuses": {
       "10": { "passiveDefBonus": 8 },
       "20": { "passiveDefBonus": 15, "passiveAtkBonus": 5 },
@@ -133,7 +133,7 @@
     "unlock": { "jobs": [{ "jobId": "warrior", "minLevel": 20 }, { "jobId": "rogue", "minLevel": 10 }] },
     "statModifiers": { "hp": 1.00, "atk": 1.45, "def": 0.85, "spd": 1.05, "critRate": 1.20, "critDmg": 1.30, "effectHit": 0.80, "effectRes": 0.90 },
     "growthModifiers": { "hp": 1.00, "atk": 1.45, "def": 0.75 },
-    "energyCurve": { "baseMaxEnergy": 120, "energyRegen": 25, "ultimateCost": 120, "initialSpPct": 50, "spGrowthPerLevel": 2 },
+    "energyCurve": { "baseMaxEnergy": 120, "ultimateCost": 120, "spGrowthPerLevel": 2 },
     "levelBonuses": {
       "10": { "passiveAtkBonus": 12, "passiveCritRateBonus": 2 },
       "20": { "passiveAtkBonus": 20, "passiveCritDmgBonus": 10 },
@@ -157,7 +157,7 @@
     "unlock": { "jobs": [{ "jobId": "mage", "minLevel": 20 }, { "jobId": "dark_priest", "minLevel": 10 }] },
     "statModifiers": { "hp": 0.78, "atk": 0.85, "def": 0.72, "spd": 0.92, "critRate": 1.10, "critDmg": 1.60, "effectHit": 1.35, "effectRes": 0.85 },
     "growthModifiers": { "hp": 0.70, "atk": 1.25, "def": 0.65 },
-    "energyCurve": { "baseMaxEnergy": 100, "energyRegen": 15, "ultimateCost": 100, "initialSpPct": 65, "spGrowthPerLevel": 3 },
+    "energyCurve": { "baseMaxEnergy": 100, "ultimateCost": 100, "spGrowthPerLevel": 3 },
     "levelBonuses": {
       "10": { "passiveCritDmgBonus": 15 },
       "20": { "passiveCritDmgBonus": 28 },
@@ -181,7 +181,7 @@
     "unlock": { "jobs": [{ "jobId": "mage", "minLevel": 20 }, { "jobId": "rogue", "minLevel": 10 }] },
     "statModifiers": { "hp": 0.82, "atk": 0.88, "def": 0.75, "spd": 0.98, "critRate": 1.15, "critDmg": 1.50, "effectHit": 1.40, "effectRes": 0.88 },
     "growthModifiers": { "hp": 0.80, "atk": 1.20, "def": 0.70 },
-    "energyCurve": { "baseMaxEnergy": 90, "energyRegen": 18, "ultimateCost": 90, "initialSpPct": 55, "spGrowthPerLevel": 2 },
+    "energyCurve": { "baseMaxEnergy": 90, "ultimateCost": 90, "spGrowthPerLevel": 2 },
     "levelBonuses": {
       "10": { "passiveCritDmgBonus": 12 },
       "20": { "passiveCritDmgBonus": 22, "passiveCritRateBonus": 3 },
@@ -205,7 +205,7 @@
     "unlock": { "jobs": [{ "jobId": "dark_priest", "minLevel": 20 }, { "jobId": "mage", "minLevel": 10 }] },
     "statModifiers": { "hp": 0.90, "atk": 0.95, "def": 0.88, "spd": 0.95, "critRate": 1.25, "critDmg": 1.40, "effectHit": 1.50, "effectRes": 1.00 },
     "growthModifiers": { "hp": 0.85, "atk": 1.15, "def": 0.85 },
-    "energyCurve": { "baseMaxEnergy": 90, "energyRegen": 18, "ultimateCost": 90, "initialSpPct": 50, "spGrowthPerLevel": 2 },
+    "energyCurve": { "baseMaxEnergy": 90, "ultimateCost": 90, "spGrowthPerLevel": 2 },
     "levelBonuses": {
       "10": { "passiveCritRateBonus": 4 },
       "20": { "passiveCritRateBonus": 7, "passiveCritDmgBonus": 12 },
@@ -229,7 +229,7 @@
     "unlock": { "jobs": [{ "jobId": "dark_priest", "minLevel": 20 }, { "jobId": "warrior", "minLevel": 10 }] },
     "statModifiers": { "hp": 0.92, "atk": 1.05, "def": 0.95, "spd": 0.88, "critRate": 1.00, "critDmg": 1.45, "effectHit": 1.20, "effectRes": 1.08 },
     "growthModifiers": { "hp": 0.95, "atk": 1.20, "def": 0.95 },
-    "energyCurve": { "baseMaxEnergy": 120, "energyRegen": 20, "ultimateCost": 120, "initialSpPct": 50, "spGrowthPerLevel": 2 },
+    "energyCurve": { "baseMaxEnergy": 120, "ultimateCost": 120, "spGrowthPerLevel": 2 },
     "levelBonuses": {
       "10": { "passiveCritDmgBonus": 18 },
       "20": { "passiveCritDmgBonus": 30 },
@@ -254,7 +254,7 @@
     "unlock": { "jobs": [{ "jobId": "rogue", "minLevel": 20 }, { "jobId": "warrior", "minLevel": 10 }] },
     "statModifiers": { "hp": 0.80, "atk": 1.38, "def": 0.78, "spd": 1.25, "critRate": 1.50, "critDmg": 1.40, "effectHit": 1.10, "effectRes": 0.95 },
     "growthModifiers": { "hp": 0.75, "atk": 1.35, "def": 0.70 },
-    "energyCurve": { "baseMaxEnergy": 90, "energyRegen": 25, "ultimateCost": 90, "initialSpPct": 40, "spGrowthPerLevel": 1 },
+    "energyCurve": { "baseMaxEnergy": 90, "ultimateCost": 90, "spGrowthPerLevel": 1 },
     "levelBonuses": {
       "10": { "passiveCritRateBonus": 5, "passiveSpdBonus": 5 },
       "20": { "passiveCritRateBonus": 8, "passiveSpdBonus": 8 },
@@ -278,7 +278,7 @@
     "unlock": { "jobs": [{ "jobId": "rogue", "minLevel": 20 }, { "jobId": "mage", "minLevel": 10 }] },
     "statModifiers": { "hp": 0.85, "atk": 1.25, "def": 0.82, "spd": 1.20, "critRate": 1.35, "critDmg": 1.35, "effectHit": 1.25, "effectRes": 0.98 },
     "growthModifiers": { "hp": 0.85, "atk": 1.25, "def": 0.80 },
-    "energyCurve": { "baseMaxEnergy": 85, "energyRegen": 22, "ultimateCost": 85, "initialSpPct": 45, "spGrowthPerLevel": 1 },
+    "energyCurve": { "baseMaxEnergy": 85, "ultimateCost": 85, "spGrowthPerLevel": 1 },
     "levelBonuses": {
       "10": { "passiveSpdBonus": 6, "passiveCritRateBonus": 3 },
       "20": { "passiveSpdBonus": 10, "passiveCritRateBonus": 5 },
