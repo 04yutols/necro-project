@@ -17,6 +17,7 @@ import { RewardService, type StageDropResult } from '../../services/RewardServic
 import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/StatSystem';
 import { calculateBattleDamage, type BattleDamageResult } from '../../logic/BattleDamage';
 import { calculateInitialEnergy } from '../../logic/EnergySystem';
+import { canStartPlayerAction, shouldInitializeBattle, type BattlePhase } from '../../logic/BattleFlowSystem';
 import { calculateMonsterAttackProfile } from '../../logic/MonsterAttackSystem';
 import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
 import { applyAreaGimmickToPlayer, getAreaGimmickMeta, resolveStageAreaGimmick } from '../../logic/AreaGimmickSystem';
@@ -1847,7 +1848,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const [waveIndex, setWaveIndex] = useState(0);
   const [enemies, setEnemies] = useState<EnemyState[]>(() => cloneEnemies(battleWaves[0].enemies));
   const [soul, setSoul] = useState(0);
-  const [phase, setPhase] = useState<'playerTurn' | 'skillMenu' | 'itemMenu' | 'animating' | 'enemyTurn' | 'waveTransition'>('playerTurn');
+  const [phase, setPhaseState] = useState<BattlePhase>('playerTurn');
   const [demonized, setDemonized] = useState(false);
   const [demonActionsRemaining, setDemonActionsRemaining] = useState(0);
   const [demonUltimateUsed, setDemonUltimateUsed] = useState(false);
@@ -1884,6 +1885,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const effectIdRef = useRef(0);
   const demonBurstIdRef = useRef(0);
   const enemyTurnSerialRef = useRef(0);
+  const initializedBattleKeyRef = useRef<string | null>(null);
+  const phaseRef = useRef<BattlePhase>('playerTurn');
+  const playerActionLockRef = useRef(false);
   const battleAvRef = useRef<BattleAvState>({ player: 0, enemies: {} });
   const bossGimmickFiredRef = useRef<Set<string>>(new Set());
 
@@ -1932,6 +1936,27 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const demonUltimateSkill = toDemonUltimateSkill(demonForm);
 
   const addLog = useCallback((line: string) => setLog(prev => [...prev, line]), []);
+
+  function setBattlePhase(nextPhase: BattlePhase) {
+    phaseRef.current = nextPhase;
+    setPhaseState(nextPhase);
+  }
+
+  function unlockPlayerAction() {
+    playerActionLockRef.current = false;
+  }
+
+  function tryLockPlayerAction(requiredPhase: BattlePhase) {
+    if (!canStartPlayerAction({
+      phase: phaseRef.current,
+      requiredPhase,
+      actionLocked: playerActionLockRef.current,
+      waveResolving: waveResolvingRef.current,
+    })) return false;
+
+    playerActionLockRef.current = true;
+    return true;
+  }
 
   function getPlayerActionSpd() {
     return Math.max(1, Math.round((playerStats?.spd ?? FALLBACK_PLAYER_STATS.spd) + (battleSynergyBonus.spdBonus ?? 0)));
@@ -2156,6 +2181,10 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   }, [stageId]);
 
   useEffect(() => {
+    const battleKey = stageId ?? '__fallback__';
+    if (!shouldInitializeBattle(initializedBattleKeyRef.current, battleKey)) return;
+    initializedBattleKeyRef.current = battleKey;
+    unlockPlayerAction();
     console.log('[initBattle] running at', Date.now(), { areaGimmick, battleWavesLength: battleWaves?.length, currentJobLevel, playerMaxHp, maxEnergy: player?.maxEnergy, updateEnergyRef: updateEnergy.toString().slice(0, 40) });
     const firstEnemies = cloneEnemies(battleWaves[0].enemies);
     waveResolvingRef.current = false;
@@ -2174,7 +2203,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setSoul(0);
     const initialEnergy = calculateInitialEnergy(currentJobData, currentJobLevel);
     updateEnergy(initialEnergy);
-    setPhase('playerTurn');
+    setBattlePhase('playerTurn');
     setDemonized(false);
     setDemonActionsRemaining(0);
     setDemonUltimateUsed(false);
@@ -2191,7 +2220,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       ...(areaGimmick !== 'NONE' ? [`エリアギミック発生：${areaGimmickMeta.label} — ${areaGimmickMeta.description}`] : []),
       `${battleWaves[0].label} 開始。骸骨騎士のターン。SP ${initialEnergy}/${player?.maxEnergy ?? currentJobData.energyCurve?.baseMaxEnergy ?? 100} で開戦。`,
     ]);
-  }, [areaGimmick, areaGimmickMeta.description, areaGimmickMeta.label, battleWaves, currentJobData, currentJobLevel, player?.maxEnergy, playerMaxHp, updateEnergy]);
+  }, [areaGimmick, areaGimmickMeta.description, areaGimmickMeta.label, battleWaves, currentJobData, currentJobLevel, player?.maxEnergy, playerMaxHp, stageId, updateEnergy]);
 
   useEffect(() => { waveIndexRef.current = waveIndex; }, [waveIndex]);
   useEffect(() => {
@@ -2218,7 +2247,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       waves: clearedIndex + 1,
     };
 
-    setPhase('waveTransition');
+    setBattlePhase('waveTransition');
+    playerActionLockRef.current = true;
     setSoul(prev => Math.min(100, prev + 18));
     sfx.waveClear(clearedWave.isBoss ? 'boss' : 'wave');
     addLog(`★ ${clearedWave.label} クリア！ EXP +${clearedWave.rewards.exp} / Gold +${clearedWave.rewards.gold}G`);
@@ -2276,8 +2306,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       bossGimmickFiredRef.current = new Set();
       setWaveIndex(nextIndex);
       setEnemies(nextEnemies);
-      setPhase('playerTurn');
       waveResolvingRef.current = false;
+      unlockPlayerAction();
+      setBattlePhase('playerTurn');
       addLog(nextWave.isBoss ? `☠ BOSS登場！ ${nextWave.enemies[0].name} が現れた！` : `${nextWave.label} 開始！`);
       if (nextWave.isBoss) {
         setFlashColor('rgba(245,158,11,0.35)');
@@ -2678,7 +2709,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     if (!result.skipAction) return false;
     const control = result.ticks.find(tick => tick.skipped)?.type;
     addLog(`骸骨騎士は${control ? AILMENT_UI[control].label : '状態異常'}で行動できない。`);
-    setPhase('playerTurn');
+    setBattlePhase('animating');
     endPlayerTurn();
     return true;
   }
@@ -2686,7 +2717,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   function triggerPlayerDefeat() {
     enemyTurnSerialRef.current += 1; // 進行中の敵アクションを全キャンセル
     setAuto(false);
-    setPhase('waveTransition'); // プレイヤー入力を無効化
+    setBattlePhase('waveTransition'); // プレイヤー入力を無効化
+    playerActionLockRef.current = true;
     addLog('☠ 骸骨騎士は倒れた... バトル終了。');
     setBattleResult({
       isVictory: false,
@@ -2737,7 +2769,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   }
 
   function runEnemyTurn(activeDemonForm: DemonFormData | null = demonized ? demonForm : null) {
-    setPhase('enemyTurn');
+    setBattlePhase('enemyTurn');
     const turnToken = ++enemyTurnSerialRef.current;
     const alive = enemiesRef.current.filter(e => e.hp > 0);
     if (alive.length === 0) {
@@ -2806,18 +2838,19 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     }
     setTimeout(() => {
       if (turnToken !== enemyTurnSerialRef.current) return;
-      setPhase('playerTurn');
+      unlockPlayerAction();
+      setBattlePhase('playerTurn');
       refreshTurnOrderPreview();
       addLog('骸骨騎士のターン。コマンドを選択しろ。');
     }, delay + speedMs * 0.28);
   }
 
   function handleAttack() {
-    if (phase !== 'playerTurn') return;
+    if (!tryLockPlayerAction('playerTurn')) return;
     if (resolvePlayerStatusBeforeAction()) return;
     actionCountRef.current += 1;
     sfx.battleAttack(demonized ? 'demon' : 'physical');
-    setPhase('animating');
+    setBattlePhase('animating');
     const tid = getTargetId();
     const enemy = enemies.find(e => e.id === tid);
     const attackElement = demonized ? demonForm.ultimateSkill.damage.element : 'NONE';
@@ -2858,7 +2891,6 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           applyDemonRiskFeedback(baseAttackType);
         }
         const attackSpGain = currentJobData?.energyCurve?.energyRegen ?? 20;
-        setPhase('playerTurn');
         endPlayerTurn(demonized ? 0 : attackSpGain); // 魔神化中はSP回復なし
       }, hitCount * hitInterval + speedMs * 0.35);
     }, speedMs * 0.3);
@@ -2884,16 +2916,18 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   }
 
   function handleSkill(skill: BattleSkill) {
+    if (!tryLockPlayerAction('skillMenu')) return;
     if (resolvePlayerStatusBeforeAction()) return;
     if (skill.mp && (skill.mp > currentMp)) {
       addLog(`SPが不足しています（必要 ${skill.mp} / 現在 ${currentMp}）`);
+      unlockPlayerAction();
       return;
     }
     // SP消費（魔神化ゲージとは別リソース）
     if (skill.mp) updateEnergyBy(-skill.mp);
     actionCountRef.current += 1;
     sfx.skillCast(skill.element, skill.attackType);
-    setPhase('animating');
+    setBattlePhase('animating');
     const targets = skill.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[skill.element];
     const hitCount = demonized ? getDemonActionHitCount(demonForm, skill.attackType) : 1;
@@ -2937,21 +2971,22 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       // スキルはSP一部回復（通常攻撃より少ない）
       setTimeout(() => {
         runPartyFollowUps(targets[0] ?? getTargetId());
-        setPhase('playerTurn');
         endPlayerTurn(demonized ? 0 : 10);
       }, targets.length * targetInterval + speedMs * 0.3);
     }, speedMs * 0.4);
   }
 
   function handleItem(item: BattleConsumableItem) {
+    if (!tryLockPlayerAction('itemMenu')) return;
     if (resolvePlayerStatusBeforeAction()) return;
     if (!consumeInventoryItem(item.id)) {
       addLog(`${item.name}はもう残っていない。`);
-      setPhase('playerTurn');
+      unlockPlayerAction();
+      setBattlePhase('playerTurn');
       return;
     }
     actionCountRef.current += 1;
-    setPhase('animating');
+    setBattlePhase('animating');
     const { battleEffect } = item;
     if (battleEffect.type === 'HEAL_HP') {
       spawnFloat('42%', '52%', battleEffect.value, { heal: true, color: '#4ade80' });
@@ -2965,16 +3000,17 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       spawnFloat('42%', '52%', battleEffect.value, { heal: true, color: '#c084fc' });
       addLog(`${item.name}を使用！ ソウル+${battleEffect.value}%！`);
     }
-    setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, speedMs * 0.5);
+    setTimeout(() => { endPlayerTurn(); }, speedMs * 0.5);
   }
 
   function handleDemonUltimate() {
-    if (!demonized || demonUltimateUsed || phase !== 'playerTurn') return;
+    if (!demonized || demonUltimateUsed) return;
+    if (!tryLockPlayerAction('playerTurn')) return;
     if (resolvePlayerStatusBeforeAction()) return;
     actionCountRef.current += 1;
     sfx.demonUltimate();
     setDemonUltimateUsed(true);
-    setPhase('animating');
+    setBattlePhase('animating');
     const ultimate = demonUltimateSkill;
     const targets = ultimate.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[ultimate.element];
@@ -3011,13 +3047,13 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         }, i * targetInterval);
       });
       addLog(`残留効果: ${demonForm.ultimateSkill.lingering.descJa}`);
-      setTimeout(() => { setPhase('playerTurn'); endPlayerTurn(); }, targets.length * targetInterval + speedMs * 0.35);
+      setTimeout(() => { endPlayerTurn(); }, targets.length * targetInterval + speedMs * 0.35);
     }, speedMs * 0.45);
   }
 
   function handleDemonize() {
-    if (!canActivateDemonModeInPhase(soul, demonized, phase)) return;
-    const interruptsEnemyTurn = shouldInterruptEnemyTurnOnDemonize(phase);
+    if (!canActivateDemonModeInPhase(soul, demonized, phaseRef.current)) return;
+    const interruptsEnemyTurn = shouldInterruptEnemyTurnOnDemonize(phaseRef.current);
     sfx.demonActivate();
     if (interruptsEnemyTurn) {
       enemyTurnSerialRef.current += 1;
@@ -3048,7 +3084,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       : '魔神化: 行動値を0に固定。状態異常とデバフを完全無効化。');
     addLog(`Effect A: ${demonForm.effectA.descJa}`);
     addLog(`Effect B: ${demonForm.effectB.descJa}`);
-    setPhase('playerTurn');
+    unlockPlayerAction();
+    setBattlePhase('playerTurn');
   }
 
   function handleTargetEnemy(eid: number) {
@@ -3182,7 +3219,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600, color: demonized ? '#ef4444' : '#8A2BE2', letterSpacing: '0.1em' }}>
                 {demonized ? '魔神化スキル選択' : '術・スキル選択'}
               </div>
-              <div onClick={() => setPhase('playerTurn')} style={{
+              <div onClick={() => setBattlePhase('playerTurn')} style={{
                 padding: '3px 10px', borderRadius: 6,
                 background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
                 fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer',
@@ -3191,7 +3228,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
             <div className="safe-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
               {mainSkills.map(skill => (
                 <SkillButton key={skill.id} skill={skill} mp={currentMp}
-                  onClick={(sk) => { setPhase('playerTurn'); handleSkill(sk); }}
+                  onClick={handleSkill}
                   demonized={demonized}/>
               ))}
             </div>
@@ -3203,14 +3240,14 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600, color: '#f59e0b', letterSpacing: '0.1em' }}>道具選択</div>
-              <div onClick={() => setPhase('playerTurn')} style={{ padding: '3px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer' }}>← 戻る</div>
+              <div onClick={() => setBattlePhase('playerTurn')} style={{ padding: '3px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer' }}>← 戻る</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {battleItems.length > 0 ? battleItems.map(item => (
                 <button
                   type="button"
                   key={item.id}
-                  onClick={() => { setPhase('playerTurn'); handleItem(item); }}
+                  onClick={() => handleItem(item)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     width: '100%', textAlign: 'left',
@@ -3265,11 +3302,11 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
                 icon={demonized ? '✦' : '🔮'} label="術"
                 sublabel={demonized ? 'DISTORT' : 'SKILL'}
                 enabled={phase === 'playerTurn'} color={demonized ? demonColor : '#8A2BE2'}
-                demonized={demonized} onClick={() => setPhase('skillMenu')}/>
+                demonized={demonized} onClick={() => setBattlePhase('skillMenu')}/>
               <CommandButton
                 icon="🧪" label="道具" sublabel="ITEM"
                 enabled={phase === 'playerTurn'} color="#f59e0b"
-                onClick={() => setPhase('itemMenu')}/>
+                onClick={() => setBattlePhase('itemMenu')}/>
               {!demonized && (
                 <CommandButton
                   id="tut-demon-btn"

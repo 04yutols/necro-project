@@ -607,6 +607,36 @@ public async changeJob(characterId: string, nextJobId: string): Promise<void>;
 
 ---
 
+## ✅ BUG-11: 最終WAVEクリア後のループとプレイヤー行動の多重入力（2026-05-31 完了）
+
+**ファイル:** `src/components/battle/BattleCanvas.tsx`, `src/logic/BattleFlowSystem.ts`
+
+node1-1のWAVE 3を全滅させても、報酬適用後にバトル初期化effectが再発火するとWAVE 1へ戻る。
+また、攻撃ボタンを短時間に連打するとReact stateの反映前に複数の `handleAttack()` が通過し、敵ターン中にも予約済みの連続攻撃が実行される。
+
+**原因:**
+- バトル初期化effectが `currentJobLevel` などの進行中に変化する値へ依存している。
+- 最終報酬の `addExp()` が職業レベルを更新すると、同一ステージのBattleCanvasを再初期化する。
+- `phase === 'playerTurn'` はReact stateのスナップショットであり、同一描画フレーム内の連打を同期的には遮断できない。
+
+**対応方針:**
+- 同一BattleCanvas内では同一ステージキーを一度だけ初期化する。
+- phaseをrefにも同期し、イベントハンドラが最新phaseを即時参照できるようにする。
+- プレイヤーの消費アクションへ同期ロックを追加し、次の自ターンまたは新WAVE開始まで保持する。
+- 通常攻撃だけでなく、術、道具、魔神技にも同じロック規則を適用する。
+
+**対応内容:**
+- `BattleFlowSystem.shouldInitializeBattle()` で同一ステージの再初期化を拒否した。
+- `BattleFlowSystem.canStartPlayerAction()` にphase一致・ロック未取得・WAVE未解決の判定を集約した。
+- BattleCanvasに `initializedBattleKeyRef`, `phaseRef`, `playerActionLockRef` を追加した。
+- BattleCanvasのphase遷移を `setBattlePhase()` に統一し、イベントハンドラから最新phaseを同期参照できるようにした。
+- 通常攻撃、術、道具、魔神技へ同期ロックを接続した。
+- Lv.1職業スキルとソウル初期値の現行仕様に合わせ、古いPlaywright期待値を更新した。
+
+**設計:** `docs/設計書/79_BUG11_最終WAVEクリアループと多重入力防止設計.md`
+
+---
+
 ## 実装推奨順
 
 | 優先度 | 項目 | 理由 |
