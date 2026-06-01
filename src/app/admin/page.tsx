@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getAllMasterData } from './actions';
+import { getAllMasterData, getStoryScenes } from './actions';
 
 const SECTION_META = [
   { key: 'enemies', label: '敵', href: '/admin/enemies', icon: '☠', desc: 'enemies.json' },
@@ -13,7 +13,10 @@ const SECTION_META = [
 ] as const;
 
 export default async function AdminDashboard() {
-  const data = await getAllMasterData();
+  const [data, storyScenes] = await Promise.all([
+    getAllMasterData(),
+    getStoryScenes(),
+  ]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -61,21 +64,32 @@ export default async function AdminDashboard() {
             </Link>
           );
         })}
-      </div>
-
-      <div className="mt-8 flex gap-3 flex-wrap">
+        {/* Story card */}
         <Link
           href="/admin/story"
-          className="px-4 py-2 rounded text-xs font-space font-semibold tracking-wide"
+          className="block rounded-lg p-4"
           style={{
-            background: 'rgba(139,0,255,0.18)',
-            border: '1px solid rgba(139,0,255,0.4)',
-            color: '#d8b4fe',
+            background: '#111118',
+            border: '1px solid rgba(139,0,255,0.28)',
             textDecoration: 'none',
           }}
         >
-          ストーリー編集 →
+          <div className="flex items-start justify-between mb-2">
+            <span className="text-lg" style={{ color: '#8B00FF' }}>◎</span>
+            <span className="text-2xl font-cinzel font-bold" style={{ color: '#c8b4f8' }}>
+              {storyScenes.length}
+            </span>
+          </div>
+          <div className="text-sm font-space font-semibold mb-1" style={{ color: '#e0d0ff' }}>
+            ストーリー
+          </div>
+          <div className="text-[10px] font-mono" style={{ color: '#7878a8' }}>
+            ch1_scenes.json
+          </div>
         </Link>
+      </div>
+
+      <div className="mt-8 flex gap-3 flex-wrap">
         <Link
           href="/admin/audit"
           className="px-4 py-2 rounded text-xs font-space font-semibold tracking-wide"

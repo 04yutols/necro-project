@@ -15,9 +15,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#08080f', color: '#c8c8d8' }}>
+    <div style={{
+      height: '100vh', display: 'flex', flexDirection: 'column',
+      background: '#08080f', color: '#c8c8d8', overflow: 'hidden',
+    }}>
       <AdminNav />
-      <main>{children}</main>
+      <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0 }}>
+        {children}
+      </main>
     </div>
   );
 }
