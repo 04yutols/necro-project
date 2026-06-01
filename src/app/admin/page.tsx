@@ -65,12 +65,24 @@ export default async function AdminDashboard() {
 
       <div className="mt-8 flex gap-3 flex-wrap">
         <Link
-          href="/admin/audit"
+          href="/admin/story"
           className="px-4 py-2 rounded text-xs font-space font-semibold tracking-wide"
           style={{
             background: 'rgba(139,0,255,0.18)',
             border: '1px solid rgba(139,0,255,0.4)',
             color: '#d8b4fe',
+            textDecoration: 'none',
+          }}
+        >
+          ストーリー編集 →
+        </Link>
+        <Link
+          href="/admin/audit"
+          className="px-4 py-2 rounded text-xs font-space font-semibold tracking-wide"
+          style={{
+            background: 'rgba(139,0,255,0.12)',
+            border: '1px solid rgba(139,0,255,0.3)',
+            color: '#c084fc',
             textDecoration: 'none',
           }}
         >

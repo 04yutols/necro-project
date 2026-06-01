@@ -2,6 +2,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import type { StoryScene, StoryCharacter } from '@/types/story';
 
 // ---------------------------------------------------------------------------
 // Production guard
@@ -39,6 +40,7 @@ export type MasterDataCollection = {
 // File reading helpers
 // ---------------------------------------------------------------------------
 const MASTER_DIR = path.join(process.cwd(), 'src', 'data', 'master');
+const STORY_DIR = path.join(process.cwd(), 'src', 'data', 'story');
 
 function readMasterJson(filename: string): Record<string, Record<string, unknown>> {
   const filePath = path.join(MASTER_DIR, filename);
@@ -521,6 +523,92 @@ export async function deleteEntry(
     const collection = JSON.parse(raw) as Record<string, Record<string, unknown>>;
     delete collection[entryKey];
     fs.writeFileSync(filePath, JSON.stringify(collection, null, 2), 'utf-8');
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Story: read scenes
+// ---------------------------------------------------------------------------
+export async function getStoryScenes(): Promise<StoryScene[]> {
+  assertDev();
+  const filePath = path.join(STORY_DIR, 'ch1_scenes.json');
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  const data = JSON.parse(raw) as { scenes: StoryScene[] };
+  return [...data.scenes].sort((a, b) => (a.sequence ?? 999) - (b.sequence ?? 999));
+}
+
+export async function getStoryScene(id: string): Promise<StoryScene | null> {
+  assertDev();
+  const scenes = await getStoryScenes();
+  return scenes.find((s) => s.id === id) ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Story: save scene (create or update)
+// ---------------------------------------------------------------------------
+export async function saveStoryScene(
+  scene: StoryScene,
+): Promise<{ success: boolean; error?: string }> {
+  assertDev();
+  try {
+    const filePath = path.join(STORY_DIR, 'ch1_scenes.json');
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw) as { scenes: StoryScene[] };
+    const idx = data.scenes.findIndex((s) => s.id === scene.id);
+    if (idx >= 0) {
+      data.scenes[idx] = scene;
+    } else {
+      data.scenes.push(scene);
+    }
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Story: delete scene
+// ---------------------------------------------------------------------------
+export async function deleteStoryScene(
+  id: string,
+): Promise<{ success: boolean; error?: string }> {
+  assertDev();
+  try {
+    const filePath = path.join(STORY_DIR, 'ch1_scenes.json');
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw) as { scenes: StoryScene[] };
+    data.scenes = data.scenes.filter((s) => s.id !== id);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Story: characters
+// ---------------------------------------------------------------------------
+export async function getStoryCharacters(): Promise<Record<string, StoryCharacter>> {
+  assertDev();
+  const filePath = path.join(STORY_DIR, 'characters.json');
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(raw) as Record<string, StoryCharacter>;
+}
+
+export async function saveStoryCharacter(
+  char: StoryCharacter,
+): Promise<{ success: boolean; error?: string }> {
+  assertDev();
+  try {
+    const filePath = path.join(STORY_DIR, 'characters.json');
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw) as Record<string, StoryCharacter>;
+    data[char.id] = char;
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
     return { success: true };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) };

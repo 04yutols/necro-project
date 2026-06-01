@@ -15,7 +15,6 @@ export default function FormTabs({ tabs, activeTab, onChange }: Props) {
         borderBottom: '1px solid rgba(139,0,255,0.18)',
         marginBottom: 24,
         flexWrap: 'wrap',
-        paddingBottom: 0,
       }}
     >
       {tabs.map((tab) => {
@@ -31,25 +30,15 @@ export default function FormTabs({ tabs, activeTab, onChange }: Props) {
               fontFamily: 'Space Grotesk, sans-serif',
               fontWeight: isActive ? 600 : 400,
               background: isActive ? 'rgba(139,0,255,0.18)' : 'transparent',
-              border: isActive ? '1px solid rgba(139,0,255,0.4)' : '1px solid transparent',
-              borderBottom: isActive ? '1px solid transparent' : 'none',
+              borderTop: isActive ? '1px solid rgba(139,0,255,0.4)' : '1px solid transparent',
+              borderLeft: isActive ? '1px solid rgba(139,0,255,0.4)' : '1px solid transparent',
+              borderRight: isActive ? '1px solid rgba(139,0,255,0.4)' : '1px solid transparent',
+              borderBottom: '1px solid transparent',
               borderRadius: '8px 8px 0 0',
               color: isActive ? '#d8b4fe' : '#8080a0',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
               whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={(e) => {
-              if (!isActive) {
-                (e.currentTarget as HTMLButtonElement).style.color = '#c0c0e0';
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(139,0,255,0.06)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isActive) {
-                (e.currentTarget as HTMLButtonElement).style.color = '#8080a0';
-                (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-              }
             }}
           >
             {tab}

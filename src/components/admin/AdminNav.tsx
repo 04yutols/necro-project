@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: '/admin/materials', label: '素材' },
   { href: '/admin/monsters', label: '魔物' },
   { href: '/admin/demon-forms', label: '魔神化' },
+  { href: '/admin/story', label: 'ストーリー' },
   { href: '/admin/audit', label: '監査' },
   { href: '/admin/simulator', label: 'シミュ' },
 ];
