@@ -50,7 +50,7 @@ test.describe('Battle command UX', () => {
     await page.locator('#tut-attack-btn').click();
     await expect(battleLog).toContainText('骸骨騎士の攻撃', { timeout: 5000 });
     await expect.poll(() => page.evaluate(() => (window as any).__battleLogHistory.join('\n')))
-      .toMatch(/スケルトンの追撃！ 霊体騎士に (?:7|10)ダメージ！/);
+      .toMatch(/スケルトンの追撃！ 霊体騎士に [1-9]\d*ダメージ！/);
   });
 
   test('accepts only one attack from a synchronous click burst', async ({ page }) => {

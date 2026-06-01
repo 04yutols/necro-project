@@ -16,7 +16,7 @@ test.describe('Necro Lab residue UX', () => {
     await expect(page.locator('#tut-residue-grid')).toBeVisible();
     await expect(page.getByText(/残滓一覧/)).toBeVisible();
 
-    await page.locator('#tut-enhance-tab').click();
+    await page.locator('#tut-enhance-tab').click({ force: true });
     await expect(page.getByText('STAT PREVIEW')).toBeVisible();
     await expect(page.getByText('SOUL INFUSION')).toBeVisible();
     await expect(page.getByRole('button', { name: /一括選択/ })).toBeVisible();

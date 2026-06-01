@@ -68,7 +68,7 @@ const MOCK_WEAPONS: ItemData[] = [
     ilv: 72,
     icon: '☽',
     stats: {},
-    subOptions: [{ type: 'DARK_DMG_BOOST', value: 13 }, { type: 'CRIT_DMG', value: 16 }],
+    subOptions: [{ type: 'CRIT_DMG', value: 16 }, { type: 'DARK_DMG_BOOST', value: 13 }],
     passiveA: { nameJa: '残響蓄積', descTemplate: 'スキル使用ごとに残響を獲得し、3層消費時に闇属性追加ダメージ+{value}%を与える。', values: [18, 23, 27, 32, 36], systemTag: 'SOUL_SHATTER' },
     passiveB: { nameJa: '魔神呼応', descTemplate: '残響消費時、魔神化ゲージを{value}%回復する。', values: [10, 13, 15, 18, 20], systemTag: 'DEMON_MODE' },
     isUnique: false,
@@ -85,7 +85,7 @@ const MOCK_WEAPONS: ItemData[] = [
     ilv: 90,
     icon: '☠',
     stats: {},
-    subOptions: [{ type: 'ATK%', value: 19.5 }, { type: 'CRIT_RATE', value: 12 }],
+    subOptions: [{ type: 'ATK%', value: 12 }, { type: 'DARK_DMG_BOOST', value: 7.5 }],
     passiveA: { nameJa: '怨念の特異点', descTemplate: '無条件で全ダメージ+{value}%。', values: [30, 38, 45, 53, 60], systemTag: 'DEMON_MODE' },
     passiveB: { nameJa: '霊的防壁破断', descTemplate: '攻撃が霊的防壁を貫通し、防御干渉を{value}%無視する。', values: [25, 32, 38, 44, 50], systemTag: 'SHIELD_PIERCE' },
     isUnique: true,
@@ -201,6 +201,7 @@ interface GameState {
   residueMaterials: ResidueMatData[];
   weaponMaterials: WeaponMaterialData[];
   transmutationPoints: number;
+  isServerBacked: boolean;
 
   setPlayer: (player: CharacterData) => void;
   setNecroStatus: (status: NecroStatus) => void;
@@ -305,6 +306,7 @@ export const useGameStore = create<GameState>((set) => ({
   residueMaterials: [],
   weaponMaterials: [],
   transmutationPoints: 0,
+  isServerBacked: false,
   equippingMonsterId: null,
   battleLogs: ['SYSTEM STANDBY...'],
   actionTrigger: null,
@@ -690,8 +692,9 @@ export const useGameStore = create<GameState>((set) => ({
       abyssalResidues: data.abyssalResidues,
       equippedResidueSlots,
       residueMaterials: [],
-      weaponMaterials: [],
+      weaponMaterials: data.weaponMaterials,
       transmutationPoints: 0,
+      isServerBacked: true,
       monsterCurrentHp: {},
       equippingMonsterId: null,
       battleLogs: ['CLOUD SAVE LOADED...'],
@@ -720,6 +723,7 @@ export const useGameStore = create<GameState>((set) => ({
     residueMaterials: [],
     weaponMaterials: [],
     transmutationPoints: 0,
+    isServerBacked: false,
     monsterCurrentHp: {},
     equippingMonsterId: null,
     battleLogs: ['SYSTEM STANDBY...'],
@@ -807,6 +811,7 @@ export const useGameStore = create<GameState>((set) => ({
       { type: 'ABYSSAL_OBSIDIAN', name: '深淵の黒鋼', quantity: 88 },
     ],
     transmutationPoints: 1320,
+    isServerBacked: false,
     residueMaterials: [
       { id: 'mat-1', name: '深淵の砂', quantity: 8, expValue: 200, rarity: 'COMMON' },
       { id: 'mat-2', name: '虚無の結晶', quantity: 3, expValue: 800, rarity: 'RARE' },

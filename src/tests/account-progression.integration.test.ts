@@ -4,6 +4,7 @@ import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import { calculateJobGrowthIncrements } from '../logic/JobGrowthSystem';
 import { RESIDUE_SLOT_ORDER } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
+import { calculateWeaponBaseAttack } from '../logic/WeaponSystem';
 import { createCredentialsUser } from '../services/AuthService';
 import type { JobData } from '../types/game';
 
@@ -15,10 +16,13 @@ import { auth } from '@/auth';
 import {
   changeJobForUser,
   createCharacterForUser,
+  dismantleWeaponForUser,
   equipItemForUser,
   equipResidueForUser,
   loadCharacterForUser,
   processStageResultForUser,
+  rankUpWeaponForUser,
+  reforgeWeaponForUser,
 } from '../app/actions';
 import type { ServerGameUser } from '../types/serverGame';
 
@@ -114,6 +118,55 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(created.data.abyssalResidues).toHaveLength(0);
     expect(created.data.soulShards).toHaveLength(0);
     expect(created.data.party).toEqual([null, null, null]);
+    expect(created.data.weaponMaterials).toEqual(expect.arrayContaining([
+      { type: 'IDEA_COMMON', name: '凡骨のイデア', quantity: 8 },
+      { type: 'ABYSSAL_OBSIDIAN', name: '深淵の黒鋼', quantity: 10 },
+    ]));
+
+    const starterWeapon = created.data.inventoryItems[0];
+    const starterAtk = calculateWeaponBaseAttack(starterWeapon);
+    const reforged = await reforgeWeaponForUser(user, created.data.player.id, starterWeapon.id);
+    expect(reforged.success).toBe(true);
+    if (!reforged.success) throw new Error(reforged.error);
+    const reforgedStarter = reforged.data.inventoryItems.find((item) => item.id === starterWeapon.id);
+    expect(reforgedStarter?.ilv).toBe(2);
+    expect(calculateWeaponBaseAttack(reforgedStarter!)).toBeGreaterThan(starterAtk);
+    expect(reforged.data.weaponMaterials.find((material) => material.type === 'ABYSSAL_OBSIDIAN')?.quantity).toBe(9);
+
+    const persistedStarter = await prisma.item.findUniqueOrThrow({ where: { id: starterWeapon.id } });
+    expect(persistedStarter.ilv).toBe(2);
+    expect(persistedStarter.atk).toBe(calculateWeaponBaseAttack(reforgedStarter!));
+
+    const resonated = await rankUpWeaponForUser(user, created.data.player.id, starterWeapon.id);
+    expect(resonated.success).toBe(true);
+    if (!resonated.success) throw new Error(resonated.error);
+    expect(resonated.data.inventoryItems.find((item) => item.id === starterWeapon.id)?.rank).toBe(2);
+    expect(resonated.data.weaponMaterials.find((material) => material.type === 'IDEA_COMMON')?.quantity).toBe(0);
+
+    const insufficientResonance = await rankUpWeaponForUser(user, created.data.player.id, starterWeapon.id);
+    expect(insufficientResonance).toEqual({ success: false, error: '武器強化素材が不足しています' });
+    expect((await prisma.item.findUniqueOrThrow({ where: { id: starterWeapon.id } })).rank).toBe(2);
+
+    const equippedDismantle = await dismantleWeaponForUser(user, created.data.player.id, starterWeapon.id);
+    expect(equippedDismantle).toEqual({ success: false, error: '装備中の武器は分解できません' });
+
+    const spareWeapon = await prisma.item.create({
+      data: {
+        name: '分解確認用の短剣',
+        type: 'WEAPON',
+        rarity: 'R',
+        ownerId: user.id,
+        atk: 1,
+        rank: 0,
+        archetype: 'MID',
+        ilv: 1,
+      },
+    });
+    const dismantled = await dismantleWeaponForUser(user, created.data.player.id, spareWeapon.id);
+    expect(dismantled.success).toBe(true);
+    if (!dismantled.success) throw new Error(dismantled.error);
+    expect(dismantled.data.inventoryItems.some((item) => item.id === spareWeapon.id)).toBe(false);
+    expect(dismantled.data.weaponMaterials.find((material) => material.type === 'IDEA_COMMON')?.quantity).toBe(8);
 
     const changedToMage = await changeJobForUser(user, created.data.player.id, 'mage');
     expect(changedToMage.success).toBe(true);

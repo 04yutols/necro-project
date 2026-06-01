@@ -42,8 +42,10 @@ import {
   getWeaponIlv,
   getWeaponRank,
   getWeaponRarity,
+  getWeaponSubOptionRule,
   getWeaponSortScore,
   hasEnoughWeaponMaterials,
+  isElementDamageSubOption,
   WEAPON_ARCHETYPE_LABEL,
   WEAPON_RARITY_LABEL,
 } from '../../logic/WeaponSystem';
@@ -1156,8 +1158,10 @@ function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip 
   const rarityColor = RARITY_COLOR[rarity] ?? color;
   const rank = getWeaponRank(weapon);
   const baseAtk = calculateWeaponBaseAttack(weapon);
+  const effectiveSubOptions = getWeaponEffectiveSubOptions(weapon);
+  const subOptionRule = getWeaponSubOptionRule(weapon);
   const residueOptions = residues.flatMap((residue) => residue ? [residue.mainStat, ...residue.subOptions] : []);
-  const attackBonuses = collectWeaponAttackBonuses([...getWeaponEffectiveSubOptions(weapon), ...residueOptions]);
+  const attackBonuses = collectWeaponAttackBonuses([...effectiveSubOptions, ...residueOptions]);
   const finalAtk = calculateWeaponAttackBreakdown(player?.stats.atk ?? 0, weapon, attackBonuses);
   const equippedAtk = equipped ? calculateWeaponBaseAttack(equipped) : 0;
   const diff = baseAtk - equippedAtk;
@@ -1210,6 +1214,29 @@ function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip 
           <div style={{ borderRadius: 11, background: 'rgba(0,0,0,0.24)', border: '1px solid rgba(255,255,255,0.06)', padding: '8px 9px' }}>
             <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>差分</div>
             <div style={{ fontFamily: 'monospace', fontSize: 13, color: diff >= 0 ? '#8DFFBF' : '#FF8888', fontWeight: 900, marginTop: 3 }}>{equipped ? `${diff >= 0 ? '+' : ''}${diff}` : 'EMPTY'}</div>
+          </div>
+        </div>
+
+        <div style={{ borderRadius: 11, border: `1px solid ${rarityColor}24`, background: 'rgba(0,0,0,0.24)', padding: '8px 9px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>SUB OPTIONS</span>
+            <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 8, color: rarityColor, fontWeight: 900 }}>
+              {subOptionRule.optionCount}枠 / 20ILvごとに強化
+            </span>
+          </div>
+          <div style={{ display: 'grid', gap: 5 }}>
+            {effectiveSubOptions.map((option) => {
+              const isElement = isElementDamageSubOption(option);
+              return (
+                <div key={option.type} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#F0EAFF', fontWeight: 800 }}>{getOptionLabel(option.type)}</span>
+                    {isElement && <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 7, color: '#D4AF37', border: '1px solid rgba(212,175,55,0.42)', borderRadius: 999, padding: '1px 5px', flexShrink: 0 }}>属性特化</span>}
+                  </div>
+                  <span style={{ fontFamily: 'monospace', fontSize: 10, color: rarityColor, fontWeight: 900, flexShrink: 0 }}>+{formatOptionValue(option.type, option.value)}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -1285,14 +1312,14 @@ function WeaponEnhancementPanel({ weapon, materials, color, onRankUp, onReforge 
             <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#D4AF37', fontWeight: 900, letterSpacing: '0.12em' }}>打ち直し</span>
             <span style={{ fontFamily: "'Cinzel', serif", fontSize: 18, color: '#D4AF37', fontWeight: 900 }}>ILv.{getWeaponIlv(weapon)}</span>
           </div>
-          <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#bcaee4', lineHeight: 1.5, minHeight: 46 }}>基礎ATKだけを現行ダンジョン水準へ引き上げる。</div>
+          <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#bcaee4', lineHeight: 1.5, minHeight: 46 }}>ILvを1上げてATKを必ず強化。サブステは20ILvごとに伸び、SSRとURは属性枠も育つ。</div>
           <div style={{ borderRadius: 10, background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.06)', padding: '8px', marginTop: 8 }}>
             <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>必要素材</div>
             <div style={{ fontFamily: 'monospace', fontSize: 11, color: targetIlv ? '#D4AF37' : '#6a5f76', fontWeight: 900, marginTop: 3, lineHeight: 1.45 }}>
               {targetIlv ? reforgeCosts.map((cost) => `${cost.name} ${materialQty(materials, cost.type)}/${cost.quantity}`).join(' / ') : '最大ILv'}
             </div>
           </div>
-          <button onClick={() => onReforge(weapon)} disabled={!canReforge} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canReforge ? 'linear-gradient(135deg, rgba(212,175,55,0.26), rgba(20,5,35,0.9))' : 'rgba(255,255,255,0.04)', border: `1px solid ${canReforge ? 'rgba(212,175,55,0.62)' : 'rgba(255,255,255,0.08)'}`, color: canReforge ? '#D4AF37' : '#5d5368', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, fontWeight: 900 }}>打ち直し</button>
+          <button onClick={() => onReforge(weapon)} disabled={!canReforge} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canReforge ? 'linear-gradient(135deg, rgba(212,175,55,0.26), rgba(20,5,35,0.9))' : 'rgba(255,255,255,0.04)', border: `1px solid ${canReforge ? 'rgba(212,175,55,0.62)' : 'rgba(255,255,255,0.08)'}`, color: canReforge ? '#D4AF37' : '#5d5368', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, fontWeight: 900 }}>{targetIlv ? `打ち直し ILv.${targetIlv}` : '最大ILv'}</button>
         </div>
       </div>
     </div>
@@ -2204,7 +2231,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   weaponMaterials: WeaponMaterialData[];
   inventoryItems: ItemData[]; transmutationPoints: number; onBack: () => void;
 }) {
-  const { equipResidueToSlot, upgradeResidue, equipItem, rankUpWeapon, reforgeWeapon, dismantleWeapon, loadFromServer } = useGameStore();
+  const { equipResidueToSlot, upgradeResidue, equipItem, rankUpWeapon, reforgeWeapon, dismantleWeapon, loadFromServer, isServerBacked } = useGameStore();
   const sound = useGothicSound();
   const sfx = useSoundEffects();
   const conf = getConf(gearCtx.mk, player, party);
@@ -2215,6 +2242,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedMatIds, setSelectedMatIds] = useState<Set<string>>(new Set());
   const [enhanceResult, setEnhanceResult] = useState<ResidueEnhanceResult | null>(null);
+  const [weaponMutationPending, setWeaponMutationPending] = useState(false);
 
   const isResidueSlot = gearCtx.slotType === 'RESIDUE';
   const activeResidueSlotId: ResidueSlotId = RESIDUE_SLOT_ORDER[activeResidueSlotIndex] ?? 'chest';
@@ -2261,8 +2289,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     setSelectedItemId(info.weapon?.id ?? filteredItems[0]?.id ?? null);
   }, [filteredItems, info.weapon?.id, isResidueSlot, selectedItemId]);
 
-  const canPersistToServer = () => typeof window !== 'undefined'
-    && Boolean((window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__);
+  const canPersistToServer = () => isServerBacked;
 
   const handleEquipResidue = async () => {
     if (!selectedResidue) return;
@@ -2294,20 +2321,69 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     }
   };
 
-  const handleRankUpWeapon = (item: ItemData) => {
+  const handleRankUpWeapon = async (item: ItemData) => {
+    if (weaponMutationPending) return;
     sound.playEquip(); haptic([8, 4, 18]);
-    rankUpWeapon(item.id);
+    if (!player || !canPersistToServer()) {
+      rankUpWeapon(item.id);
+      return;
+    }
+    setWeaponMutationPending(true);
+    try {
+      const { rankUpWeaponAction } = await import('../../app/actions');
+      const result = await rankUpWeaponAction(player.id, item.id);
+      if (result.success) loadFromServer(result.data);
+      else console.error(result.error);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setWeaponMutationPending(false);
+    }
   };
 
-  const handleReforgeWeapon = (item: ItemData) => {
+  const handleReforgeWeapon = async (item: ItemData) => {
+    if (weaponMutationPending) return;
     sound.playEquip(); haptic([10, 6, 20]);
-    reforgeWeapon(item.id);
+    if (!player || !canPersistToServer()) {
+      reforgeWeapon(item.id);
+      return;
+    }
+    setWeaponMutationPending(true);
+    try {
+      const { reforgeWeaponAction } = await import('../../app/actions');
+      const result = await reforgeWeaponAction(player.id, item.id);
+      if (result.success) loadFromServer(result.data);
+      else console.error(result.error);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setWeaponMutationPending(false);
+    }
   };
 
-  const handleDismantleWeapon = (item: ItemData) => {
+  const handleDismantleWeapon = async (item: ItemData) => {
+    if (weaponMutationPending) return;
     sound.playEquip(); haptic([15, 8, 28]);
-    dismantleWeapon(item.id);
-    setSelectedItemId(null);
+    if (!player || !canPersistToServer()) {
+      dismantleWeapon(item.id);
+      setSelectedItemId(null);
+      return;
+    }
+    setWeaponMutationPending(true);
+    try {
+      const { dismantleWeaponAction } = await import('../../app/actions');
+      const result = await dismantleWeaponAction(player.id, item.id);
+      if (result.success) {
+        loadFromServer(result.data);
+        setSelectedItemId(null);
+      } else {
+        console.error(result.error);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setWeaponMutationPending(false);
+    }
   };
 
   const handleEnhance = () => {

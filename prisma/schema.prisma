@@ -62,6 +62,7 @@ model User {
   characters    Character[]
   ownedItems    Item[]  @relation("ItemOwner")
   discoveredItems Item[]  @relation("Discoverer")
+  weaponMaterials WeaponMaterial[]
   stageRecords  StageRecord[]
   playerStats   PlayerStats?
   worldLogs     WorldLog[]
@@ -218,6 +219,17 @@ model Item {
 model ItemSerialCounter {
   itemName String @id
   counter  Int    @default(0)
+}
+
+model WeaponMaterial {
+  userId   String
+  type     String
+  name     String
+  quantity Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, type])
 }
 
 model AbyssalResidue {

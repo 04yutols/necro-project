@@ -105,6 +105,17 @@ function getString(obj: Record<string, unknown>, key: string): string {
   return typeof val === 'string' ? val : '';
 }
 
+const WEAPON_SUBOPTION_RULES: Record<string, { optionCount: number; elementDamageOptionCount: number }> = {
+  R: { optionCount: 1, elementDamageOptionCount: 0 },
+  SR: { optionCount: 1, elementDamageOptionCount: 0 },
+  SSR: { optionCount: 2, elementDamageOptionCount: 1 },
+  UR: { optionCount: 2, elementDamageOptionCount: 1 },
+};
+
+function isElementDamageSubOption(option: Record<string, unknown>): boolean {
+  return /^(FIRE|WATER|THUNDER|EARTH|WIND|ICE|LIGHT|DARK)_DMG_BOOST$/.test(getString(option, 'type'));
+}
+
 // ---------------------------------------------------------------------------
 // Public: run full audit
 // ---------------------------------------------------------------------------
@@ -148,6 +159,27 @@ export async function runMasterDataAudit(): Promise<AuditFinding[]> {
       } else {
         findings.push({ level: 'PASS', scope, id: key, message: 'ID整合性 OK' });
       }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 1.5 Weapon sub options: rarity controls count and fixed element slots
+  // ---------------------------------------------------------------------------
+  for (const [itemKey, item] of Object.entries(data.items)) {
+    if (getString(item, 'type') !== 'WEAPON') continue;
+    const rarity = getString(item, 'weaponRarity') || getString(item, 'rarity');
+    const rule = WEAPON_SUBOPTION_RULES[rarity];
+    const subOptions = getArray(item, 'subOptions');
+    if (!rule) {
+      findings.push({ level: 'FAIL', scope: 'items', id: itemKey, message: `武器レアリティ "${rarity}" は未対応です。` });
+      continue;
+    }
+    if (subOptions.length !== rule.optionCount) {
+      findings.push({ level: 'FAIL', scope: 'items', id: itemKey, message: `${rarity} 武器のサブオプションは ${rule.optionCount} 枠必要です。` });
+    }
+    const elementDamageOptionCount = subOptions.filter(isElementDamageSubOption).length;
+    if (elementDamageOptionCount !== rule.elementDamageOptionCount) {
+      findings.push({ level: 'FAIL', scope: 'items', id: itemKey, message: `${rarity} 武器の属性ダメージ枠は ${rule.elementDamageOptionCount} 枠必要です。` });
     }
   }
 

@@ -35,6 +35,12 @@ const WAVE_ROLES = new Set(['WARMUP', 'SHIELD', 'ELITE', 'BOSS']);
 const DROP_TYPES = new Set(['WEAPON', 'RESIDUE', 'MATERIAL', 'MONSTER', 'CONSUMABLE']);
 const ITEM_TYPES = new Set(['WEAPON', 'CONSUMABLE']);
 const WEAPON_RARITIES = new Set(['R', 'SR', 'SSR', 'UR']);
+const WEAPON_SUBOPTION_RULES = {
+  R: { optionCount: 1, elementDamageOptionCount: 0 },
+  SR: { optionCount: 1, elementDamageOptionCount: 0 },
+  SSR: { optionCount: 2, elementDamageOptionCount: 1 },
+  UR: { optionCount: 2, elementDamageOptionCount: 1 },
+};
 const RESIDUE_RARITIES = new Set(['COMMON', 'RARE', 'EPIC', 'LEGENDARY']);
 const MATERIAL_RARITIES = new Set(['COMMON', 'RARE', 'EPIC', 'LEGENDARY']);
 const SPRITES = new Set(['WRAITH', 'GIANT', 'WYRM']);
@@ -95,6 +101,10 @@ function isObject(value) {
 
 function isNumber(value) {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isElementDamageSubOption(option) {
+  return /^(FIRE|WATER|THUNDER|EARTH|WIND|ICE|LIGHT|DARK)_DMG_BOOST$/.test(option?.type);
 }
 
 function validateRecordIds(findings, scope, records, options = {}) {
@@ -352,6 +362,20 @@ function validateItems(findings) {
       if (!['LOW', 'MID', 'HIGH', 'MYTHIC'].includes(item.archetype)) add(findings, 'items', id, 'FAIL', `invalid archetype ${item.archetype}`);
       if (!Number.isInteger(item.rank) || item.rank < 0 || item.rank > 5) add(findings, 'items', id, 'WARN', 'rank should be 0-5 for instances or 1-5 for masters');
       if (!Number.isInteger(item.ilv) || item.ilv < 1 || item.ilv > 90) add(findings, 'items', id, 'FAIL', 'ilv must be 1-90');
+      const subOptions = Array.isArray(item.subOptions) ? item.subOptions : [];
+      const subOptionRule = WEAPON_SUBOPTION_RULES[item.rarity];
+      if (subOptionRule && subOptions.length !== subOptionRule.optionCount) {
+        add(findings, 'items', id, 'FAIL', `${item.rarity} weapon must contain ${subOptionRule.optionCount} sub option(s)`);
+      }
+      const elementDamageOptionCount = subOptions.filter(isElementDamageSubOption).length;
+      if (subOptionRule && elementDamageOptionCount !== subOptionRule.elementDamageOptionCount) {
+        add(findings, 'items', id, 'FAIL', `${item.rarity} weapon must contain ${subOptionRule.elementDamageOptionCount} element damage sub option(s)`);
+      }
+      for (const [index, option] of subOptions.entries()) {
+        if (!isObject(option) || typeof option.type !== 'string' || !isNumber(option.value)) {
+          add(findings, 'items', id, 'FAIL', `subOptions[${index}] must contain string type and numeric value`);
+        }
+      }
       for (const passiveKey of ['passiveA', 'passiveB']) {
         const passive = item[passiveKey];
         if (!passive) continue;
