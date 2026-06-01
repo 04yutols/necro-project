@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: '/admin/monsters', label: '魔物' },
   { href: '/admin/demon-forms', label: '魔神化' },
   { href: '/admin/audit', label: '監査' },
+  { href: '/admin/simulator', label: 'シミュ' },
 ];
 
 export default function AdminNav() {

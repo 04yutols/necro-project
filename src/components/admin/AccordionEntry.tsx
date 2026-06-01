@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import JsonPreview from './JsonPreview';
 
@@ -8,9 +9,10 @@ type Props = {
   entryKey: string;
   summary: React.ReactNode;
   data: unknown;
+  editHref?: string;
 };
 
-export default function AccordionEntry({ entryKey, summary, data }: Props) {
+export default function AccordionEntry({ entryKey, summary, data, editHref }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -48,6 +50,25 @@ export default function AccordionEntry({ entryKey, summary, data }: Props) {
 
         {/* Summary content */}
         <div className="flex items-center gap-2 flex-wrap min-w-0">{summary}</div>
+
+        {/* Edit link */}
+        {editHref && (
+          <Link
+            href={editHref}
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 text-[10px] px-2 py-0.5 rounded"
+            style={{
+              background: 'rgba(139,0,255,0.12)',
+              border: '1px solid rgba(139,0,255,0.3)',
+              color: '#a78bfa',
+              textDecoration: 'none',
+              fontFamily: 'Space Grotesk, sans-serif',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            編集
+          </Link>
+        )}
       </button>
 
       {/* JSON preview (animated) */}

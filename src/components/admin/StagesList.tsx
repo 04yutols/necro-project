@@ -1,7 +1,9 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import AccordionEntry from './AccordionEntry';
 import { NodeTypeBadge } from './Badges';
+import ListFilterBar from './forms/shared/ListFilterBar';
 
 type Stage = {
   nameJa?: string;
@@ -9,6 +11,7 @@ type Stage = {
   nodeType?: string;
   chapter?: number;
   area?: number;
+  difficulty?: number;
   waveCount?: number;
   unlockRequires?: string[];
 };
@@ -17,43 +20,93 @@ type Props = {
   data: Record<string, Record<string, unknown>>;
 };
 
+const NODE_TYPES = ['SAFE', 'DUNGEON', 'BOSS'];
+const SORT_KEYS = [
+  { key: 'difficulty', label: 'difficulty' },
+  { key: 'chapter', label: 'chapter' },
+];
+
 export default function StagesList({ data }: Props) {
+  const [search, setSearch] = useState('');
+  const [nodeType, setNodeType] = useState('');
+  const [sortKey, setSortKey] = useState('chapter');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const entries = useMemo(() => {
+    let list = Object.entries(data).map(([key, raw]) => ({ key, raw: raw as Stage }));
+    const q = search.toLowerCase();
+    if (q) list = list.filter(({ key, raw }) =>
+      key.toLowerCase().includes(q) || (raw.nameJa ?? '').toLowerCase().includes(q) || (raw.name ?? '').toLowerCase().includes(q)
+    );
+    if (nodeType) list = list.filter(({ raw }) => raw.nodeType === nodeType);
+    if (sortKey === 'difficulty') {
+      list = list.sort((a, b) => {
+        const av = a.raw.difficulty ?? 0;
+        const bv = b.raw.difficulty ?? 0;
+        return sortDir === 'asc' ? av - bv : bv - av;
+      });
+    } else if (sortKey === 'chapter') {
+      list = list.sort((a, b) => {
+        const av = (a.raw.chapter ?? 0) * 100 + (a.raw.area ?? 0);
+        const bv = (b.raw.chapter ?? 0) * 100 + (b.raw.area ?? 0);
+        return sortDir === 'asc' ? av - bv : bv - av;
+      });
+    }
+    return list;
+  }, [data, search, nodeType, sortKey, sortDir]);
+
+  const total = Object.keys(data).length;
+
   return (
-    <div className="flex flex-col gap-2">
-      {Object.entries(data).map(([key, raw]) => {
-        const entry = raw as Stage;
-        return (
+    <div>
+      <ListFilterBar
+        searchText={search}
+        onSearchChange={setSearch}
+        filterGroups={[
+          {
+            chips: [
+              { label: 'ALL', value: '', active: nodeType === '', onClick: () => setNodeType('') },
+              ...NODE_TYPES.map((t) => ({ label: t, value: t, active: nodeType === t, onClick: () => setNodeType(t) })),
+            ],
+          },
+        ]}
+        sortKeys={SORT_KEYS}
+        activeSort={sortKey}
+        sortDir={sortDir}
+        onSortChange={(k, d) => { setSortKey(k); setSortDir(d); }}
+        count={entries.length}
+        total={total}
+      />
+      <div className="flex flex-col gap-2">
+        {entries.map(({ key, raw }) => (
           <AccordionEntry
             key={key}
             entryKey={key}
-            data={raw}
+            data={data[key]}
+            editHref={`/admin/stages/${key}`}
             summary={
               <>
-                {entry.nodeType && <NodeTypeBadge nodeType={entry.nodeType} />}
-                {entry.chapter != null && (
-                  <span
-                    className="text-[10px] px-1.5 py-0.5 rounded font-mono"
-                    style={{ background: 'rgba(255,255,255,0.06)', color: '#7878a8' }}
-                  >
-                    CH{entry.chapter}-{entry.area}
+                {raw.nodeType && <NodeTypeBadge nodeType={raw.nodeType} />}
+                {raw.chapter != null && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-mono" style={{ background: 'rgba(255,255,255,0.06)', color: '#7878a8' }}>
+                    CH{raw.chapter}-{raw.area}
                   </span>
                 )}
-                <span className="text-xs font-space" style={{ color: '#e0d0ff' }}>
-                  {entry.nameJa ?? entry.name ?? key}
-                </span>
+                <span className="text-xs font-space" style={{ color: '#e0d0ff' }}>{raw.nameJa ?? raw.name ?? key}</span>
                 <span className="ml-auto text-[10px] font-mono" style={{ color: '#7878a8' }}>
-                  {entry.waveCount != null && `WAVE×${entry.waveCount}`}
-                  {entry.unlockRequires && entry.unlockRequires.length > 0 && (
-                    <span className="ml-2" style={{ color: '#f59e0b' }}>
-                      🔒{entry.unlockRequires.length}
-                    </span>
+                  {raw.waveCount != null && `WAVE×${raw.waveCount}`}
+                  {raw.unlockRequires && raw.unlockRequires.length > 0 && (
+                    <span className="ml-2" style={{ color: '#f59e0b' }}>🔒{raw.unlockRequires.length}</span>
                   )}
                 </span>
               </>
             }
           />
-        );
-      })}
+        ))}
+        {entries.length === 0 && (
+          <p style={{ color: '#7878a8', fontSize: 12, textAlign: 'center', padding: '24px 0' }}>該当するエントリがありません</p>
+        )}
+      </div>
     </div>
   );
 }

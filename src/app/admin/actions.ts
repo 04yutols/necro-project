@@ -294,3 +294,235 @@ export async function runMasterDataAudit(): Promise<AuditFinding[]> {
 
   return findings;
 }
+
+// ---------------------------------------------------------------------------
+// Public: dependency cross-reference
+// ---------------------------------------------------------------------------
+export type DependencyRef = {
+  scope: string;
+  id: string;
+  label: string;
+  href: string;
+  context: string;
+};
+
+export async function getDependencies(
+  fileKey: keyof MasterDataCollection,
+  entryKey: string,
+): Promise<DependencyRef[]> {
+  assertDev();
+  const data = await getAllMasterData();
+  const refs: DependencyRef[] = [];
+
+  switch (fileKey) {
+    case 'enemies': {
+      for (const [stageKey, stage] of Object.entries(data.stages)) {
+        const waves = (stage.waves as Array<Record<string, unknown>>) ?? [];
+        for (const wave of waves) {
+          const eIds = (wave.enemyIds as string[]) ?? [];
+          if (eIds.includes(entryKey)) {
+            refs.push({
+              scope: 'stages',
+              id: stageKey,
+              label: (stage.nameJa as string) || stageKey,
+              href: `/admin/stages/${stageKey}`,
+              context: `${wave.label ?? ''} · ${wave.role ?? ''}`,
+            });
+          }
+        }
+      }
+      break;
+    }
+    case 'skills': {
+      for (const [jobKey, job] of Object.entries(data.jobs)) {
+        const skills = (job.skills as Array<Record<string, unknown>>) ?? [];
+        for (const skillRef of skills) {
+          if (skillRef.skillId === entryKey) {
+            refs.push({
+              scope: 'jobs',
+              id: jobKey,
+              label: (job.displayName as string) || jobKey,
+              href: `/admin/jobs/${jobKey}`,
+              context: `Lv${skillRef.level ?? '?'} 解放`,
+            });
+          }
+        }
+      }
+      break;
+    }
+    case 'items':
+    case 'materials': {
+      for (const [enemyKey, enemy] of Object.entries(data.enemies)) {
+        const drops = (enemy.dropTable as Array<Record<string, unknown>>) ?? [];
+        for (const drop of drops) {
+          if (drop.itemId === entryKey) {
+            const rate = (drop.rate as number) ?? 0;
+            refs.push({
+              scope: 'enemies',
+              id: enemyKey,
+              label: (enemy.nameJa as string) || enemyKey,
+              href: `/admin/enemies/${enemyKey}`,
+              context: `ドロップ率 ${Math.round(rate * 100)}%`,
+            });
+          }
+        }
+      }
+      for (const [stageKey, stage] of Object.entries(data.stages)) {
+        const rewards = (stage.rewards as Record<string, unknown>) ?? {};
+        const drops = (rewards.dropTable as Array<Record<string, unknown>>) ?? [];
+        for (const drop of drops) {
+          if (drop.itemId === entryKey) {
+            const rate = (drop.rate as number) ?? 0;
+            refs.push({
+              scope: 'stages',
+              id: stageKey,
+              label: (stage.nameJa as string) || stageKey,
+              href: `/admin/stages/${stageKey}`,
+              context: `ステージ報酬 ${Math.round(rate * 100)}%`,
+            });
+          }
+        }
+      }
+      break;
+    }
+    case 'jobs': {
+      for (const [formKey, form] of Object.entries(data.demonForms)) {
+        if (form.jobId === entryKey) {
+          refs.push({
+            scope: 'demonForms',
+            id: formKey,
+            label: (form.formName as string) || formKey,
+            href: `/admin/demon-forms/${formKey}`,
+            context: '魔神化フォーム',
+          });
+        }
+      }
+      for (const [jobKey, job] of Object.entries(data.jobs)) {
+        const unlockReqs = (job.unlockRequires as Array<Record<string, unknown>>) ?? [];
+        for (const req of unlockReqs) {
+          if (req.jobId === entryKey) {
+            refs.push({
+              scope: 'jobs',
+              id: jobKey,
+              label: (job.displayName as string) || jobKey,
+              href: `/admin/jobs/${jobKey}`,
+              context: `転職条件 Lv${req.minLevel ?? '?'}`,
+            });
+          }
+        }
+      }
+      break;
+    }
+    case 'stages': {
+      for (const [stageKey, stage] of Object.entries(data.stages)) {
+        const reqs = (stage.unlockRequires as string[]) ?? [];
+        if (reqs.includes(entryKey)) {
+          refs.push({
+            scope: 'stages',
+            id: stageKey,
+            label: (stage.nameJa as string) || stageKey,
+            href: `/admin/stages/${stageKey}`,
+            context: '解放条件として参照',
+          });
+        }
+      }
+      break;
+    }
+    case 'demonForms': {
+      const form = data.demonForms[entryKey];
+      if (form) {
+        const jobId = form.jobId as string;
+        if (jobId && data.jobs[jobId]) {
+          const job = data.jobs[jobId];
+          refs.push({
+            scope: 'jobs',
+            id: jobId,
+            label: (job.displayName as string) || jobId,
+            href: `/admin/jobs/${jobId}`,
+            context: '対応職業',
+          });
+        }
+      }
+      break;
+    }
+    case 'monsters':
+    default:
+      break;
+  }
+
+  return refs;
+}
+
+// ---------------------------------------------------------------------------
+// Public: get single entry
+// ---------------------------------------------------------------------------
+export async function getEntry(
+  fileKey: keyof MasterDataCollection,
+  entryKey: string,
+): Promise<Record<string, unknown> | null> {
+  assertDev();
+  const data = await getMasterFile(fileKey);
+  const entry = data[entryKey];
+  return entry ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Public: save entry (create or update)
+// ---------------------------------------------------------------------------
+export async function saveEntry(
+  fileKey: keyof MasterDataCollection,
+  entryKey: string,
+  data: Record<string, unknown>,
+): Promise<{ success: boolean; error?: string }> {
+  assertDev();
+  try {
+    const fileMap: Record<keyof MasterDataCollection, string> = {
+      enemies: 'enemies.json',
+      stages: 'stages.json',
+      jobs: 'jobs.json',
+      skills: 'skills.json',
+      items: 'items.json',
+      materials: 'materials.json',
+      monsters: 'monsters.json',
+      demonForms: 'demonForms.json',
+    };
+    const filePath = path.join(MASTER_DIR, fileMap[fileKey]);
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const collection = JSON.parse(raw) as Record<string, Record<string, unknown>>;
+    collection[entryKey] = data;
+    fs.writeFileSync(filePath, JSON.stringify(collection, null, 2), 'utf-8');
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public: delete entry
+// ---------------------------------------------------------------------------
+export async function deleteEntry(
+  fileKey: keyof MasterDataCollection,
+  entryKey: string,
+): Promise<{ success: boolean; error?: string }> {
+  assertDev();
+  try {
+    const fileMap: Record<keyof MasterDataCollection, string> = {
+      enemies: 'enemies.json',
+      stages: 'stages.json',
+      jobs: 'jobs.json',
+      skills: 'skills.json',
+      items: 'items.json',
+      materials: 'materials.json',
+      monsters: 'monsters.json',
+      demonForms: 'demonForms.json',
+    };
+    const filePath = path.join(MASTER_DIR, fileMap[fileKey]);
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const collection = JSON.parse(raw) as Record<string, Record<string, unknown>>;
+    delete collection[entryKey];
+    fs.writeFileSync(filePath, JSON.stringify(collection, null, 2), 'utf-8');
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
