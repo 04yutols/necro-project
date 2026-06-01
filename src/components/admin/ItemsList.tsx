@@ -98,7 +98,7 @@ export default function ItemsList({ data }: Props) {
                     {raw.archetype}
                   </span>
                 )}
-                <span className="text-xs font-space" style={{ color: '#e0d0ff' }}>{raw.name ?? key}</span>
+                <span style={{ fontSize: 14, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500, color: '#e0d0ff' }}>{raw.name ?? key}</span>
                 <span className="ml-auto flex flex-col items-end text-[10px] font-mono shrink-0 gap-0.5">
                   {raw.passiveA?.nameJa && <span style={{ color: '#fde68a' }}>{raw.passiveA.nameJa}</span>}
                   {raw.passiveB?.nameJa && <span style={{ color: '#7878a8' }}>{raw.passiveB.nameJa}</span>}

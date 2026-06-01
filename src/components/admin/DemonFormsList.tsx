@@ -87,7 +87,7 @@ export default function DemonFormsList({ data }: Props) {
                     {raw.jobId}
                   </span>
                 )}
-                <span className="text-xs font-space" style={{ color: '#e0d0ff' }}>{raw.formName ?? key}</span>
+                <span style={{ fontSize: 14, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500, color: '#e0d0ff' }}>{raw.formName ?? key}</span>
                 {raw.concept && (
                   <span className="ml-2 text-[10px] font-noto truncate hidden sm:block" style={{ color: '#7878a8', maxWidth: 240 }}>
                     {raw.concept}

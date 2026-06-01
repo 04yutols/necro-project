@@ -98,7 +98,7 @@ export default function JobsList({ data }: Props) {
                       {raw.category}
                     </span>
                   )}
-                  <span className="text-xs font-space" style={{ color: '#e0d0ff' }}>{raw.displayName ?? key}</span>
+                  <span style={{ fontSize: 14, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500, color: '#e0d0ff' }}>{raw.displayName ?? key}</span>
                   <span className="text-[10px] font-mono" style={{ color: '#7878a8' }}>{raw.title}</span>
                   <span className="ml-auto text-[10px] font-mono shrink-0" style={{ color: '#7878a8' }}>スキル×{skillCount}</span>
                 </>

@@ -30,12 +30,12 @@ const SORT_KEYS = [
 function StatBar({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = Math.min(100, (value / max) * 100);
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-[10px] font-mono w-6" style={{ color: '#7878a8' }}>{label}</span>
-      <div className="w-12 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'rgba(139,0,255,0.7)' }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ fontSize: 11, fontFamily: 'Space Mono, monospace', color: '#7878a8', width: 28, flexShrink: 0 }}>{label}</span>
+      <div style={{ width: 52, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', flexShrink: 0 }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: 'rgba(139,0,255,0.75)', borderRadius: 3 }} />
       </div>
-      <span className="text-[10px] font-mono" style={{ color: '#c8c8d8' }}>{value}</span>
+      <span style={{ fontSize: 12, fontFamily: 'Space Mono, monospace', color: '#c8c8d8', minWidth: 22 }}>{value}</span>
     </div>
   );
 }
@@ -109,10 +109,10 @@ export default function EnemiesList({ data }: Props) {
                 <>
                   {entry.tier && <TierBadge tier={entry.tier} />}
                   {entry.tribe && <TribeBadge tribe={entry.tribe} />}
-                  <span className="text-xs font-space" style={{ color: '#e0d0ff' }}>
+                  <span style={{ fontSize: 14, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500, color: '#e0d0ff' }}>
                     {entry.nameJa ?? entry.name ?? key}
                   </span>
-                  <span className="text-[10px] font-mono" style={{ color: '#7878a8' }}>{entry.name}</span>
+                  <span style={{ fontSize: 11, fontFamily: 'Space Mono, monospace', color: '#7878a8' }}>{entry.name}</span>
                   <div className="flex gap-2 flex-wrap ml-auto">
                     {stats.hp != null && <StatBar label="HP" value={stats.hp} max={200} />}
                     {stats.atk != null && <StatBar label="ATK" value={stats.atk} max={80} />}

@@ -24,16 +24,18 @@ const inputStyle: React.CSSProperties = {
   background: '#1a1a24',
   border: '1px solid rgba(139,0,255,0.2)',
   borderRadius: 6,
-  padding: '8px 10px',
+  padding: '0 12px',
+  height: 44,
+  boxSizing: 'border-box' as const,
   color: '#e0d0ff',
-  fontSize: 13,
+  fontSize: 14,
   width: '100%',
   outline: 'none',
   fontFamily: 'monospace',
 };
 
 const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' };
-const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: 80 };
+const textareaStyle: React.CSSProperties = { ...inputStyle, height: undefined, resize: 'vertical', minHeight: 96 };
 
 type GimmickRow = { trigger: string; effect: string; value: string };
 
@@ -225,7 +227,7 @@ export default function EnemyForm({ initialData, entryKey, isNew, itemIds, mater
             borderRadius: 6,
             padding: '10px 14px',
             color: '#fca5a5',
-            fontSize: 13,
+            fontSize: 14,
             marginBottom: 16,
           }}
         >

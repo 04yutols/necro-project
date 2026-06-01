@@ -18,9 +18,11 @@ const inputStyle: React.CSSProperties = {
   background: '#1a1a24',
   border: '1px solid rgba(139,0,255,0.2)',
   borderRadius: 6,
-  padding: '8px 10px',
+  padding: '0 12px',
+  height: 44,
+  boxSizing: 'border-box' as const,
   color: '#e0d0ff',
-  fontSize: 13,
+  fontSize: 14,
   width: '100%',
   outline: 'none',
   fontFamily: 'monospace',
@@ -115,7 +117,7 @@ export default function MaterialForm({ initialData, entryKey, isNew, dependencie
       />
 
       {error && (
-        <div style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '10px 14px', color: '#fca5a5', fontSize: 13, marginBottom: 16 }}>
+        <div style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '10px 14px', color: '#fca5a5', fontSize: 14, marginBottom: 16 }}>
           {error}
         </div>
       )}

@@ -12,23 +12,26 @@ const STAT_FIELDS: { key: string; label: string }[] = [
 ];
 
 const inputStyle: React.CSSProperties = {
-  background: '#1a1a24',
-  border: '1px solid rgba(139,0,255,0.2)',
-  borderRadius: 6,
-  padding: '8px 10px',
+  height: 44,
+  background: '#0d0d14',
+  border: '1px solid rgba(139,0,255,0.25)',
+  borderRadius: 8,
+  padding: '0 12px',
   color: '#e0d0ff',
-  fontSize: 13,
+  fontSize: 15,
   width: '100%',
   outline: 'none',
-  fontFamily: 'monospace',
+  fontFamily: 'Space Mono, monospace',
+  boxSizing: 'border-box',
 };
 
 const labelStyle: React.CSSProperties = {
-  color: '#7878a8',
-  fontSize: 11,
-  marginBottom: 4,
+  color: '#a0a0c0',
+  fontSize: 13,
+  marginBottom: 6,
   display: 'block',
   fontFamily: 'Space Grotesk, sans-serif',
+  fontWeight: 500,
 };
 
 type Props = {
@@ -42,7 +45,7 @@ export default function StatInputGrid({ value, onChange }: Props) {
       style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
-        gap: '12px 16px',
+        gap: '16px 20px',
       }}
     >
       {STAT_FIELDS.map(({ key, label }) => (

@@ -20,15 +20,17 @@ const inputStyle: React.CSSProperties = {
   background: '#1a1a24',
   border: '1px solid rgba(139,0,255,0.2)',
   borderRadius: 6,
-  padding: '8px 10px',
+  padding: '0 12px',
+  height: 44,
+  boxSizing: 'border-box' as const,
   color: '#e0d0ff',
-  fontSize: 13,
+  fontSize: 14,
   width: '100%',
   outline: 'none',
   fontFamily: 'monospace',
 };
 const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' };
-const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: 80 };
+const textareaStyle: React.CSSProperties = { ...inputStyle, height: undefined, resize: 'vertical', minHeight: 96 };
 
 type SubOption = { type: string; value: number };
 type PassiveData = { nameJa: string; descTemplate: string; values: number[] };
@@ -206,7 +208,7 @@ export default function ItemForm({ initialData, entryKey, isNew, dependencies = 
       />
 
       {error && (
-        <div style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '10px 14px', color: '#fca5a5', fontSize: 13, marginBottom: 16 }}>
+        <div style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '10px 14px', color: '#fca5a5', fontSize: 14, marginBottom: 16 }}>
           {error}
         </div>
       )}
@@ -247,7 +249,7 @@ export default function ItemForm({ initialData, entryKey, isNew, dependencies = 
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <input type="checkbox" checked={form.isUnique} onChange={(e) => updateField('isUnique', e.target.checked)} style={{ width: 16, height: 16, accentColor: '#8B00FF', cursor: 'pointer' }} id="isUnique" />
-                <label htmlFor="isUnique" style={{ color: '#a5a9b4', fontSize: 13, cursor: 'pointer' }}>isUnique（ユニーク装備）</label>
+                <label htmlFor="isUnique" style={{ color: '#a5a9b4', fontSize: 14, cursor: 'pointer' }}>isUnique（ユニーク装備）</label>
               </div>
               <FormField label="flavor（フレーバーテキスト）">
                 <textarea value={form.flavor} onChange={(e) => updateField('flavor', e.target.value)} style={textareaStyle} />

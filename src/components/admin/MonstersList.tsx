@@ -100,7 +100,7 @@ export default function MonstersList({ data }: Props) {
                       Cost {raw.cost}
                     </span>
                   )}
-                  <span className="text-xs font-space" style={{ color: '#e0d0ff' }}>{raw.name ?? key}</span>
+                  <span style={{ fontSize: 14, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500, color: '#e0d0ff' }}>{raw.name ?? key}</span>
                   <span className="ml-auto flex items-center gap-3 text-[10px] font-mono shrink-0">
                     {stats.hp != null && <span style={{ color: '#6ee7b7' }}>HP:{stats.hp}</span>}
                     {stats.atk != null && <span style={{ color: '#f87171' }}>ATK:{stats.atk}</span>}

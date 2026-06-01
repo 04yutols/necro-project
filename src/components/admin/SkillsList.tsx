@@ -103,7 +103,7 @@ export default function SkillsList({ data }: Props) {
                     {raw.targetType}
                   </span>
                 )}
-                <span className="text-xs font-space" style={{ color: '#e0d0ff' }}>{raw.name ?? key}</span>
+                <span style={{ fontSize: 14, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500, color: '#e0d0ff' }}>{raw.name ?? key}</span>
                 <span className="ml-auto flex items-center gap-3 text-[10px] font-mono shrink-0">
                   {raw.power != null && <span style={{ color: '#f87171' }}>P:{raw.power}</span>}
                   {raw.mpCost != null && <span style={{ color: '#93c5fd' }}>MP:{raw.mpCost}</span>}

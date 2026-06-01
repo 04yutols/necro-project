@@ -22,15 +22,17 @@ const inputStyle: React.CSSProperties = {
   background: '#1a1a24',
   border: '1px solid rgba(139,0,255,0.2)',
   borderRadius: 6,
-  padding: '8px 10px',
+  padding: '0 12px',
+  height: 44,
+  boxSizing: 'border-box' as const,
   color: '#e0d0ff',
-  fontSize: 13,
+  fontSize: 14,
   width: '100%',
   outline: 'none',
   fontFamily: 'monospace',
 };
 const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' };
-const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: 80 };
+const textareaStyle: React.CSSProperties = { ...inputStyle, height: undefined, resize: 'vertical', minHeight: 96 };
 
 type EnemyMeta = { id: string; nameJa: string; tier: string; tribe: string };
 type WaveRow = { label: string; role: string; enemyIds: string[]; intent: string };
@@ -210,7 +212,7 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
       />
 
       {error && (
-        <div style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '10px 14px', color: '#fca5a5', fontSize: 13, marginBottom: 16 }}>
+        <div style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '10px 14px', color: '#fca5a5', fontSize: 14, marginBottom: 16 }}>
           {error}
         </div>
       )}
@@ -269,7 +271,7 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
           {activeTab === 'WAVE設定' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {form.nodeType === 'SAFE' ? (
-                <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(139,0,255,0.1)', color: '#7878a8', fontSize: 13, textAlign: 'center' }}>
+                <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(139,0,255,0.1)', color: '#7878a8', fontSize: 14, textAlign: 'center' }}>
                   SAFEノードはWAVEなし
                 </div>
               ) : (

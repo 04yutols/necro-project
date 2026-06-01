@@ -74,7 +74,7 @@ export default function MaterialsList({ data }: Props) {
             summary={
               <>
                 {raw.rarity && <RarityBadge rarity={raw.rarity} />}
-                <span className="text-xs font-space" style={{ color: '#e0d0ff' }}>{raw.name ?? key}</span>
+                <span style={{ fontSize: 14, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500, color: '#e0d0ff' }}>{raw.name ?? key}</span>
                 {raw.expValue != null && (
                   <span className="ml-auto text-[10px] font-mono shrink-0" style={{ color: '#fde68a' }}>EXP +{raw.expValue}</span>
                 )}

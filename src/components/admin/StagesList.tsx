@@ -92,7 +92,7 @@ export default function StagesList({ data }: Props) {
                     CH{raw.chapter}-{raw.area}
                   </span>
                 )}
-                <span className="text-xs font-space" style={{ color: '#e0d0ff' }}>{raw.nameJa ?? raw.name ?? key}</span>
+                <span style={{ fontSize: 14, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500, color: '#e0d0ff' }}>{raw.nameJa ?? raw.name ?? key}</span>
                 <span className="ml-auto text-[10px] font-mono" style={{ color: '#7878a8' }}>
                   {raw.waveCount != null && `WAVE×${raw.waveCount}`}
                   {raw.unlockRequires && raw.unlockRequires.length > 0 && (
