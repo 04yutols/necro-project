@@ -1,0 +1,84 @@
+{
+  "scenes": [
+    {
+      "id": "CH2_TITLE",
+      "type": "CHAPTER_TITLE",
+      "sequence": 100,
+      "trigger": { "type": "STAGE_ENTER", "stageId": "area2_gate" },
+      "background": "STAGE_DARK",
+      "isSkippable": true,
+      "archiveTitle": "第2章 幽霊都市",
+      "archiveChapter": 2,
+      "title": "幽 霊 都 市",
+      "titleEn": "PHANTOM CITY",
+      "description": "死者の灯が消えない都。深淵の残滓が、次の力の形を示す。",
+      "lines": []
+    },
+    {
+      "id": "CH2_GATE_ENTER",
+      "type": "ENVIRONMENT",
+      "sequence": 101,
+      "trigger": { "type": "STAGE_ENTER", "stageId": "area2_gate" },
+      "background": "BLUR_MAP",
+      "isSkippable": true,
+      "archiveTitle": "幽霊都市の城門",
+      "archiveChapter": 2,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "霧の奥から、鐘の音が聞こえる。\n城門は崩れているのに、誰かがまだ内側からこちらを見ていた。",
+          "textEn": "A bell rang from within the mist. The gate was ruined, yet something still watched from inside."
+        }
+      ]
+    },
+    {
+      "id": "CH2_RESIDUE_INTRO",
+      "type": "DIALOGUE",
+      "sequence": 102,
+      "trigger": { "type": "STAGE_CLEAR", "stageId": "area2_gate" },
+      "background": "STAGE_DARK",
+      "isSkippable": true,
+      "archiveTitle": "深淵の残滓",
+      "archiveChapter": 2,
+      "lines": [
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「この欠片……魔力とも魂とも違う。もっと深い場所に沈んでいたものだ」",
+          "textEn": "\"This fragment... it is neither magic nor soul. It sank somewhere deeper.\"",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "determined" }
+          ]
+        },
+        {
+          "speaker": "narrator",
+          "text": "深淵の残滓は、装備に刻まれた記憶を呼び起こす。\n扱いを誤れば呑まれるが、力に変えれば戦局を覆せる。",
+          "textEn": "Abyssal Residue awakens memories carved into equipment. Misuse it and be swallowed; master it and it can overturn a battle."
+        }
+      ],
+      "onComplete": {
+        "setFlag": "CH2_RESIDUE_INTRO_SEEN"
+      }
+    },
+    {
+      "id": "CH2_GATE_CLEAR",
+      "type": "ENVIRONMENT",
+      "sequence": 103,
+      "trigger": { "type": "STAGE_CLEAR", "stageId": "area2_gate" },
+      "background": "RUIN_LIGHT",
+      "isSkippable": true,
+      "archiveTitle": "門の向こう側",
+      "archiveChapter": 2,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "城門の奥で、青白い灯が一つずつ目を覚ました。\n幽霊都市は、アルドの名を知っているかのように沈黙した。",
+          "textEn": "Beyond the gate, pale lights woke one by one. The phantom city fell silent as if it knew Aldo's name."
+        }
+      ],
+      "onComplete": {
+        "setFlag": "CH2_GATE_CLEARED"
+      }
+    }
+  ]
+}

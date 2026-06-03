@@ -13,6 +13,7 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
+import { openHomeSection, prepareE2EPage } from './helpers/e2e';
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 
@@ -70,8 +71,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
 
     // ゲストモード: 認証なしでゲームが起動すること
     // 「拠点」タブ または ストーリー/チュートリアルが表示される
-    const homeOrStory = page.locator('text=拠点, text=NECROMANCE BRAVE, text=冒険開始, [data-testid="story-scene"]');
-    await expect(homeOrStory.first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('拠点', { exact: true })).toBeVisible({ timeout: 20000 });
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -118,9 +118,9 @@ test.describe('新規プレイヤー オンボーディング', () => {
     await expect(page.getByText('拠点', { exact: true })).toBeVisible({ timeout: 15000 });
 
     // 主要ナビゲーションボタン/セクション確認
-    await expect(page.getByRole('button', { name: /出撃|マップ/ })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: /編成|軍団/ })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: /装備/ })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: /出撃・マップ/ })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: /軍団編成/ }).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: /装備・編成/ })).toBeVisible({ timeout: 5000 });
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -145,7 +145,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
     await mapBtn.click({ force: true });
 
     // マップUI確認
-    await expect(page.getByText(/ワールドマップ|AREA MAP|エリア/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('ワールドマップ', { exact: true })).toBeVisible({ timeout: 15000 });
 
     // 侵攻ボタンまたはステージ選択ボタンを探す
     const enterBtn = page.getByRole('button', { name: /エリアマップへ|侵攻|領域選択|探索/ }).first();
@@ -360,21 +360,8 @@ test.describe('新規プレイヤー オンボーディング', () => {
   // T-09: 軍団編成 — パーティスロットが表示される
   // ─────────────────────────────────────────────────────────────
   test('T-09: 軍団編成タブでパーティスロットが表示される', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.setItem('necro-story-store-v2', JSON.stringify({
-        state: { viewedScenes: ['PROLOGUE_00','PROLOGUE_01','PROLOGUE_02','PROLOGUE_03'], storyFlags: { LINE_DEATH_SEEN: true, CH1_STARTED: true } },
-        version: 0,
-      }));
-      window.localStorage.setItem('necro-tutorial-store-v1', JSON.stringify({
-        state: { completedPhases: ['BATTLE_BASICS','NECRO_LAB','PARTY_FORMATION','JOB_CHANGE','ABYSSAL_RESIDUE','DEMONIZATION'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
-        version: 0,
-      }));
-    });
-    await page.goto('/');
-    await expect(page.getByText('拠点', { exact: true })).toBeVisible({ timeout: 15000 });
-
-    const legionBtn = page.getByRole('button', { name: /軍団編成/ }).first();
-    await legionBtn.click({ force: true });
+    await prepareE2EPage(page);
+    await openHomeSection(page, '軍団編成');
 
     await expect(page.locator('#tut-cost-display')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('#tut-cost-display')).toContainText('COST');
@@ -384,27 +371,14 @@ test.describe('新規プレイヤー オンボーディング', () => {
   // T-10: 職業変更画面が表示される
   // ─────────────────────────────────────────────────────────────
   test('T-10: 装備・編成からキャラクター詳細・ステータスが確認できる', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.setItem('necro-story-store-v2', JSON.stringify({
-        state: { viewedScenes: ['PROLOGUE_00','PROLOGUE_01','PROLOGUE_02','PROLOGUE_03'], storyFlags: { LINE_DEATH_SEEN: true } },
-        version: 0,
-      }));
-      window.localStorage.setItem('necro-tutorial-store-v1', JSON.stringify({
-        state: { completedPhases: ['BATTLE_BASICS','NECRO_LAB','PARTY_FORMATION','JOB_CHANGE','ABYSSAL_RESIDUE','DEMONIZATION'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
-        version: 0,
-      }));
-    });
-    await page.goto('/');
-    await expect(page.getByText('拠点', { exact: true })).toBeVisible({ timeout: 15000 });
-
-    const equipBtn = page.getByRole('button', { name: /装備・編成/ }).first();
-    await equipBtn.click({ force: true });
+    await prepareE2EPage(page);
+    await openHomeSection(page, '装備・編成');
 
     await expect(page.getByText('LEGION')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: /DETAIL/ }).click();
     await expect(page.getByText('統合詳細ハブ')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('ATK')).toBeVisible();
-    await expect(page.getByText('DEF')).toBeVisible();
-    await expect(page.getByText('HP')).toBeVisible();
+    await expect(page.getByText('ATK', { exact: true })).toBeVisible();
+    await expect(page.getByText('DEF', { exact: true })).toBeVisible();
+    await expect(page.getByText('HP', { exact: true })).toBeVisible();
   });
 });

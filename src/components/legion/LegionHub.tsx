@@ -9,6 +9,7 @@ import { useGothicSound } from '../necro/useGothicSound';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats, WeaponMaterialData, type Tribe } from '../../types/game';
 import { getActiveSynergies, type ActiveSynergy } from '../../logic/TribeSynergySystem';
+import { isAbyssalResidueUnlocked } from '../../logic/AbyssalResidueUnlockSystem';
 import {
   calculateCharacterStatProfile,
   ELEMENT_DAMAGE_KEYS,
@@ -42,8 +43,10 @@ import {
   getWeaponIlv,
   getWeaponRank,
   getWeaponRarity,
+  getWeaponSubOptionRule,
   getWeaponSortScore,
   hasEnoughWeaponMaterials,
+  isElementDamageSubOption,
   WEAPON_ARCHETYPE_LABEL,
   WEAPON_RARITY_LABEL,
 } from '../../logic/WeaponSystem';
@@ -1156,8 +1159,10 @@ function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip 
   const rarityColor = RARITY_COLOR[rarity] ?? color;
   const rank = getWeaponRank(weapon);
   const baseAtk = calculateWeaponBaseAttack(weapon);
+  const effectiveSubOptions = getWeaponEffectiveSubOptions(weapon);
+  const subOptionRule = getWeaponSubOptionRule(weapon);
   const residueOptions = residues.flatMap((residue) => residue ? [residue.mainStat, ...residue.subOptions] : []);
-  const attackBonuses = collectWeaponAttackBonuses([...getWeaponEffectiveSubOptions(weapon), ...residueOptions]);
+  const attackBonuses = collectWeaponAttackBonuses([...effectiveSubOptions, ...residueOptions]);
   const finalAtk = calculateWeaponAttackBreakdown(player?.stats.atk ?? 0, weapon, attackBonuses);
   const equippedAtk = equipped ? calculateWeaponBaseAttack(equipped) : 0;
   const diff = baseAtk - equippedAtk;
@@ -1210,6 +1215,29 @@ function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip 
           <div style={{ borderRadius: 11, background: 'rgba(0,0,0,0.24)', border: '1px solid rgba(255,255,255,0.06)', padding: '8px 9px' }}>
             <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>差分</div>
             <div style={{ fontFamily: 'monospace', fontSize: 13, color: diff >= 0 ? '#8DFFBF' : '#FF8888', fontWeight: 900, marginTop: 3 }}>{equipped ? `${diff >= 0 ? '+' : ''}${diff}` : 'EMPTY'}</div>
+          </div>
+        </div>
+
+        <div style={{ borderRadius: 11, border: `1px solid ${rarityColor}24`, background: 'rgba(0,0,0,0.24)', padding: '8px 9px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>SUB OPTIONS</span>
+            <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 8, color: rarityColor, fontWeight: 900 }}>
+              {subOptionRule.optionCount}枠 / 20ILvごとに強化
+            </span>
+          </div>
+          <div style={{ display: 'grid', gap: 5 }}>
+            {effectiveSubOptions.map((option) => {
+              const isElement = isElementDamageSubOption(option);
+              return (
+                <div key={option.type} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#F0EAFF', fontWeight: 800 }}>{getOptionLabel(option.type)}</span>
+                    {isElement && <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 7, color: '#D4AF37', border: '1px solid rgba(212,175,55,0.42)', borderRadius: 999, padding: '1px 5px', flexShrink: 0 }}>属性特化</span>}
+                  </div>
+                  <span style={{ fontFamily: 'monospace', fontSize: 10, color: rarityColor, fontWeight: 900, flexShrink: 0 }}>+{formatOptionValue(option.type, option.value)}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -1285,14 +1313,14 @@ function WeaponEnhancementPanel({ weapon, materials, color, onRankUp, onReforge 
             <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#D4AF37', fontWeight: 900, letterSpacing: '0.12em' }}>打ち直し</span>
             <span style={{ fontFamily: "'Cinzel', serif", fontSize: 18, color: '#D4AF37', fontWeight: 900 }}>ILv.{getWeaponIlv(weapon)}</span>
           </div>
-          <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#bcaee4', lineHeight: 1.5, minHeight: 46 }}>基礎ATKだけを現行ダンジョン水準へ引き上げる。</div>
+          <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#bcaee4', lineHeight: 1.5, minHeight: 46 }}>ILvを1上げてATKを必ず強化。サブステは20ILvごとに伸び、SSRとURは属性枠も育つ。</div>
           <div style={{ borderRadius: 10, background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.06)', padding: '8px', marginTop: 8 }}>
             <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>必要素材</div>
             <div style={{ fontFamily: 'monospace', fontSize: 11, color: targetIlv ? '#D4AF37' : '#6a5f76', fontWeight: 900, marginTop: 3, lineHeight: 1.45 }}>
               {targetIlv ? reforgeCosts.map((cost) => `${cost.name} ${materialQty(materials, cost.type)}/${cost.quantity}`).join(' / ') : '最大ILv'}
             </div>
           </div>
-          <button onClick={() => onReforge(weapon)} disabled={!canReforge} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canReforge ? 'linear-gradient(135deg, rgba(212,175,55,0.26), rgba(20,5,35,0.9))' : 'rgba(255,255,255,0.04)', border: `1px solid ${canReforge ? 'rgba(212,175,55,0.62)' : 'rgba(255,255,255,0.08)'}`, color: canReforge ? '#D4AF37' : '#5d5368', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, fontWeight: 900 }}>打ち直し</button>
+          <button onClick={() => onReforge(weapon)} disabled={!canReforge} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canReforge ? 'linear-gradient(135deg, rgba(212,175,55,0.26), rgba(20,5,35,0.9))' : 'rgba(255,255,255,0.04)', border: `1px solid ${canReforge ? 'rgba(212,175,55,0.62)' : 'rgba(255,255,255,0.08)'}`, color: canReforge ? '#D4AF37' : '#5d5368', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, fontWeight: 900 }}>{targetIlv ? `打ち直し ILv.${targetIlv}` : '最大ILv'}</button>
         </div>
       </div>
     </div>
@@ -1879,11 +1907,11 @@ function CharThumb({ mk, player, party, active, onSelect }: { mk: MemberKey; pla
 /* ──────────────────────────────────────────
    UNIT DETAIL VIEW — sample-based layout
 ────────────────────────────────────────── */
-function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots, soulShards, isDemonMode, onBack, onOpenGear }: {
+function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots, soulShards, isDemonMode, isResidueUnlocked, onBack, onOpenGear }: {
   selKey: MemberKey; setSelKey: (k: MemberKey) => void;
   player: CharacterData | null; party: (MonsterData | null)[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
-  soulShards: SoulShardData[]; isDemonMode: boolean;
+  soulShards: SoulShardData[]; isDemonMode: boolean; isResidueUnlocked: boolean;
   onBack: () => void;
   onOpenGear: (slotType: 'WEAPON' | 'RESIDUE', slotIndex: number) => void;
 }) {
@@ -1927,7 +1955,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
       sublabel: r ? `${formatStat(r.mainStat.type, r.mainStat.value)} / ${getResidueScoreGrade(calculateResidueScore(r)).grade}` : meta.role,
       filled: !!r, level: r?.level ?? null,
       rarity: r?.rarity ?? null,
-      locked: !info.isPlayer && i > 0,
+      locked: !isResidueUnlocked || (!info.isPlayer && i > 0),
     };
   });
 
@@ -1936,6 +1964,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
     if (id === 'weapon') { haptic(8); onOpenGear('WEAPON', 0); }
   };
   const handleRightSelect = (id: string | null) => {
+    if (!isResidueUnlocked) return;
     setSelectedSlot(id);
     if (id) {
       const idx = parseInt(id.replace('residue_', ''));
@@ -2080,22 +2109,23 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
             ))}
             <div
               onClick={() => {
+                if (!isResidueUnlocked) return;
                 const idx = selectedSlot?.startsWith('residue_') ? parseInt(selectedSlot.replace('residue_', '')) : 0;
                 haptic([10, 8, 18]); onOpenGear('RESIDUE', Number.isFinite(idx) ? idx : 0);
               }}
               style={{
                 marginTop: 2, padding: '6px 8px',
-                background: `linear-gradient(135deg, ${color}22, ${color}0C)`,
-                border: `1px solid ${color}48`,
-                borderRadius: 8, textAlign: 'center', cursor: 'pointer',
+                background: isResidueUnlocked ? `linear-gradient(135deg, ${color}22, ${color}0C)` : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${isResidueUnlocked ? color + '48' : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: 8, textAlign: 'center', cursor: isResidueUnlocked ? 'pointer' : 'not-allowed',
                 fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600,
-                color, letterSpacing: '0.08em',
-                boxShadow: `0 0 10px ${color}28`,
-                animation: 'glow-pulse 2.5s ease-in-out infinite',
+                color: isResidueUnlocked ? color : '#6b5f7a', letterSpacing: '0.08em',
+                boxShadow: isResidueUnlocked ? `0 0 10px ${color}28` : 'none',
+                animation: isResidueUnlocked ? 'glow-pulse 2.5s ease-in-out infinite' : 'none',
                 position: 'relative', overflow: 'hidden',
               }}>
-              <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(90deg, transparent, ${color}14, transparent)`, backgroundSize: '200% 100%', animation: 'shimmer 2s infinite', pointerEvents: 'none' }} />
-              強化
+              {isResidueUnlocked && <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(90deg, transparent, ${color}14, transparent)`, backgroundSize: '200% 100%', animation: 'shimmer 2s infinite', pointerEvents: 'none' }} />}
+              {isResidueUnlocked ? '強化' : '第2章'}
             </div>
           </div>
         </div>
@@ -2197,14 +2227,15 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
 type GearSlotType = 'WEAPON' | 'RESIDUE';
 interface GearCtx { mk: MemberKey; slotType: GearSlotType; slotIndex: number }
 
-function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResidues, residueMaterials, weaponMaterials, inventoryItems, transmutationPoints, onBack }: {
+function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResidues, residueMaterials, weaponMaterials, inventoryItems, transmutationPoints, isResidueUnlocked, onBack }: {
   gearCtx: GearCtx; player: CharacterData | null; party: (MonsterData | null)[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
   abyssalResidues: AbyssalResidueData[]; residueMaterials: ResidueMatData[];
   weaponMaterials: WeaponMaterialData[];
+  isResidueUnlocked: boolean;
   inventoryItems: ItemData[]; transmutationPoints: number; onBack: () => void;
 }) {
-  const { equipResidueToSlot, upgradeResidue, equipItem, rankUpWeapon, reforgeWeapon, dismantleWeapon, loadFromServer } = useGameStore();
+  const { equipResidueToSlot, upgradeResidue, equipItem, rankUpWeapon, reforgeWeapon, dismantleWeapon, loadFromServer, isServerBacked } = useGameStore();
   const sound = useGothicSound();
   const sfx = useSoundEffects();
   const conf = getConf(gearCtx.mk, player, party);
@@ -2215,6 +2246,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedMatIds, setSelectedMatIds] = useState<Set<string>>(new Set());
   const [enhanceResult, setEnhanceResult] = useState<ResidueEnhanceResult | null>(null);
+  const [weaponMutationPending, setWeaponMutationPending] = useState(false);
 
   const isResidueSlot = gearCtx.slotType === 'RESIDUE';
   const activeResidueSlotId: ResidueSlotId = RESIDUE_SLOT_ORDER[activeResidueSlotIndex] ?? 'chest';
@@ -2261,8 +2293,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     setSelectedItemId(info.weapon?.id ?? filteredItems[0]?.id ?? null);
   }, [filteredItems, info.weapon?.id, isResidueSlot, selectedItemId]);
 
-  const canPersistToServer = () => typeof window !== 'undefined'
-    && Boolean((window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__);
+  const canPersistToServer = () => isServerBacked;
 
   const handleEquipResidue = async () => {
     if (!selectedResidue) return;
@@ -2294,20 +2325,69 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     }
   };
 
-  const handleRankUpWeapon = (item: ItemData) => {
+  const handleRankUpWeapon = async (item: ItemData) => {
+    if (weaponMutationPending) return;
     sound.playEquip(); haptic([8, 4, 18]);
-    rankUpWeapon(item.id);
+    if (!player || !canPersistToServer()) {
+      rankUpWeapon(item.id);
+      return;
+    }
+    setWeaponMutationPending(true);
+    try {
+      const { rankUpWeaponAction } = await import('../../app/actions');
+      const result = await rankUpWeaponAction(player.id, item.id);
+      if (result.success) loadFromServer(result.data);
+      else console.error(result.error);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setWeaponMutationPending(false);
+    }
   };
 
-  const handleReforgeWeapon = (item: ItemData) => {
+  const handleReforgeWeapon = async (item: ItemData) => {
+    if (weaponMutationPending) return;
     sound.playEquip(); haptic([10, 6, 20]);
-    reforgeWeapon(item.id);
+    if (!player || !canPersistToServer()) {
+      reforgeWeapon(item.id);
+      return;
+    }
+    setWeaponMutationPending(true);
+    try {
+      const { reforgeWeaponAction } = await import('../../app/actions');
+      const result = await reforgeWeaponAction(player.id, item.id);
+      if (result.success) loadFromServer(result.data);
+      else console.error(result.error);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setWeaponMutationPending(false);
+    }
   };
 
-  const handleDismantleWeapon = (item: ItemData) => {
+  const handleDismantleWeapon = async (item: ItemData) => {
+    if (weaponMutationPending) return;
     sound.playEquip(); haptic([15, 8, 28]);
-    dismantleWeapon(item.id);
-    setSelectedItemId(null);
+    if (!player || !canPersistToServer()) {
+      dismantleWeapon(item.id);
+      setSelectedItemId(null);
+      return;
+    }
+    setWeaponMutationPending(true);
+    try {
+      const { dismantleWeaponAction } = await import('../../app/actions');
+      const result = await dismantleWeaponAction(player.id, item.id);
+      if (result.success) {
+        loadFromServer(result.data);
+        setSelectedItemId(null);
+      } else {
+        console.error(result.error);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setWeaponMutationPending(false);
+    }
   };
 
   const handleEnhance = () => {
@@ -2335,6 +2415,29 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     sound.playTap();
     setSelectedMatIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   };
+
+  if (isResidueSlot && !isResidueUnlocked) {
+    return (
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 295, damping: 33 }}
+        style={{ position: 'absolute', inset: 0 }}
+      >
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center" style={{ background: 'linear-gradient(180deg, #050115 0%, #07021A 100%)' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139,43,226,0.14)', border: '1px solid rgba(139,43,226,0.36)', color: '#B09FF8', fontSize: 22 }}>🔒</div>
+          <div>
+            <div style={{ fontFamily: "'Cinzel Decorative', serif", color: '#F0EAFF', fontSize: 15, fontWeight: 900, letterSpacing: '0.08em' }}>深淵の残滓</div>
+            <div style={{ marginTop: 8, color: '#8b7da8', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, lineHeight: 1.7 }}>第2章到達後にチュートリアルと一緒に解放されます。</div>
+          </div>
+          <button type="button" onClick={onBack} className="min-h-11 rounded-xl px-6 text-[11px] font-black tracking-[0.14em]" style={{ border: `1px solid ${color}40`, background: `${color}18`, color }}>
+            DETAILへ戻る
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -4037,6 +4140,11 @@ export default function LegionHub() {
   const [view, setView] = useState<'LIST' | 'DETAIL' | 'GEAR'>('LIST');
   const [selKey, setSelKey] = useState<MemberKey | null>('PLAYER');
   const [gearCtx, setGearCtx] = useState<GearCtx | null>(null);
+  const residueUnlocked = isAbyssalResidueUnlocked(player?.clearedStages);
+  const visibleResidueSlots = useMemo(
+    () => residueUnlocked ? equippedResidueSlots : [null, null, null, null, null] as (AbyssalResidueData | null)[],
+    [equippedResidueSlots, residueUnlocked],
+  );
 
   const openDetail = useCallback((k: MemberKey) => { sound.playTap(); setSelKey(k); setView('DETAIL'); }, [sound]);
   const goBackToList = useCallback(() => { haptic(5); sound.playTap(); setView('LIST'); }, [sound]);
@@ -4051,10 +4159,11 @@ export default function LegionHub() {
 
   const openGear = useCallback((slotType: GearSlotType, slotIndex: number) => {
     if (!selKey) return;
+    if (slotType === 'RESIDUE' && !residueUnlocked) return;
     sound.playTap();
     setGearCtx({ mk: selKey, slotType, slotIndex });
     setView('GEAR');
-  }, [selKey, sound]);
+  }, [residueUnlocked, selKey, sound]);
 
   const switchMember = useCallback((k: MemberKey) => { sound.playTap(); setSelKey(k); }, [sound]);
 
@@ -4064,7 +4173,7 @@ export default function LegionHub() {
         {view === 'LIST' && (
           <LegionListView key="list"
             player={player} party={party as (MonsterData | null)[]}
-            equippedResidueSlots={equippedResidueSlots} soulShards={soulShards}
+            equippedResidueSlots={visibleResidueSlots} soulShards={soulShards}
             demonGauge={demonGauge} isDemonMode={isDemonMode}
             onSelect={openDetail} onFocusMember={switchMember} onToggleDemon={() => { haptic([15, 10, 30]); toggleDemonMode(); }}
             onBack={goBackFromList} />
@@ -4073,19 +4182,21 @@ export default function LegionHub() {
           <UnitDetailView key="detail"
             selKey={selKey} setSelKey={switchMember}
             player={player} party={party as (MonsterData | null)[]}
-            equippedResidueSlots={equippedResidueSlots} soulShards={soulShards}
+            equippedResidueSlots={visibleResidueSlots} soulShards={soulShards}
             isDemonMode={isDemonMode}
+            isResidueUnlocked={residueUnlocked}
             onBack={goBackToList} onOpenGear={openGear} />
         )}
         {view === 'GEAR' && gearCtx && (
           <GearHubView key="gear"
             gearCtx={gearCtx}
             player={player} party={party as (MonsterData | null)[]}
-            equippedResidueSlots={equippedResidueSlots}
-            abyssalResidues={abyssalResidues} residueMaterials={residueMaterials}
+            equippedResidueSlots={visibleResidueSlots}
+            abyssalResidues={residueUnlocked ? abyssalResidues : []} residueMaterials={residueUnlocked ? residueMaterials : []}
             weaponMaterials={weaponMaterials}
             inventoryItems={inventoryItems as ItemData[]}
             transmutationPoints={transmutationPoints}
+            isResidueUnlocked={residueUnlocked}
             onBack={goBackToDetail} />
         )}
       </AnimatePresence>

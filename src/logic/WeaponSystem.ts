@@ -13,10 +13,10 @@ export const WEAPON_MAX_ILV = 90;
 export const WEAPON_MAX_RANK = 5;
 
 export const WEAPON_LV90_BASE_ATK: Record<WeaponRarity, Record<WeaponArchetype, number | null>> = {
-  R:   { LOW: 45, MID: 60, HIGH: 75, MYTHIC: null },
-  SR:  { LOW: 58, MID: 78, HIGH: 97, MYTHIC: null },
-  SSR: { LOW: 68, MID: 92, HIGH: 115, MYTHIC: null },
-  UR:  { LOW: null, MID: null, HIGH: null, MYTHIC: 130 },
+  R:   { LOW: 90, MID: 100, HIGH: 110, MYTHIC: null },
+  SR:  { LOW: 115, MID: 130, HIGH: 145, MYTHIC: null },
+  SSR: { LOW: 145, MID: 165, HIGH: 185, MYTHIC: null },
+  UR:  { LOW: null, MID: null, HIGH: null, MYTHIC: 220 },
 };
 
 export const WEAPON_SUBSTAT_COEFFICIENT: Record<WeaponArchetype, number> = {
@@ -24,6 +24,27 @@ export const WEAPON_SUBSTAT_COEFFICIENT: Record<WeaponArchetype, number> = {
   MID: 1,
   HIGH: 0.8,
   MYTHIC: 1.25,
+};
+
+export interface WeaponSubOptionRule {
+  optionCount: number;
+  elementDamageOptionCount: number;
+  baseMultiplier: number;
+  milestoneGrowthRate: number;
+}
+
+export const WEAPON_SUBOPTION_RULES: Record<WeaponRarity, WeaponSubOptionRule> = {
+  R:   { optionCount: 1, elementDamageOptionCount: 0, baseMultiplier: 1,    milestoneGrowthRate: 0.05 },
+  SR:  { optionCount: 1, elementDamageOptionCount: 0, baseMultiplier: 1.25, milestoneGrowthRate: 0.06 },
+  SSR: { optionCount: 2, elementDamageOptionCount: 1, baseMultiplier: 1.1,  milestoneGrowthRate: 0.05 },
+  UR:  { optionCount: 2, elementDamageOptionCount: 1, baseMultiplier: 1.4,  milestoneGrowthRate: 0.06 },
+};
+
+export const WEAPON_SUBSTAT_GROWTH_RATE: Record<WeaponRarity, number> = {
+  R: WEAPON_SUBOPTION_RULES.R.milestoneGrowthRate,
+  SR: WEAPON_SUBOPTION_RULES.SR.milestoneGrowthRate,
+  SSR: WEAPON_SUBOPTION_RULES.SSR.milestoneGrowthRate,
+  UR: WEAPON_SUBOPTION_RULES.UR.milestoneGrowthRate,
 };
 
 export const WEAPON_RARITY_LABEL: Record<WeaponRarity, string> = {
@@ -64,6 +85,11 @@ const MATERIAL_RARITY: Record<WeaponRarity, WeaponMaterialType | null> = {
   UR: null,
 };
 
+export const INITIAL_WEAPON_MATERIALS: WeaponMaterialData[] = [
+  { type: 'IDEA_COMMON', name: MATERIAL_NAMES.IDEA_COMMON, quantity: 8 },
+  { type: 'ABYSSAL_OBSIDIAN', name: MATERIAL_NAMES.ABYSSAL_OBSIDIAN, quantity: 10 },
+];
+
 const RANK_UP_COSTS: Record<WeaponRarity, number[]> = {
   R: [0, 4, 8, 12, 16, 24],
   SR: [0, 3, 6, 9, 12, 18],
@@ -71,12 +97,12 @@ const RANK_UP_COSTS: Record<WeaponRarity, number[]> = {
   UR: [0, 0, 0, 0, 0, 0],
 };
 
-const REFORGE_TIERS = [
-  { from: 1, to: 40, obsidian: 10 },
-  { from: 40, to: 60, obsidian: 25 },
-  { from: 60, to: 80, obsidian: 50 },
-  { from: 80, to: 90, obsidian: 100 },
-];
+const REFORGE_OBSIDIAN_COSTS: Record<WeaponRarity, number[]> = {
+  R: [1, 2, 3, 4, 5],
+  SR: [2, 3, 4, 5, 6],
+  SSR: [3, 4, 5, 6, 8],
+  UR: [4, 5, 6, 8, 10],
+};
 
 export interface WeaponAttackBreakdown {
   characterBaseAtk: number;
@@ -102,6 +128,10 @@ function normalizeOptionType(type: string): string {
   if (upper === 'MATK%') return 'ATK%';
   if (upper === 'MATK_FLAT') return 'ATK_FLAT';
   return upper;
+}
+
+export function isElementDamageSubOption(option: SubOption): boolean {
+  return /^(FIRE|WATER|THUNDER|EARTH|WIND|ICE|LIGHT|DARK)_DMG_BOOST$/.test(normalizeOptionType(option.type));
 }
 
 export function isWeaponSystemItem(item: ItemData | null | undefined): boolean {
@@ -140,14 +170,43 @@ export function calculateWeaponBaseAttack(item: ItemData): number {
 
   const ilv = getWeaponIlv(item);
   const lv90Base = getWeaponLv90BaseAttack(item);
-  const ilvScale = ilv / WEAPON_MAX_ILV;
 
-  return Math.round(lv90Base * ilvScale);
+  return ilv + Math.floor(((lv90Base - WEAPON_MAX_ILV) * (ilv - 1)) / (WEAPON_MAX_ILV - 1));
 }
 
 export function getWeaponSubStatCoefficient(item: ItemData): number {
   if (typeof item.subStatCoefficient === 'number') return item.subStatCoefficient;
   return WEAPON_SUBSTAT_COEFFICIENT[getWeaponArchetype(item)];
+}
+
+export function getWeaponSubOptionRule(item: ItemData): WeaponSubOptionRule {
+  return WEAPON_SUBOPTION_RULES[getWeaponRarity(item)];
+}
+
+export function getWeaponSubStatGrowthStep(item: ItemData): number {
+  return Math.floor(getWeaponIlv(item) / 20);
+}
+
+export function getWeaponSubStatGrowthMultiplier(item: ItemData): number {
+  return 1 + getWeaponSubStatGrowthStep(item) * WEAPON_SUBSTAT_GROWTH_RATE[getWeaponRarity(item)];
+}
+
+export function validateWeaponSubOptions(item: ItemData): string[] {
+  if (!isWeaponSystemItem(item)) return [];
+
+  const options = item.subOptions ?? [];
+  const rule = getWeaponSubOptionRule(item);
+  const elementDamageOptionCount = options.filter(isElementDamageSubOption).length;
+  const errors: string[] = [];
+
+  if (options.length !== rule.optionCount) {
+    errors.push(`subOptions must contain ${rule.optionCount} option(s)`);
+  }
+  if (elementDamageOptionCount !== rule.elementDamageOptionCount) {
+    errors.push(`subOptions must contain ${rule.elementDamageOptionCount} element damage option(s)`);
+  }
+
+  return errors;
 }
 
 export function getWeaponEffectiveStats(item: ItemData): Partial<BaseStats> {
@@ -162,7 +221,9 @@ export function getWeaponEffectiveSubOptions(item: ItemData): SubOption[] {
   const options = item.subOptions ?? [];
   if (!isWeaponSystemItem(item)) return options;
 
-  const coefficient = getWeaponSubStatCoefficient(item);
+  const coefficient = getWeaponSubStatCoefficient(item)
+    * getWeaponSubOptionRule(item).baseMultiplier
+    * getWeaponSubStatGrowthMultiplier(item);
   return options.map((option) => ({
     ...option,
     value: Number((option.value * coefficient).toFixed(1)),
@@ -219,25 +280,24 @@ export function getRankUpCost(item: ItemData): WeaponCost | null {
 
 export function getNextReforgeTargetIlv(item: ItemData): number | null {
   const ilv = getWeaponIlv(item);
-  const tier = REFORGE_TIERS.find((candidate) => ilv < candidate.to);
-  return tier?.to ?? null;
+  return ilv < WEAPON_MAX_ILV ? ilv + 1 : null;
 }
 
 export function getReforgeCost(item: ItemData): WeaponCost[] {
   const target = getNextReforgeTargetIlv(item);
   if (!target) return [];
-  const current = getWeaponIlv(item);
-  const tier = REFORGE_TIERS.find((candidate) => current < candidate.to && target === candidate.to);
-  if (!tier) return [];
+  const rarity = getWeaponRarity(item);
+  const costTier = Math.min(4, Math.floor((target - 1) / 20));
 
   const costs: WeaponCost[] = [{
     type: 'ABYSSAL_OBSIDIAN',
     name: MATERIAL_NAMES.ABYSSAL_OBSIDIAN,
-    quantity: tier.obsidian,
+    quantity: REFORGE_OBSIDIAN_COSTS[rarity][costTier],
   }];
 
-  if (target === WEAPON_MAX_ILV && getWeaponRarity(item) === 'SSR') {
-    costs.push({ type: 'IDEA_SSR', name: MATERIAL_NAMES.IDEA_SSR, quantity: 1 });
+  const milestoneMaterial = MATERIAL_RARITY[rarity];
+  if (target % 20 === 0 && milestoneMaterial) {
+    costs.push({ type: milestoneMaterial, name: MATERIAL_NAMES[milestoneMaterial], quantity: 1 });
   }
 
   return costs;

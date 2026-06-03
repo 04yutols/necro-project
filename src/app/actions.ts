@@ -16,6 +16,17 @@ import { calculateEnergyState } from '@/logic/EnergySystem';
 import { levelFromTotalExp } from '@/logic/ExperienceSystem';
 import { calculateJobAdjustedStats } from '@/logic/JobSystem';
 import { calculateJobGrowthIncrements } from '@/logic/JobGrowthSystem';
+import { isAbyssalResidueUnlocked } from '@/logic/AbyssalResidueUnlockSystem';
+import {
+  calculateDismantleRewards,
+  calculateReforgedWeapon,
+  calculateWeaponBaseAttack,
+  getNextReforgeTargetIlv,
+  getRankUpCost,
+  getReforgeCost,
+  INITIAL_WEAPON_MATERIALS,
+  type WeaponCost,
+} from '@/logic/WeaponSystem';
 import type {
   AbyssalResidueData,
   BaseStats,
@@ -29,6 +40,8 @@ import type {
   Resistances,
   SoulShardData,
   SpiritCoreData,
+  WeaponMaterialData,
+  WeaponMaterialType,
   WeaponRarity,
 } from '@/types/game';
 import type { OnlineStageRecordSummary, StageResultMeta, WorldEventType, WorldLogEntry } from '@/types/online';
@@ -211,6 +224,18 @@ function toItemData(row: {
   };
 }
 
+function toWeaponMaterialData(row: {
+  type: string;
+  name: string;
+  quantity: number;
+}): WeaponMaterialData {
+  return {
+    type: row.type as WeaponMaterialType,
+    name: row.name,
+    quantity: row.quantity,
+  };
+}
+
 function toBaseStats(row: {
   hp: number;
   atk: number;
@@ -310,20 +335,25 @@ function toServerUser(sessionUser: { id?: string; name?: string | null; email?: 
   };
 }
 
-function toServerGameData(character: any, inventoryItems: any[], inventoryMonsters: any[]): ServerGameData {
+function toServerGameData(character: any, inventoryItems: any[], inventoryMonsters: any[], weaponMaterials: any[] = []): ServerGameData {
   const currentJobId = character.currentJobId ?? 'warrior';
   const currentJob = getJobData(currentJobId);
   const jobs = (character.jobs ?? []).map((job: any) => ({ jobId: job.jobId, level: job.level, exp: job.exp }));
   const currentJobLevel = Math.max(1, jobs.find((job: { jobId: string; level: number; exp: number }) => job.jobId === currentJobId)?.level ?? 1);
   const energyState = calculateEnergyState(currentJob, currentJobLevel);
   const baseStats = toBaseStats(character);
-  const equippedResidueSlots = [
+  const clearedStages = character.clearedStages ?? [];
+  const residueUnlocked = isAbyssalResidueUnlocked(clearedStages);
+  const persistedEquippedResidueSlots = [
     toResidueSlot(character.equippedResidue0),
     toResidueSlot(character.equippedResidue1),
     toResidueSlot(character.equippedResidue2),
     toResidueSlot(character.equippedResidue3),
     toResidueSlot(character.equippedResidue4),
   ];
+  const equippedResidueSlots = residueUnlocked
+    ? persistedEquippedResidueSlots
+    : [null, null, null, null, null];
   const player: CharacterData = {
     id: character.id,
     name: character.name,
@@ -354,7 +384,7 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
     baseResistances: {},
     jobs,
     isAwakened: false,
-    clearedStages: character.clearedStages ?? [],
+    clearedStages,
     gold: character.gold ?? 50000,
     currentEnergy: energyState.currentEnergy,
     maxEnergy: energyState.maxEnergy,
@@ -386,6 +416,7 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
     inventoryMonsters: monsters,
     soulShards: Array.from(soulShards.values()),
     inventoryItems: inventoryItems.map(toItemData),
+    weaponMaterials: weaponMaterials.map(toWeaponMaterialData),
     abyssalResidues: (character.abyssalResidues ?? []).map(toResidueData),
     equippedResidueSlots,
   };
@@ -483,6 +514,18 @@ function rankUpErrorMessage(error: unknown): string {
   return 'ランクアップに失敗しました';
 }
 
+function weaponEnhancementErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('キャラクター')) return 'キャラクターが見つかりません';
+  if (message.includes('所有していない')) return '所有していない武器です';
+  if (message.includes('装備中')) return '装備中の武器は分解できません';
+  if (message.includes('素材')) return '武器強化素材が不足しています';
+  if (message.includes('共鳴')) return 'これ以上共鳴できません';
+  if (message.includes('ILv')) return 'これ以上打ち直しできません';
+  if (message.includes('分解')) return 'この武器は分解できません';
+  return '武器強化の保存に失敗しました';
+}
+
 async function getAuthorizedUser(userId: string): Promise<ServerGameUser | null> {
   const session = await auth().catch(() => null);
   if (session?.user?.id !== userId) return null;
@@ -555,7 +598,7 @@ export async function processStageResultForUser(
   const goldGain = stage.rewards.baseGold;
 
   // ドロップ抽選（サーバー側で確定）
-  const dropResult = svc.processDropTable(stage.rewards.dropTable);
+  const dropResult = svc.processStageDropTable(stage, char.clearedStages ?? []);
   const bestResidueScore = Math.max(0, ...dropResult.residues.map(residue => calculateResidueScore(residue)));
   const playerName = getPlayerDisplayName(authorizedUser);
 
@@ -777,21 +820,27 @@ export async function loadCharacterForUser(user: ServerGameUser): Promise<LoadCh
     return { success: true, status: 'NO_CHARACTER', user: authorizedUser };
   }
 
-  const inventoryItems = await prisma.item.findMany({
-    where: { ownerId: authorizedUser.id },
-    orderBy: { id: 'desc' },
-  });
-  const inventoryMonsters = await prisma.monster.findMany({
-    where: { characterId: character.id },
-    include: { soulShard: true, spiritCore: true },
-    orderBy: { id: 'asc' },
-  });
+  const [inventoryItems, inventoryMonsters, weaponMaterials] = await Promise.all([
+    prisma.item.findMany({
+      where: { ownerId: authorizedUser.id },
+      orderBy: { id: 'desc' },
+    }),
+    prisma.monster.findMany({
+      where: { characterId: character.id },
+      include: { soulShard: true, spiritCore: true },
+      orderBy: { id: 'asc' },
+    }),
+    prisma.weaponMaterial.findMany({
+      where: { userId: authorizedUser.id },
+      orderBy: { type: 'asc' },
+    }),
+  ]);
 
   return {
     success: true,
     status: 'READY',
     user: authorizedUser,
-    data: toServerGameData(character, inventoryItems, inventoryMonsters),
+    data: toServerGameData(character, inventoryItems, inventoryMonsters, weaponMaterials),
   };
 }
 
@@ -869,6 +918,16 @@ export async function createCharacterForUser(
     const createdWeapon = starterWeapon
       ? await tx.item.create({ data: itemCreateDataFromMaster(starterWeapon, userId), select: { id: true } })
       : null;
+
+    await tx.weaponMaterial.createMany({
+      data: INITIAL_WEAPON_MATERIALS.map((material) => ({
+        userId,
+        type: material.type,
+        name: material.name,
+        quantity: material.quantity,
+      })),
+      skipDuplicates: true,
+    });
 
     await tx.character.create({
       data: {
@@ -1072,6 +1131,166 @@ export async function equipResidueAction(characterId: string, slotIndex: number,
   return equipResidueForUser(toServerUser(session.user), characterId, slotIndex, residueId);
 }
 
+export async function rankUpWeaponAction(characterId: string, weaponId: string): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return rankUpWeaponForUser(toServerUser(session.user), characterId, weaponId);
+}
+
+export async function reforgeWeaponAction(characterId: string, weaponId: string): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return reforgeWeaponForUser(toServerUser(session.user), characterId, weaponId);
+}
+
+export async function dismantleWeaponAction(characterId: string, weaponId: string): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return dismantleWeaponForUser(toServerUser(session.user), characterId, weaponId);
+}
+
+async function spendWeaponMaterialsForUser(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  costs: WeaponCost[],
+) {
+  for (const cost of costs) {
+    const updated = await tx.weaponMaterial.updateMany({
+      where: {
+        userId,
+        type: cost.type,
+        quantity: { gte: cost.quantity },
+      },
+      data: { quantity: { decrement: cost.quantity } },
+    });
+    if (updated.count !== 1) throw new Error('武器強化素材が不足しています');
+  }
+}
+
+async function findOwnedWeapon(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  weaponId: string,
+) {
+  const weapon = await tx.item.findFirst({
+    where: { id: weaponId, ownerId: userId, type: 'WEAPON' },
+  });
+  if (!weapon) throw new Error('所有していない武器です');
+  return weapon;
+}
+
+async function assertOwnedCharacter(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  characterId: string,
+) {
+  const character = await tx.character.findFirst({
+    where: { id: characterId, userId },
+    select: { id: true, equipWeaponId: true },
+  });
+  if (!character) throw new Error('キャラクターが見つかりません');
+  return character;
+}
+
+export async function rankUpWeaponForUser(
+  user: ServerGameUser,
+  characterId: string,
+  weaponId: string,
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await assertOwnedCharacter(tx, authorizedUser.id, characterId);
+      const weapon = await findOwnedWeapon(tx, authorizedUser.id, weaponId);
+      const item = toItemData(weapon);
+      const cost = getRankUpCost(item);
+      if (!cost) throw new Error('これ以上共鳴できません');
+
+      await spendWeaponMaterialsForUser(tx, authorizedUser.id, [cost]);
+      await tx.item.update({
+        where: { id: weapon.id },
+        data: { rank: (item.rank ?? 0) + 1 },
+      });
+    });
+  } catch (error) {
+    return { success: false, error: weaponEnhancementErrorMessage(error) };
+  }
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
+}
+
+export async function reforgeWeaponForUser(
+  user: ServerGameUser,
+  characterId: string,
+  weaponId: string,
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await assertOwnedCharacter(tx, authorizedUser.id, characterId);
+      const weapon = await findOwnedWeapon(tx, authorizedUser.id, weaponId);
+      const item = toItemData(weapon);
+      const targetIlv = getNextReforgeTargetIlv(item);
+      if (!targetIlv) throw new Error('これ以上ILvを上げられません');
+
+      await spendWeaponMaterialsForUser(tx, authorizedUser.id, getReforgeCost(item));
+      const reforged = calculateReforgedWeapon(item, targetIlv);
+      await tx.item.update({
+        where: { id: weapon.id },
+        data: {
+          ilv: targetIlv,
+          atk: calculateWeaponBaseAttack(reforged),
+        },
+      });
+    });
+  } catch (error) {
+    return { success: false, error: weaponEnhancementErrorMessage(error) };
+  }
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
+}
+
+export async function dismantleWeaponForUser(
+  user: ServerGameUser,
+  characterId: string,
+  weaponId: string,
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const character = await assertOwnedCharacter(tx, authorizedUser.id, characterId);
+      const weapon = await findOwnedWeapon(tx, authorizedUser.id, weaponId);
+      if (character.equipWeaponId === weapon.id) throw new Error('装備中の武器は分解できません');
+
+      const rewards = calculateDismantleRewards(toItemData(weapon));
+      if (rewards.length === 0) throw new Error('この武器は分解できません');
+      for (const reward of rewards) {
+        await tx.weaponMaterial.upsert({
+          where: { userId_type: { userId: authorizedUser.id, type: reward.type } },
+          update: { name: reward.name, quantity: { increment: reward.quantity } },
+          create: {
+            userId: authorizedUser.id,
+            type: reward.type,
+            name: reward.name,
+            quantity: reward.quantity,
+          },
+        });
+      }
+      await tx.item.delete({ where: { id: weapon.id } });
+    });
+  } catch (error) {
+    return { success: false, error: weaponEnhancementErrorMessage(error) };
+  }
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
+}
+
 export async function updatePartyForUser(
   user: ServerGameUser,
   characterId: string,
@@ -1129,7 +1348,10 @@ export async function equipItemForUser(
   const expectedType = ITEM_TYPE_BY_SLOT[typedSlot];
   if (!dbField || !expectedType) return { success: false, error: '装備スロットが不正です' };
 
-  const character = await prisma.character.findFirst({ where: { id: characterId, userId: authorizedUser.id }, select: { id: true } });
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    select: { id: true },
+  });
   if (!character) return { success: false, error: 'キャラクターが見つかりません' };
 
   const item = await prisma.item.findFirst({
@@ -1183,8 +1405,14 @@ export async function equipResidueForUser(
     return { success: false, error: '残滓スロットが不正です' };
   }
 
-  const character = await prisma.character.findFirst({ where: { id: characterId, userId: authorizedUser.id }, select: { id: true } });
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    select: { id: true, clearedStages: true },
+  });
   if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+  if (!isAbyssalResidueUnlocked(character.clearedStages)) {
+    return { success: false, error: '深淵の残滓は第2章到達後に解放されます' };
+  }
 
   const residue = await prisma.abyssalResidue.findFirst({
     where: { id: residueId, characterId },

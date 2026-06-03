@@ -1,4 +1,5 @@
-import { CharacterData, ItemData, AbyssalResidueData, ResidueMatData, MonsterData, DropEntry } from '../types/game';
+import { getStageDropTableForResidueUnlock } from '../logic/AbyssalResidueUnlockSystem';
+import { CharacterData, ItemData, AbyssalResidueData, ResidueMatData, MonsterData, DropEntry, StageData } from '../types/game';
 import { MasterDataService } from './MasterDataService';
 
 export interface StageDropResult {
@@ -205,7 +206,11 @@ export class RewardService {
           if (!entry.itemId) break;
           const mat = mds.getMaterial(entry.itemId);
           if (mat) {
-            result.materials.push({ ...mat, id: generateInstanceId(mat.id) });
+            result.materials.push({
+              ...mat,
+              id: generateInstanceId(mat.id),
+              quantity: Math.max(1, entry.quantity ?? mat.quantity ?? 1),
+            });
           }
           break;
         }
@@ -216,6 +221,16 @@ export class RewardService {
     }
 
     return result;
+  }
+
+  public processStageDropTable(
+    stage: Pick<StageData, 'chapter' | 'rewards'>,
+    clearedStages: readonly string[] = [],
+    discoveryBonusRate: number = 0,
+    rng: () => number = Math.random,
+  ): StageDropResult {
+    const dropTable = getStageDropTableForResidueUnlock(stage, clearedStages);
+    return this.processDropTable(dropTable, discoveryBonusRate, rng);
   }
 
   public calculateExp(baseExp: number, player: CharacterData): number {

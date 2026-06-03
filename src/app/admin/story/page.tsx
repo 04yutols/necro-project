@@ -1,9 +1,12 @@
-import { getStoryScenes } from '../actions';
+import { getStoryPackSummaries, getStoryScenes } from '../actions';
 import StoryScenesList from '@/components/admin/StoryScenesList';
 import Link from 'next/link';
 
 export default async function StoryPage() {
-  const scenes = await getStoryScenes();
+  const [scenes, storyPacks] = await Promise.all([
+    getStoryScenes(),
+    getStoryPackSummaries(),
+  ]);
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
@@ -15,8 +18,29 @@ export default async function StoryPage() {
             STORY EDITOR
           </h1>
           <p className="text-xs font-space mt-1" style={{ color: '#7878a8' }}>
-            ch1_scenes.json — {scenes.length} シーン
+            章別JSON — {scenes.length} シーン / {storyPacks.length} パック
           </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+            {storyPacks.map(pack => (
+              <span
+                key={pack.id}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '5px 9px',
+                  borderRadius: 8,
+                  background: 'rgba(139,0,255,0.1)',
+                  border: '1px solid rgba(139,0,255,0.22)',
+                  color: '#a78bfa',
+                  fontSize: 11,
+                  fontFamily: 'Space Mono, monospace',
+                }}
+              >
+                {pack.label} · {pack.fileName} · {pack.sceneCount}
+              </span>
+            ))}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <Link

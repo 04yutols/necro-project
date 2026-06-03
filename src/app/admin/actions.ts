@@ -3,6 +3,12 @@
 import fs from 'fs';
 import path from 'path';
 import type { StoryScene, StoryCharacter } from '@/types/story';
+import {
+  STORY_PACKS,
+  getStoryPackForArchiveChapter,
+  sortStoryScenes,
+} from '@/data/story/packs';
+import type { StoryPack, StoryPackSummary } from '@/data/story/packs';
 
 // ---------------------------------------------------------------------------
 // Production guard
@@ -105,6 +111,17 @@ function getString(obj: Record<string, unknown>, key: string): string {
   return typeof val === 'string' ? val : '';
 }
 
+const WEAPON_SUBOPTION_RULES: Record<string, { optionCount: number; elementDamageOptionCount: number }> = {
+  R: { optionCount: 1, elementDamageOptionCount: 0 },
+  SR: { optionCount: 1, elementDamageOptionCount: 0 },
+  SSR: { optionCount: 2, elementDamageOptionCount: 1 },
+  UR: { optionCount: 2, elementDamageOptionCount: 1 },
+};
+
+function isElementDamageSubOption(option: Record<string, unknown>): boolean {
+  return /^(FIRE|WATER|THUNDER|EARTH|WIND|ICE|LIGHT|DARK)_DMG_BOOST$/.test(getString(option, 'type'));
+}
+
 // ---------------------------------------------------------------------------
 // Public: run full audit
 // ---------------------------------------------------------------------------
@@ -148,6 +165,27 @@ export async function runMasterDataAudit(): Promise<AuditFinding[]> {
       } else {
         findings.push({ level: 'PASS', scope, id: key, message: 'ID整合性 OK' });
       }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 1.5 Weapon sub options: rarity controls count and fixed element slots
+  // ---------------------------------------------------------------------------
+  for (const [itemKey, item] of Object.entries(data.items)) {
+    if (getString(item, 'type') !== 'WEAPON') continue;
+    const rarity = getString(item, 'weaponRarity') || getString(item, 'rarity');
+    const rule = WEAPON_SUBOPTION_RULES[rarity];
+    const subOptions = getArray(item, 'subOptions');
+    if (!rule) {
+      findings.push({ level: 'FAIL', scope: 'items', id: itemKey, message: `武器レアリティ "${rarity}" は未対応です。` });
+      continue;
+    }
+    if (subOptions.length !== rule.optionCount) {
+      findings.push({ level: 'FAIL', scope: 'items', id: itemKey, message: `${rarity} 武器のサブオプションは ${rule.optionCount} 枠必要です。` });
+    }
+    const elementDamageOptionCount = subOptions.filter(isElementDamageSubOption).length;
+    if (elementDamageOptionCount !== rule.elementDamageOptionCount) {
+      findings.push({ level: 'FAIL', scope: 'items', id: itemKey, message: `${rarity} 武器の属性ダメージ枠は ${rule.elementDamageOptionCount} 枠必要です。` });
     }
   }
 
@@ -532,18 +570,71 @@ export async function deleteEntry(
 // ---------------------------------------------------------------------------
 // Story: read scenes
 // ---------------------------------------------------------------------------
+type StoryScenesFile = {
+  scenes: StoryScene[];
+};
+
+type StorySceneLocation = {
+  pack: StoryPack;
+  data: StoryScenesFile;
+  index: number;
+};
+
+function getStoryFilePath(fileName: string): string {
+  return path.join(STORY_DIR, fileName);
+}
+
+function readStoryScenesFile(fileName: string): StoryScenesFile {
+  const raw = fs.readFileSync(getStoryFilePath(fileName), 'utf-8');
+  const data = JSON.parse(raw) as StoryScenesFile;
+  return { scenes: Array.isArray(data.scenes) ? data.scenes : [] };
+}
+
+function writeStoryScenesFile(fileName: string, data: StoryScenesFile): void {
+  const sorted = { scenes: sortStoryScenes(data.scenes) };
+  fs.writeFileSync(getStoryFilePath(fileName), JSON.stringify(sorted, null, 2), 'utf-8');
+}
+
+function findStorySceneLocation(id: string): StorySceneLocation | null {
+  for (const pack of STORY_PACKS) {
+    const data = readStoryScenesFile(pack.fileName);
+    const index = data.scenes.findIndex(scene => scene.id === id);
+    if (index >= 0) {
+      return { pack, data, index };
+    }
+  }
+  return null;
+}
+
+function requireStoryPackForScene(scene: StoryScene): StoryPack {
+  const pack = getStoryPackForArchiveChapter(scene.archiveChapter);
+  if (!pack) {
+    throw new Error(`archiveChapter=${scene.archiveChapter} に対応するストーリーJSONパックがありません。`);
+  }
+  return pack;
+}
+
 export async function getStoryScenes(): Promise<StoryScene[]> {
   assertDev();
-  const filePath = path.join(STORY_DIR, 'ch1_scenes.json');
-  const raw = fs.readFileSync(filePath, 'utf-8');
-  const data = JSON.parse(raw) as { scenes: StoryScene[] };
-  return [...data.scenes].sort((a, b) => (a.sequence ?? 999) - (b.sequence ?? 999));
+  const scenes = STORY_PACKS.flatMap(pack => readStoryScenesFile(pack.fileName).scenes);
+  return sortStoryScenes(scenes);
+}
+
+export async function getStoryPackSummaries(): Promise<StoryPackSummary[]> {
+  assertDev();
+  return STORY_PACKS.map(pack => ({
+    id: pack.id,
+    fileName: pack.fileName,
+    label: pack.label,
+    archiveChapterRange: pack.archiveChapterRange,
+    sceneCount: readStoryScenesFile(pack.fileName).scenes.length,
+  }));
 }
 
 export async function getStoryScene(id: string): Promise<StoryScene | null> {
   assertDev();
-  const scenes = await getStoryScenes();
-  return scenes.find((s) => s.id === id) ?? null;
+  const location = findStorySceneLocation(id);
+  return location?.data.scenes[location.index] ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -554,16 +645,29 @@ export async function saveStoryScene(
 ): Promise<{ success: boolean; error?: string }> {
   assertDev();
   try {
-    const filePath = path.join(STORY_DIR, 'ch1_scenes.json');
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(raw) as { scenes: StoryScene[] };
-    const idx = data.scenes.findIndex((s) => s.id === scene.id);
-    if (idx >= 0) {
-      data.scenes[idx] = scene;
-    } else {
-      data.scenes.push(scene);
+    if (!scene.id.trim()) {
+      throw new Error('シーンIDは必須です。');
     }
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+
+    const targetPack = requireStoryPackForScene(scene);
+    const existing = findStorySceneLocation(scene.id);
+
+    if (existing && existing.pack.fileName !== targetPack.fileName) {
+      existing.data.scenes.splice(existing.index, 1);
+      writeStoryScenesFile(existing.pack.fileName, existing.data);
+
+      const targetData = readStoryScenesFile(targetPack.fileName);
+      targetData.scenes.push(scene);
+      writeStoryScenesFile(targetPack.fileName, targetData);
+    } else if (existing) {
+      existing.data.scenes[existing.index] = scene;
+      writeStoryScenesFile(existing.pack.fileName, existing.data);
+    } else {
+      const targetData = readStoryScenesFile(targetPack.fileName);
+      targetData.scenes.push(scene);
+      writeStoryScenesFile(targetPack.fileName, targetData);
+    }
+
     return { success: true };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) };
@@ -578,11 +682,13 @@ export async function deleteStoryScene(
 ): Promise<{ success: boolean; error?: string }> {
   assertDev();
   try {
-    const filePath = path.join(STORY_DIR, 'ch1_scenes.json');
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(raw) as { scenes: StoryScene[] };
-    data.scenes = data.scenes.filter((s) => s.id !== id);
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    const existing = findStorySceneLocation(id);
+    if (!existing) {
+      throw new Error(`シーン "${id}" が登録済みパックに存在しません。`);
+    }
+
+    existing.data.scenes.splice(existing.index, 1);
+    writeStoryScenesFile(existing.pack.fileName, existing.data);
     return { success: true };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) };

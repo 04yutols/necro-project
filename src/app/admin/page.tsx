@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getAllMasterData, getStoryScenes } from './actions';
+import { getAllMasterData, getStoryPackSummaries, getStoryScenes } from './actions';
 
 const SECTION_META = [
   { key: 'enemies', label: '敵', href: '/admin/enemies', icon: '☠', desc: 'enemies.json' },
@@ -13,9 +13,10 @@ const SECTION_META = [
 ] as const;
 
 export default async function AdminDashboard() {
-  const [data, storyScenes] = await Promise.all([
+  const [data, storyScenes, storyPacks] = await Promise.all([
     getAllMasterData(),
     getStoryScenes(),
+    getStoryPackSummaries(),
   ]);
 
   return (
@@ -28,7 +29,7 @@ export default async function AdminDashboard() {
           NECRO ADMIN
         </h1>
         <p className="text-xs font-space" style={{ color: '#7878a8' }}>
-          Master Data Studio — 第1章「亡国の王都」 / 読み取り専用
+          Master Data Studio — 章別ストーリーJSON対応
         </p>
       </div>
 
@@ -84,7 +85,7 @@ export default async function AdminDashboard() {
             ストーリー
           </div>
           <div className="text-[10px] font-mono" style={{ color: '#7878a8' }}>
-            ch1_scenes.json
+            章別JSON · {storyPacks.length} packs
           </div>
         </Link>
       </div>

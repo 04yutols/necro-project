@@ -174,7 +174,6 @@ export const PHASE_STEPS: Record<TutorialPhase, TutorialStep[]> = {
 
 export const ALL_PHASES: TutorialPhase[] = [
   'BATTLE_BASICS',
-  'NECRO_LAB',
   'PARTY_FORMATION',
   'JOB_CHANGE',
   'ABYSSAL_RESIDUE',

@@ -124,6 +124,9 @@ function summarizeStage(stage) {
 
     const bucket = getBucket(entry);
     totals.set(bucket, (totals.get(bucket) ?? 0) + Math.max(0, entry.rate ?? 0));
+    if (stage.chapter < 2 && entry.type === 'RESIDUE') {
+      findings.push({ level: 'FAIL', message: `${source} RESIDUE drops before chapter 2 unlock` });
+    }
 
     const rarity = getEntryRarity(entry);
     if (isWeaponEntry(entry) && rarity === 'UR') {
@@ -141,6 +144,9 @@ function summarizeStage(stage) {
   }
 
   const expectedBuckets = Object.entries(EXPECTED).filter(([bucket]) => {
+    if (stage.chapter < 2 && bucket.endsWith('_RESIDUE')) {
+      return false;
+    }
     if (!hasBoss && (bucket === 'SSR_WEAPON' || bucket === 'UR_WEAPON' || bucket === 'EPIC_RESIDUE')) {
       return false;
     }

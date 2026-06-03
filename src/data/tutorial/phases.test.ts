@@ -1,10 +1,9 @@
 import { ALL_PHASES, BANNER_LABELS, PHASE_STEPS } from './phases';
 
 describe('tutorial phases', () => {
-  test('defines the six chapter-one onboarding phases in order', () => {
+  test('defines the required onboarding phases in order', () => {
     expect(ALL_PHASES).toEqual([
       'BATTLE_BASICS',
-      'NECRO_LAB',
       'PARTY_FORMATION',
       'JOB_CHANGE',
       'ABYSSAL_RESIDUE',

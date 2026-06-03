@@ -1,15 +1,35 @@
 import type { SceneTrigger, StoryScene } from '../../types/story';
-import ch1ScenesData from './ch1_scenes.json';
+import type { StageData } from '../../types/game';
+import stagesData from '../master/stages.json';
+import { STORY_PACKS, sortStoryScenes } from './packs';
 
-const storyData = ch1ScenesData as { scenes: StoryScene[] };
+export { STORY_PACKS, getStoryPackSummaries } from './packs';
 
-export const STORY_SCENES: StoryScene[] = [...storyData.scenes].sort((a, b) => {
-  const aSeq = a.sequence ?? Number.MAX_SAFE_INTEGER;
-  const bSeq = b.sequence ?? Number.MAX_SAFE_INTEGER;
-  return aSeq - bSeq;
-});
+const STAGES = stagesData as Record<string, StageData>;
 
-const SCENE_BY_ID = new Map(STORY_SCENES.map(scene => [scene.id, scene]));
+export const STORY_SCENES: StoryScene[] = sortStoryScenes(
+  STORY_PACKS.flatMap(pack => pack.scenes),
+);
+
+function buildSceneMap(scenes: StoryScene[]): Map<string, StoryScene> {
+  const map = new Map<string, StoryScene>();
+  const duplicates: string[] = [];
+
+  scenes.forEach(scene => {
+    if (map.has(scene.id)) {
+      duplicates.push(scene.id);
+    }
+    map.set(scene.id, scene);
+  });
+
+  if (duplicates.length > 0) {
+    throw new Error(`Duplicate story scene ids: ${[...new Set(duplicates)].join(', ')}`);
+  }
+
+  return map;
+}
+
+const SCENE_BY_ID = buildSceneMap(STORY_SCENES);
 
 function sameTrigger(a: SceneTrigger, b: SceneTrigger): boolean {
   if (a.type !== b.type) return false;
@@ -51,19 +71,41 @@ export function getSceneIdsByTrigger(trigger: SceneTrigger): string[] {
 }
 
 export function getPrologueSceneIds(): string[] {
-  return ['PROLOGUE_00', 'PROLOGUE_01', 'PROLOGUE_02', 'PROLOGUE_03'];
+  return getSceneIdsByTrigger({ type: 'GAME_START' });
 }
 
 export function getStageEnterSceneIds(stageId: string): string[] {
   return getSceneIdsByTrigger({ type: 'STAGE_ENTER', stageId });
 }
 
+function isDifferentArea(a: StageData, b: StageData): boolean {
+  return a.chapter !== b.chapter || a.area !== b.area;
+}
+
+function areaIdForStage(stage: StageData): string {
+  return `area${stage.area}`;
+}
+
+export function getAreaUnlockIdsForClearedStage(stageId: string): string[] {
+  const clearedStage = STAGES[stageId];
+  if (!clearedStage) return [];
+
+  const areaIds = new Set<string>();
+  Object.values(STAGES).forEach(stage => {
+    if (!stage.unlockRequires.includes(stageId)) return;
+    if (!isDifferentArea(clearedStage, stage)) return;
+    areaIds.add(areaIdForStage(stage));
+  });
+
+  return [...areaIds].sort();
+}
+
 export function getStageClearSceneIds(stageId: string): string[] {
   const regularScenes = getSceneIdsByTrigger({ type: 'STAGE_CLEAR', stageId });
   const bossScenes = getSceneIdsByTrigger({ type: 'BOSS_CLEAR', bossStageId: stageId });
-  const areaUnlockScenes = stageId === 'area1_node3'
-    ? getSceneIdsByTrigger({ type: 'AREA_UNLOCK', areaId: 'area2' })
-    : [];
+  const areaUnlockScenes = getAreaUnlockIdsForClearedStage(stageId).flatMap(areaId =>
+    getSceneIdsByTrigger({ type: 'AREA_UNLOCK', areaId }),
+  );
   return [...regularScenes, ...bossScenes, ...areaUnlockScenes];
 }
 

@@ -4,6 +4,7 @@ import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import { calculateJobGrowthIncrements } from '../logic/JobGrowthSystem';
 import { RESIDUE_SLOT_ORDER } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
+import { calculateWeaponBaseAttack } from '../logic/WeaponSystem';
 import { createCredentialsUser } from '../services/AuthService';
 import type { JobData } from '../types/game';
 
@@ -15,10 +16,13 @@ import { auth } from '@/auth';
 import {
   changeJobForUser,
   createCharacterForUser,
+  dismantleWeaponForUser,
   equipItemForUser,
   equipResidueForUser,
   loadCharacterForUser,
   processStageResultForUser,
+  rankUpWeaponForUser,
+  reforgeWeaponForUser,
 } from '../app/actions';
 import type { ServerGameUser } from '../types/serverGame';
 
@@ -114,6 +118,55 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(created.data.abyssalResidues).toHaveLength(0);
     expect(created.data.soulShards).toHaveLength(0);
     expect(created.data.party).toEqual([null, null, null]);
+    expect(created.data.weaponMaterials).toEqual(expect.arrayContaining([
+      { type: 'IDEA_COMMON', name: '凡骨のイデア', quantity: 8 },
+      { type: 'ABYSSAL_OBSIDIAN', name: '深淵の黒鋼', quantity: 10 },
+    ]));
+
+    const starterWeapon = created.data.inventoryItems[0];
+    const starterAtk = calculateWeaponBaseAttack(starterWeapon);
+    const reforged = await reforgeWeaponForUser(user, created.data.player.id, starterWeapon.id);
+    expect(reforged.success).toBe(true);
+    if (!reforged.success) throw new Error(reforged.error);
+    const reforgedStarter = reforged.data.inventoryItems.find((item) => item.id === starterWeapon.id);
+    expect(reforgedStarter?.ilv).toBe(2);
+    expect(calculateWeaponBaseAttack(reforgedStarter!)).toBeGreaterThan(starterAtk);
+    expect(reforged.data.weaponMaterials.find((material) => material.type === 'ABYSSAL_OBSIDIAN')?.quantity).toBe(9);
+
+    const persistedStarter = await prisma.item.findUniqueOrThrow({ where: { id: starterWeapon.id } });
+    expect(persistedStarter.ilv).toBe(2);
+    expect(persistedStarter.atk).toBe(calculateWeaponBaseAttack(reforgedStarter!));
+
+    const resonated = await rankUpWeaponForUser(user, created.data.player.id, starterWeapon.id);
+    expect(resonated.success).toBe(true);
+    if (!resonated.success) throw new Error(resonated.error);
+    expect(resonated.data.inventoryItems.find((item) => item.id === starterWeapon.id)?.rank).toBe(2);
+    expect(resonated.data.weaponMaterials.find((material) => material.type === 'IDEA_COMMON')?.quantity).toBe(0);
+
+    const insufficientResonance = await rankUpWeaponForUser(user, created.data.player.id, starterWeapon.id);
+    expect(insufficientResonance).toEqual({ success: false, error: '武器強化素材が不足しています' });
+    expect((await prisma.item.findUniqueOrThrow({ where: { id: starterWeapon.id } })).rank).toBe(2);
+
+    const equippedDismantle = await dismantleWeaponForUser(user, created.data.player.id, starterWeapon.id);
+    expect(equippedDismantle).toEqual({ success: false, error: '装備中の武器は分解できません' });
+
+    const spareWeapon = await prisma.item.create({
+      data: {
+        name: '分解確認用の短剣',
+        type: 'WEAPON',
+        rarity: 'R',
+        ownerId: user.id,
+        atk: 1,
+        rank: 0,
+        archetype: 'MID',
+        ilv: 1,
+      },
+    });
+    const dismantled = await dismantleWeaponForUser(user, created.data.player.id, spareWeapon.id);
+    expect(dismantled.success).toBe(true);
+    if (!dismantled.success) throw new Error(dismantled.error);
+    expect(dismantled.data.inventoryItems.some((item) => item.id === spareWeapon.id)).toBe(false);
+    expect(dismantled.data.weaponMaterials.find((material) => material.type === 'IDEA_COMMON')?.quantity).toBe(8);
 
     const changedToMage = await changeJobForUser(user, created.data.player.id, 'mage');
     expect(changedToMage.success).toBe(true);
@@ -151,7 +204,7 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(clearResult.cloudSaved).toBe(true);
     expect(clearResult.expGain).toBeGreaterThan(0);
     expect(clearResult.dropResult.weapons.length).toBeGreaterThan(0);
-    expect(clearResult.dropResult.residues.length).toBeGreaterThan(0);
+    expect(clearResult.dropResult.residues).toHaveLength(0);
 
     const afterClear = await loadCharacterForUser(user);
     expect(afterClear.success).toBe(true);
@@ -168,7 +221,29 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(afterClear.data.player.baseStats.def).toBe(initialBaseStats.def + warriorGrowth.def);
     expect(afterClear.data.player.clearedStages).toContain('area1_node1');
     expect(afterClear.data.inventoryItems.length).toBeGreaterThan(1);
-    expect(afterClear.data.abyssalResidues.length).toBeGreaterThan(0);
+    expect(afterClear.data.abyssalResidues).toHaveLength(0);
+
+    const lockedResidue = await prisma.abyssalResidue.create({
+      data: {
+        name: '未開放確認用の残滓',
+        itemId: 'head',
+        characterId: afterClear.data.player.id,
+        rarity: 'COMMON',
+        mainStat: { type: 'HP_FLAT', value: 120 },
+        subOptions: [{ type: 'DEF_FLAT', value: 8 }],
+        level: 1,
+        exp: 0,
+        maxExp: 800,
+      },
+    });
+    const lockedResidueEquip = await equipResidueForUser(
+      user,
+      afterClear.data.player.id,
+      RESIDUE_SLOT_ORDER.indexOf('head'),
+      lockedResidue.id,
+    );
+    expect(lockedResidueEquip).toEqual({ success: false, error: '深淵の残滓は第2章到達後に解放されます' });
+    await prisma.abyssalResidue.delete({ where: { id: lockedResidue.id } });
 
     const stageRecord = await prisma.stageRecord.findUnique({
       where: { userId_stageId: { userId: user.id, stageId: 'area1_node1' } },
@@ -187,12 +262,30 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     const afterWeaponEquip = calculateCharacterStatProfile(weaponEquipped.data.player, weaponEquipped.data.equippedResidueSlots);
     expect(afterWeaponEquip.total.atk).toBeGreaterThan(beforeWeaponEquip.total.atk);
 
-    const residue = weaponEquipped.data.abyssalResidues[0];
+    const chapterProgressSpy = jest.spyOn(Math, 'random').mockReturnValue(0.01);
+    await processStageResultForUser(user, 'area1_node2');
+    await processStageResultForUser(user, 'area1_boss');
+    await processStageResultForUser(user, 'area1_node3');
+    const area2GateResult = await processStageResultForUser(user, 'area2_gate');
+    chapterProgressSpy.mockRestore();
+
+    expect(area2GateResult.success).toBe(true);
+    expect(area2GateResult.dropResult.residues.length).toBeGreaterThan(0);
+    expect(area2GateResult.dropResult.materials.length).toBeGreaterThan(0);
+
+    const afterArea2Gate = await loadCharacterForUser(user);
+    expect(afterArea2Gate.success).toBe(true);
+    expect(afterArea2Gate.success && afterArea2Gate.status).toBe('READY');
+    if (!afterArea2Gate.success || afterArea2Gate.status !== 'READY') throw new Error('failed to reload area2 character');
+    expect(afterArea2Gate.data.player.clearedStages).toContain('area1_node3');
+    expect(afterArea2Gate.data.abyssalResidues.length).toBeGreaterThan(0);
+
+    const residue = afterArea2Gate.data.abyssalResidues[0];
     const slotIndex = RESIDUE_SLOT_ORDER.indexOf(residue.itemId as typeof RESIDUE_SLOT_ORDER[number]);
     expect(slotIndex).toBeGreaterThanOrEqual(0);
 
-    const beforeResidueEquip = calculateCharacterStatProfile(weaponEquipped.data.player, weaponEquipped.data.equippedResidueSlots);
-    const residueEquipped = await equipResidueForUser(user, weaponEquipped.data.player.id, slotIndex, residue.id);
+    const beforeResidueEquip = calculateCharacterStatProfile(afterArea2Gate.data.player, afterArea2Gate.data.equippedResidueSlots);
+    const residueEquipped = await equipResidueForUser(user, afterArea2Gate.data.player.id, slotIndex, residue.id);
     expect(residueEquipped.success).toBe(true);
     if (!residueEquipped.success) throw new Error(residueEquipped.error);
     expect(residueEquipped.data.equippedResidueSlots[slotIndex]?.id).toBe(residue.id);

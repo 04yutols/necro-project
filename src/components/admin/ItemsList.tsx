@@ -5,12 +5,15 @@ import AccordionEntry from './AccordionEntry';
 import { RarityBadge } from './Badges';
 import ListFilterBar from './forms/shared/ListFilterBar';
 
+type SubOption = { type: string; value: number };
 type Item = {
   id?: string;
   name?: string;
   rarity?: string;
   archetype?: string;
   rank?: number;
+  ilv?: number;
+  subOptions?: SubOption[];
   passiveA?: { nameJa?: string };
   passiveB?: { nameJa?: string };
 };
@@ -20,7 +23,7 @@ type Props = {
 };
 
 const RARITIES = ['R', 'SR', 'SSR', 'UR'];
-const ARCHETYPES = ['LOW', 'MID', 'HIGH', 'SPECIAL', 'FAST', 'HEAVY'];
+const ARCHETYPES = ['LOW', 'MID', 'HIGH', 'MYTHIC'];
 const RARITY_ORDER: Record<string, number> = { R: 0, SR: 1, SSR: 2, UR: 3 };
 const SORT_KEYS = [{ key: 'rarity', label: 'rarity' }, { key: 'rank', label: 'rank' }];
 
@@ -99,7 +102,23 @@ export default function ItemsList({ data }: Props) {
                   </span>
                 )}
                 <span style={{ fontSize: 14, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 500, color: '#e0d0ff' }}>{raw.name ?? key}</span>
+                {/* SubOption types */}
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0, flexWrap: 'wrap' }}>
+                  {(raw.subOptions ?? []).map((opt, i) => (
+                    <span key={i} style={{
+                      fontSize: 10, padding: '2px 6px', borderRadius: 4,
+                      background: /DMG_BOOST$/.test(opt.type ?? '') ? 'rgba(251,191,36,0.12)' : 'rgba(139,0,255,0.1)',
+                      color: /DMG_BOOST$/.test(opt.type ?? '') ? '#fbbf24' : '#a78bfa',
+                      fontFamily: 'Space Mono, monospace', border: '1px solid rgba(139,0,255,0.18)',
+                    }}>
+                      {opt.type}
+                    </span>
+                  ))}
+                </div>
                 <span className="ml-auto flex flex-col items-end text-[10px] font-mono shrink-0 gap-0.5">
+                  {raw.ilv != null && (
+                    <span style={{ color: '#8080a0' }}>ILv.{raw.ilv}</span>
+                  )}
                   {raw.passiveA?.nameJa && <span style={{ color: '#fde68a' }}>{raw.passiveA.nameJa}</span>}
                   {raw.passiveB?.nameJa && <span style={{ color: '#7878a8' }}>{raw.passiveB.nameJa}</span>}
                 </span>

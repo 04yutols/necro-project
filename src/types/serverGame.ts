@@ -5,6 +5,7 @@ import type {
   MonsterData,
   NecroStatus,
   SoulShardData,
+  WeaponMaterialData,
 } from './game';
 
 export interface ServerGameData {
@@ -14,6 +15,7 @@ export interface ServerGameData {
   inventoryMonsters: MonsterData[];
   soulShards: SoulShardData[];
   inventoryItems: ItemData[];
+  weaponMaterials: WeaponMaterialData[];
   abyssalResidues: AbyssalResidueData[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
 }

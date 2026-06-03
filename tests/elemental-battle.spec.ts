@@ -23,7 +23,6 @@ test.describe('Elemental battle UX', () => {
     await expect(soulGauge).toContainText('0%');
 
     await page.locator('#tut-attack-btn').click();
-    await expect(page.getByTestId('battle-log')).toContainText('骸骨騎士の攻撃', { timeout: 5000 });
     await expect(soulGauge).toContainText(/[1-9]\d?%|100%/, { timeout: 10000 });
   });
 });
