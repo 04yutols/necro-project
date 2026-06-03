@@ -30,7 +30,43 @@ import { AuthGate } from '../components/auth/AuthGate';
 import { CharacterCreation } from '../components/auth/CharacterCreation';
 import { LoadingScreen } from '../components/auth/LoadingScreen';
 import { ReloginModal } from '../components/auth/ReloginModal';
-import { Home as HomeIcon } from 'lucide-react';
+import { Home as HomeIcon, Lock } from 'lucide-react';
+import { isAbyssalResidueUnlocked } from '../logic/AbyssalResidueUnlockSystem';
+
+function AbyssalResidueLockedScreen({ onBack, onMap }: { onBack: () => void; onMap: () => void }) {
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-[#050505] p-5">
+      <div
+        style={{
+          width: 'min(420px, 100%)',
+          borderRadius: 16,
+          border: '1px solid rgba(139,43,226,0.34)',
+          background: 'linear-gradient(180deg, rgba(18,8,34,0.95), rgba(5,2,12,0.96))',
+          boxShadow: '0 24px 70px rgba(0,0,0,0.72)',
+          padding: 18,
+          color: '#F0EAFF',
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ width: 48, height: 48, borderRadius: 14, margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139,43,226,0.16)', border: '1px solid rgba(139,43,226,0.38)', color: '#B09FF8' }}>
+          <Lock size={21} />
+        </div>
+        <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 16, fontWeight: 900, letterSpacing: '0.08em' }}>深淵の残滓</div>
+        <p style={{ margin: '10px 0 16px', color: '#A5A9B4', fontSize: 12, lineHeight: 1.8 }}>
+          第2章到達後にチュートリアルと一緒に解放されます。
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <button type="button" onClick={onBack} className="min-h-11 rounded-xl border border-white/10 bg-white/5 text-[11px] font-black tracking-[0.14em] text-[#B8B0C8]">
+            拠点へ
+          </button>
+          <button type="button" onClick={onMap} className="min-h-11 rounded-xl border border-[#8A2BE266] bg-[#8A2BE226] text-[11px] font-black tracking-[0.14em] text-[#F0EAFF]">
+            出撃へ
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function GameContent() {
   const {
@@ -179,6 +215,13 @@ function GameContent() {
           </motion.div>
         );
       case 'LAB':
+        if (!isAbyssalResidueUnlocked(player.clearedStages)) {
+          return (
+            <motion.div key="lab-locked" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+              <AbyssalResidueLockedScreen onBack={() => setCurrentTab('HOME')} onMap={() => setCurrentTab('MAP')} />
+            </motion.div>
+          );
+        }
         return (
           <motion.div key="lab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
             <NecroLab />

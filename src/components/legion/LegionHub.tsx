@@ -9,6 +9,7 @@ import { useGothicSound } from '../necro/useGothicSound';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats, WeaponMaterialData, type Tribe } from '../../types/game';
 import { getActiveSynergies, type ActiveSynergy } from '../../logic/TribeSynergySystem';
+import { isAbyssalResidueUnlocked } from '../../logic/AbyssalResidueUnlockSystem';
 import {
   calculateCharacterStatProfile,
   ELEMENT_DAMAGE_KEYS,
@@ -1906,11 +1907,11 @@ function CharThumb({ mk, player, party, active, onSelect }: { mk: MemberKey; pla
 /* ──────────────────────────────────────────
    UNIT DETAIL VIEW — sample-based layout
 ────────────────────────────────────────── */
-function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots, soulShards, isDemonMode, onBack, onOpenGear }: {
+function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots, soulShards, isDemonMode, isResidueUnlocked, onBack, onOpenGear }: {
   selKey: MemberKey; setSelKey: (k: MemberKey) => void;
   player: CharacterData | null; party: (MonsterData | null)[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
-  soulShards: SoulShardData[]; isDemonMode: boolean;
+  soulShards: SoulShardData[]; isDemonMode: boolean; isResidueUnlocked: boolean;
   onBack: () => void;
   onOpenGear: (slotType: 'WEAPON' | 'RESIDUE', slotIndex: number) => void;
 }) {
@@ -1954,7 +1955,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
       sublabel: r ? `${formatStat(r.mainStat.type, r.mainStat.value)} / ${getResidueScoreGrade(calculateResidueScore(r)).grade}` : meta.role,
       filled: !!r, level: r?.level ?? null,
       rarity: r?.rarity ?? null,
-      locked: !info.isPlayer && i > 0,
+      locked: !isResidueUnlocked || (!info.isPlayer && i > 0),
     };
   });
 
@@ -1963,6 +1964,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
     if (id === 'weapon') { haptic(8); onOpenGear('WEAPON', 0); }
   };
   const handleRightSelect = (id: string | null) => {
+    if (!isResidueUnlocked) return;
     setSelectedSlot(id);
     if (id) {
       const idx = parseInt(id.replace('residue_', ''));
@@ -2107,22 +2109,23 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
             ))}
             <div
               onClick={() => {
+                if (!isResidueUnlocked) return;
                 const idx = selectedSlot?.startsWith('residue_') ? parseInt(selectedSlot.replace('residue_', '')) : 0;
                 haptic([10, 8, 18]); onOpenGear('RESIDUE', Number.isFinite(idx) ? idx : 0);
               }}
               style={{
                 marginTop: 2, padding: '6px 8px',
-                background: `linear-gradient(135deg, ${color}22, ${color}0C)`,
-                border: `1px solid ${color}48`,
-                borderRadius: 8, textAlign: 'center', cursor: 'pointer',
+                background: isResidueUnlocked ? `linear-gradient(135deg, ${color}22, ${color}0C)` : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${isResidueUnlocked ? color + '48' : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: 8, textAlign: 'center', cursor: isResidueUnlocked ? 'pointer' : 'not-allowed',
                 fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600,
-                color, letterSpacing: '0.08em',
-                boxShadow: `0 0 10px ${color}28`,
-                animation: 'glow-pulse 2.5s ease-in-out infinite',
+                color: isResidueUnlocked ? color : '#6b5f7a', letterSpacing: '0.08em',
+                boxShadow: isResidueUnlocked ? `0 0 10px ${color}28` : 'none',
+                animation: isResidueUnlocked ? 'glow-pulse 2.5s ease-in-out infinite' : 'none',
                 position: 'relative', overflow: 'hidden',
               }}>
-              <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(90deg, transparent, ${color}14, transparent)`, backgroundSize: '200% 100%', animation: 'shimmer 2s infinite', pointerEvents: 'none' }} />
-              強化
+              {isResidueUnlocked && <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(90deg, transparent, ${color}14, transparent)`, backgroundSize: '200% 100%', animation: 'shimmer 2s infinite', pointerEvents: 'none' }} />}
+              {isResidueUnlocked ? '強化' : '第2章'}
             </div>
           </div>
         </div>
@@ -2224,11 +2227,12 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
 type GearSlotType = 'WEAPON' | 'RESIDUE';
 interface GearCtx { mk: MemberKey; slotType: GearSlotType; slotIndex: number }
 
-function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResidues, residueMaterials, weaponMaterials, inventoryItems, transmutationPoints, onBack }: {
+function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResidues, residueMaterials, weaponMaterials, inventoryItems, transmutationPoints, isResidueUnlocked, onBack }: {
   gearCtx: GearCtx; player: CharacterData | null; party: (MonsterData | null)[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
   abyssalResidues: AbyssalResidueData[]; residueMaterials: ResidueMatData[];
   weaponMaterials: WeaponMaterialData[];
+  isResidueUnlocked: boolean;
   inventoryItems: ItemData[]; transmutationPoints: number; onBack: () => void;
 }) {
   const { equipResidueToSlot, upgradeResidue, equipItem, rankUpWeapon, reforgeWeapon, dismantleWeapon, loadFromServer, isServerBacked } = useGameStore();
@@ -2411,6 +2415,29 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     sound.playTap();
     setSelectedMatIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   };
+
+  if (isResidueSlot && !isResidueUnlocked) {
+    return (
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 295, damping: 33 }}
+        style={{ position: 'absolute', inset: 0 }}
+      >
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center" style={{ background: 'linear-gradient(180deg, #050115 0%, #07021A 100%)' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139,43,226,0.14)', border: '1px solid rgba(139,43,226,0.36)', color: '#B09FF8', fontSize: 22 }}>🔒</div>
+          <div>
+            <div style={{ fontFamily: "'Cinzel Decorative', serif", color: '#F0EAFF', fontSize: 15, fontWeight: 900, letterSpacing: '0.08em' }}>深淵の残滓</div>
+            <div style={{ marginTop: 8, color: '#8b7da8', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, lineHeight: 1.7 }}>第2章到達後にチュートリアルと一緒に解放されます。</div>
+          </div>
+          <button type="button" onClick={onBack} className="min-h-11 rounded-xl px-6 text-[11px] font-black tracking-[0.14em]" style={{ border: `1px solid ${color}40`, background: `${color}18`, color }}>
+            DETAILへ戻る
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -4113,6 +4140,11 @@ export default function LegionHub() {
   const [view, setView] = useState<'LIST' | 'DETAIL' | 'GEAR'>('LIST');
   const [selKey, setSelKey] = useState<MemberKey | null>('PLAYER');
   const [gearCtx, setGearCtx] = useState<GearCtx | null>(null);
+  const residueUnlocked = isAbyssalResidueUnlocked(player?.clearedStages);
+  const visibleResidueSlots = useMemo(
+    () => residueUnlocked ? equippedResidueSlots : [null, null, null, null, null] as (AbyssalResidueData | null)[],
+    [equippedResidueSlots, residueUnlocked],
+  );
 
   const openDetail = useCallback((k: MemberKey) => { sound.playTap(); setSelKey(k); setView('DETAIL'); }, [sound]);
   const goBackToList = useCallback(() => { haptic(5); sound.playTap(); setView('LIST'); }, [sound]);
@@ -4127,10 +4159,11 @@ export default function LegionHub() {
 
   const openGear = useCallback((slotType: GearSlotType, slotIndex: number) => {
     if (!selKey) return;
+    if (slotType === 'RESIDUE' && !residueUnlocked) return;
     sound.playTap();
     setGearCtx({ mk: selKey, slotType, slotIndex });
     setView('GEAR');
-  }, [selKey, sound]);
+  }, [residueUnlocked, selKey, sound]);
 
   const switchMember = useCallback((k: MemberKey) => { sound.playTap(); setSelKey(k); }, [sound]);
 
@@ -4140,7 +4173,7 @@ export default function LegionHub() {
         {view === 'LIST' && (
           <LegionListView key="list"
             player={player} party={party as (MonsterData | null)[]}
-            equippedResidueSlots={equippedResidueSlots} soulShards={soulShards}
+            equippedResidueSlots={visibleResidueSlots} soulShards={soulShards}
             demonGauge={demonGauge} isDemonMode={isDemonMode}
             onSelect={openDetail} onFocusMember={switchMember} onToggleDemon={() => { haptic([15, 10, 30]); toggleDemonMode(); }}
             onBack={goBackFromList} />
@@ -4149,19 +4182,21 @@ export default function LegionHub() {
           <UnitDetailView key="detail"
             selKey={selKey} setSelKey={switchMember}
             player={player} party={party as (MonsterData | null)[]}
-            equippedResidueSlots={equippedResidueSlots} soulShards={soulShards}
+            equippedResidueSlots={visibleResidueSlots} soulShards={soulShards}
             isDemonMode={isDemonMode}
+            isResidueUnlocked={residueUnlocked}
             onBack={goBackToList} onOpenGear={openGear} />
         )}
         {view === 'GEAR' && gearCtx && (
           <GearHubView key="gear"
             gearCtx={gearCtx}
             player={player} party={party as (MonsterData | null)[]}
-            equippedResidueSlots={equippedResidueSlots}
-            abyssalResidues={abyssalResidues} residueMaterials={residueMaterials}
+            equippedResidueSlots={visibleResidueSlots}
+            abyssalResidues={residueUnlocked ? abyssalResidues : []} residueMaterials={residueUnlocked ? residueMaterials : []}
             weaponMaterials={weaponMaterials}
             inventoryItems={inventoryItems as ItemData[]}
             transmutationPoints={transmutationPoints}
+            isResidueUnlocked={residueUnlocked}
             onBack={goBackToDetail} />
         )}
       </AnimatePresence>

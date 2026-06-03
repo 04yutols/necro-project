@@ -5,6 +5,7 @@ import { useGameStore } from '../store/useGameStore';
 import { useStoryStore } from '../store/useStoryStore';
 import { useTutorialStore } from '../store/useTutorialStore';
 import { ALL_PHASES, type TutorialPhase } from '../data/tutorial/phases';
+import { isAbyssalResidueUnlocked } from '../logic/AbyssalResidueUnlockSystem';
 
 const EMPTY_CLEARED_STAGES: string[] = [];
 
@@ -44,20 +45,10 @@ export function useTutorialTrigger() {
     //     BATTLE_BASICS は BattleCanvas 単独で管理する
     if (!lineDeathSeen) return;
 
-    // PHASE 2: プロローグ完了 + 1ステージ以上クリア → 死霊術ラボ
-    if (
-      clearedStages.length >= 1 &&
-      hasCompleted('BATTLE_BASICS') &&
-      !hasCompleted('NECRO_LAB')
-    ) {
-      tryStartPhase('NECRO_LAB');
-      return;
-    }
-
-    // PHASE 3: ネクロラボ後 + モンスター2体以上 → パーティ編成
+    // PHASE 2: バトル基礎後 + モンスター2体以上 → パーティ編成
     if (
       monsterCount >= 2 &&
-      hasCompleted('NECRO_LAB') &&
+      hasCompleted('BATTLE_BASICS') &&
       !hasCompleted('PARTY_FORMATION')
     ) {
       tryStartPhase('PARTY_FORMATION');
@@ -74,10 +65,9 @@ export function useTutorialTrigger() {
       return;
     }
 
-    // PHASE 5: AREA1 全3ノードクリア → 深淵の残滓
-    const area1Done = ['area1_node1', 'area1_node2', 'area1_node3'].every(s => clearedStages.includes(s));
+    // PHASE 5: 第2章導入到達 → 深淵の残滓
     if (
-      area1Done &&
+      isAbyssalResidueUnlocked(clearedStages) &&
       hasCompleted('JOB_CHANGE') &&
       !hasCompleted('ABYSSAL_RESIDUE')
     ) {

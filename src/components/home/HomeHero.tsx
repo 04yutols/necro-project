@@ -3,9 +3,10 @@
 import React from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { motion } from 'framer-motion';
-import { Map, Skull, Sword, Terminal, ChevronRight, Activity, Swords, Settings, Sparkles } from 'lucide-react';
+import { Map, Skull, Sword, Terminal, ChevronRight, Activity, Swords, Settings, Sparkles, Lock } from 'lucide-react';
 import { AuthPanel } from '../auth/AuthPanel';
 import { getJobLevelProgress } from '../../logic/ExperienceSystem';
+import { isAbyssalResidueUnlocked } from '../../logic/AbyssalResidueUnlockSystem';
 
 const THEME = {
   primary: '#BC00FB',
@@ -57,11 +58,22 @@ export function HomeHero() {
   const currentCost = party.reduce((sum, monster) => sum + (monster ? monster.cost : 0), 0);
   const maxCost = necroStatus?.maxCost || 10;
   const goldAmount = player.gold;
+  const residueUnlocked = isAbyssalResidueUnlocked(player.clearedStages);
 
   const NAV_BUTTONS = [
     { id: 'MAP', label: '出撃・マップ', sub: 'WORLD EXPLORATION', icon: Map, color: THEME.primary, border: THEME.primaryBorder, bg: THEME.primaryBg, glow: '0 0 20px rgba(188,0,251,0.3)' },
     { id: 'JOB', label: '転職・職業', sub: 'UMBRA RITE-HALL', icon: Sparkles, color: '#D4AF37', border: 'rgba(212,175,55,0.48)', bg: 'rgba(212,175,55,0.12)', glow: '0 0 20px rgba(212,175,55,0.22)' },
-    { id: 'LAB', label: 'ネクロラボ', sub: 'NECROMANCY & UPGRADE', icon: Skull, color: THEME.tertiary, border: THEME.tertiaryBorder, bg: THEME.tertiaryBg, glow: '0 0 20px rgba(255,107,155,0.3)' },
+    {
+      id: 'LAB',
+      label: residueUnlocked ? 'ネクロラボ' : '深淵の残滓',
+      sub: residueUnlocked ? 'NECROMANCY & UPGRADE' : 'CHAPTER 2で解放',
+      icon: residueUnlocked ? Skull : Lock,
+      color: residueUnlocked ? THEME.tertiary : '#8b7da8',
+      border: residueUnlocked ? THEME.tertiaryBorder : 'rgba(139,125,168,0.32)',
+      bg: residueUnlocked ? THEME.tertiaryBg : 'rgba(32,26,44,0.42)',
+      glow: residueUnlocked ? '0 0 20px rgba(255,107,155,0.3)' : 'none',
+      locked: !residueUnlocked,
+    },
     { id: 'EQUIP', label: '装備・編成', sub: 'ARMORY & LEGION', icon: Sword, color: THEME.secondary, border: THEME.secondaryBorder, bg: THEME.secondaryBg, glow: '0 0 20px rgba(0,255,255,0.3)' },
     { id: 'LOGS', label: '兵歴記録', sub: 'SYSTEM LOGS', icon: Terminal, color: THEME.gray, border: THEME.grayBorder, bg: THEME.grayBg, glow: '0 0 10px rgba(255,255,255,0.1)' },
   ] as const;
@@ -279,20 +291,26 @@ export function HomeHero() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
             {NAV_BUTTONS.map((btn, index) => {
               const Icon = btn.icon;
+              const isLocked = 'locked' in btn && btn.locked;
               return (
                 <motion.div
                   role="button"
+                  aria-disabled={isLocked}
                   key={btn.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1, type: "spring", stiffness: 300, damping: 25 }}
-                  onClick={() => setCurrentTab(btn.id as any)}
+                  onClick={() => {
+                    if (isLocked) return;
+                    setCurrentTab(btn.id as any);
+                  }}
                   style={{
                     display: 'flex', alignItems: 'center', padding: '16px 16px', borderRadius: '16px',
                     border: `1px solid ${btn.border}`, background: btn.bg,
                     boxShadow: `0 2px 20px ${btn.color}18, inset 0 1px 0 rgba(255,255,255,0.06)`,
-                    cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                    cursor: isLocked ? 'not-allowed' : 'pointer', WebkitTapHighlightColor: 'transparent',
                     position: 'relative', overflow: 'hidden',
+                    opacity: isLocked ? 0.72 : 1,
                   }}
                 >
                   {/* Shimmer overlay */}
@@ -324,7 +342,7 @@ export function HomeHero() {
                     width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
                     background: `${btn.color}18`, border: `1px solid ${btn.color}40`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', color: btn.color, fontSize: '11px', fontWeight: 700,
-                  }}>›</div>
+                  }}>{isLocked ? <Lock size={13} /> : '›'}</div>
                 </motion.div>
               );
             })}

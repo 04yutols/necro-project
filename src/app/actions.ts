@@ -16,6 +16,7 @@ import { calculateEnergyState } from '@/logic/EnergySystem';
 import { levelFromTotalExp } from '@/logic/ExperienceSystem';
 import { calculateJobAdjustedStats } from '@/logic/JobSystem';
 import { calculateJobGrowthIncrements } from '@/logic/JobGrowthSystem';
+import { isAbyssalResidueUnlocked } from '@/logic/AbyssalResidueUnlockSystem';
 import {
   calculateDismantleRewards,
   calculateReforgedWeapon,
@@ -341,13 +342,18 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
   const currentJobLevel = Math.max(1, jobs.find((job: { jobId: string; level: number; exp: number }) => job.jobId === currentJobId)?.level ?? 1);
   const energyState = calculateEnergyState(currentJob, currentJobLevel);
   const baseStats = toBaseStats(character);
-  const equippedResidueSlots = [
+  const clearedStages = character.clearedStages ?? [];
+  const residueUnlocked = isAbyssalResidueUnlocked(clearedStages);
+  const persistedEquippedResidueSlots = [
     toResidueSlot(character.equippedResidue0),
     toResidueSlot(character.equippedResidue1),
     toResidueSlot(character.equippedResidue2),
     toResidueSlot(character.equippedResidue3),
     toResidueSlot(character.equippedResidue4),
   ];
+  const equippedResidueSlots = residueUnlocked
+    ? persistedEquippedResidueSlots
+    : [null, null, null, null, null];
   const player: CharacterData = {
     id: character.id,
     name: character.name,
@@ -378,7 +384,7 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
     baseResistances: {},
     jobs,
     isAwakened: false,
-    clearedStages: character.clearedStages ?? [],
+    clearedStages,
     gold: character.gold ?? 50000,
     currentEnergy: energyState.currentEnergy,
     maxEnergy: energyState.maxEnergy,
@@ -592,7 +598,7 @@ export async function processStageResultForUser(
   const goldGain = stage.rewards.baseGold;
 
   // ドロップ抽選（サーバー側で確定）
-  const dropResult = svc.processDropTable(stage.rewards.dropTable);
+  const dropResult = svc.processStageDropTable(stage, char.clearedStages ?? []);
   const bestResidueScore = Math.max(0, ...dropResult.residues.map(residue => calculateResidueScore(residue)));
   const playerName = getPlayerDisplayName(authorizedUser);
 
@@ -1342,7 +1348,10 @@ export async function equipItemForUser(
   const expectedType = ITEM_TYPE_BY_SLOT[typedSlot];
   if (!dbField || !expectedType) return { success: false, error: '装備スロットが不正です' };
 
-  const character = await prisma.character.findFirst({ where: { id: characterId, userId: authorizedUser.id }, select: { id: true } });
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    select: { id: true },
+  });
   if (!character) return { success: false, error: 'キャラクターが見つかりません' };
 
   const item = await prisma.item.findFirst({
@@ -1396,8 +1405,14 @@ export async function equipResidueForUser(
     return { success: false, error: '残滓スロットが不正です' };
   }
 
-  const character = await prisma.character.findFirst({ where: { id: characterId, userId: authorizedUser.id }, select: { id: true } });
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    select: { id: true, clearedStages: true },
+  });
   if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+  if (!isAbyssalResidueUnlocked(character.clearedStages)) {
+    return { success: false, error: '深淵の残滓は第2章到達後に解放されます' };
+  }
 
   const residue = await prisma.abyssalResidue.findFirst({
     where: { id: residueId, characterId },

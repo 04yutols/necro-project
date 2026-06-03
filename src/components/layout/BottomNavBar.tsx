@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Home, Map, Sword, Skull, Terminal, Swords } from 'lucide-react';
+import { Home, Map, Sword, Skull, Terminal, Swords, Lock } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
+import { isAbyssalResidueUnlocked } from '../../logic/AbyssalResidueUnlockSystem';
 
 const TABS = [
   { id: 'HOME', label: 'HOME', icon: Home },
@@ -14,7 +15,8 @@ const TABS = [
 ] as const;
 
 export function BottomNavBar() {
-  const { currentTab, setCurrentTab } = useGameStore();
+  const { currentTab, setCurrentTab, player } = useGameStore();
+  const residueUnlocked = isAbyssalResidueUnlocked(player?.clearedStages);
 
   return (
     <nav
@@ -24,15 +26,20 @@ export function BottomNavBar() {
       <div className="h-14 flex justify-around items-center px-1">
         {TABS.map((tab) => {
           const isActive = currentTab === tab.id;
-          const Icon = tab.icon;
+          const isLocked = tab.id === 'LAB' && !residueUnlocked;
+          const Icon = isLocked ? Lock : tab.icon;
 
           return (
             <button
               key={tab.id}
-              onClick={() => setCurrentTab(tab.id as any)}
+              onClick={() => {
+                if (isLocked) return;
+                setCurrentTab(tab.id as any);
+              }}
               className={`flex flex-col items-center justify-center flex-1 h-full transition-colors relative
-                ${isActive ? 'bg-[#1A1A1A] text-secondary' : 'text-gray-600 hover:text-gray-400'}
+                ${isActive ? 'bg-[#1A1A1A] text-secondary' : isLocked ? 'text-gray-700' : 'text-gray-600 hover:text-gray-400'}
               `}
+              aria-disabled={isLocked}
             >
               {isActive && (
                 <div className="absolute top-0 left-0 w-full h-[2px] bg-secondary" />

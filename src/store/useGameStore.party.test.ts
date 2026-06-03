@@ -5,6 +5,30 @@ import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import type { JobData } from '../types/game';
 
 const JOBS = jobsData as Record<string, JobData>;
+const RESIDUE_FIXTURE = {
+  id: 'r7',
+  name: '死霊の印璽',
+  itemId: 'head',
+  rarity: 'COMMON' as const,
+  mainStat: { type: 'HP_FLAT', value: 380 },
+  subOptions: [{ type: 'DEF_FLAT', value: 25 }, { type: 'ATK_FLAT', value: 12 }],
+  level: 1,
+  exp: 0,
+  maxExp: 800,
+};
+
+function unlockResidueFixture() {
+  const state = useGameStore.getState();
+  useGameStore.getState().setPlayer({
+    ...state.player!,
+    clearedStages: ['area1_node3'],
+  });
+  useGameStore.getState().setAbyssalResidues([RESIDUE_FIXTURE]);
+  useGameStore.getState().addResidueMaterials([
+    { id: 'mat-1', name: '深淵の砂', quantity: 8, expValue: 200, rarity: 'COMMON' },
+    { id: 'mat-3', name: '冥界の核', quantity: 1, expValue: 2500, rarity: 'EPIC' },
+  ]);
+}
 
 describe('useGameStore party formation actions', () => {
   beforeEach(() => {
@@ -80,11 +104,21 @@ describe('useGameStore party formation actions', () => {
     expect(useGameStore.getState().player?.currentEnergy).toBe(useGameStore.getState().player?.maxEnergy);
   });
 
-  test('starts the local guest profile without pre-equipped endgame residues', () => {
+  test('starts the local guest profile without unlocked residue inventory or equipment', () => {
+    expect(useGameStore.getState().equippedResidueSlots).toEqual([null, null, null, null, null]);
+    expect(useGameStore.getState().abyssalResidues).toHaveLength(0);
+    expect(useGameStore.getState().residueMaterials).toHaveLength(0);
+  });
+
+  test('does not equip residues before the chapter 2 unlock', () => {
+    useGameStore.getState().setAbyssalResidues([RESIDUE_FIXTURE]);
+    useGameStore.getState().equipResidueToSlot(0, RESIDUE_FIXTURE);
+
     expect(useGameStore.getState().equippedResidueSlots).toEqual([null, null, null, null, null]);
   });
 
   test('upgradeResidue consumes one material unit per selected id instead of the whole stack', () => {
+    unlockResidueFixture();
     const initialResidue = useGameStore.getState().abyssalResidues.find(item => item.id === 'r7');
     useGameStore.getState().equipResidueToSlot(0, initialResidue!);
     useGameStore.getState().upgradeResidue('r7', ['mat-1']);
@@ -101,6 +135,7 @@ describe('useGameStore party formation actions', () => {
   });
 
   test('upgradeResidue bounds repeated material ids by the owned stack quantity', () => {
+    unlockResidueFixture();
     useGameStore.getState().upgradeResidue('r7', ['mat-3', 'mat-3', 'mat-3']);
 
     const state = useGameStore.getState();

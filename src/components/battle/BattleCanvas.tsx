@@ -502,8 +502,10 @@ function convertDropToResultItems(drop: StageDropResult, playerName?: string) {
   return [...weapons, ...residues, ...consumables, ...materials];
 }
 
-function buildLocalStageResult(stage?: StageData) {
-  const dropResult = REWARD_SERVICE.processDropTable(stage?.rewards.dropTable ?? []);
+function buildLocalStageResult(stage?: StageData, clearedStages: readonly string[] = []) {
+  const dropResult = stage
+    ? REWARD_SERVICE.processStageDropTable(stage, clearedStages)
+    : REWARD_SERVICE.processDropTable([]);
   return {
     dropResult,
     expGain: stage?.rewards.baseExp ?? 0,
@@ -543,7 +545,8 @@ async function processStageResultLocal(stageId?: string, meta: StageResultMeta =
     }
   }
 
-  return buildLocalStageResult(stage);
+  const clearedStages = useGameStore.getState().player?.clearedStages ?? [];
+  return buildLocalStageResult(stage, clearedStages);
 }
 
 // ── SVG ENEMIES ───────────────────────────────────────────────────────────────

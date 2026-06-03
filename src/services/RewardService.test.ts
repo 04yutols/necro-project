@@ -207,3 +207,38 @@ describe('RewardService.processDropTable', () => {
     expect(svc.calculateExp(1000, player)).toBe(1210);
   });
 });
+
+describe('RewardService.processStageDropTable', () => {
+  test('第1章ステージではRESIDUEがドロップテーブルにあっても生成しない', () => {
+    const result = svc.processStageDropTable({
+      chapter: 1,
+      rewards: {
+        baseExp: 0,
+        baseGold: 0,
+        dropTable: [
+          { type: 'WEAPON', itemId: 'bone_cleaver', rate: 1 },
+          { type: 'RESIDUE', rarity: 'RARE', rate: 1 },
+        ],
+      },
+    }, ['area1_node3'], 0, makeSeqRng([0.0, 0.0]));
+
+    expect(result.weapons).toHaveLength(1);
+    expect(result.residues).toHaveLength(0);
+  });
+
+  test('第2章ステージではarea1_node3クリア後にRESIDUEを生成する', () => {
+    const result = svc.processStageDropTable({
+      chapter: 2,
+      rewards: {
+        baseExp: 0,
+        baseGold: 0,
+        dropTable: [
+          { type: 'RESIDUE', rarity: 'EPIC', rate: 1 },
+        ],
+      },
+    }, ['area1_node3'], 0, makeSeqRng([0.0, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]));
+
+    expect(result.residues).toHaveLength(1);
+    expect(result.residues[0].rarity).toBe('EPIC');
+  });
+});

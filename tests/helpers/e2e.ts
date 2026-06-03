@@ -22,14 +22,17 @@ const VIEWED_STORY_SCENES = [
 
 const COMPLETED_TUTORIAL_PHASES = [
   'BATTLE_BASICS',
-  'NECRO_LAB',
   'PARTY_FORMATION',
   'JOB_CHANGE',
   'ABYSSAL_RESIDUE',
   'DEMONIZATION',
 ];
 
-export async function prepareE2EPage(page: Page) {
+interface PrepareE2EPageOptions {
+  clearedStages?: string[];
+}
+
+export async function prepareE2EPage(page: Page, options: PrepareE2EPageOptions = {}) {
   // intercept auth session to force guest mode (no DB needed in E2E)
   await page.route('**/api/auth/session', (route) => {
     route.fulfill({ status: 200, contentType: 'text/html', body: '' });
@@ -38,7 +41,7 @@ export async function prepareE2EPage(page: Page) {
     route.fulfill({ status: 200, contentType: 'text/html', body: '' });
   });
 
-  await page.addInitScript(({ storyScenes, tutorialPhases }) => {
+  await page.addInitScript(({ storyScenes, tutorialPhases, clearedStages }) => {
     window.localStorage.setItem('necro-story-store-v2', JSON.stringify({
       state: {
         viewedScenes: storyScenes,
@@ -65,9 +68,11 @@ export async function prepareE2EPage(page: Page) {
     }));
 
     window.sessionStorage.clear();
+    window.sessionStorage.setItem('necro-e2e-cleared-stages', JSON.stringify(clearedStages));
   }, {
     storyScenes: VIEWED_STORY_SCENES,
     tutorialPhases: COMPLETED_TUTORIAL_PHASES,
+    clearedStages: options.clearedStages ?? [],
   });
 
   await page.goto('/');
