@@ -631,6 +631,14 @@ export async function getStoryPackSummaries(): Promise<StoryPackSummary[]> {
   }));
 }
 
+export async function getStoryScenesForPack(packId: string): Promise<StoryScene[] | null> {
+  assertDev();
+  const pack = STORY_PACKS.find(p => p.id === packId);
+  if (!pack) return null;
+  const data = readStoryScenesFile(pack.fileName);
+  return sortStoryScenes(data.scenes);
+}
+
 export async function getStoryScene(id: string): Promise<StoryScene | null> {
   assertDev();
   const location = findStorySceneLocation(id);
