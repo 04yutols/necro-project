@@ -4,11 +4,12 @@ import { notFound } from 'next/navigation';
 
 export default async function EditStagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [data, items, materials, enemies, dependencies] = await Promise.all([
+  const [data, items, materials, enemies, areas, dependencies] = await Promise.all([
     getEntry('stages', id),
     getMasterFile('items'),
     getMasterFile('materials'),
     getMasterFile('enemies'),
+    getMasterFile('areas'),
     getDependencies('stages', id),
   ]);
   if (!data) notFound();
@@ -27,6 +28,7 @@ export default async function EditStagePage({ params }: { params: Promise<{ id: 
       materialIds={Object.keys(materials)}
       enemyData={enemyData}
       dependencies={dependencies}
+      areas={areas}
     />
   );
 }

@@ -26,6 +26,7 @@ const LEVEL_STYLES: Record<AuditLevel, { bg: string; color: string; border: stri
 };
 
 const SCOPE_HREF: Record<string, string> = {
+  areas: '/admin/areas',
   enemies: '/admin/enemies',
   stages: '/admin/stages',
   jobs: '/admin/jobs',

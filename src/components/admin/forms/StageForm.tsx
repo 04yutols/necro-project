@@ -1,8 +1,14 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveEntry, deleteEntry } from '@/app/admin/actions';
+import {
+  applyStageAreaSelection,
+  buildStageAreaOptions,
+  getStageAreaMasterId,
+  resolveStageArea,
+} from '@/logic/StageAreaLinkSystem';
 import FormTabs from './shared/FormTabs';
 import FormSaveBar from './shared/FormSaveBar';
 import FormField from './shared/FormField';
@@ -15,7 +21,7 @@ import type { DependencyRef } from '@/app/admin/actions';
 const TABS = ['基本情報', 'WAVE設定', '報酬', '依存関係'];
 const NODE_TYPES = ['SAFE', 'DUNGEON', 'BOSS'];
 const ELEMENTS = ['FIRE', 'WATER', 'THUNDER', 'EARTH', 'WIND', 'ICE', 'LIGHT', 'DARK', 'NONE'];
-const AREA_GIMMICKS = ['NONE', 'UNDEAD_BUFF', 'DARK_SURGE', 'BEAST_STAMPEDE'];
+const AREA_GIMMICKS = ['NONE', 'SLIP_DAMAGE', 'STATUS_AILMENT'];
 const WAVE_ROLES = ['WARMUP', 'SHIELD', 'ELITE', 'BOSS', 'MINIBOSS'];
 
 const inputStyle: React.CSSProperties = {
@@ -151,9 +157,10 @@ type Props = {
   materialIds: string[];
   enemyData?: EnemyMeta[];
   dependencies?: DependencyRef[];
+  areas?: Record<string, Record<string, unknown>>;
 };
 
-export default function StageForm({ initialData, entryKey, isNew, itemIds, materialIds, enemyData = [], dependencies = [] }: Props) {
+export default function StageForm({ initialData, entryKey, isNew, itemIds, materialIds, enemyData = [], dependencies = [], areas = {} }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [form, setForm] = useState<StageFormState>(() => initForm(initialData, entryKey));
@@ -161,6 +168,9 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
   const [error, setError] = useState<string | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const areaOptions = useMemo(() => buildStageAreaOptions(areas), [areas]);
+  const selectedArea = useMemo(() => resolveStageArea(form, areaOptions), [form, areaOptions]);
+  const selectedAreaId = selectedArea?.id ?? getStageAreaMasterId(form);
 
   const updateField = useCallback(<K extends keyof StageFormState>(key: K, val: StageFormState[K]) => {
     setForm((f) => ({ ...f, [key]: val }));
@@ -169,6 +179,12 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
   const updateWave = useCallback((idx: number, patch: Partial<WaveRow>) => {
     setForm((f) => ({ ...f, waves: f.waves.map((w, i) => (i === idx ? { ...w, ...patch } : w)) }));
   }, []);
+
+  const handleAreaSelect = useCallback((areaId: string) => {
+    const nextArea = areaOptions.find(option => option.id === areaId);
+    if (!nextArea) return;
+    setForm((f) => applyStageAreaSelection(f, nextArea));
+  }, [areaOptions]);
 
   function handleCopy() {
     navigator.clipboard.writeText(JSON.stringify(formToJson(form), null, 2));
@@ -232,9 +248,34 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
                 <FormField label="nameJa"><input type="text" value={form.nameJa} onChange={(e) => updateField('nameJa', e.target.value)} style={inputStyle} /></FormField>
                 <FormField label="nameEn"><input type="text" value={form.nameEn} onChange={(e) => updateField('nameEn', e.target.value)} style={inputStyle} /></FormField>
               </div>
+              <FormField label="紐づけエリア">
+                <select value={selectedAreaId} onChange={(e) => handleAreaSelect(e.target.value)} style={selectStyle}>
+                  {!selectedArea && (
+                    <option value={selectedAreaId}>
+                      未登録: CH{form.chapter}-AREA{form.area} ({selectedAreaId})
+                    </option>
+                  )}
+                  {areaOptions.map((area) => (
+                    <option key={area.id} value={area.id}>
+                      CH{area.chapter}-AREA{area.area} / {area.nameJa} ({area.id})
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 6, background: selectedArea ? 'rgba(139,0,255,0.06)' : 'rgba(127,29,29,0.18)', border: `1px solid ${selectedArea ? 'rgba(139,0,255,0.16)' : 'rgba(220,38,38,0.28)'}` }}>
+                <span style={{ width: 10, height: 10, borderRadius: 999, marginTop: 4, flexShrink: 0, background: selectedArea?.color ?? '#ef4444', boxShadow: `0 0 12px ${selectedArea?.color ?? '#ef4444'}` }} />
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, color: selectedArea ? '#d8b4fe' : '#fca5a5', fontSize: 12, fontFamily: 'Space Grotesk, sans-serif', fontWeight: 600 }}>
+                    {selectedArea ? `${selectedArea.nameJa} / ${selectedArea.nameEn || selectedArea.id}` : `未登録エリア: CH${form.chapter}-AREA${form.area}`}
+                  </p>
+                  <p style={{ margin: '3px 0 0', color: '#7878a8', fontSize: 11, lineHeight: 1.5 }}>
+                    {selectedArea ? `${selectedArea.description || '説明未設定'} · ${selectedArea.id}` : 'areas.json に該当エリアがありません。選択式のエリアから紐づけ直してください。'}
+                  </p>
+                </div>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                <FormField label="chapter"><input type="number" value={form.chapter} onChange={(e) => updateField('chapter', parseInt(e.target.value) || 1)} style={inputStyle} /></FormField>
-                <FormField label="area"><input type="number" value={form.area} onChange={(e) => updateField('area', parseInt(e.target.value) || 1)} style={inputStyle} /></FormField>
+                <FormField label="chapter（選択で自動入力）"><input type="number" value={form.chapter} onChange={(e) => updateField('chapter', parseInt(e.target.value) || 1)} style={inputStyle} /></FormField>
+                <FormField label="area（選択で自動入力）"><input type="number" value={form.area} onChange={(e) => updateField('area', parseInt(e.target.value) || 1)} style={inputStyle} /></FormField>
                 <FormField label="difficulty (0-5)"><input type="number" value={form.difficulty} onChange={(e) => updateField('difficulty', parseInt(e.target.value) || 0)} min={0} max={5} style={inputStyle} /></FormField>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

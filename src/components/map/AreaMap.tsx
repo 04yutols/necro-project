@@ -4,27 +4,34 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Castle, ChevronLeft, Globe2, Home, Lock, MapPin, Skull, Sparkles, Swords } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
+import areasData from '../../data/master/areas.json';
 import stagesData from '../../data/master/stages.json';
 import enemiesData from '../../data/master/enemies.json';
 import itemsData from '../../data/master/items.json';
 import {
   getHiddenDropCount,
-  getNextAvailableStage,
   getPrimaryWeaknesses,
   getStageLineSegments,
-  getStageList,
-  getStageProgressState,
   getStageWaveSummaries,
   getVisibleDropTable,
   type StageProgressState,
 } from '../../logic/DungeonSystem';
-import type { DropEntry, ElementType, EnemyData, StageData, StageNodeType } from '../../types/game';
+import {
+  buildStageStates,
+  buildWorldAreas,
+  getAreaKey,
+  getCurrentWorldArea,
+  getWorldAreaStages,
+  type WorldAreaView,
+} from '../../logic/WorldMapSystem';
+import type { AreaData, DropEntry, ElementType, EnemyData, StageData, StageNodeType } from '../../types/game';
 
 interface AreaMapProps {
   onStartStage: (stageId: string) => void;
 }
 
 const STAGES = stagesData as Record<string, StageData>;
+const AREAS = areasData as Record<string, AreaData>;
 const ENEMIES = enemiesData as Record<string, EnemyData>;
 const ITEMS = itemsData as Record<string, { name?: string; rarity?: string }>;
 
@@ -72,93 +79,8 @@ const MATERIAL_NAME: Record<string, string> = {
 };
 
 type MapLayer = 'WORLD' | 'AREA';
-type WorldAreaState = 'CURRENT' | 'AVAILABLE' | 'LOCKED' | 'CLEARED';
-
-interface WorldArea {
-  area: number;
-  chapter: number;
-  nameJa: string;
-  nameEn: string;
-  description: string;
-  color: string;
-  position: { x: number; y: number };
-  state: WorldAreaState;
-  stages: StageData[];
-  nextStage: StageData | null;
-  clearedCount: number;
-  totalCount: number;
-}
 
 const WORLD_VIEWBOX = { width: 375, height: 620 };
-
-const WORLD_AREA_META: Record<number, {
-  nameEn: string;
-  description: string;
-  color: string;
-  position: { x: number; y: number };
-}> = {
-  1: {
-    nameEn: 'FALLEN ROYAL CAPITAL',
-    description: '最初の侵攻領域。墓道、地下牢、竜骨祭壇を制圧し、亡国の中枢へ踏み込む。',
-    color: '#8A2BE2',
-    position: { x: 152, y: 438 },
-  },
-  2: {
-    nameEn: 'PHANTOM CITY',
-    description: '亡国の先に揺らめく幽霊都市。前章の全ノード制圧後に霧が晴れる。',
-    color: '#38bdf8',
-    position: { x: 250, y: 292 },
-  },
-};
-
-function buildWorldAreas(
-  stages: StageData[],
-  clearedStages: string[],
-  nextStage: StageData | null,
-  states: Record<string, StageProgressState>
-): WorldArea[] {
-  const grouped = new Map<number, StageData[]>();
-  stages.forEach(stage => {
-    const list = grouped.get(stage.area) ?? [];
-    list.push(stage);
-    grouped.set(stage.area, list);
-  });
-
-  return [...grouped.entries()].sort((a, b) => a[0] - b[0]).map(([area, areaStages]) => {
-    const first = areaStages.find(stage => stage.nodeType !== 'SAFE') ?? areaStages[0];
-    const totalStages = areaStages.filter(stage => stage.nodeType !== 'SAFE');
-    const clearedCount = totalStages.filter(stage => clearedStages.includes(stage.id)).length;
-    const hasAccessibleNode = areaStages.some(stage => states[stage.id] !== 'LOCKED');
-    const areaNextStage = nextStage?.area === area ? nextStage : areaStages.find(stage => states[stage.id] === 'AVAILABLE') ?? null;
-    const isCleared = totalStages.length > 0 && clearedCount === totalStages.length;
-    const meta = WORLD_AREA_META[area] ?? {
-      nameEn: `AREA ${area}`,
-      description: first.description,
-      color: getStageColor(first),
-      position: { x: 188, y: 440 - area * 86 },
-    };
-
-    let state: WorldAreaState = 'LOCKED';
-    if (isCleared) state = 'CLEARED';
-    else if (areaNextStage) state = 'CURRENT';
-    else if (hasAccessibleNode) state = 'AVAILABLE';
-
-    return {
-      area,
-      chapter: first.chapter,
-      nameJa: first.chapterName,
-      nameEn: meta.nameEn,
-      description: meta.description,
-      color: meta.color,
-      position: meta.position,
-      state,
-      stages: areaStages,
-      nextStage: areaNextStage,
-      clearedCount,
-      totalCount: totalStages.length,
-    };
-  });
-}
 
 function getStageColor(stage: StageData) {
   if (stage.nodeType === 'SAFE') return '#a5a9b4';
@@ -499,9 +421,9 @@ function WorldAreaNode({
   isActive,
   onClick,
 }: {
-  area: WorldArea;
+  area: WorldAreaView;
   isActive: boolean;
-  onClick: (area: WorldArea) => void;
+  onClick: (area: WorldAreaView) => void;
 }) {
   const locked = area.state === 'LOCKED';
   const cleared = area.state === 'CLEARED';
@@ -573,7 +495,7 @@ function WorldAreaSheet({
   onClose,
   onEnter,
 }: {
-  area: WorldArea;
+  area: WorldAreaView;
   onClose: () => void;
   onEnter: () => void;
 }) {
@@ -1088,22 +1010,23 @@ function FogRevealOverlay({ stage, onDone }: { stage: StageData; onDone: () => v
 export default function AreaMap({ onStartStage }: AreaMapProps) {
   const { player, party, setCurrentTab } = useGameStore();
   const [layer, setLayer] = useState<MapLayer>('WORLD');
-  const [selectedArea, setSelectedArea] = useState<number | null>(null);
-  const [activeWorldAreaId, setActiveWorldAreaId] = useState<number | null>(null);
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  const [activeWorldAreaId, setActiveWorldAreaId] = useState<string | null>(null);
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
   const [fogRevealStageId, setFogRevealStageId] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const allStages = useMemo(() => getStageList(STAGES), []);
+  const allStages = useMemo(() => Object.values(STAGES), []);
   const clearedStages = player?.clearedStages ?? [];
-  const states = useMemo(() => Object.fromEntries(allStages.map(stage => [stage.id, getStageProgressState(stage, clearedStages)])), [clearedStages, allStages]);
-  const nextStage = useMemo(() => getNextAvailableStage(STAGES, clearedStages), [clearedStages]);
-  const worldAreas = useMemo(() => buildWorldAreas(allStages, clearedStages, nextStage, states), [allStages, clearedStages, nextStage, states]);
-  const activeWorldArea = activeWorldAreaId ? worldAreas.find(area => area.area === activeWorldAreaId) ?? null : null;
-  const selectedAreaId = selectedArea ?? nextStage?.area ?? worldAreas[0]?.area ?? 1;
-  const selectedWorldArea = worldAreas.find(area => area.area === selectedAreaId) ?? worldAreas[0] ?? null;
-  const areaStages = useMemo(() => allStages.filter(stage => stage.area === selectedAreaId), [allStages, selectedAreaId]);
+  const states = useMemo(() => buildStageStates(allStages, clearedStages), [clearedStages, allStages]);
+  const worldAreas = useMemo(() => buildWorldAreas(AREAS, STAGES, clearedStages), [clearedStages]);
+  const activeWorldArea = activeWorldAreaId ? worldAreas.find(area => area.id === activeWorldAreaId) ?? null : null;
+  const currentWorldArea = useMemo(() => getCurrentWorldArea(worldAreas), [worldAreas]);
+  const nextStage = currentWorldArea?.nextStage ?? null;
+  const selectedWorldAreaId = selectedAreaId ?? currentWorldArea?.id ?? worldAreas[0]?.id ?? null;
+  const selectedWorldArea = worldAreas.find(area => area.id === selectedWorldAreaId) ?? worldAreas[0] ?? null;
+  const areaStages = useMemo(() => selectedWorldArea ? getWorldAreaStages(allStages, selectedWorldArea) : [], [allStages, selectedWorldArea]);
   const nextStageForArea = useMemo(() => areaStages.find(stage => states[stage.id] === 'AVAILABLE') ?? null, [areaStages, states]);
   const activeStage = activeStageId ? STAGES[activeStageId] : null;
   const fogRevealStage = fogRevealStageId ? STAGES[fogRevealStageId] : null;
@@ -1143,8 +1066,6 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
   ];
 
   if (layer === 'WORLD') {
-    const currentArea = worldAreas.find(area => area.state === 'CURRENT') ?? worldAreas.find(area => area.state === 'AVAILABLE') ?? worldAreas[0] ?? null;
-
     return (
       <div style={{
         position: 'absolute',
@@ -1179,10 +1100,10 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
             <g filter="url(#worldNodeGlow)">
               {worldAreas.map(area => (
                 <WorldAreaNode
-                  key={area.area}
+                  key={area.id}
                   area={area}
-                  isActive={activeWorldAreaId === area.area}
-                  onClick={(clickedArea) => setActiveWorldAreaId(prev => prev === clickedArea.area ? null : clickedArea.area)}
+                  isActive={activeWorldAreaId === area.id}
+                  onClick={(clickedArea) => setActiveWorldAreaId(prev => prev === clickedArea.id ? null : clickedArea.id)}
                 />
               ))}
             </g>
@@ -1266,7 +1187,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   CURRENT FRONT
                 </div>
                 <div style={{ marginTop: 3, color: '#f0ebff', fontFamily: "'Cinzel', serif", fontSize: 14, fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {currentArea?.nameJa ?? '未選択'}
+                  {currentWorldArea?.nameJa ?? '未選択'}
                 </div>
                 <div style={{ marginTop: 2, color: '#6b5f7a', fontSize: 9 }}>
                   Layer 1で領域を選び、Layer 2のエリアマップへ進む
@@ -1274,8 +1195,8 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
               </div>
               <button
                 type="button"
-                disabled={!currentArea || currentArea.state === 'LOCKED'}
-                onClick={() => currentArea && setActiveWorldAreaId(currentArea.area)}
+                disabled={!currentWorldArea || currentWorldArea.state === 'LOCKED'}
+                onClick={() => currentWorldArea && setActiveWorldAreaId(currentWorldArea.id)}
                 style={{
                   minHeight: 44,
                   padding: '0 15px',
@@ -1313,7 +1234,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   onClose={() => setActiveWorldAreaId(null)}
                   onEnter={() => {
                     if (activeWorldArea.state === 'LOCKED') return;
-                    setSelectedArea(activeWorldArea.area);
+                    setSelectedAreaId(activeWorldArea.id);
                     setActiveWorldAreaId(null);
                     setActiveStageId(null);
                     setLayer('AREA');
@@ -1535,7 +1456,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
           </div>
         </>
       )}
-      {fogRevealStage && fogRevealStage.area === selectedAreaId && (
+      {fogRevealStage && selectedWorldArea && getAreaKey(fogRevealStage) === getAreaKey(selectedWorldArea) && (
         <FogRevealOverlay
           stage={fogRevealStage}
           onDone={() => setFogRevealStageId(null)}

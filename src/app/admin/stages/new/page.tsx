@@ -2,10 +2,11 @@ import { getMasterFile } from '../../actions';
 import StageForm from '@/components/admin/forms/StageForm';
 
 export default async function NewStagePage() {
-  const [items, materials, enemies] = await Promise.all([
+  const [items, materials, enemies, areas] = await Promise.all([
     getMasterFile('items'),
     getMasterFile('materials'),
     getMasterFile('enemies'),
+    getMasterFile('areas'),
   ]);
   const enemyData = Object.entries(enemies).map(([key, raw]) => ({
     id: key,
@@ -21,6 +22,7 @@ export default async function NewStagePage() {
       itemIds={Object.keys(items)}
       materialIds={Object.keys(materials)}
       enemyData={enemyData}
+      areas={areas}
     />
   );
 }

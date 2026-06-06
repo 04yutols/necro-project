@@ -4,9 +4,11 @@ import enemies from '../data/master/enemies.json';
 import items from '../data/master/items.json';
 import materials from '../data/master/materials.json';
 import stages from '../data/master/stages.json';
+import areas from '../data/master/areas.json';
 import skills from '../data/master/skills.json';
 import demonForms from '../data/master/demonForms.json';
 import type {
+  AreaData,
   DemonFormData,
   EnemyData,
   ItemData,
@@ -26,6 +28,7 @@ const ENEMIES = enemies as unknown as MasterRecord<EnemyData>;
 const ITEMS = items as unknown as MasterRecord<ItemData>;
 const MATERIALS = materials as unknown as MasterRecord<ResidueMatData>;
 const STAGES = stages as unknown as MasterRecord<StageData>;
+const AREAS = areas as unknown as MasterRecord<AreaData>;
 const SKILLS = skills as unknown as MasterRecord<SkillData>;
 const DEMON_FORMS = demonForms as unknown as MasterRecord<DemonFormData>;
 
@@ -66,6 +69,10 @@ export class MasterDataService {
     return STAGES[id];
   }
 
+  public getArea(id: string): AreaData | undefined {
+    return AREAS[id];
+  }
+
   public getSkill(id: string): SkillData | undefined {
     return SKILLS[id];
   }
@@ -94,6 +101,10 @@ export class MasterDataService {
 
   public getAllStages(): MasterRecord<StageData> {
     return STAGES;
+  }
+
+  public getAllAreas(): MasterRecord<AreaData> {
+    return AREAS;
   }
 
   public getAllSkills(): MasterRecord<SkillData> {

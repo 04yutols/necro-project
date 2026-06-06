@@ -368,6 +368,18 @@ export interface StageWaveData {
 
 export type AreaGimmickType = 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE';
 
+export interface AreaData {
+  id: string;
+  chapter: number;
+  area: number;
+  nameJa: string;
+  nameEn: string;
+  description: string;
+  color: string;
+  position: { x: number; y: number };
+  sortOrder?: number;
+}
+
 export interface StageData {
   id: string;
   name: string;

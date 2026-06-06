@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'ダッシュボード' },
+  { href: '/admin/areas', label: 'エリア' },
   { href: '/admin/enemies', label: '敵' },
   { href: '/admin/stages', label: 'ステージ' },
   { href: '/admin/jobs', label: '職業' },

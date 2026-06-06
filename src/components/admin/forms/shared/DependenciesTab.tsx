@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { DependencyRef } from '@/app/admin/actions';
 
 const SCOPE_LABELS: Record<string, string> = {
+  areas: 'エリア',
   stages: 'ステージ',
   jobs: '職業',
   enemies: '敵',
@@ -15,6 +16,7 @@ const SCOPE_LABELS: Record<string, string> = {
 };
 
 const SCOPE_COLORS: Record<string, string> = {
+  areas: '#8A2BE2',
   stages: '#60a5fa',
   jobs: '#a78bfa',
   enemies: '#f87171',

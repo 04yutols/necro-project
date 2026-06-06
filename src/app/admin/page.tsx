@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getAllMasterData, getStoryPackSummaries, getStoryScenes } from './actions';
 
 const SECTION_META = [
+  { key: 'areas', label: 'エリア', href: '/admin/areas', icon: '◎', desc: 'areas.json' },
   { key: 'enemies', label: '敵', href: '/admin/enemies', icon: '☠', desc: 'enemies.json' },
   { key: 'stages', label: 'ステージ', href: '/admin/stages', icon: '⚑', desc: 'stages.json' },
   { key: 'jobs', label: '職業', href: '/admin/jobs', icon: '⚔', desc: 'jobs.json' },

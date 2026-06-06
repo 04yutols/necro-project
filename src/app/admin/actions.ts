@@ -32,6 +32,7 @@ export type AuditFinding = {
 };
 
 export type MasterDataCollection = {
+  areas: Record<string, Record<string, unknown>>;
   enemies: Record<string, Record<string, unknown>>;
   stages: Record<string, Record<string, unknown>>;
   jobs: Record<string, Record<string, unknown>>;
@@ -60,6 +61,7 @@ function readMasterJson(filename: string): Record<string, Record<string, unknown
 export async function getAllMasterData(): Promise<MasterDataCollection> {
   assertDev();
   return {
+    areas: readMasterJson('areas.json'),
     enemies: readMasterJson('enemies.json'),
     stages: readMasterJson('stages.json'),
     jobs: readMasterJson('jobs.json'),
@@ -79,6 +81,7 @@ export async function getMasterFile(
 ): Promise<Record<string, Record<string, unknown>>> {
   assertDev();
   const fileMap: Record<keyof MasterDataCollection, string> = {
+    areas: 'areas.json',
     enemies: 'enemies.json',
     stages: 'stages.json',
     jobs: 'jobs.json',
@@ -133,6 +136,7 @@ export async function runMasterDataAudit(): Promise<AuditFinding[]> {
 
   const enemyIds = new Set(Object.keys(data.enemies));
   const stageIds = new Set(Object.keys(data.stages));
+  const areaIds = new Set(Object.keys(data.areas));
   const jobIds = new Set(Object.keys(data.jobs));
   const skillIds = new Set(Object.keys(data.skills));
   const itemIds = new Set(Object.keys(data.items));
@@ -143,6 +147,7 @@ export async function runMasterDataAudit(): Promise<AuditFinding[]> {
   // 1. ID integrity: each entry's `id` field must match its key (when present)
   // ---------------------------------------------------------------------------
   const scopesWithId: [string, Record<string, Record<string, unknown>>][] = [
+    ['areas', data.areas],
     ['enemies', data.enemies],
     ['stages', data.stages],
     ['skills', data.skills],
@@ -165,6 +170,44 @@ export async function runMasterDataAudit(): Promise<AuditFinding[]> {
       } else {
         findings.push({ level: 'PASS', scope, id: key, message: 'ID整合性 OK' });
       }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 1.25 Area reference: stages.chapter + stages.area must exist in areas
+  // ---------------------------------------------------------------------------
+  for (const [areaKey, area] of Object.entries(data.areas)) {
+    const chapter = area['chapter'];
+    const areaNo = area['area'];
+    const color = getString(area, 'color');
+    const position = area['position'] as Record<string, unknown> | undefined;
+    if (!Number.isInteger(chapter) || Number(chapter) < 1) {
+      findings.push({ level: 'FAIL', scope: 'areas', id: areaKey, message: 'chapter は 1 以上の整数である必要があります。' });
+    }
+    if (!Number.isInteger(areaNo) || Number(areaNo) < 1) {
+      findings.push({ level: 'FAIL', scope: 'areas', id: areaKey, message: 'area は 1 以上の整数である必要があります。' });
+    }
+    if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
+      findings.push({ level: 'FAIL', scope: 'areas', id: areaKey, message: 'color は #RRGGBB 形式である必要があります。' });
+    }
+    if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
+      findings.push({ level: 'FAIL', scope: 'areas', id: areaKey, message: 'position.x / position.y は数値である必要があります。' });
+    }
+  }
+
+  for (const [stageKey, stage] of Object.entries(data.stages)) {
+    const chapter = stage['chapter'];
+    const areaNo = stage['area'];
+    const inferredAreaId = `ch${String(chapter)}_area${String(areaNo)}`;
+    if (!areaIds.has(inferredAreaId)) {
+      findings.push({
+        level: 'FAIL',
+        scope: 'stages',
+        id: stageKey,
+        message: `参照先エリア "${inferredAreaId}" が areas.json に存在しません。`,
+      });
+    } else {
+      findings.push({ level: 'PASS', scope: 'stages', id: stageKey, message: `エリア参照 "${inferredAreaId}" OK` });
     }
   }
 
@@ -355,6 +398,23 @@ export async function getDependencies(
   const refs: DependencyRef[] = [];
 
   switch (fileKey) {
+    case 'areas': {
+      const area = data.areas[entryKey];
+      if (!area) break;
+      for (const [stageKey, stage] of Object.entries(data.stages)) {
+        const inferredAreaId = `ch${String(stage.chapter)}_area${String(stage.area)}`;
+        if (inferredAreaId === entryKey) {
+          refs.push({
+            scope: 'stages',
+            id: stageKey,
+            label: (stage.nameJa as string) || stageKey,
+            href: `/admin/stages/${stageKey}`,
+            context: `CH${String(stage.chapter)} / AREA ${String(stage.area)}`,
+          });
+        }
+      }
+      break;
+    }
     case 'enemies': {
       for (const [stageKey, stage] of Object.entries(data.stages)) {
         const waves = (stage.waves as Array<Record<string, unknown>>) ?? [];
@@ -517,6 +577,7 @@ export async function saveEntry(
   assertDev();
   try {
     const fileMap: Record<keyof MasterDataCollection, string> = {
+      areas: 'areas.json',
       enemies: 'enemies.json',
       stages: 'stages.json',
       jobs: 'jobs.json',
@@ -547,6 +608,7 @@ export async function deleteEntry(
   assertDev();
   try {
     const fileMap: Record<keyof MasterDataCollection, string> = {
+      areas: 'areas.json',
       enemies: 'enemies.json',
       stages: 'stages.json',
       jobs: 'jobs.json',

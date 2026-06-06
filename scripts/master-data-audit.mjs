@@ -17,6 +17,7 @@ const typeFilter = normalizeType(getArgValue('--type='));
 const idFilter = getArgValue('--id=');
 
 const data = {
+  areas: readJson('areas.json'),
   enemies: readJson('enemies.json'),
   stages: readJson('stages.json'),
   items: readJson('items.json'),
@@ -31,6 +32,7 @@ const ELEMENTS = new Set(['FIRE', 'WATER', 'THUNDER', 'EARTH', 'WIND', 'ICE', 'L
 const TRIBES = new Set(['UNDEAD', 'DEMON', 'BEAST', 'HUMANOID', 'DRAGON', 'ORC']);
 const ENEMY_TIERS = new Set(['MINION', 'ELITE', 'BOSS']);
 const NODE_TYPES = new Set(['SAFE', 'DUNGEON', 'BOSS']);
+const AREA_GIMMICKS = new Set(['NONE', 'SLIP_DAMAGE', 'STATUS_AILMENT']);
 const WAVE_ROLES = new Set(['WARMUP', 'SHIELD', 'ELITE', 'BOSS']);
 const DROP_TYPES = new Set(['WEAPON', 'RESIDUE', 'MATERIAL', 'MONSTER', 'CONSUMABLE']);
 const ITEM_TYPES = new Set(['WEAPON', 'CONSUMABLE']);
@@ -64,6 +66,8 @@ function normalizeType(value) {
   return ({
     enemy: 'enemies',
     enemies: 'enemies',
+    area: 'areas',
+    areas: 'areas',
     stage: 'stages',
     stages: 'stages',
     item: 'items',
@@ -248,6 +252,22 @@ function validateEnemies(findings) {
   }
 }
 
+function validateAreas(findings) {
+  validateRecordIds(findings, 'areas', data.areas, { requiresId: true });
+  for (const [id, area] of Object.entries(data.areas)) {
+    if (!shouldInclude('areas', id)) continue;
+    for (const field of ['chapter', 'area', 'nameJa', 'nameEn', 'description', 'color', 'position']) {
+      if (area[field] === undefined) add(findings, 'areas', id, 'FAIL', `${field} is required`);
+    }
+    if (!Number.isInteger(area.chapter) || area.chapter < 1) add(findings, 'areas', id, 'FAIL', 'chapter must be an integer >= 1');
+    if (!Number.isInteger(area.area) || area.area < 1) add(findings, 'areas', id, 'FAIL', 'area must be an integer >= 1');
+    if (area.color && !/^#[0-9a-f]{6}$/i.test(area.color)) add(findings, 'areas', id, 'FAIL', 'color must be #RRGGBB');
+    if (!isObject(area.position) || !isNumber(area.position.x) || !isNumber(area.position.y)) {
+      add(findings, 'areas', id, 'FAIL', 'position must include numeric x/y');
+    }
+  }
+}
+
 function validateStages(findings) {
   validateRecordIds(findings, 'stages', data.stages, { requiresId: true });
   const positions = [];
@@ -258,6 +278,9 @@ function validateStages(findings) {
     }
     if (!NODE_TYPES.has(stage.nodeType)) add(findings, 'stages', id, 'FAIL', `unknown nodeType ${stage.nodeType}`);
     if (!ELEMENTS.has(stage.element)) add(findings, 'stages', id, 'FAIL', `unknown element ${stage.element}`);
+    if (!AREA_GIMMICKS.has(stage.areaGimmick ?? 'NONE')) add(findings, 'stages', id, 'FAIL', `unknown areaGimmick ${stage.areaGimmick}`);
+    const areaId = `ch${stage.chapter}_area${stage.area}`;
+    if (!data.areas[areaId]) add(findings, 'stages', id, 'FAIL', `references missing area ${areaId}`);
     if (!Array.isArray(stage.unlockRequires)) add(findings, 'stages', id, 'FAIL', 'unlockRequires must be an array');
     for (const requiredId of stage.unlockRequires ?? []) {
       if (!data.stages[requiredId]) add(findings, 'stages', id, 'FAIL', `unlockRequires references missing stage ${requiredId}`);
@@ -477,6 +500,7 @@ function summarize(findings) {
 
 function main() {
   const findings = [];
+  validateAreas(findings);
   validateEnemies(findings);
   validateStages(findings);
   validateItems(findings);
