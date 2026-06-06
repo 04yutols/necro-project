@@ -25,7 +25,8 @@ export interface BattleDamageResult {
  * baseDmg      = ATK x power
  * effectiveDef = DEF x (1 - defenseReducePct/100)   ← ORC シナジーで軽減
  * defMult      = 1 - effectiveDef / (effectiveDef + 200)
- * final        = baseDmg x defMult x (1 + elementBoost + synergyBoost) x resistance
+ * critMult     = 1 + critDmg / 100          ← critDmg=100 なら通常+100%で2.0倍
+ * final        = baseDmg x defMult x (1 + elementBoost + synergyBoost) x resistance x critMult
  */
 export function calculateBattleDamage({
   attackerStats,
@@ -61,7 +62,8 @@ export function calculateBattleDamage({
   const effectiveCritRate = Math.max(0, attackerStats.critRate + (synergyBonus.critRateBonus ?? 0));
   const isCritical = rng() * 100 < effectiveCritRate;
   if (isCritical) {
-    damage *= Math.max(0, attackerStats.critDmg + (synergyBonus.critDmgBonus ?? 0)) / 100;
+    const effectiveCritDmg = Math.max(0, attackerStats.critDmg + (synergyBonus.critDmgBonus ?? 0));
+    damage *= 1 + effectiveCritDmg / 100;
   }
 
   return {

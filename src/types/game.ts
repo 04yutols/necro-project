@@ -15,7 +15,7 @@ export interface BaseStats {
   def:       number;  // 防御力（物理・魔法共通）
   spd:       number;  // 速度（行動値 = 10000/spd）
   critRate:  number;  // 会心率 %（基礎5.0）
-  critDmg:   number;  // 会心ダメージ %（基礎150.0 → 1.5×）
+  critDmg:   number;  // 会心ダメージ加算 %（100.0 → 通常+100% = 2.0×）
   effectHit: number;  // 効果命中 %
   effectRes: number;  // 効果抵抗 %
 }

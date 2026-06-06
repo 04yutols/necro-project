@@ -576,7 +576,7 @@ export default function SimulatorClient({
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <StatPill label="ATK" value={autoStats.atk} dim={isAtkOverridden} />
             <StatPill label="CRIT%" value={`${autoStats.critRate}`} dim={isCritOverridden} />
-            <StatPill label="CRIT×" value={`${autoStats.critDmg}%`} dim={isCritOverridden} />
+            <StatPill label="CRIT DMG" value={`${autoStats.critDmg}%`} dim={isCritOverridden} />
             <StatPill label="SPD" value={autoStats.spd} dim />
           </div>
 
@@ -605,8 +605,8 @@ export default function SimulatorClient({
               <Field label={`会心率 %（自動: ${autoStats.critRate}）`}>
                 <NumField value={critRate} onChange={setManualCritRate} min={0} max={100} step={0.1} />
               </Field>
-              <Field label={`会心倍率 %（自動: ${autoStats.critDmg}）`}>
-                <NumField value={critDmg} onChange={setManualCritDmg} min={100} max={500} />
+              <Field label={`会心ダメージ %（自動: ${autoStats.critDmg}）`}>
+                <NumField value={critDmg} onChange={setManualCritDmg} min={0} max={500} />
               </Field>
               <Field label="属性ダメージ加成 %">
                 <NumField value={elementBoostPct} onChange={setElementBoostPct} min={0} max={200} />
@@ -963,7 +963,7 @@ export default function SimulatorClient({
               { label: 'ATK', value: String(atk), sub: isAtkOverridden ? '手動' : '自動' },
               { label: 'power', value: String(power), sub: manualPower !== null ? '手動' : 'スキル' },
               { label: '会心率', value: `${critRate}%`, sub: manualCritRate !== null ? '手動' : '自動' },
-              { label: '会心倍率', value: `${critDmg}%`, sub: manualCritDmg !== null ? '手動' : '自動' },
+              { label: '会心ダメージ', value: `${critDmg}%`, sub: manualCritDmg !== null ? '手動' : '自動' },
               { label: '敵 DEF', value: String(def), sub: useCustomDef ? 'カスタム' : '敵データ' },
               { label: '耐性', value: `${resistance}%`, sub: useCustomDef ? 'カスタム' : '敵データ' },
             ].map((item) => (

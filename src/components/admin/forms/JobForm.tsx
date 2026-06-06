@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveEntry, deleteEntry } from '@/app/admin/actions';
+import skillsData from '@/data/master/skills.json';
 import FormTabs from './shared/FormTabs';
 import FormSaveBar from './shared/FormSaveBar';
 import FormField from './shared/FormField';
@@ -10,10 +11,19 @@ import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
 import type { DependencyRef } from '@/app/admin/actions';
+import type { BaseStats, JobBaseStatsByLevel, SkillData } from '@/types/game';
+import {
+  JOB_BASE_STAT_KEYS,
+  clampJobBaseStatValue,
+  interpolateJobBaseStatColumn,
+  interpolateJobBaseStatsByFinalLevel,
+  type JobBaseStatKey,
+} from '@/logic/JobBaseStatsInterpolation';
 
 const TABS = ['基本情報', '解放条件', 'ステータス補正', '基礎ステータス', 'エナジー', 'レベルボーナス', 'スキル配置', '依存関係'];
 const CATEGORIES = ['PHYSICAL', 'MAGICAL', 'SUPPORT'];
 const ATTACK_TYPES = ['SLASH', 'STRIKE', 'PROJECTILE', 'MAGIC', 'SUMMON', 'HEAL'];
+const MASTER_SKILLS = skillsData as Record<string, SkillData>;
 
 const inputStyle: React.CSSProperties = {
   background: '#1a1a24',
@@ -31,13 +41,23 @@ const inputStyle: React.CSSProperties = {
 const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' };
 const textareaStyle: React.CSSProperties = { ...inputStyle, height: undefined, resize: 'vertical', minHeight: 96 };
 
-const STAT_FIELDS = ['hp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
-const INTEGER_STAT_FIELDS = new Set(['hp', 'atk', 'def', 'spd']);
+const STAT_FIELDS = JOB_BASE_STAT_KEYS;
+const INTEGER_STAT_FIELDS = new Set<JobBaseStatKey>(['hp', 'atk', 'def', 'spd']);
 
 type UnlockJob = { jobId: string; minLevel: number };
 type SkillSlot = { level: number; skillId: string };
-type StatKey = typeof STAT_FIELDS[number];
-type BaseStatsByLevel = Record<string, Record<StatKey, number>>;
+type StatKey = JobBaseStatKey;
+type BaseStatsByLevel = JobBaseStatsByLevel;
+type BaseStatDrafts = Record<string, string>;
+type SkillOption = { id: string; name: string; label: string };
+
+const SKILL_OPTIONS: SkillOption[] = Object.entries(MASTER_SKILLS)
+  .map(([id, skill]) => ({
+    id,
+    name: skill.name || id,
+    label: `${skill.name || id} / ${skill.element ?? 'NONE'} / ${skill.type} / MP${skill.mpCost ?? 0}`,
+  }))
+  .sort((a, b) => a.name.localeCompare(b.name, 'ja') || a.id.localeCompare(b.id));
 
 type JobFormState = {
   name: string;
@@ -102,7 +122,7 @@ function buildDefaultBaseStatsByLevel(): BaseStatsByLevel {
       critDmg: 150,
       effectHit: 0,
       effectRes: 0,
-    }];
+    } satisfies BaseStats];
   })) as BaseStatsByLevel;
 }
 
@@ -117,12 +137,33 @@ function normalizeBaseStatsByLevel(value: unknown): BaseStatsByLevel {
     const source = typeof rawStats === 'object' && rawStats !== null && !Array.isArray(rawStats)
       ? rawStats as Record<string, unknown>
       : {};
-    return [level, Object.fromEntries(STAT_FIELDS.map((key) => {
+    const normalizedStats = STAT_FIELDS.reduce((stats, key) => {
       const fallback = defaults[level][key];
       const parsed = typeof source[key] === 'number' ? source[key] : Number(source[key]);
-      return [key, Number.isFinite(parsed) ? parsed : fallback];
-    })) as Record<StatKey, number>];
+      stats[key] = clampJobBaseStatValue(key, Number.isFinite(parsed) ? parsed : fallback);
+      return stats;
+    }, {} as BaseStats);
+    return [level, normalizedStats];
   })) as BaseStatsByLevel;
+}
+
+function getBaseStatDraftKey(level: number, key: StatKey): string {
+  return `${level}:${key}`;
+}
+
+function formatBaseStatInputValue(value: number | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
+}
+
+function parseBaseStatInputValue(value: string): number | null {
+  if (value.trim() === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getSkillOptionsForValue(skillId: string): SkillOption[] {
+  if (!skillId || MASTER_SKILLS[skillId]) return SKILL_OPTIONS;
+  return [{ id: skillId, name: skillId, label: `未登録: ${skillId}` }, ...SKILL_OPTIONS];
 }
 
 function initForm(data: Record<string, unknown> | null): JobFormState {
@@ -185,6 +226,7 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [form, setForm] = useState<JobFormState>(() => initForm(initialData));
   const [selectedBaseStatsLevel, setSelectedBaseStatsLevel] = useState(1);
+  const [baseStatDrafts, setBaseStatDrafts] = useState<BaseStatDrafts>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
@@ -196,18 +238,53 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
 
   const updateBaseStat = useCallback((level: number, key: StatKey, value: number) => {
     const safeLevel = Math.min(100, Math.max(1, Math.floor(level)));
-    const normalizedValue = INTEGER_STAT_FIELDS.has(key)
-      ? Math.round(value)
-      : Number(value.toFixed(1));
-    setForm((current) => ({
-      ...current,
-      baseStatsByLevel: {
+    const normalizedValue = clampJobBaseStatValue(key, value);
+    setForm((current) => {
+      const nextBaseStatsByLevel: BaseStatsByLevel = {
         ...current.baseStatsByLevel,
         [String(safeLevel)]: {
           ...current.baseStatsByLevel[String(safeLevel)],
-          [key]: Math.max(key === 'critDmg' ? 100 : 0, normalizedValue),
+          [key]: normalizedValue,
         },
-      },
+      };
+
+      return {
+        ...current,
+        baseStatsByLevel: safeLevel === 100
+          ? interpolateJobBaseStatColumn(nextBaseStatsByLevel, key, normalizedValue)
+          : nextBaseStatsByLevel,
+      };
+    });
+  }, []);
+
+  const updateBaseStatInput = useCallback((level: number, key: StatKey, value: string) => {
+    const safeLevel = Math.min(100, Math.max(1, Math.floor(level)));
+    const draftKey = getBaseStatDraftKey(safeLevel, key);
+    setBaseStatDrafts((current) => ({ ...current, [draftKey]: value }));
+
+    const parsed = parseBaseStatInputValue(value);
+    if (parsed !== null) updateBaseStat(safeLevel, key, parsed);
+  }, [updateBaseStat]);
+
+  const commitBaseStatInput = useCallback((level: number, key: StatKey) => {
+    const safeLevel = Math.min(100, Math.max(1, Math.floor(level)));
+    const draftKey = getBaseStatDraftKey(safeLevel, key);
+    const parsed = parseBaseStatInputValue(baseStatDrafts[draftKey] ?? '');
+    if (parsed !== null) updateBaseStat(safeLevel, key, parsed);
+
+    setBaseStatDrafts((current) => {
+      const { [draftKey]: _finishedDraft, ...rest } = current;
+      return rest;
+    });
+  }, [baseStatDrafts, updateBaseStat]);
+
+  const interpolateAllBaseStats = useCallback(() => {
+    setForm((current) => ({
+      ...current,
+      baseStatsByLevel: interpolateJobBaseStatsByFinalLevel(
+        current.baseStatsByLevel,
+        current.baseStatsByLevel['100'],
+      ),
     }));
   }, []);
 
@@ -368,16 +445,33 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
                       </button>
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    onClick={interpolateAllBaseStats}
+                    style={{
+                      height: 34,
+                      borderRadius: 6,
+                      border: '1px solid rgba(216,180,254,0.48)',
+                      background: 'rgba(139,0,255,0.18)',
+                      color: '#f5e8ff',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Lv100から補完
+                  </button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px 12px' }}>
                   {STAT_FIELDS.map((key) => (
                     <FormField key={key} label={key}>
                       <input
-                        type="number"
-                        value={form.baseStatsByLevel[String(selectedBaseStatsLevel)]?.[key] ?? 0}
-                        onChange={(e) => updateBaseStat(selectedBaseStatsLevel, key, parseFloat(e.target.value) || 0)}
+                        type="text"
+                        inputMode={INTEGER_STAT_FIELDS.has(key) ? 'numeric' : 'decimal'}
+                        value={baseStatDrafts[getBaseStatDraftKey(selectedBaseStatsLevel, key)] ?? formatBaseStatInputValue(form.baseStatsByLevel[String(selectedBaseStatsLevel)]?.[key])}
+                        onChange={(e) => updateBaseStatInput(selectedBaseStatsLevel, key, e.target.value)}
+                        onBlur={() => commitBaseStatInput(selectedBaseStatsLevel, key)}
                         step={INTEGER_STAT_FIELDS.has(key) ? 1 : 0.1}
-                        min={key === 'critDmg' ? 100 : 0}
+                        min={0}
                         style={inputStyle}
                       />
                     </FormField>
@@ -405,11 +499,13 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
                         {STAT_FIELDS.map((key) => (
                           <input
                             key={key}
-                            type="number"
-                            value={stats?.[key] ?? 0}
-                            onChange={(e) => updateBaseStat(level, key, parseFloat(e.target.value) || 0)}
+                            type="text"
+                            inputMode={INTEGER_STAT_FIELDS.has(key) ? 'numeric' : 'decimal'}
+                            value={baseStatDrafts[getBaseStatDraftKey(level, key)] ?? formatBaseStatInputValue(stats?.[key])}
+                            onChange={(e) => updateBaseStatInput(level, key, e.target.value)}
+                            onBlur={() => commitBaseStatInput(level, key)}
                             step={INTEGER_STAT_FIELDS.has(key) ? 1 : 0.1}
-                            min={key === 'critDmg' ? 100 : 0}
+                            min={0}
                             style={{
                               height: 34,
                               border: 0,
@@ -463,18 +559,23 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
           {activeTab === 'スキル配置' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 32px', gap: 6, marginBottom: 4 }}>
-                {['level', 'skillId', ''].map((h) => (
+                {['level', 'skill', ''].map((h) => (
                   <span key={h} style={{ color: '#7878a8', fontSize: 10, fontFamily: 'Space Grotesk, sans-serif' }}>{h}</span>
                 ))}
               </div>
               {form.skills.map((s, idx) => (
                 <div key={idx} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 32px', gap: 6, alignItems: 'center' }}>
                   <input type="number" value={s.level} onChange={(e) => updateField('skills', form.skills.map((sk, i) => i === idx ? { ...sk, level: parseInt(e.target.value) || 1 } : sk))} style={inputStyle} min={1} />
-                  <input type="text" value={s.skillId} onChange={(e) => updateField('skills', form.skills.map((sk, i) => i === idx ? { ...sk, skillId: e.target.value } : sk))} style={inputStyle} placeholder="skill_warrior_1" />
-                  <button onClick={() => updateField('skills', form.skills.filter((_, i) => i !== idx))} style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.3)', color: '#fca5a5', borderRadius: 4, cursor: 'pointer', fontSize: 12, width: 28, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                  <select value={s.skillId} onChange={(e) => updateField('skills', form.skills.map((sk, i) => i === idx ? { ...sk, skillId: e.target.value } : sk))} style={selectStyle}>
+                    <option value="">スキルを選択</option>
+                    {getSkillOptionsForValue(s.skillId).map((skill) => (
+                      <option key={skill.id} value={skill.id}>{skill.label}</option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={() => updateField('skills', form.skills.filter((_, i) => i !== idx))} style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.3)', color: '#fca5a5', borderRadius: 4, cursor: 'pointer', fontSize: 12, width: 28, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
                 </div>
               ))}
-              <button onClick={() => updateField('skills', [...form.skills, { level: 1, skillId: '' }])} style={{ background: 'rgba(139,0,255,0.10)', border: '1px dashed rgba(139,0,255,0.3)', color: '#8B00FF', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 12, alignSelf: 'flex-start' }}>+ 追加</button>
+              <button type="button" onClick={() => updateField('skills', [...form.skills, { level: 1, skillId: '' }])} style={{ background: 'rgba(139,0,255,0.10)', border: '1px dashed rgba(139,0,255,0.3)', color: '#8B00FF', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 12, alignSelf: 'flex-start' }}>+ 追加</button>
             </div>
           )}
         </div>

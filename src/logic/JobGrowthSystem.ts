@@ -21,7 +21,7 @@ function roundBaseStats(stats: BaseStats): BaseStats {
     def: Math.max(0, Math.round(stats.def)),
     spd: Math.max(1, Math.round(stats.spd)),
     critRate: Math.max(0, Number(stats.critRate.toFixed(1))),
-    critDmg: Math.max(100, Number(stats.critDmg.toFixed(1))),
+    critDmg: Math.max(0, Number(stats.critDmg.toFixed(1))),
     effectHit: Math.max(0, Number(stats.effectHit.toFixed(1))),
     effectRes: Math.max(0, Number(stats.effectRes.toFixed(1))),
   };

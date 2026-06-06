@@ -250,7 +250,7 @@ export class BattleEngine {
    * baseDmg = ATK × power
    * defMult  = 1 - DEF / (DEF + 200)
    * finalDmg = baseDmg × defMult × (1 + elementBoost) × resMult
-   * 会心時:   × critDmg / 100
+   * 会心時:   × (1 + critDmg / 100)
    */
   private calculateDamage(
     attackerStats: BaseStats,

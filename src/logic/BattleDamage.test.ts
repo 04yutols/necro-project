@@ -37,6 +37,25 @@ describe('calculateBattleDamage', () => {
     expect(result.isCritical).toBe(false);
   });
 
+  test('treats critDmg as additive bonus damage, so 100% crit damage doubles the hit', () => {
+    const normalHit = calculateBattleDamage({
+      attackerStats: { ...attacker, atk: 1000, critRate: 0, critDmg: 100 },
+      defenderStats: { ...defender, def: 0 },
+      powerMultiplier: 1,
+      rng: () => 0.99,
+    });
+    const critHit = calculateBattleDamage({
+      attackerStats: { ...attacker, atk: 1000, critRate: 100, critDmg: 100 },
+      defenderStats: { ...defender, def: 0 },
+      powerMultiplier: 1,
+      rng: () => 0,
+    });
+
+    expect(normalHit.damage).toBe(1000);
+    expect(critHit.damage).toBe(2000);
+    expect(critHit.isCritical).toBe(true);
+  });
+
   describe('defenseReducePct (ORC synergy)', () => {
     const baseInput = {
       attackerStats: attacker,
@@ -102,8 +121,8 @@ describe('calculateBattleDamage', () => {
       rng: () => 0,
     });
 
-    // 100 x (1 + 0.25 + 0.10 + 0.20) x 1.2 x 2.0 = 372
-    expect(result.damage).toBe(372);
+    // 100 x (1 + 0.25 + 0.10 + 0.20) x 1.2 x (1 + 2.0) = 558
+    expect(result.damage).toBe(558);
     expect(result.isCritical).toBe(true);
     expect(result.isWeakness).toBe(true);
     expect(result.isResisted).toBe(false);

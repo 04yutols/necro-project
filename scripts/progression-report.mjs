@@ -72,7 +72,7 @@ function getEnemyMetrics(enemy) {
   const hp = enemy.stats?.hp ?? 0;
   const shield = enemy.shieldHp ?? enemy.maxShieldHp ?? 0;
   const effectiveHp = hp + shield + getReviveBonusHp(enemy) + getSummonBonusHp(enemy);
-  const critFactor = 1 + ((enemy.stats?.critRate ?? 0) / 100) * ((enemy.stats?.critDmg ?? 150) / 100 - 1);
+  const critFactor = 1 + ((enemy.stats?.critRate ?? 0) / 100) * ((enemy.stats?.critDmg ?? 150) / 100);
   const threat = (enemy.stats?.atk ?? 0) * ((enemy.stats?.spd ?? 100) / 100) * critFactor;
   return { effectiveHp, threat };
 }

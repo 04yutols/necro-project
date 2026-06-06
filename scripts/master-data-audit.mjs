@@ -140,9 +140,6 @@ function validateStats(findings, scope, id, stats) {
       add(findings, scope, id, 'FAIL', `stats.${stat} must be >= 0`);
     }
   }
-  if (isNumber(stats.critDmg) && stats.critDmg < 100) {
-    add(findings, scope, id, 'WARN', 'stats.critDmg is below 100');
-  }
 }
 
 function jobPowerScore(stats) {

@@ -333,9 +333,6 @@ export async function runMasterDataAudit(): Promise<AuditFinding[]> {
           findings.push({ level: 'FAIL', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.${statKey} は 0 以上である必要があります。` });
         }
       }
-      if (typeof stats.critDmg === 'number' && stats.critDmg < 100) {
-        findings.push({ level: 'WARN', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.critDmg が 100 未満です。` });
-      }
       if (previous && typeof stats.hp === 'number' && typeof previous.hp === 'number' && stats.hp < previous.hp) {
         findings.push({ level: 'WARN', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.hp が前レベルより低下しています。` });
       }
