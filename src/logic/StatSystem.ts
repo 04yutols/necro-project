@@ -25,8 +25,6 @@ export const COMBAT_STAT_KEYS: (keyof BaseStats)[] = [
   'effectRes',
 ];
 
-const NECRO_BASE_STAT_KEYS: (keyof BaseStats)[] = ['hp', 'atk', 'def', 'spd'];
-
 export const ELEMENT_DAMAGE_KEYS: Exclude<ElementType, 'NONE'>[] = [
   'FIRE',
   'WATER',
@@ -67,6 +65,13 @@ export interface StatBreakdown {
   equipment: BaseStats;
   residues: BaseStats;
   total: BaseStats;
+  elementDmgBoosts: Partial<Record<ElementType, number>>;
+}
+
+export interface NecromanceLevelBonus {
+  level: number;
+  step: number;
+  stats: BaseStats;
   elementDmgBoosts: Partial<Record<ElementType, number>>;
 }
 
@@ -222,12 +227,12 @@ function applyOption(
   if (key) stats[key] += value;
 }
 
-export function passiveBonusesToStats(passives: PassiveBonuses): BaseStats {
+export function passiveBonusesToStats(passives: PassiveBonuses, baseStats: BaseStats = ZERO_STATS): BaseStats {
   return {
-    hp: passives.passiveHpBonus ?? 0,
-    atk: passives.passiveAtkBonus ?? 0,
-    def: passives.passiveDefBonus ?? 0,
-    spd: passives.passiveSpdBonus ?? 0,
+    hp: (baseStats.hp * (passives.passiveHpBonus ?? 0)) / 100,
+    atk: (baseStats.atk * (passives.passiveAtkBonus ?? 0)) / 100,
+    def: (baseStats.def * (passives.passiveDefBonus ?? 0)) / 100,
+    spd: (baseStats.spd * (passives.passiveSpdBonus ?? 0)) / 100,
     critRate: passives.passiveCritRateBonus ?? 0,
     critDmg: passives.passiveCritDmgBonus ?? 0,
     effectHit: 0,
@@ -239,12 +244,34 @@ export function calculateNecroBaseStatsContribution(
   baseStats: BaseStats,
   baseStatsBonus?: number,
 ): BaseStats {
-  const multiplier = normalizeNecroBaseStatsBonus(baseStatsBonus);
+  void baseStats;
+  void baseStatsBonus;
+  normalizeNecroBaseStatsBonus(baseStatsBonus);
   const stats = cloneZeroStats();
-  NECRO_BASE_STAT_KEYS.forEach((key) => {
-    stats[key] = baseStats[key] * (multiplier - 1);
-  });
   return roundStatsForBonus(stats);
+}
+
+export function normalizeNecromanceLevel(level: number | undefined): number {
+  if (typeof level !== 'number' || !Number.isFinite(level)) return 1;
+  return Math.min(99, Math.max(1, Math.floor(level)));
+}
+
+export function calculateNecromanceLevelBonus(level: number | undefined): NecromanceLevelBonus {
+  const safeLevel = normalizeNecromanceLevel(level);
+  const step = Math.floor(safeLevel / 10);
+  const stats = cloneZeroStats();
+  stats.critDmg = step;
+  const elementDmgBoosts = ELEMENT_DAMAGE_KEYS.reduce<Partial<Record<ElementType, number>>>((boosts, element) => {
+    if (step > 0) boosts[element] = step;
+    return boosts;
+  }, {});
+
+  return {
+    level: safeLevel,
+    step,
+    stats: roundStatsForBonus(stats),
+    elementDmgBoosts,
+  };
 }
 
 export function calculateEquipmentContribution(
@@ -316,12 +343,13 @@ export function calculateCharacterStatProfile(
   residues: (AbyssalResidueData | null)[] = [],
 ): StatBreakdown {
   const job = { ...character.stats };
-  const necro = calculateNecroBaseStatsContribution(job, character.necroBaseStatsBonus);
+  const necroBonus = calculateNecromanceLevelBonus(character.necroLevel);
+  const necro = necroBonus.stats;
   const rankedJob = cloneZeroStats();
   addInto(rankedJob, job);
   addInto(rankedJob, necro);
 
-  const passives = passiveBonusesToStats(character.passives);
+  const passives = passiveBonusesToStats(character.passives, rankedJob);
   const equipment = calculateEquipmentContribution(character.equipment, rankedJob);
   const residue = calculateResidueContribution(residues, rankedJob);
 
@@ -338,6 +366,6 @@ export function calculateCharacterStatProfile(
     equipment: equipment.stats,
     residues: residue.stats,
     total: roundStats(total),
-    elementDmgBoosts: mergeElementDmgBoosts(equipment.elementDmgBoosts, residue.elementDmgBoosts),
+    elementDmgBoosts: mergeElementDmgBoosts(necroBonus.elementDmgBoosts, equipment.elementDmgBoosts, residue.elementDmgBoosts),
   };
 }

@@ -11,11 +11,9 @@ import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventServi
 import { JobService } from '@/services/JobService';
 import { NecroService } from '@/services/NecroService';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
-import { INITIAL_PLAYER_BASE_STATS } from '@/logic/BalanceConfig';
 import { calculateEnergyState } from '@/logic/EnergySystem';
 import { levelFromTotalExp } from '@/logic/ExperienceSystem';
-import { calculateJobAdjustedStats } from '@/logic/JobSystem';
-import { calculateJobGrowthIncrements } from '@/logic/JobGrowthSystem';
+import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
 import { isAbyssalResidueUnlocked } from '@/logic/AbyssalResidueUnlockSystem';
 import {
   calculateDismantleRewards,
@@ -37,6 +35,7 @@ import type {
   JobData,
   MonsterData,
   NecroStatus,
+  PassiveBonuses,
   Resistances,
   SoulShardData,
   SpiritCoreData,
@@ -327,6 +326,25 @@ function getJobData(jobId: string): JobData {
   return job;
 }
 
+function sumLevelBonuses(job: JobData | undefined, fromExclusive: number, toInclusive: number): Partial<PassiveBonuses> {
+  const totals: Partial<PassiveBonuses> = {};
+  if (!job?.levelBonuses || toInclusive <= fromExclusive) return totals;
+
+  for (let level = fromExclusive + 1; level <= toInclusive; level += 1) {
+    const bonus = job.levelBonuses[String(level)];
+    if (!bonus) continue;
+    (Object.keys(bonus) as (keyof PassiveBonuses)[]).forEach((key) => {
+      totals[key] = (totals[key] ?? 0) + (bonus[key] ?? 0);
+    });
+  }
+
+  return totals;
+}
+
+function hasPassiveBonus(bonus: Partial<PassiveBonuses>): boolean {
+  return Object.values(bonus).some((value) => typeof value === 'number' && value !== 0);
+}
+
 function toServerUser(sessionUser: { id?: string; name?: string | null; email?: string | null }): ServerGameUser {
   return {
     id: sessionUser.id ?? '',
@@ -341,7 +359,7 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
   const jobs = (character.jobs ?? []).map((job: any) => ({ jobId: job.jobId, level: job.level, exp: job.exp }));
   const currentJobLevel = Math.max(1, jobs.find((job: { jobId: string; level: number; exp: number }) => job.jobId === currentJobId)?.level ?? 1);
   const energyState = calculateEnergyState(currentJob, currentJobLevel);
-  const baseStats = toBaseStats(character);
+  const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, toBaseStats(character));
   const clearedStages = character.clearedStages ?? [];
   const residueUnlocked = isAbyssalResidueUnlocked(clearedStages);
   const persistedEquippedResidueSlots = [
@@ -360,8 +378,9 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
     currentJobId,
     category: currentJob.category,
     baseStats,
+    necroLevel: character.necroLevel ?? 1,
     necroBaseStatsBonus: character.necroBaseStatsBonus ?? 1,
-    stats: calculateJobAdjustedStats(baseStats, currentJob),
+    stats: baseStats,
     passives: {
       passiveAtkBonus: character.passiveAtkBonus,
       passiveDefBonus: character.passiveDefBonus,
@@ -695,7 +714,7 @@ export async function processStageResultForUser(
       });
     }
 
-    // EXP 加算 + レベルアップ時ステータス成長
+    // EXP 加算 + レベルアップ時の永続%パッシブ
     const currentJob = (char.jobs as any[]).find(j => j.jobId === char.currentJobId);
     if (currentJob) {
       const newExp      = currentJob.exp + expGain;
@@ -710,15 +729,20 @@ export async function processStageResultForUser(
 
       if (levelsGained > 0) {
         const currentJobData = mds.getJob(currentJob.jobId);
-        const growth = calculateJobGrowthIncrements(currentJobData, oldLevel, newLevel);
-        await tx.character.update({
-          where: { id: char.id },
-          data: {
-            hp:  { increment: growth.hp },
-            atk: { increment: growth.atk },
-            def: { increment: growth.def },
-          },
-        });
+        const passiveBonus = sumLevelBonuses(currentJobData, oldLevel, newLevel);
+        if (hasPassiveBonus(passiveBonus)) {
+          await tx.character.update({
+            where: { id: char.id },
+            data: {
+              passiveAtkBonus:      { increment: passiveBonus.passiveAtkBonus      ?? 0 },
+              passiveDefBonus:      { increment: passiveBonus.passiveDefBonus      ?? 0 },
+              passiveSpdBonus:      { increment: passiveBonus.passiveSpdBonus      ?? 0 },
+              passiveCritRateBonus: { increment: passiveBonus.passiveCritRateBonus ?? 0 },
+              passiveCritDmgBonus:  { increment: passiveBonus.passiveCritDmgBonus  ?? 0 },
+              passiveHpBonus:       { increment: passiveBonus.passiveHpBonus       ?? 0 },
+            },
+          });
+        }
       }
     }
 
@@ -911,6 +935,7 @@ export async function createCharacterForUser(
   }
 
   const mds = MasterDataService.getInstance();
+  const initialStats = getJobBaseStatsAtLevel(mds.getJob(jobId), 1);
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await ensureJobRow(tx, jobId);
 
@@ -935,14 +960,14 @@ export async function createCharacterForUser(
         userId,
         currentJobId: jobId,
         gold: 50000,
-        hp: INITIAL_PLAYER_BASE_STATS.hp,
-        atk: INITIAL_PLAYER_BASE_STATS.atk,
-        def: INITIAL_PLAYER_BASE_STATS.def,
-        spd: INITIAL_PLAYER_BASE_STATS.spd,
-        critRate: INITIAL_PLAYER_BASE_STATS.critRate,
-        critDmg: INITIAL_PLAYER_BASE_STATS.critDmg,
-        effectHit: INITIAL_PLAYER_BASE_STATS.effectHit,
-        effectRes: INITIAL_PLAYER_BASE_STATS.effectRes,
+        hp: initialStats.hp,
+        atk: initialStats.atk,
+        def: initialStats.def,
+        spd: initialStats.spd,
+        critRate: initialStats.critRate,
+        critDmg: initialStats.critDmg,
+        effectHit: initialStats.effectHit,
+        effectRes: initialStats.effectRes,
         equipWeaponId: createdWeapon?.id ?? null,
         jobs: { create: { jobId, level: 1, exp: 0 } },
       },

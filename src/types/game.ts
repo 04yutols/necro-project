@@ -23,13 +23,15 @@ export interface BaseStats {
 export type Resistances = Partial<Record<ElementType, number>>;
 
 // 永続パッシブの累積補正 (GDD-004) — 転職後もリセットされない
+// HP/ATK/DEF/SPD は現在の職業基礎ステータスに対する % 補正。
+// 会心率/会心ダメージは既存どおり % 値の直接加算。
 export interface PassiveBonuses {
-  passiveAtkBonus:      number;  // flat ATK
-  passiveDefBonus:      number;  // flat DEF
-  passiveSpdBonus:      number;  // flat SPD
+  passiveAtkBonus:      number;  // ATK %
+  passiveDefBonus:      number;  // DEF %
+  passiveSpdBonus:      number;  // SPD %
   passiveCritRateBonus: number;  // % 追加
   passiveCritDmgBonus:  number;  // % 追加
-  passiveHpBonus:       number;  // flat HP
+  passiveHpBonus:       number;  // HP %
 }
 
 export interface UserJobState {
@@ -48,7 +50,7 @@ export interface JobUnlockRequirement {
   minLevel: number;
 }
 
-export type JobGrowthModifiers = Partial<Record<'hp' | 'atk' | 'def', number>>;
+export type JobBaseStatsByLevel = Record<string, BaseStats>;
 
 export interface JobData {
   id?: string;
@@ -71,7 +73,8 @@ export interface JobData {
     ultimateCost: number;  // 奥義コスト（未使用・将来用）
     spGrowthPerLevel: number; // レベルごとの最大MP成長値（互換フィールド名）
   };
-  growthModifiers?: JobGrowthModifiers;
+  // 主人公の装備なし職業基礎ステータス。キーは "1"〜"100"。
+  baseStatsByLevel?: JobBaseStatsByLevel;
   levelBonuses: Record<string, Partial<PassiveBonuses>>;
   skills: JobSkillUnlock[];
 }
@@ -238,7 +241,9 @@ export interface CharacterData {
   currentJobId: string;
   category: ClassCategory;
   baseStats?: BaseStats;
-  // ネクロランクによる基礎ステータス倍率補正（Character.necroBaseStatsBonus のスナップショット）
+  // 死霊術レベル。10レベルごとに全属性ダメージ/会心ダメージ補正へ変換する。
+  necroLevel?: number;
+  // 既存DB互換フィールド。主人公本人のHP/ATK/DEF/SPDには掛けない。
   necroBaseStatsBonus?: number;
   stats: BaseStats;
   passives: PassiveBonuses;
@@ -409,7 +414,7 @@ export interface NecroStatus {
   level: number;       // Max: 99
   rank: number;        // Max: 10
   maxCost: number;
-  baseStatsBonus: number; // ランクアップで蓄積される基礎ステータス倍率補正
+  baseStatsBonus: number; // 既存互換値。将来の使役モンスター基礎ステータス補正用。
   exp: number;         // 現在のネクロEXP
 }
 

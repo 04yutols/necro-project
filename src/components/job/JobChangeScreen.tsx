@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, Lock, Sparkles, Swords, Wand2 } from 'lucide-react';
 import jobsData from '../../data/master/jobs.json';
 import skillsData from '../../data/master/skills.json';
-import { addPassiveBonuses, calculateJobAdjustedStats, getJobLevel, getJobStyle, getJobUnlockStatus, JOB_ORDER, resolveJobSkills, STAT_KEYS } from '../../logic/JobSystem';
+import { addPassiveBonuses, getJobLevel, getJobStyle, getJobUnlockStatus, JOB_ORDER, resolveJobSkills, STAT_KEYS } from '../../logic/JobSystem';
+import { getJobBaseStatsAtLevel } from '../../logic/JobGrowthSystem';
 import { useGameStore } from '../../store/useGameStore';
 import type { BaseStats, JobData, SkillAttackType, SkillData } from '../../types/game';
 
@@ -159,9 +160,11 @@ export default function JobChangeScreen() {
   const unlock = getJobUnlockStatus(player, selectedJob);
   const isCurrent = player.currentJobId === selectedJobId;
   const characterId = player.id;
-  const baseStats = player.baseStats ?? player.stats;
-  const currentStats = addPassiveBonuses(calculateJobAdjustedStats(baseStats, currentJob), player);
-  const previewStats = addPassiveBonuses(calculateJobAdjustedStats(baseStats, selectedJob), player);
+  const currentLevel = Math.max(1, getJobLevel(player, player.currentJobId) || 1);
+  const currentBaseStats = getJobBaseStatsAtLevel(currentJob, currentLevel, player.baseStats ?? player.stats);
+  const previewBaseStats = getJobBaseStatsAtLevel(selectedJob, effectiveSelectedLevel, player.baseStats ?? player.stats);
+  const currentStats = addPassiveBonuses(currentBaseStats, player);
+  const previewStats = addPassiveBonuses(previewBaseStats, player);
   const skillEntries = resolveJobSkills(selectedJob, unlock.unlocked ? effectiveSelectedLevel : 0, SKILLS);
   const tierLabel = selectedJob.tier === 1 ? 'TIER I' : 'TIER II';
 

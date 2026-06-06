@@ -3,11 +3,28 @@ import { NecroService } from '../services/NecroService';
 import { RewardService } from '../services/RewardService';
 import { MasterDataService } from '../services/MasterDataService';
 import { BattleEngine } from './BattleEngine';
-import { calculateJobGrowthIncrements } from './JobGrowthSystem';
+import { getJobBaseStatsAtLevel } from './JobGrowthSystem';
 import { calculateEnergyState } from './EnergySystem';
 import { levelFromTotalExp } from './ExperienceSystem';
 import { prisma } from '../lib/prisma';
-import { CharacterData, MonsterData } from '../types/game';
+import { CharacterData, JobData, MonsterData, PassiveBonuses } from '../types/game';
+
+function sumLevelBonuses(job: JobData | undefined, fromExclusive: number, toInclusive: number): Partial<PassiveBonuses> {
+  const totals: Partial<PassiveBonuses> = {};
+  if (!job?.levelBonuses || toInclusive <= fromExclusive) return totals;
+  for (let level = fromExclusive + 1; level <= toInclusive; level += 1) {
+    const bonus = job.levelBonuses[String(level)];
+    if (!bonus) continue;
+    (Object.keys(bonus) as (keyof PassiveBonuses)[]).forEach((key) => {
+      totals[key] = (totals[key] ?? 0) + (bonus[key] ?? 0);
+    });
+  }
+  return totals;
+}
+
+function hasPassiveBonus(bonus: Partial<PassiveBonuses>): boolean {
+  return Object.values(bonus).some((value) => typeof value === 'number' && value !== 0);
+}
 
 /**
  * ゲーム全体の進行とループを管理するクラス (GDD-002)
@@ -64,17 +81,20 @@ export class GameManager {
     const jobs = char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp }));
     const currentJobLevel = Math.max(1, jobs.find((job: any) => job.jobId === currentJobId)?.level ?? 1);
     const energyState = calculateEnergyState(currentJob, currentJobLevel);
+    const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, {
+      hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
+      critRate: char.critRate, critDmg: char.critDmg,
+      effectHit: char.effectHit, effectRes: char.effectRes,
+    });
     const player: CharacterData = {
       id: char.id,
       name: char.name,
       currentJobId,
       category: currentJob?.category ?? 'PHYSICAL',
+      baseStats,
+      necroLevel: char.necroLevel ?? 1,
       necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
-      stats: {
-        hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
-        critRate: char.critRate, critDmg: char.critDmg,
-        effectHit: char.effectHit, effectRes: char.effectRes,
-      },
+      stats: baseStats,
       passives: {
         passiveAtkBonus:      char.passiveAtkBonus,
         passiveDefBonus:      char.passiveDefBonus,
@@ -153,23 +173,25 @@ export class GameManager {
         });
 
         if (newLevel > currentJob.level) {
-          const growth = calculateJobGrowthIncrements(
+          const passiveBonus = sumLevelBonuses(
             this.masterData.getJob(char.currentJobId || 'warrior'),
             currentJob.level,
             newLevel,
           );
-          await tx.character.update({
-            where: { id: characterId },
-            data: {
-              hp: { increment: growth.hp },
-              atk: { increment: growth.atk },
-              def: { increment: growth.def },
-            },
-          });
+          if (hasPassiveBonus(passiveBonus)) {
+            await tx.character.update({
+              where: { id: characterId },
+              data: {
+                passiveAtkBonus:      { increment: passiveBonus.passiveAtkBonus      ?? 0 },
+                passiveDefBonus:      { increment: passiveBonus.passiveDefBonus      ?? 0 },
+                passiveSpdBonus:      { increment: passiveBonus.passiveSpdBonus      ?? 0 },
+                passiveCritRateBonus: { increment: passiveBonus.passiveCritRateBonus ?? 0 },
+                passiveCritDmgBonus:  { increment: passiveBonus.passiveCritDmgBonus  ?? 0 },
+                passiveHpBonus:       { increment: passiveBonus.passiveHpBonus       ?? 0 },
+              },
+            });
+          }
         }
-
-        // パッシブ加算チェック (JobServiceのロジックを流用)
-        // 本来は JobService を tx 内で呼ぶべき
       }
 
       // ドロップモンスターの追加（第1章では発生しない — 将来拡張用）
@@ -202,17 +224,20 @@ export class GameManager {
     const jobs = char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp }));
     const currentJobLevel = Math.max(1, jobs.find((job: any) => job.jobId === currentJobId)?.level ?? 1);
     const energyState = calculateEnergyState(currentJob, currentJobLevel);
+    const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, {
+      hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
+      critRate: char.critRate, critDmg: char.critDmg,
+      effectHit: char.effectHit, effectRes: char.effectRes,
+    });
     return {
       id: char.id,
       name: char.name,
       currentJobId,
       category: currentJob?.category ?? 'PHYSICAL',
+      baseStats,
+      necroLevel: char.necroLevel ?? 1,
       necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
-      stats: {
-        hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
-        critRate: char.critRate, critDmg: char.critDmg,
-        effectHit: char.effectHit, effectRes: char.effectRes,
-      },
+      stats: baseStats,
       passives: {
         passiveAtkBonus:      char.passiveAtkBonus,
         passiveDefBonus:      char.passiveDefBonus,

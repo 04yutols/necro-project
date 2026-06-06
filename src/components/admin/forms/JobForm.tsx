@@ -11,9 +11,9 @@ import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
 import type { DependencyRef } from '@/app/admin/actions';
 
-const TABS = ['基本情報', '解放条件', 'ステータス補正', 'エナジー', 'レベルボーナス', 'スキル配置', '依存関係'];
+const TABS = ['基本情報', '解放条件', 'ステータス補正', '基礎ステータス', 'エナジー', 'レベルボーナス', 'スキル配置', '依存関係'];
 const CATEGORIES = ['PHYSICAL', 'MAGICAL', 'SUPPORT'];
-const ATTACK_TYPES = ['SLASH', 'PIERCE', 'BLUNT', 'MAGIC'];
+const ATTACK_TYPES = ['SLASH', 'STRIKE', 'PROJECTILE', 'MAGIC', 'SUMMON', 'HEAL'];
 
 const inputStyle: React.CSSProperties = {
   background: '#1a1a24',
@@ -32,10 +32,12 @@ const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' };
 const textareaStyle: React.CSSProperties = { ...inputStyle, height: undefined, resize: 'vertical', minHeight: 96 };
 
 const STAT_FIELDS = ['hp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
-const GROWTH_FIELDS = ['hp', 'atk', 'def'];
+const INTEGER_STAT_FIELDS = new Set(['hp', 'atk', 'def', 'spd']);
 
 type UnlockJob = { jobId: string; minLevel: number };
 type SkillSlot = { level: number; skillId: string };
+type StatKey = typeof STAT_FIELDS[number];
+type BaseStatsByLevel = Record<string, Record<StatKey, number>>;
 
 type JobFormState = {
   name: string;
@@ -49,7 +51,7 @@ type JobFormState = {
   description: string;
   unlockJobs: UnlockJob[];
   statModifiers: Record<string, number>;
-  growthModifiers: Record<string, number>;
+  baseStatsByLevel: BaseStatsByLevel;
   baseMaxEnergy: number;
   ultimateCost: number;
   spGrowthPerLevel: number;
@@ -76,7 +78,7 @@ function formToJson(form: JobFormState): Record<string, unknown> {
       ? { unlockRequires: { jobs: form.unlockJobs } }
       : {}),
     statModifiers: form.statModifiers,
-    growthModifiers: form.growthModifiers,
+    baseStatsByLevel: form.baseStatsByLevel,
     energyCurve: {
       baseMaxEnergy: form.baseMaxEnergy,
       ultimateCost: form.ultimateCost,
@@ -87,9 +89,44 @@ function formToJson(form: JobFormState): Record<string, unknown> {
   };
 }
 
+function buildDefaultBaseStatsByLevel(): BaseStatsByLevel {
+  return Object.fromEntries(Array.from({ length: 100 }, (_, index) => {
+    const level = index + 1;
+    const x = level - 1;
+    return [String(level), {
+      hp: Math.round(30 + x * 1.2),
+      atk: Math.round(4 + x * 0.1),
+      def: Math.round(4 + x * 0.1),
+      spd: 100,
+      critRate: 5,
+      critDmg: 150,
+      effectHit: 0,
+      effectRes: 0,
+    }];
+  })) as BaseStatsByLevel;
+}
+
+function normalizeBaseStatsByLevel(value: unknown): BaseStatsByLevel {
+  const defaults = buildDefaultBaseStatsByLevel();
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return defaults;
+  const raw = value as Record<string, unknown>;
+
+  return Object.fromEntries(Array.from({ length: 100 }, (_, index) => {
+    const level = String(index + 1);
+    const rawStats = raw[level];
+    const source = typeof rawStats === 'object' && rawStats !== null && !Array.isArray(rawStats)
+      ? rawStats as Record<string, unknown>
+      : {};
+    return [level, Object.fromEntries(STAT_FIELDS.map((key) => {
+      const fallback = defaults[level][key];
+      const parsed = typeof source[key] === 'number' ? source[key] : Number(source[key]);
+      return [key, Number.isFinite(parsed) ? parsed : fallback];
+    })) as Record<StatKey, number>];
+  })) as BaseStatsByLevel;
+}
+
 function initForm(data: Record<string, unknown> | null): JobFormState {
   const defaultStats = Object.fromEntries(STAT_FIELDS.map((k) => [k, 1.0]));
-  const defaultGrowth = Object.fromEntries(GROWTH_FIELDS.map((k) => [k, 1.0]));
   if (!data) {
     return {
       name: '',
@@ -103,7 +140,7 @@ function initForm(data: Record<string, unknown> | null): JobFormState {
       description: '',
       unlockJobs: [],
       statModifiers: defaultStats,
-      growthModifiers: defaultGrowth,
+      baseStatsByLevel: buildDefaultBaseStatsByLevel(),
       baseMaxEnergy: 100,
       ultimateCost: 100,
       spGrowthPerLevel: 1,
@@ -127,7 +164,7 @@ function initForm(data: Record<string, unknown> | null): JobFormState {
     description: (raw.description as string) ?? '',
     unlockJobs,
     statModifiers: (raw.statModifiers as Record<string, number>) ?? defaultStats,
-    growthModifiers: (raw.growthModifiers as Record<string, number>) ?? defaultGrowth,
+    baseStatsByLevel: normalizeBaseStatsByLevel(raw.baseStatsByLevel),
     baseMaxEnergy: energyCurve.baseMaxEnergy ?? 100,
     ultimateCost: energyCurve.ultimateCost ?? 100,
     spGrowthPerLevel: energyCurve.spGrowthPerLevel ?? 1,
@@ -147,6 +184,7 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [form, setForm] = useState<JobFormState>(() => initForm(initialData));
+  const [selectedBaseStatsLevel, setSelectedBaseStatsLevel] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
@@ -154,6 +192,23 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
 
   const updateField = useCallback(<K extends keyof JobFormState>(key: K, val: JobFormState[K]) => {
     setForm((f) => ({ ...f, [key]: val }));
+  }, []);
+
+  const updateBaseStat = useCallback((level: number, key: StatKey, value: number) => {
+    const safeLevel = Math.min(100, Math.max(1, Math.floor(level)));
+    const normalizedValue = INTEGER_STAT_FIELDS.has(key)
+      ? Math.round(value)
+      : Number(value.toFixed(1));
+    setForm((current) => ({
+      ...current,
+      baseStatsByLevel: {
+        ...current.baseStatsByLevel,
+        [String(safeLevel)]: {
+          ...current.baseStatsByLevel[String(safeLevel)],
+          [key]: Math.max(key === 'critDmg' ? 100 : 0, normalizedValue),
+        },
+      },
+    }));
   }, []);
 
   function handleCopy() {
@@ -275,19 +330,105 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
                   </FormField>
                 ))}
               </div>
-              <p style={{ color: '#7878a8', fontSize: 11, fontFamily: 'Space Grotesk, sans-serif', marginTop: 8 }}>growthModifiers（成長補正）</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px 16px' }}>
-                {GROWTH_FIELDS.map((key) => (
-                  <FormField key={key} label={key}>
+            </div>
+          )}
+
+          {/* 基礎ステータス */}
+          {activeTab === '基礎ステータス' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 12, alignItems: 'start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <FormField label="編集レベル">
                     <input
                       type="number"
-                      value={form.growthModifiers[key] ?? 1.0}
-                      onChange={(e) => updateField('growthModifiers', { ...form.growthModifiers, [key]: parseFloat(e.target.value) || 1.0 })}
-                      step={0.01}
+                      min={1}
+                      max={100}
+                      value={selectedBaseStatsLevel}
+                      onChange={(e) => setSelectedBaseStatsLevel(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
                       style={inputStyle}
                     />
                   </FormField>
-                ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    {[1, 10, 20, 50, 100].map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => setSelectedBaseStatsLevel(level)}
+                        style={{
+                          height: 32,
+                          borderRadius: 6,
+                          border: selectedBaseStatsLevel === level ? '1px solid rgba(216,180,254,0.7)' : '1px solid rgba(139,0,255,0.22)',
+                          background: selectedBaseStatsLevel === level ? 'rgba(139,0,255,0.24)' : 'rgba(12,8,24,0.72)',
+                          color: '#d8b4fe',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Lv.{level}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px 12px' }}>
+                  {STAT_FIELDS.map((key) => (
+                    <FormField key={key} label={key}>
+                      <input
+                        type="number"
+                        value={form.baseStatsByLevel[String(selectedBaseStatsLevel)]?.[key] ?? 0}
+                        onChange={(e) => updateBaseStat(selectedBaseStatsLevel, key, parseFloat(e.target.value) || 0)}
+                        step={INTEGER_STAT_FIELDS.has(key) ? 1 : 0.1}
+                        min={key === 'critDmg' ? 100 : 0}
+                        style={inputStyle}
+                      />
+                    </FormField>
+                  ))}
+                </div>
+              </div>
+              <div style={{ overflowX: 'auto', maxHeight: 460, border: '1px solid rgba(139,0,255,0.18)', borderRadius: 6 }}>
+                <div style={{ minWidth: 920 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '56px repeat(8, minmax(86px, 1fr))', gap: 0, position: 'sticky', top: 0, background: '#101018', zIndex: 1, borderBottom: '1px solid rgba(139,0,255,0.22)' }}>
+                    <span style={{ padding: '8px 10px', color: '#a78bfa', fontSize: 11, fontFamily: 'Space Grotesk, sans-serif' }}>Lv</span>
+                    {STAT_FIELDS.map((key) => <span key={key} style={{ padding: '8px 6px', color: '#a78bfa', fontSize: 11, fontFamily: 'Space Grotesk, sans-serif' }}>{key}</span>)}
+                  </div>
+                  {Array.from({ length: 100 }, (_, index) => {
+                    const level = index + 1;
+                    const stats = form.baseStatsByLevel[String(level)];
+                    return (
+                      <div key={level} style={{ display: 'grid', gridTemplateColumns: '56px repeat(8, minmax(86px, 1fr))', gap: 0, borderBottom: '1px solid rgba(139,0,255,0.08)', background: selectedBaseStatsLevel === level ? 'rgba(139,0,255,0.12)' : 'transparent' }}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBaseStatsLevel(level)}
+                          style={{ border: 0, borderRight: '1px solid rgba(139,0,255,0.10)', background: 'transparent', color: '#d8b4fe', fontSize: 11, cursor: 'pointer' }}
+                        >
+                          {level}
+                        </button>
+                        {STAT_FIELDS.map((key) => (
+                          <input
+                            key={key}
+                            type="number"
+                            value={stats?.[key] ?? 0}
+                            onChange={(e) => updateBaseStat(level, key, parseFloat(e.target.value) || 0)}
+                            step={INTEGER_STAT_FIELDS.has(key) ? 1 : 0.1}
+                            min={key === 'critDmg' ? 100 : 0}
+                            style={{
+                              height: 34,
+                              border: 0,
+                              borderRight: '1px solid rgba(139,0,255,0.08)',
+                              background: 'rgba(26,26,36,0.78)',
+                              color: '#e0d0ff',
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                              padding: '0 8px',
+                              outline: 'none',
+                              boxSizing: 'border-box',
+                              width: '100%',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}

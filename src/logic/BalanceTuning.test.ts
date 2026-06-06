@@ -6,7 +6,7 @@ import type { BaseStats, CharacterData, EnemyData, ItemData, JobData, MonsterDat
 import { calculateBattleDamage } from './BattleDamage';
 import { BattleEngine } from './BattleEngine';
 import { INITIAL_PLAYER_BASE_STATS } from './BalanceConfig';
-import { calculateJobAdjustedStats } from './JobSystem';
+import { getJobBaseStatsAtLevel } from './JobGrowthSystem';
 import { calculateCharacterStatProfile } from './StatSystem';
 import { calculateWeaponBaseAttack } from './WeaponSystem';
 
@@ -61,7 +61,7 @@ function enemyToMonster(enemyId: string): MonsterData {
 
 describe('Balance tuning for area1_node1', () => {
   test('starter character and weapon use JRPG-scale attack values', () => {
-    const warriorStats = calculateJobAdjustedStats(INITIAL_PLAYER_BASE_STATS, JOBS.warrior);
+    const warriorStats = getJobBaseStatsAtLevel(JOBS.warrior, 1);
     const starterWeaponAtk = calculateWeaponBaseAttack(ITEMS.bone_cleaver);
     const player = makePlayer(warriorStats);
     player.equipment.weapon = ITEMS.bone_cleaver;
@@ -86,7 +86,7 @@ describe('Balance tuning for area1_node1', () => {
   });
 
   test('starter damage hits area1_node1 kill-count targets without crit variance', () => {
-    const warriorStats = calculateJobAdjustedStats(INITIAL_PLAYER_BASE_STATS, JOBS.warrior);
+    const warriorStats = getJobBaseStatsAtLevel(JOBS.warrior, 1);
     const attackerStats = {
       ...warriorStats,
       atk: warriorStats.atk + calculateWeaponBaseAttack(ITEMS.bone_cleaver),
@@ -128,7 +128,7 @@ describe('Balance tuning for area1_node1', () => {
   });
 
   test('abyss_warden shield breaks with four starter normal attacks', () => {
-    const warriorStats = calculateJobAdjustedStats(INITIAL_PLAYER_BASE_STATS, JOBS.warrior);
+    const warriorStats = getJobBaseStatsAtLevel(JOBS.warrior, 1);
     const player = makePlayer({
       ...warriorStats,
       atk: warriorStats.atk + calculateWeaponBaseAttack(ITEMS.bone_cleaver),

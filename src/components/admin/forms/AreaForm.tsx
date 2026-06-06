@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteEntry, saveEntry } from '@/app/admin/actions';
 import type { DependencyRef } from '@/app/admin/actions';
+import { getAreaMasterId, getNextAreaDraft } from '@/logic/StageAreaLinkSystem';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
 import FormField from './shared/FormField';
@@ -55,21 +56,27 @@ type Props = {
   entryKey: string;
   isNew: boolean;
   dependencies?: DependencyRef[];
+  areas?: Record<string, Record<string, unknown>>;
 };
 
-function initForm(data: Record<string, unknown> | null, key: string): AreaFormState {
+function initForm(
+  data: Record<string, unknown> | null,
+  key: string,
+  areas: Record<string, Record<string, unknown>>,
+): AreaFormState {
   if (!data) {
+    const draft = getNextAreaDraft(areas);
     return {
-      id: key,
-      chapter: 1,
-      area: 1,
+      id: key || draft.id,
+      chapter: draft.chapter,
+      area: draft.area,
       nameJa: '',
       nameEn: '',
       description: '',
       color: '#8A2BE2',
       positionX: 188,
       positionY: 438,
-      sortOrder: 101,
+      sortOrder: draft.sortOrder,
     };
   }
   const position = (data.position as Record<string, number>) ?? {};
@@ -103,25 +110,45 @@ function formToJson(form: AreaFormState): Record<string, unknown> {
   };
 }
 
-export default function AreaForm({ initialData, entryKey, isNew, dependencies = [] }: Props) {
+export default function AreaForm({ initialData, entryKey, isNew, dependencies = [], areas = {} }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(TABS[0]);
-  const [form, setForm] = useState<AreaFormState>(() => initForm(initialData, entryKey));
+  const [form, setForm] = useState<AreaFormState>(() => initForm(initialData, entryKey, areas));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const colorInputValue = /^#[0-9a-fA-F]{6}$/.test(form.color) ? form.color : '#8A2BE2';
+  const generatedAreaId = isNew ? getAreaMasterId(form) : entryKey || form.id;
+  const hasDuplicateGeneratedId = isNew && Boolean(areas[generatedAreaId]);
 
   const updateField = useCallback(<K extends keyof AreaFormState>(key: K, value: AreaFormState[K]) => {
-    setForm(current => ({ ...current, [key]: value }));
-  }, []);
+    setForm(current => {
+      const next = { ...current, [key]: value };
+      if (isNew && (key === 'chapter' || key === 'area')) {
+        next.id = getAreaMasterId(next);
+        next.sortOrder = next.chapter * 100 + next.area;
+      }
+      return next;
+    });
+  }, [isNew]);
 
   async function handleConfirmedSave() {
+    const saveId = isNew ? generatedAreaId : entryKey;
+    if (!saveId) {
+      setError('保存IDを生成できませんでした。chapter / area を確認してください。');
+      setShowSaveConfirm(false);
+      return;
+    }
+    if (hasDuplicateGeneratedId) {
+      setError(`"${generatedAreaId}" は既に存在します。chapter / area を変更してください。`);
+      setShowSaveConfirm(false);
+      return;
+    }
     setSaving(true);
     setError(null);
     setShowSaveConfirm(false);
-    const result = await saveEntry('areas', form.id || entryKey, formToJson(form));
+    const result = await saveEntry('areas', saveId, formToJson({ ...form, id: saveId }));
     setSaving(false);
     if (result.success) {
       router.push('/admin/areas');
@@ -149,9 +176,9 @@ export default function AreaForm({ initialData, entryKey, isNew, dependencies = 
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 16px' }}>
       <FormSaveBar
         backHref="/admin/areas"
-        title={form.nameJa || form.nameEn || (isNew ? '新規エリア' : entryKey)}
+        title={form.nameJa || form.nameEn || (isNew ? generatedAreaId || '新規エリア' : entryKey)}
         onSave={() => setShowSaveConfirm(true)}
-        onCopy={() => navigator.clipboard.writeText(JSON.stringify(formToJson(form), null, 2))}
+        onCopy={() => navigator.clipboard.writeText(JSON.stringify(formToJson({ ...form, id: generatedAreaId }), null, 2))}
         onDelete={!isNew ? () => setShowDeleteConfirm(true) : undefined}
         saving={saving}
         isNew={isNew}
@@ -170,9 +197,14 @@ export default function AreaForm({ initialData, entryKey, isNew, dependencies = 
 
           {activeTab === '基本情報' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <FormField label="ID（推奨: ch1_area1）">
-                <input type="text" value={form.id} onChange={(event) => updateField('id', event.target.value)} disabled={!isNew} style={{ ...inputStyle, opacity: isNew ? 1 : 0.5 }} />
+              <FormField label="ID（自動生成）">
+                <input type="text" value={generatedAreaId} readOnly style={{ ...inputStyle, opacity: 0.7 }} />
               </FormField>
+              {hasDuplicateGeneratedId && (
+                <div style={{ background: 'rgba(127,29,29,0.22)', border: '1px solid rgba(220,38,38,0.32)', borderRadius: 6, padding: '9px 12px', color: '#fca5a5', fontSize: 12 }}>
+                  このIDは登録済みです。chapter / area を変更するとIDも自動で変わります。
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                 <FormField label="chapter">
                   <input type="number" value={form.chapter} onChange={(event) => updateField('chapter', parseInt(event.target.value, 10) || 1)} min={1} style={inputStyle} />
@@ -235,10 +267,10 @@ export default function AreaForm({ initialData, entryKey, isNew, dependencies = 
           )}
         </div>
 
-        <JsonSidebar data={formToJson(form)} />
+        <JsonSidebar data={formToJson({ ...form, id: generatedAreaId })} />
       </div>
 
-      <ConfirmDialog open={showSaveConfirm} title="保存の確認" message={`"${form.id || entryKey}" を保存します。`} onConfirm={handleConfirmedSave} onCancel={() => setShowSaveConfirm(false)} />
+      <ConfirmDialog open={showSaveConfirm} title="保存の確認" message={`"${generatedAreaId}" を保存します。`} onConfirm={handleConfirmedSave} onCancel={() => setShowSaveConfirm(false)} />
       <ConfirmDialog open={showDeleteConfirm} title="削除の確認" message={`"${entryKey}" を削除します。この操作は取り消せません。`} onConfirm={handleConfirmedDelete} onCancel={() => setShowDeleteConfirm(false)} danger />
     </div>
   );

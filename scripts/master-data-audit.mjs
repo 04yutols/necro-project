@@ -52,6 +52,7 @@ const TARGET_TYPES = new Set(['SINGLE', 'ALL_ENEMIES', 'SELF', 'ALLY', 'ALL_ALLI
 const GIMMICK_TRIGGERS = new Set(['HP_BELOW_50', 'TURN_3', 'ON_SHIELD_BREAK', 'ON_REVIVE']);
 const GIMMICK_EFFECTS = new Set(['ENRAGE', 'AV_DELAY', 'REVIVE', 'SUMMON_MINIONS']);
 const STAT_KEYS = ['hp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
+const JOB_BASE_STAT_SAMPLE_LEVELS = [1, 50, 100];
 
 function readJson(filename) {
   return JSON.parse(fs.readFileSync(path.join(masterDir, filename), 'utf8'));
@@ -142,6 +143,19 @@ function validateStats(findings, scope, id, stats) {
   if (isNumber(stats.critDmg) && stats.critDmg < 100) {
     add(findings, scope, id, 'WARN', 'stats.critDmg is below 100');
   }
+}
+
+function jobPowerScore(stats) {
+  return Number((
+    (stats.hp ?? 0) * 0.15 +
+    (stats.atk ?? 0) * 3 +
+    (stats.def ?? 0) * 2 +
+    (stats.spd ?? 0) +
+    (stats.critRate ?? 0) * 2 +
+    (stats.critDmg ?? 0) * 0.5 +
+    (stats.effectHit ?? 0) * 0.8 +
+    (stats.effectRes ?? 0) * 0.8
+  ).toFixed(2));
 }
 
 function validateResistances(findings, scope, id, resistances, weaknesses) {
@@ -436,6 +450,61 @@ function validateMonsters(findings) {
   }
 }
 
+function validateJobs(findings) {
+  const tier1ScoreSamples = [];
+  for (const [id, job] of Object.entries(data.jobs)) {
+    if (!shouldInclude('jobs', id)) continue;
+    if ('growthModifiers' in job) add(findings, 'jobs', id, 'FAIL', 'growthModifiers is deprecated; edit baseStatsByLevel instead');
+    if (!isNumber(job.tier) || job.tier < 1) add(findings, 'jobs', id, 'FAIL', 'tier must be >= 1');
+    if (!ATTACK_TYPES.has(job.baseAttackType)) add(findings, 'jobs', id, 'FAIL', `invalid baseAttackType ${job.baseAttackType}`);
+    if (!isObject(job.energyCurve)) {
+      add(findings, 'jobs', id, 'FAIL', 'energyCurve is required');
+    }
+    if (!isObject(job.baseStatsByLevel)) {
+      add(findings, 'jobs', id, 'FAIL', 'baseStatsByLevel is required');
+      continue;
+    }
+
+    let previousStats = null;
+    for (let level = 1; level <= 100; level += 1) {
+      const stats = job.baseStatsByLevel[String(level)];
+      if (!isObject(stats)) {
+        add(findings, 'jobs', id, 'FAIL', `baseStatsByLevel.${level} is required`);
+        continue;
+      }
+      validateStats(findings, 'jobs', id, stats);
+      if (previousStats && stats.hp < previousStats.hp) {
+        add(findings, 'jobs', id, 'WARN', `baseStatsByLevel.${level}.hp is lower than previous level`);
+      }
+      previousStats = stats;
+    }
+
+    if (job.tier === 1) {
+      for (const level of JOB_BASE_STAT_SAMPLE_LEVELS) {
+        const stats = job.baseStatsByLevel[String(level)];
+        if (isObject(stats)) tier1ScoreSamples.push(jobPowerScore(stats));
+      }
+    }
+  }
+
+  const tier1Average = tier1ScoreSamples.length > 0
+    ? tier1ScoreSamples.reduce((sum, score) => sum + score, 0) / tier1ScoreSamples.length
+    : 0;
+  if (tier1Average <= 0) return;
+
+  for (const [id, job] of Object.entries(data.jobs)) {
+    if (!shouldInclude('jobs', id) || job.tier <= 1 || !isObject(job.baseStatsByLevel)) continue;
+    const scores = JOB_BASE_STAT_SAMPLE_LEVELS
+      .map((level) => job.baseStatsByLevel[String(level)])
+      .filter(isObject)
+      .map(jobPowerScore);
+    const average = scores.reduce((sum, score) => sum + score, 0) / Math.max(1, scores.length);
+    if (average < tier1Average * 1.02) {
+      add(findings, 'jobs', id, 'WARN', 'tier 2 power score is too close to tier 1 average');
+    }
+  }
+}
+
 function validateSkills(findings) {
   validateRecordIds(findings, 'skills', data.skills, { requiresId: true });
   const referencedSkillIds = new Set(Object.values(data.jobs).flatMap((job) => (job.skills ?? []).map((skill) => skill.skillId)));
@@ -506,6 +575,7 @@ function main() {
   validateItems(findings);
   validateMaterials(findings);
   validateMonsters(findings);
+  validateJobs(findings);
   validateSkills(findings);
   validateDemonForms(findings);
   printFindings(findings);

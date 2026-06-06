@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import { calculateBattleDamage } from '@/logic/BattleDamage';
-import { calculateJobAdjustedStats } from '@/logic/JobSystem';
 import { INITIAL_PLAYER_BASE_STATS } from '@/logic/BalanceConfig';
+import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
 import type { ElementType, BaseStats } from '@/types/game';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -11,6 +11,7 @@ import type { ElementType, BaseStats } from '@/types/game';
 type JobEntry = {
   displayName: string;
   statModifiers?: Record<string, number>;
+  baseStatsByLevel?: Record<string, BaseStats>;
   levelBonuses?: Record<string, Record<string, number>>;
   skills?: { level: number; skillId: string }[];
 };
@@ -60,17 +61,10 @@ function computePassiveAtk(jobEntry: JobEntry, level: number): number {
 }
 
 function computeJobStats(jobEntry: JobEntry, level: number) {
-  const jobData = {
-    statModifiers: jobEntry.statModifiers ?? {},
-    levelBonuses: jobEntry.levelBonuses ?? {},
-  };
-  const jobStats = calculateJobAdjustedStats(
-    INITIAL_PLAYER_BASE_STATS,
-    jobData as Parameters<typeof calculateJobAdjustedStats>[1],
-  );
-  const passiveAtk = computePassiveAtk(jobEntry, level);
+  const jobStats = getJobBaseStatsAtLevel(jobEntry, level);
+  const passiveAtk = (jobStats.atk * computePassiveAtk(jobEntry, level)) / 100;
   return {
-    atk: jobStats.atk + passiveAtk,
+    atk: Math.round(jobStats.atk + passiveAtk),
     critRate: jobStats.critRate,
     critDmg: jobStats.critDmg,
     def: jobStats.def,

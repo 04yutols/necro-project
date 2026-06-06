@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import jobsData from '../data/master/jobs.json';
 import itemsData from '../data/master/items.json';
 import demonFormsData from '../data/master/demonForms.json';
-import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
+import { getJobUnlockStatus } from '../logic/JobSystem';
 import { calculateEnergyState } from '../logic/EnergySystem';
-import { INITIAL_PLAYER_BASE_STATS } from '../logic/BalanceConfig';
+import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import { DEMON_ACTION_LIMIT, clampDemonGauge } from '../logic/DemonizationSystem';
 import { isAbyssalResidueUnlocked } from '../logic/AbyssalResidueUnlockSystem';
@@ -136,9 +136,10 @@ function mergeInventoryItems(current: ItemData[], incoming: ItemData[]): ItemDat
   }, current);
 }
 
-function withNecroBaseStatsBonus(player: CharacterData, necroStatus?: NecroStatus | null): CharacterData {
+function withNecroProgression(player: CharacterData, necroStatus?: NecroStatus | null): CharacterData {
   return {
     ...player,
+    necroLevel: necroStatus?.level ?? player.necroLevel ?? 1,
     necroBaseStatsBonus: necroStatus?.baseStatsBonus ?? player.necroBaseStatsBonus ?? 1,
   };
 }
@@ -148,7 +149,7 @@ function withDerivedElementBoosts(
   residues: (AbyssalResidueData | null)[],
   necroStatus?: NecroStatus | null,
 ): CharacterData {
-  const playerWithNecro = withNecroBaseStatsBonus(player, necroStatus);
+  const playerWithNecro = withNecroProgression(player, necroStatus);
   return {
     ...playerWithNecro,
     elementDmgBoosts: calculateCharacterStatProfile(playerWithNecro, residues).elementDmgBoosts,
@@ -567,9 +568,12 @@ export const useGameStore = create<GameState>((set) => ({
     });
     const activeJob = JOBS[state.player.currentJobId];
     const energyState = calculateEnergyState(activeJob, activeJobLevel);
+    const baseStats = getJobBaseStatsAtLevel(activeJob, activeJobLevel, state.player.baseStats ?? state.player.stats);
     return {
       player: {
         ...state.player,
+        baseStats,
+        stats: baseStats,
         jobs: newJobs,
         maxEnergy: energyState.maxEnergy,
         currentEnergy: Math.min(state.player.currentEnergy, energyState.maxEnergy),
@@ -597,7 +601,6 @@ export const useGameStore = create<GameState>((set) => ({
     const unlock = getJobUnlockStatus(state.player, nextJob);
     if (!unlock.unlocked) return state;
 
-    const baseStats = state.player.baseStats ?? state.player.stats;
     const hasJob = state.player.jobs.some(job => job.jobId === jobId);
     const nextJobs = hasJob
       ? state.player.jobs
@@ -605,12 +608,13 @@ export const useGameStore = create<GameState>((set) => ({
 
     const nextJobLevel = Math.max(1, nextJobs.find(job => job.jobId === jobId)?.level ?? 1);
     const energyState = calculateEnergyState(nextJob, nextJobLevel);
+    const baseStats = getJobBaseStatsAtLevel(nextJob, nextJobLevel, state.player.baseStats ?? state.player.stats);
     const nextPlayer = withDerivedElementBoosts({
         ...state.player,
         currentJobId: jobId,
         category: nextJob.category,
         baseStats,
-        stats: calculateJobAdjustedStats(baseStats, nextJob),
+        stats: baseStats,
         jobs: nextJobs,
         maxEnergy: energyState.maxEnergy,
         currentEnergy: Math.min(state.player.currentEnergy, energyState.maxEnergy),
@@ -766,15 +770,17 @@ export const useGameStore = create<GameState>((set) => ({
 
   initialize: () => {
     const initialClearedStages = getE2EInitialClearedStages();
+    const warriorBaseStats = getJobBaseStatsAtLevel(JOBS.warrior, 1);
     set({
     player: {
       id: '1',
       name: 'アルド',
       currentJobId: 'warrior',
       category: 'PHYSICAL',
-      baseStats: INITIAL_PLAYER_BASE_STATS,
+      baseStats: warriorBaseStats,
+      necroLevel: 1,
       necroBaseStatsBonus: 1.0,
-      stats: calculateJobAdjustedStats(INITIAL_PLAYER_BASE_STATS, JOBS.warrior),
+      stats: warriorBaseStats,
       baseResistances: {},
       passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveSpdBonus: 0, passiveCritRateBonus: 0, passiveCritDmgBonus: 0, passiveHpBonus: 0 },
       equipment: {

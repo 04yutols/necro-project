@@ -1,11 +1,14 @@
 import { auth } from '@/auth';
 import { prisma } from '../lib/prisma';
+import jobsData from '../data/master/jobs.json';
 import {
   createCharacterForUser,
   fetchPlayerAction,
   fetchPlayerForUser,
 } from '../app/actions';
+import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 import { createCredentialsUser } from '../services/AuthService';
+import type { JobData } from '../types/game';
 import type { ServerGameUser } from '../types/serverGame';
 
 jest.mock('@/auth', () => ({
@@ -13,6 +16,8 @@ jest.mock('@/auth', () => ({
 }));
 
 jest.setTimeout(45000);
+
+const JOBS = jobsData as Record<string, JobData>;
 
 async function cleanupUser(email: string) {
   const user = await prisma.user.findUnique({
@@ -121,8 +126,7 @@ describe('SEC-2 fetchPlayerAction ownership checks', () => {
     expect(ownViaAction.data.id).toBe(characterAId);
     expect(ownViaAction.data.name).toBe('SEC2-A');
     expect(ownViaAction.data.name).not.toBe('アルド');
-    expect(ownViaAction.data.baseStats.hp).toBe(123);
-    expect(ownViaAction.data.baseStats.atk).toBe(17);
+    expect(ownViaAction.data.baseStats).toEqual(getJobBaseStatsAtLevel(JOBS.warrior, 1));
     expect(ownViaAction.data.currentJobId).toBe('warrior');
 
     const foreignViaAction = await fetchPlayerAction(characterBId);

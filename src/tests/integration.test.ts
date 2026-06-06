@@ -64,7 +64,7 @@ describe('Integration Test: Job Persistence', () => {
     });
 
     expect(updatedChar?.currentJobId).toBe('mage');
-    expect(updatedChar?.passiveAtkBonus).toBe(5); // warrior Lv10 で +5
+    expect(updatedChar?.passiveAtkBonus).toBe(1); // warrior Lv10 で +1%
 
     // クリーンアップ
     await prisma.userJob.deleteMany({ where: { characterId } });

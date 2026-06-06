@@ -1,72 +1,78 @@
 import jobsData from '../data/master/jobs.json';
 import type { JobData } from '../types/game';
 import {
-  BASE_STAT_GROWTH_PER_LEVEL,
-  calculateCumulativeJobGrowth,
-  calculateJobGrowthIncrements,
-  normalizeJobGrowthModifiers,
+  calculateJobBaseStatsDelta,
+  calculateJobBaseStatsPowerScore,
+  getJobBaseStatsAtLevel,
+  JOB_BASE_STATS_MAX_LEVEL,
+  JOB_BASE_STATS_MIN_LEVEL,
 } from './JobGrowthSystem';
 
 const jobs = jobsData as Record<string, JobData>;
 
 describe('JobGrowthSystem', () => {
-  test('uses neutral growth when a job has no growthModifiers', () => {
-    expect(calculateJobGrowthIncrements(null, 1, 3)).toEqual({
-      hp: Math.round(BASE_STAT_GROWTH_PER_LEVEL.hp * 2),
-      atk: Math.round(BASE_STAT_GROWTH_PER_LEVEL.atk * 2),
-      def: Math.round(BASE_STAT_GROWTH_PER_LEVEL.def * 2),
-    });
-  });
-
-  test('applies job-specific growth modifiers and rounds total gain', () => {
-    const increments = calculateJobGrowthIncrements({
-      growthModifiers: { hp: 0.75, atk: 1.25, def: 0.65 },
-    }, 1, 4);
-
-    expect(increments).toEqual({
-      hp: 7,
-      atk: 2,
-      def: 1,
-    });
-  });
-
-  test('normalizes invalid modifiers to neutral values', () => {
-    expect(normalizeJobGrowthModifiers({
-      growthModifiers: { hp: 0, atk: Number.NaN, def: -1 },
-    })).toEqual({ hp: 1, atk: 1, def: 1 });
-  });
-
-  test('all jobs define growth modifiers', () => {
+  test('jobs no longer define growth modifiers', () => {
     Object.entries(jobs).forEach(([jobId, job]) => {
-      if (!job.growthModifiers) throw new Error(`${jobId} growthModifiers is missing`);
-      expect(job.growthModifiers.hp).toBeGreaterThan(0);
-      expect(job.growthModifiers.atk).toBeGreaterThan(0);
-      expect(job.growthModifiers.def).toBeGreaterThan(0);
+      expect('growthModifiers' in job).toBe(false);
+      void jobId;
     });
   });
 
-  test('different jobs produce different permanent stat growth', () => {
-    const warrior = calculateJobGrowthIncrements(jobs.warrior, 1, 2);
-    const mage = calculateJobGrowthIncrements(jobs.mage, 1, 2);
-
-    expect(warrior).toEqual({ hp: 4, atk: 1, def: 0 });
-    expect(mage).toEqual({ hp: 2, atk: 1, def: 0 });
-    expect(warrior).not.toEqual(mage);
+  test('all jobs define fixed base stats from Lv1 to Lv100', () => {
+    Object.entries(jobs).forEach(([jobId, job]) => {
+      expect(job.baseStatsByLevel).toBeTruthy();
+      for (let level = JOB_BASE_STATS_MIN_LEVEL; level <= JOB_BASE_STATS_MAX_LEVEL; level += 1) {
+        const stats = getJobBaseStatsAtLevel(job, level);
+        expect(stats.hp).toBeGreaterThan(0);
+        expect(stats.atk).toBeGreaterThan(0);
+        expect(stats.def).toBeGreaterThanOrEqual(0);
+        expect(stats.spd).toBeGreaterThan(0);
+        expect(stats.critDmg).toBeGreaterThanOrEqual(100);
+        expect(job.baseStatsByLevel?.[String(level)]).toBeTruthy();
+      }
+      void jobId;
+    });
   });
 
-  test('split level-ups match a bulk level-up', () => {
-    const bulk = calculateJobGrowthIncrements(jobs.warrior, 1, 4);
+  test('fixed base stats preserve early low-damage scale and job identity', () => {
+    const warrior = getJobBaseStatsAtLevel(jobs.warrior, 1);
+    const mage = getJobBaseStatsAtLevel(jobs.mage, 1);
+
+    expect(warrior).toMatchObject({ hp: 34, atk: 5, def: 5, spd: 98 });
+    expect(mage.hp).toBeLessThan(warrior.hp);
+    expect(mage.critDmg).toBeGreaterThan(warrior.critDmg);
+  });
+
+  test('fixed table deltas still split the same as a bulk level-up', () => {
+    const bulk = calculateJobBaseStatsDelta(jobs.warrior, 1, 4);
     const split = [
-      calculateJobGrowthIncrements(jobs.warrior, 1, 2),
-      calculateJobGrowthIncrements(jobs.warrior, 2, 3),
-      calculateJobGrowthIncrements(jobs.warrior, 3, 4),
+      calculateJobBaseStatsDelta(jobs.warrior, 1, 2),
+      calculateJobBaseStatsDelta(jobs.warrior, 2, 3),
+      calculateJobBaseStatsDelta(jobs.warrior, 3, 4),
     ].reduce((sum, growth) => ({
       hp: sum.hp + growth.hp,
       atk: sum.atk + growth.atk,
       def: sum.def + growth.def,
     }), { hp: 0, atk: 0, def: 0 });
 
-    expect(calculateCumulativeJobGrowth(jobs.warrior, 4)).toEqual({ hp: 11, atk: 2, def: 1 });
     expect(split).toEqual(bulk);
+  });
+
+  test('tier 2 jobs have a higher average fixed-stat power score than tier 1 jobs', () => {
+    const scoreAtSamples = (job: JobData) => [1, 50, 100]
+      .map((level) => calculateJobBaseStatsPowerScore(getJobBaseStatsAtLevel(job, level)))
+      .reduce((sum, score) => sum + score, 0) / 3;
+
+    const tier1Average = Object.values(jobs)
+      .filter((job) => job.tier === 1)
+      .map(scoreAtSamples)
+      .reduce((sum, score, _, scores) => sum + score / scores.length, 0);
+
+    Object.entries(jobs)
+      .filter(([, job]) => job.tier > 1)
+      .forEach(([jobId, job]) => {
+        expect(scoreAtSamples(job)).toBeGreaterThan(tier1Average);
+        void jobId;
+      });
   });
 });

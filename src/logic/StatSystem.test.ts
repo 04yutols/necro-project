@@ -1,5 +1,6 @@
 import {
   calculateCharacterStatProfile,
+  calculateNecromanceLevelBonus,
   calculateNecroBaseStatsContribution,
   getCanonicalOptionType,
   normalizeNecroBaseStatsBonus,
@@ -13,7 +14,7 @@ const basePlayer: CharacterData = {
   category: 'PHYSICAL',
   baseStats: { hp: 1000, atk: 100, def: 50, spd: 100, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 0 },
   stats: { hp: 1000, atk: 100, def: 50, spd: 100, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 0 },
-  passives: { passiveHpBonus: 100, passiveAtkBonus: 5, passiveDefBonus: 3, passiveSpdBonus: 2, passiveCritRateBonus: 1, passiveCritDmgBonus: 10 },
+  passives: { passiveHpBonus: 10, passiveAtkBonus: 5, passiveDefBonus: 3, passiveSpdBonus: 2, passiveCritRateBonus: 1, passiveCritDmgBonus: 10 },
   equipment: {
     weapon: { id: 'w1', name: 'Blade', type: 'WEAPON', rarity: 'COMMON', stats: { atk: 20 }, subOptions: [{ type: 'FIRE_DMG_BOOST', value: 12 }], isUnique: false },
     sub: null,
@@ -63,10 +64,11 @@ describe('StatSystem', () => {
     expect(profile.elementDmgBoosts.DARK).toBe(8);
   });
 
-  test('applies necro rank bonus to base combat stats before equipment and residues', () => {
+  test('applies necromance level bonus to crit damage and all elemental damage', () => {
     const rankedPlayer: CharacterData = {
       ...basePlayer,
-      necroBaseStatsBonus: 1.5,
+      necroLevel: 50,
+      necroBaseStatsBonus: 9,
     };
 
     const profile = calculateCharacterStatProfile(rankedPlayer, [
@@ -83,20 +85,32 @@ describe('StatSystem', () => {
       },
     ]);
 
-    expect(profile.necro.hp).toBe(500);
-    expect(profile.necro.atk).toBe(50);
-    expect(profile.necro.def).toBe(25);
-    expect(profile.necro.spd).toBe(50);
+    expect(profile.necro.hp).toBe(0);
+    expect(profile.necro.atk).toBe(0);
+    expect(profile.necro.def).toBe(0);
+    expect(profile.necro.spd).toBe(0);
     expect(profile.necro.critRate).toBe(0);
-    expect(profile.total.hp).toBe(1600);
-    expect(profile.total.atk).toBe(190);
-    expect(profile.total.def).toBe(78);
-    expect(profile.total.spd).toBe(152);
+    expect(profile.necro.critDmg).toBe(5);
+    expect(profile.total.hp).toBe(1100);
+    expect(profile.total.atk).toBe(135);
+    expect(profile.total.def).toBe(52);
+    expect(profile.total.spd).toBe(102);
+    expect(profile.total.critDmg).toBe(165);
+    expect(profile.elementDmgBoosts.FIRE).toBe(17);
+    expect(profile.elementDmgBoosts.DARK).toBe(5);
   });
 
-  test('normalizes invalid necro rank bonuses to neutral multiplier', () => {
+  test('normalizes invalid legacy necro rank bonuses to neutral contribution', () => {
     expect(normalizeNecroBaseStatsBonus(undefined)).toBe(1);
     expect(normalizeNecroBaseStatsBonus(0)).toBe(1);
     expect(calculateNecroBaseStatsContribution(basePlayer.stats, undefined).atk).toBe(0);
+    expect(calculateNecroBaseStatsContribution(basePlayer.stats, 5).hp).toBe(0);
+  });
+
+  test('calculates necromance level steps every 10 levels', () => {
+    expect(calculateNecromanceLevelBonus(9).step).toBe(0);
+    expect(calculateNecromanceLevelBonus(10).stats.critDmg).toBe(1);
+    expect(calculateNecromanceLevelBonus(99).stats.critDmg).toBe(9);
+    expect(calculateNecromanceLevelBonus(99).elementDmgBoosts.DARK).toBe(9);
   });
 });

@@ -1,12 +1,15 @@
 import { getMasterFile } from '../../actions';
 import StageForm from '@/components/admin/forms/StageForm';
 
-export default async function NewStagePage() {
-  const [items, materials, enemies, areas] = await Promise.all([
+export default async function NewStagePage({ searchParams }: { searchParams?: Promise<{ areaId?: string }> }) {
+  const params = searchParams ? await searchParams : {};
+  const initialAreaId = params?.areaId;
+  const [items, materials, enemies, areas, stages] = await Promise.all([
     getMasterFile('items'),
     getMasterFile('materials'),
     getMasterFile('enemies'),
     getMasterFile('areas'),
+    getMasterFile('stages'),
   ]);
   const enemyData = Object.entries(enemies).map(([key, raw]) => ({
     id: key,
@@ -23,6 +26,8 @@ export default async function NewStagePage() {
       materialIds={Object.keys(materials)}
       enemyData={enemyData}
       areas={areas}
+      stages={stages}
+      initialAreaId={initialAreaId}
     />
   );
 }

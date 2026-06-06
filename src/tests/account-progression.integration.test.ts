@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma';
 import jobsData from '../data/master/jobs.json';
 import { levelFromTotalExp } from '../logic/ExperienceSystem';
-import { calculateJobGrowthIncrements } from '../logic/JobGrowthSystem';
+import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 import { RESIDUE_SLOT_ORDER } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
 import { calculateWeaponBaseAttack } from '../logic/WeaponSystem';
@@ -215,10 +215,12 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(warriorJob?.exp).toBeGreaterThan(0);
     expect(warriorJob?.level).toBeGreaterThan(1);
     expect(warriorJob?.level).toBe(levelFromTotalExp(warriorJob?.exp ?? 0));
-    const warriorGrowth = calculateJobGrowthIncrements(JOBS.warrior, 1, warriorJob?.level ?? 1);
-    expect(afterClear.data.player.baseStats.hp).toBe(initialBaseStats.hp + warriorGrowth.hp);
-    expect(afterClear.data.player.baseStats.atk).toBe(initialBaseStats.atk + warriorGrowth.atk);
-    expect(afterClear.data.player.baseStats.def).toBe(initialBaseStats.def + warriorGrowth.def);
+    const expectedWarriorStats = getJobBaseStatsAtLevel(JOBS.warrior, warriorJob?.level ?? 1);
+    expect(afterClear.data.player.baseStats).toEqual(expectedWarriorStats);
+    const persistedAfterClear = await prisma.character.findUniqueOrThrow({ where: { id: afterClear.data.player.id } });
+    expect(persistedAfterClear.hp).toBe(initialBaseStats.hp);
+    expect(persistedAfterClear.atk).toBe(initialBaseStats.atk);
+    expect(persistedAfterClear.def).toBe(initialBaseStats.def);
     expect(afterClear.data.player.clearedStages).toContain('area1_node1');
     expect(afterClear.data.inventoryItems.length).toBeGreaterThan(1);
     expect(afterClear.data.abyssalResidues).toHaveLength(0);

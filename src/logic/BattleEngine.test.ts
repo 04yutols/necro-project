@@ -319,15 +319,16 @@ describe('BattleEngine', () => {
     expect(player.stats.hp).toBe(13);
   });
 
-  test('Necro rank bonus increases outgoing battle damage', () => {
+  test('Necromance level bonus increases critical outgoing battle damage', () => {
     const basePlayer: CharacterData = {
       ...mockPlayer,
-      stats: { ...mockPlayer.stats, critRate: 0 },
-      necroBaseStatsBonus: 1,
+      stats: { ...mockPlayer.stats, critRate: 100 },
+      necroLevel: 1,
+      necroBaseStatsBonus: 9,
     };
     const rankedPlayer: CharacterData = {
       ...basePlayer,
-      necroBaseStatsBonus: 2,
+      necroLevel: 50,
     };
 
     const baseTarget: MonsterData = {
@@ -347,32 +348,38 @@ describe('BattleEngine', () => {
     expect(rankedDamage).toBeGreaterThan(baseDamage);
   });
 
-  test('Necro rank bonus reduces direct incoming damage through final DEF', () => {
+  test('Necromance level bonus increases elemental skill damage', () => {
     const basePlayer: CharacterData = {
       ...mockPlayer,
-      stats: { ...mockPlayer.stats, hp: 500, atk: 1, def: 20, critRate: 0 },
-      necroBaseStatsBonus: 1,
+      currentJobId: 'mage',
+      category: 'MAGICAL',
+      stats: { ...mockPlayer.stats, hp: 500, atk: 40, def: 20, critRate: 0 },
+      currentEnergy: 100,
+      maxEnergy: 100,
+      necroLevel: 1,
     };
     const rankedPlayer: CharacterData = {
       ...basePlayer,
       stats: { ...basePlayer.stats },
-      necroBaseStatsBonus: 3,
+      necroLevel: 50,
     };
     const baseEnemy: MonsterData = {
       ...mockTarget,
-      stats: { ...mockTarget.stats, hp: 500, atk: 120, def: 0 },
+      stats: { ...mockTarget.stats, hp: 500, atk: 1, def: 0 },
+      resistances: {},
     };
     const rankedEnemy: MonsterData = {
       ...mockTarget,
-      stats: { ...mockTarget.stats, hp: 500, atk: 120, def: 0 },
+      stats: { ...mockTarget.stats, hp: 500, atk: 1, def: 0 },
+      resistances: {},
     };
 
-    const baseLogs = new BattleEngine(basePlayer, []).simulateAction('PHYSICAL_ATTACK', baseEnemy);
-    const rankedLogs = new BattleEngine(rankedPlayer, []).simulateAction('PHYSICAL_ATTACK', rankedEnemy);
-    const baseDamage = baseLogs.find(l => l.action === 'ENEMY_ATTACK')?.damage ?? 0;
-    const rankedDamage = rankedLogs.find(l => l.action === 'ENEMY_ATTACK')?.damage ?? 0;
+    const baseLogs = new BattleEngine(basePlayer, []).simulateAction('MAGIC_SKILL', baseEnemy, 'skill_mage_1');
+    const rankedLogs = new BattleEngine(rankedPlayer, []).simulateAction('MAGIC_SKILL', rankedEnemy, 'skill_mage_1');
+    const baseDamage = baseLogs.find(l => l.action === 'MAGIC_SKILL')?.damage ?? 0;
+    const rankedDamage = rankedLogs.find(l => l.action === 'MAGIC_SKILL')?.damage ?? 0;
 
-    expect(rankedDamage).toBeLessThan(baseDamage);
+    expect(rankedDamage).toBeGreaterThan(baseDamage);
   });
 
   test('direct enemy damage can defeat the player when no party monsters remain', () => {

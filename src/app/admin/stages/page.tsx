@@ -17,14 +17,14 @@ export default async function StagesPage() {
             ステージデータ
           </h2>
           <p className="text-xs font-mono" style={{ color: '#7878a8' }}>
-            stages.json — {count} エントリ
+            stages.json — {count} エントリ / エリア別に作成・編集
           </p>
         </div>
         <Link
           href="/admin/stages/new"
           style={{ background: 'rgba(139,0,255,0.18)', border: '1px solid rgba(139,0,255,0.4)', color: '#d8b4fe', padding: '7px 16px', borderRadius: 6, fontSize: 12, fontFamily: 'Space Grotesk, sans-serif', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
         >
-          + 新規作成
+          + エリア未指定で作成
         </Link>
       </div>
       <StagesList data={data} areas={areas} />

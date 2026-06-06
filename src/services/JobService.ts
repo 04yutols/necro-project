@@ -1,8 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 import { CharacterData, JobData, UserJobState } from '../types/game';
 import { MasterDataService } from './MasterDataService';
-import { calculateJobAdjustedStats, getJobUnlockStatus } from '../logic/JobSystem';
+import { getJobUnlockStatus } from '../logic/JobSystem';
 import { calculateEnergyState } from '../logic/EnergySystem';
+import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 
 /**
  * 職業に関するビジネスロジックを担当するサービス (GDD-004)
@@ -96,8 +97,8 @@ export class JobService {
       nextJobs.push({ jobId: nextJobId, level: 1, exp: 0 });
     }
 
-    const baseStats = { ...(character.baseStats ?? character.stats) };
     const nextLevel = Math.max(1, nextJobs.find(job => job.jobId === nextJobId)?.level ?? 1);
+    const baseStats = getJobBaseStatsAtLevel(jobData, nextLevel, character.baseStats ?? character.stats);
     const energyState = calculateEnergyState(jobData, nextLevel);
 
     return {
@@ -105,7 +106,7 @@ export class JobService {
       currentJobId: nextJobId,
       category: jobData.category,
       baseStats,
-      stats: calculateJobAdjustedStats(baseStats, jobData),
+      stats: baseStats,
       passives: { ...character.passives },
       equipment: { ...character.equipment },
       baseResistances: { ...character.baseResistances },
@@ -127,7 +128,7 @@ export class JobService {
     const jobs = (character.jobs ?? []).map((job: UserJobState) => ({ jobId: job.jobId, level: job.level, exp: job.exp }));
     const currentJobLevel = Math.max(1, jobs.find((job: { jobId: string; level: number; exp: number }) => job.jobId === currentJobId)?.level ?? 1);
     const energyState = calculateEnergyState(currentJob, currentJobLevel);
-    const baseStats = {
+    const persistedBaseStats = {
       hp: character.hp,
       atk: character.atk,
       def: character.def,
@@ -137,6 +138,7 @@ export class JobService {
       effectHit: character.effectHit,
       effectRes: character.effectRes,
     };
+    const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, persistedBaseStats);
 
     return {
       id: character.id,
@@ -144,7 +146,9 @@ export class JobService {
       currentJobId,
       category: currentJob.category,
       baseStats,
-      stats: calculateJobAdjustedStats(baseStats, currentJob),
+      necroLevel: character.necroLevel ?? 1,
+      necroBaseStatsBonus: character.necroBaseStatsBonus ?? 1,
+      stats: baseStats,
       passives: {
         passiveAtkBonus: character.passiveAtkBonus ?? 0,
         passiveDefBonus: character.passiveDefBonus ?? 0,
@@ -173,12 +177,13 @@ export class JobService {
     if (typeof characterOrId !== 'string') {
       const character = characterOrId;
       const job = character.jobs.find(j => j.jobId === jobId);
+      const oldLevel = job?.level ?? 0;
       if (job) job.level = newLevel;
       else character.jobs.push({ jobId, level: newLevel, exp: 0 });
 
       const jobData = this.masterData.getJob(jobId);
-      const bonus = jobData?.levelBonuses?.[newLevel.toString()];
-      if (bonus) {
+      const bonus = this.sumLevelBonuses(jobData, oldLevel, newLevel);
+      if (this.hasPassiveBonus(bonus)) {
         character.passives.passiveAtkBonus += bonus.passiveAtkBonus || 0;
         character.passives.passiveDefBonus += bonus.passiveDefBonus || 0;
         character.passives.passiveCritRateBonus += bonus.passiveCritRateBonus || 0;
@@ -192,6 +197,16 @@ export class JobService {
     if (!this.prisma) throw new Error('PrismaClient is required for persistent job level updates.');
     const characterId = characterOrId;
     await this.prisma.$transaction(async (tx: any) => {
+      const current = await tx.userJob.findUnique({
+        where: {
+          characterId_jobId: {
+            characterId,
+            jobId,
+          },
+        },
+        select: { level: true },
+      });
+
       // UserJob のレベルを更新
       await tx.userJob.update({
         where: {
@@ -205,10 +220,28 @@ export class JobService {
 
       // 特定レベル到達時の永続パッシブ加算処理 (GDD-004)
       const jobData = this.masterData.getJob(jobId);
-      if (jobData && jobData.levelBonuses && jobData.levelBonuses[newLevel.toString()]) {
-        await this.applyPassiveBonus(tx, characterId, jobData.levelBonuses[newLevel.toString()]);
+      const bonus = this.sumLevelBonuses(jobData, current?.level ?? 0, newLevel);
+      if (this.hasPassiveBonus(bonus)) {
+        await this.applyPassiveBonus(tx, characterId, bonus);
       }
     });
+  }
+
+  private sumLevelBonuses(jobData: JobData | undefined, fromExclusive: number, toInclusive: number) {
+    const totals: Record<string, number> = {};
+    if (!jobData?.levelBonuses || toInclusive <= fromExclusive) return totals;
+    for (let level = fromExclusive + 1; level <= toInclusive; level += 1) {
+      const bonus = jobData.levelBonuses[level.toString()];
+      if (!bonus) continue;
+      Object.entries(bonus).forEach(([key, value]) => {
+        totals[key] = (totals[key] ?? 0) + (value ?? 0);
+      });
+    }
+    return totals;
+  }
+
+  private hasPassiveBonus(bonus: Record<string, number>): boolean {
+    return Object.values(bonus).some(value => value !== 0);
   }
 
   /**

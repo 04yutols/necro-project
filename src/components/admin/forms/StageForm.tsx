@@ -5,9 +5,13 @@ import { useRouter } from 'next/navigation';
 import { saveEntry, deleteEntry } from '@/app/admin/actions';
 import {
   applyStageAreaSelection,
+  buildStageDependencyOptions,
   buildStageAreaOptions,
+  generateStageMasterId,
   getStageAreaMasterId,
   resolveStageArea,
+  suggestStagePosition,
+  type StageAreaOption,
 } from '@/logic/StageAreaLinkSystem';
 import FormTabs from './shared/FormTabs';
 import FormSaveBar from './shared/FormSaveBar';
@@ -54,7 +58,7 @@ type StageFormState = {
   element: string;
   difficulty: number;
   areaGimmick: string;
-  unlockRequires: string;
+  unlockRequires: string[];
   positionX: number;
   positionY: number;
   description: string;
@@ -84,7 +88,7 @@ function formToJson(form: StageFormState): Record<string, unknown> {
     description: form.description,
     waveCount: wavesData.length,
     areaGimmick: form.areaGimmick,
-    unlockRequires: form.unlockRequires.split(',').map((s) => s.trim()).filter(Boolean),
+    unlockRequires: form.unlockRequires,
     waves: wavesData,
     rewards: {
       baseExp: form.baseExp,
@@ -95,22 +99,30 @@ function formToJson(form: StageFormState): Record<string, unknown> {
   };
 }
 
-function initForm(data: Record<string, unknown> | null, key: string): StageFormState {
+function initForm(
+  data: Record<string, unknown> | null,
+  key: string,
+  initialArea: StageAreaOption | undefined,
+  stages: Record<string, Record<string, unknown>>,
+): StageFormState {
   if (!data) {
+    const chapter = initialArea?.chapter ?? 1;
+    const area = initialArea?.area ?? 1;
+    const position = suggestStagePosition({ chapter, area, nodeType: 'DUNGEON', unlockRequires: [] }, stages);
     return {
       id: key,
       name: '',
       nameJa: '',
       nameEn: '',
-      chapter: 1,
-      area: 1,
+      chapter,
+      area,
       nodeType: 'DUNGEON',
       element: 'NONE',
       difficulty: 1,
       areaGimmick: 'NONE',
-      unlockRequires: '',
-      positionX: 200,
-      positionY: 400,
+      unlockRequires: [],
+      positionX: position.x,
+      positionY: position.y,
       description: '',
       waves: [{ label: 'WAVE 1', role: 'WARMUP', enemyIds: [], intent: '' }],
       baseExp: 10,
@@ -138,7 +150,7 @@ function initForm(data: Record<string, unknown> | null, key: string): StageFormS
     element: (raw.element as string) ?? 'NONE',
     difficulty: (raw.difficulty as number) ?? 1,
     areaGimmick: (raw.areaGimmick as string) ?? 'NONE',
-    unlockRequires: ((raw.unlockRequires as string[]) ?? []).join(', '),
+    unlockRequires: (raw.unlockRequires as string[]) ?? [],
     positionX: position.x ?? 200,
     positionY: position.y ?? 400,
     description: (raw.description as string) ?? '',
@@ -158,12 +170,17 @@ type Props = {
   enemyData?: EnemyMeta[];
   dependencies?: DependencyRef[];
   areas?: Record<string, Record<string, unknown>>;
+  stages?: Record<string, Record<string, unknown>>;
+  initialAreaId?: string;
 };
 
-export default function StageForm({ initialData, entryKey, isNew, itemIds, materialIds, enemyData = [], dependencies = [], areas = {} }: Props) {
+export default function StageForm({ initialData, entryKey, isNew, itemIds, materialIds, enemyData = [], dependencies = [], areas = {}, stages = {}, initialAreaId }: Props) {
   const router = useRouter();
+  const initialArea = initialAreaId
+    ? buildStageAreaOptions(areas).find(area => area.id === initialAreaId)
+    : undefined;
   const [activeTab, setActiveTab] = useState(TABS[0]);
-  const [form, setForm] = useState<StageFormState>(() => initForm(initialData, entryKey));
+  const [form, setForm] = useState<StageFormState>(() => initForm(initialData, entryKey, initialArea, stages));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
@@ -171,6 +188,13 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
   const areaOptions = useMemo(() => buildStageAreaOptions(areas), [areas]);
   const selectedArea = useMemo(() => resolveStageArea(form, areaOptions), [form, areaOptions]);
   const selectedAreaId = selectedArea?.id ?? getStageAreaMasterId(form);
+  const effectiveStageId = isNew ? generateStageMasterId(form, stages) : entryKey || form.id;
+  const allStageOptions = useMemo(() => buildStageDependencyOptions(stages), [stages]);
+  const stageOptionById = useMemo(() => new Map(allStageOptions.map(stage => [stage.id, stage])), [allStageOptions]);
+  const dependencyOptions = useMemo(
+    () => allStageOptions.filter(stage => stage.id !== effectiveStageId && !form.unlockRequires.includes(stage.id)),
+    [allStageOptions, effectiveStageId, form.unlockRequires],
+  );
 
   const updateField = useCallback(<K extends keyof StageFormState>(key: K, val: StageFormState[K]) => {
     setForm((f) => ({ ...f, [key]: val }));
@@ -183,17 +207,61 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
   const handleAreaSelect = useCallback((areaId: string) => {
     const nextArea = areaOptions.find(option => option.id === areaId);
     if (!nextArea) return;
-    setForm((f) => applyStageAreaSelection(f, nextArea));
-  }, [areaOptions]);
+    setForm((f) => {
+      const next = applyStageAreaSelection(f, nextArea);
+      const nextId = isNew ? generateStageMasterId(next, stages) : entryKey || next.id;
+      const position = suggestStagePosition({ ...next, id: nextId }, stages);
+      return { ...next, positionX: position.x, positionY: position.y };
+    });
+  }, [areaOptions, entryKey, isNew, stages]);
+
+  const handleNodeTypeSelect = useCallback((nodeType: string) => {
+    setForm((f) => {
+      const next = { ...f, nodeType };
+      const nextId = isNew ? generateStageMasterId(next, stages) : entryKey || next.id;
+      const position = suggestStagePosition({ ...next, id: nextId }, stages);
+      return { ...next, positionX: position.x, positionY: position.y };
+    });
+  }, [entryKey, isNew, stages]);
+
+  const addUnlockRequirement = useCallback((stageId: string) => {
+    if (!stageId || stageId === effectiveStageId) return;
+    setForm((f) => {
+      if (f.unlockRequires.includes(stageId)) return f;
+      const unlockRequires = [...f.unlockRequires, stageId];
+      const position = suggestStagePosition({ ...f, id: effectiveStageId, unlockRequires }, stages);
+      return { ...f, unlockRequires, positionX: position.x, positionY: position.y };
+    });
+  }, [effectiveStageId, stages]);
+
+  const removeUnlockRequirement = useCallback((stageId: string) => {
+    setForm((f) => {
+      const unlockRequires = f.unlockRequires.filter(id => id !== stageId);
+      const position = suggestStagePosition({ ...f, id: effectiveStageId, unlockRequires }, stages);
+      return { ...f, unlockRequires, positionX: position.x, positionY: position.y };
+    });
+  }, [effectiveStageId, stages]);
+
+  const recalculatePosition = useCallback(() => {
+    setForm((f) => {
+      const position = suggestStagePosition({ ...f, id: effectiveStageId }, stages);
+      return { ...f, positionX: position.x, positionY: position.y };
+    });
+  }, [effectiveStageId, stages]);
 
   function handleCopy() {
-    navigator.clipboard.writeText(JSON.stringify(formToJson(form), null, 2));
+    navigator.clipboard.writeText(JSON.stringify(formToJson({ ...form, id: effectiveStageId }), null, 2));
   }
 
   async function handleConfirmedSave() {
+    if (!effectiveStageId) {
+      setError('保存IDを生成できませんでした。紐づけエリアとnodeTypeを確認してください。');
+      setShowSaveConfirm(false);
+      return;
+    }
     setSaving(true);
     setShowSaveConfirm(false);
-    const result = await saveEntry('stages', form.id || entryKey, formToJson(form));
+    const result = await saveEntry('stages', effectiveStageId, formToJson({ ...form, id: effectiveStageId }));
     setSaving(false);
     if (result.success) {
       router.push('/admin/stages');
@@ -218,7 +286,7 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 16px' }}>
       <FormSaveBar
         backHref="/admin/stages"
-        title={form.nameJa || form.name || (isNew ? '新規ステージ' : entryKey)}
+        title={form.nameJa || form.name || (isNew ? effectiveStageId || '新規ステージ' : entryKey)}
         onSave={() => setShowSaveConfirm(true)}
         onCopy={handleCopy}
         onDelete={!isNew ? () => setShowDeleteConfirm(true) : undefined}
@@ -240,8 +308,8 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
           {/* 基本情報 */}
           {activeTab === '基本情報' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <FormField label="ID（キー）">
-                <input type="text" value={form.id} onChange={(e) => updateField('id', e.target.value)} disabled={!isNew} style={{ ...inputStyle, opacity: isNew ? 1 : 0.5 }} />
+              <FormField label="ID（自動生成）">
+                <input type="text" value={effectiveStageId} readOnly style={{ ...inputStyle, opacity: 0.7 }} />
               </FormField>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label="name"><input type="text" value={form.name} onChange={(e) => updateField('name', e.target.value)} style={inputStyle} /></FormField>
@@ -280,7 +348,7 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label="nodeType">
-                  <select value={form.nodeType} onChange={(e) => updateField('nodeType', e.target.value)} style={selectStyle}>
+                  <select value={form.nodeType} onChange={(e) => handleNodeTypeSelect(e.target.value)} style={selectStyle}>
                     {NODE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </FormField>
@@ -295,13 +363,63 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
                   </select>
                 </FormField>
               </div>
-              <FormField label="unlockRequires（カンマ区切り）">
-                <input type="text" value={form.unlockRequires} onChange={(e) => updateField('unlockRequires', e.target.value)} style={inputStyle} placeholder="area1_node1, area1_node2" />
+              <FormField label={`依存ステージ（${form.unlockRequires.length}件）`}>
+                <select value="" onChange={(e) => { addUnlockRequirement(e.target.value); e.target.value = ''; }} style={selectStyle}>
+                  <option value="">依存ステージを追加</option>
+                  {dependencyOptions.map((stage) => (
+                    <option key={stage.id} value={stage.id}>
+                      CH{stage.chapter}-AREA{stage.area} / {stage.nameJa} ({stage.id})
+                    </option>
+                  ))}
+                </select>
               </FormField>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {form.unlockRequires.length === 0 ? (
+                  <span style={{ color: '#7878a8', fontSize: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '5px 8px' }}>
+                    初期開放ステージとして扱われます
+                  </span>
+                ) : (
+                  form.unlockRequires.map((stageId) => {
+                    const stage = stageOptionById.get(stageId);
+                    return (
+                      <button
+                        key={stageId}
+                        type="button"
+                        onClick={() => removeUnlockRequirement(stageId)}
+                        title="クリックで解除"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          borderRadius: 6,
+                          border: `1px solid ${stage ? 'rgba(139,0,255,0.34)' : 'rgba(220,38,38,0.32)'}`,
+                          background: stage ? 'rgba(139,0,255,0.12)' : 'rgba(127,29,29,0.22)',
+                          color: stage ? '#d8b4fe' : '#fca5a5',
+                          padding: '5px 8px',
+                          fontSize: 11,
+                          fontFamily: 'Space Grotesk, sans-serif',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span style={{ fontFamily: 'monospace', fontSize: 10 }}>{stageId}</span>
+                        <span>{stage?.nameJa ?? '未登録ステージ'}</span>
+                        <span style={{ opacity: 0.7 }}>解除</span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <FormField label="position.x"><input type="number" value={form.positionX} onChange={(e) => updateField('positionX', parseInt(e.target.value) || 0)} style={inputStyle} /></FormField>
                 <FormField label="position.y"><input type="number" value={form.positionY} onChange={(e) => updateField('positionY', parseInt(e.target.value) || 0)} style={inputStyle} /></FormField>
               </div>
+              <button
+                type="button"
+                onClick={recalculatePosition}
+                style={{ alignSelf: 'flex-start', background: 'rgba(139,0,255,0.12)', border: '1px solid rgba(139,0,255,0.32)', color: '#d8b4fe', padding: '7px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'Space Grotesk, sans-serif' }}
+              >
+                依存ステージから位置を再計算
+              </button>
               <FormField label="description">
                 <textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} style={textareaStyle} />
               </FormField>
@@ -447,10 +565,10 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
           )}
         </div>
 
-        <JsonSidebar data={formToJson(form)} />
+        <JsonSidebar data={formToJson({ ...form, id: effectiveStageId })} />
       </div>
 
-      <ConfirmDialog open={showSaveConfirm} title="保存の確認" message={`"${form.id || entryKey}" を保存します。`} onConfirm={handleConfirmedSave} onCancel={() => setShowSaveConfirm(false)} />
+      <ConfirmDialog open={showSaveConfirm} title="保存の確認" message={`"${effectiveStageId}" を保存します。`} onConfirm={handleConfirmedSave} onCancel={() => setShowSaveConfirm(false)} />
       <ConfirmDialog open={showDeleteConfirm} title="削除の確認" message={`"${entryKey}" を削除します。この操作は取り消せません。`} onConfirm={handleConfirmedDelete} onCancel={() => setShowDeleteConfirm(false)} danger />
     </div>
   );

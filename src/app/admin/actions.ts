@@ -120,9 +120,27 @@ const WEAPON_SUBOPTION_RULES: Record<string, { optionCount: number; elementDamag
   SSR: { optionCount: 2, elementDamageOptionCount: 1 },
   UR: { optionCount: 2, elementDamageOptionCount: 1 },
 };
+const JOB_STAT_KEYS = ['hp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
 
 function isElementDamageSubOption(option: Record<string, unknown>): boolean {
   return /^(FIRE|WATER|THUNDER|EARTH|WIND|ICE|LIGHT|DARK)_DMG_BOOST$/.test(getString(option, 'type'));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function jobPowerScore(stats: Record<string, unknown>): number {
+  return (
+    Number(stats.hp ?? 0) * 0.15 +
+    Number(stats.atk ?? 0) * 3 +
+    Number(stats.def ?? 0) * 2 +
+    Number(stats.spd ?? 0) +
+    Number(stats.critRate ?? 0) * 2 +
+    Number(stats.critDmg ?? 0) * 0.5 +
+    Number(stats.effectHit ?? 0) * 0.8 +
+    Number(stats.effectRes ?? 0) * 0.8
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -282,6 +300,70 @@ export async function runMasterDataAudit(): Promise<AuditFinding[]> {
         });
       } else {
         findings.push({ level: 'PASS', scope: 'jobs', id: jobKey, message: `スキル参照 "${sid}" OK` });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3.5 Job base stats: each job must define Lv1-100 fixed base stats
+  // ---------------------------------------------------------------------------
+  const tier1ScoreSamples: number[] = [];
+  for (const [jobKey, job] of Object.entries(data.jobs)) {
+    if ('growthModifiers' in job) {
+      findings.push({ level: 'FAIL', scope: 'jobs', id: jobKey, message: 'growthModifiers は廃止済みです。baseStatsByLevel を編集してください。' });
+    }
+    const table = job.baseStatsByLevel;
+    if (!isRecord(table)) {
+      findings.push({ level: 'FAIL', scope: 'jobs', id: jobKey, message: 'baseStatsByLevel が存在しません。' });
+      continue;
+    }
+
+    let previous: Record<string, unknown> | null = null;
+    for (let level = 1; level <= 100; level += 1) {
+      const stats = table[String(level)];
+      if (!isRecord(stats)) {
+        findings.push({ level: 'FAIL', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level} が存在しません。` });
+        continue;
+      }
+      for (const statKey of JOB_STAT_KEYS) {
+        const value = stats[statKey];
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+          findings.push({ level: 'FAIL', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.${statKey} は数値である必要があります。` });
+        } else if (value < 0) {
+          findings.push({ level: 'FAIL', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.${statKey} は 0 以上である必要があります。` });
+        }
+      }
+      if (typeof stats.critDmg === 'number' && stats.critDmg < 100) {
+        findings.push({ level: 'WARN', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.critDmg が 100 未満です。` });
+      }
+      if (previous && typeof stats.hp === 'number' && typeof previous.hp === 'number' && stats.hp < previous.hp) {
+        findings.push({ level: 'WARN', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.hp が前レベルより低下しています。` });
+      }
+      previous = stats;
+    }
+
+    if (Number(job.tier) === 1) {
+      [1, 50, 100].forEach((level) => {
+        const stats = table[String(level)];
+        if (isRecord(stats)) tier1ScoreSamples.push(jobPowerScore(stats));
+      });
+    }
+  }
+
+  const tier1AverageScore = tier1ScoreSamples.length > 0
+    ? tier1ScoreSamples.reduce((sum, score) => sum + score, 0) / tier1ScoreSamples.length
+    : 0;
+  if (tier1AverageScore > 0) {
+    for (const [jobKey, job] of Object.entries(data.jobs)) {
+      const table = job.baseStatsByLevel;
+      if (Number(job.tier) <= 1 || !isRecord(table)) continue;
+      const tier2Scores = [1, 50, 100]
+        .map((level) => table[String(level)])
+        .filter(isRecord)
+        .map(jobPowerScore);
+      const average = tier2Scores.reduce((sum, score) => sum + score, 0) / Math.max(1, tier2Scores.length);
+      if (average < tier1AverageScore * 1.02) {
+        findings.push({ level: 'WARN', scope: 'jobs', id: jobKey, message: 'Tier2職業としての総合スコアがTier1平均に近すぎます。' });
       }
     }
   }
