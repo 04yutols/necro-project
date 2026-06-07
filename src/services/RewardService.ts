@@ -1,4 +1,5 @@
 import { getStageDropTableForResidueUnlock } from '../logic/AbyssalResidueUnlockSystem';
+import { rollStageNecromance } from '../logic/NecromanceCaptureSystem';
 import { CharacterData, ItemData, AbyssalResidueData, ResidueMatData, MonsterData, DropEntry, StageData } from '../types/game';
 import { MasterDataService } from './MasterDataService';
 
@@ -231,6 +232,20 @@ export class RewardService {
   ): StageDropResult {
     const dropTable = getStageDropTableForResidueUnlock(stage, clearedStages);
     return this.processDropTable(dropTable, discoveryBonusRate, rng);
+  }
+
+  public processStageNecromance(
+    stage: Pick<StageData, 'waves'>,
+    ownedMonsterMasterIds: readonly (string | null | undefined)[] = [],
+    rng: () => number = Math.random,
+  ): MonsterData[] {
+    const mds = MasterDataService.getInstance();
+    return rollStageNecromance({
+      stage,
+      enemies: mds.getAllEnemies(),
+      ownedMonsterMasterIds,
+      rng,
+    }).map((result) => result.monster);
   }
 
   public calculateExp(baseExp: number, player: CharacterData): number {

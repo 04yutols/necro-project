@@ -19,6 +19,7 @@ import { calculateBattleDamage, type BattleDamageResult } from '../../logic/Batt
 import { calculateInitialEnergy } from '../../logic/EnergySystem';
 import { canStartPlayerAction, shouldInitializeBattle, type BattlePhase } from '../../logic/BattleFlowSystem';
 import { calculateMonsterAttackProfile } from '../../logic/MonsterAttackSystem';
+import { getOwnedMonsterMasterIds } from '../../logic/NecromanceCaptureSystem';
 import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
 import { applyAreaGimmickToPlayer, getAreaGimmickMeta, resolveStageAreaGimmick } from '../../logic/AreaGimmickSystem';
 import { buildTurnOrderPreview, calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilPlayer, type TurnOrderActor, type TurnOrderEntry } from '../../logic/TurnOrderSystem';
@@ -506,6 +507,10 @@ function buildLocalStageResult(stage?: StageData, clearedStages: readonly string
   const dropResult = stage
     ? REWARD_SERVICE.processStageDropTable(stage, clearedStages)
     : REWARD_SERVICE.processDropTable([]);
+  if (stage) {
+    const ownedMonsterMasterIds = getOwnedMonsterMasterIds(useGameStore.getState().inventoryMonsters);
+    dropResult.monsters.push(...REWARD_SERVICE.processStageNecromance(stage, ownedMonsterMasterIds));
+  }
   return {
     dropResult,
     expGain: stage?.rewards.baseExp ?? 0,
@@ -1826,7 +1831,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const {
     player, party, equippedResidueSlots, inventoryItems,
     addExp, addGold, addClearedStage, updateEnergy, updateEnergyBy, restoreEnergy,
-    addInventoryItems, addAbyssalResidues, addResidueMaterials,
+    addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials,
     consumeInventoryItem,
   } = useGameStore();
   const sfx = useSoundEffects();
@@ -1873,6 +1878,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     goldGained: number;
     itemsGained: any[];
     monstersGained: string[];
+    necromancedMonsters: MonsterData[];
     isPurplePillar: boolean;
     wavesCleared: number;
     totalWaves: number;
@@ -2272,6 +2278,19 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         }).then(({ dropResult, expGain, goldGain }) => {
           // ローカル実行時のストア更新
           addInventoryItems([...dropResult.weapons, ...dropResult.consumables]);
+          if (dropResult.monsters.length > 0) {
+            const latestInventory = useGameStore.getState().inventoryMonsters;
+            const owned = new Set(getOwnedMonsterMasterIds(latestInventory));
+            const newMonsters = dropResult.monsters.filter((monster) => {
+              const key = monster.masterId ?? monster.id;
+              if (owned.has(key)) return false;
+              owned.add(key);
+              return true;
+            });
+            if (newMonsters.length > 0) {
+              setInventoryMonsters([...latestInventory, ...newMonsters]);
+            }
+          }
           addAbyssalResidues(dropResult.residues);
           addResidueMaterials(dropResult.materials);
           addExp(expGain);
@@ -2284,7 +2303,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
             expGained:      expGain,
             goldGained:     goldGain,
             itemsGained:    convertDropToResultItems(dropResult, player?.name),
-            monstersGained: isBoss ? [`霊核: ${bossName}`] : [],
+            monstersGained: dropResult.monsters.map(monster => `ネクロマンス: ${monster.name}`),
+            necromancedMonsters: dropResult.monsters,
             isPurplePillar: dropResult.weapons.some((w: { rarity: string }) => w.rarity === 'SSR' || w.rarity === 'UR'),
             wavesCleared:   totalWaves,
             totalWaves,
@@ -2296,7 +2316,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           restoreEnergy();
           setBattleResult({
             isVictory: true, expGained: 0, goldGained: 0,
-            itemsGained: [], monstersGained: [], isPurplePillar: false,
+            itemsGained: [], monstersGained: [], necromancedMonsters: [], isPurplePillar: false,
             wavesCleared: totalWaves, totalWaves, clearTime,
           });
           setShowResult(true);
@@ -2320,7 +2340,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         window.setTimeout(() => setFlashColor(null), 600);
       }
     }, battleDelay(1200, 520));
-  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, player?.name, restoreEnergy, sfx, stageId]);
+  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, player?.name, restoreEnergy, sfx, stageId]);
 
   function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
     const id = ++floatId;
@@ -2732,6 +2752,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       goldGained: 0,
       itemsGained: [],
       monstersGained: [],
+      necromancedMonsters: [],
       isPurplePillar: false,
       wavesCleared: waveIndexRef.current,
       totalWaves: battleWaves.length,
@@ -3113,6 +3134,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         goldGained={battleResult.goldGained}
         itemsGained={battleResult.itemsGained}
         monstersGained={battleResult.monstersGained}
+        necromancedMonsters={battleResult.necromancedMonsters}
         isPurplePillar={battleResult.isPurplePillar}
         wavesCleared={battleResult.wavesCleared}
         totalWaves={battleResult.totalWaves}

@@ -306,6 +306,7 @@ export interface SpiritCoreData {
 
 export interface MonsterData {
   id: string;
+  masterId?: string; // ネクロマンス元の敵/魔物マスターID。同一masterIdは1体まで獲得可能。
   name: string;
   tribe: Tribe; // 種族 (GDD-005)
   cost: number;

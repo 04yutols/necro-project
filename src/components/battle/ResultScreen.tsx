@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ChevronRight, Eye, FastForward, Package, Share2, Skull, Sparkles } from 'lucide-react';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
-import type { ItemData } from '../../types/game';
+import type { ItemData, MonsterData } from '../../types/game';
 import AppraisalCertificate from './AppraisalCertificate';
 
 type DropRarity = 'COMMON' | 'RARE' | 'SR' | 'SSR' | 'LR' | 'UR' | 'UNIQUE' | 'HIDDEN_UNIQUE';
@@ -24,6 +24,7 @@ interface ResultScreenProps {
   goldGained?: number;
   itemsGained: ResultDrop[] | string[];
   monstersGained: string[];
+  necromancedMonsters?: MonsterData[];
   isPurplePillar?: boolean;
   clearTime?: number;
   wavesCleared?: number;
@@ -663,6 +664,7 @@ export default function ResultScreen({
   goldGained = 0,
   itemsGained,
   monstersGained,
+  necromancedMonsters = [],
   isPurplePillar,
   clearTime = 74,
   wavesCleared = 3,
@@ -670,7 +672,7 @@ export default function ResultScreen({
   onFinish,
 }: ResultScreenProps) {
   const [showContent, setShowContent] = useState(false);
-  const [screen, setScreen] = useState<'summary' | 'appraisal'>('summary');
+  const [screen, setScreen] = useState<'summary' | 'appraisal' | 'necromance'>('summary');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dropStage, setDropStage] = useState<'sealed' | 'revealing' | 'revealed'>('sealed');
   const [revealedIds, setRevealedIds] = useState<string[]>([]);
@@ -695,6 +697,7 @@ export default function ResultScreen({
   }, [itemsGained]);
 
   const currentDrop = normalizedDrops[currentIndex] ?? normalizedDrops[0] ?? DEFAULT_UNIQUE;
+  const hasNecromanceResults = necromancedMonsters.length > 0;
   const currentRarity = normalizeRarity(currentDrop.rarity);
   const currentStyle = RARITY_STYLE[currentRarity];
   const hasCursedDrop = (isPurplePillar ?? false) || normalizedDrops.some(isCursedDrop);
@@ -841,6 +844,12 @@ export default function ResultScreen({
       haptic([8, 12]);
       return;
     }
+    if (hasNecromanceResults) {
+      haptic([18, 24, 36]);
+      sfx.resultOpen('SR');
+      setScreen('necromance');
+      return;
+    }
     onFinish();
   };
 
@@ -853,6 +862,8 @@ export default function ResultScreen({
           ? currentStyle.tier === 'cursed'
             ? 'radial-gradient(ellipse at 50% 42%, rgba(70,0,28,0.38), #07020f 58%, #03010a 100%)'
             : `radial-gradient(ellipse at 50% 42%, ${currentStyle.glow}, #07020f 56%, #03010a 100%)`
+          : screen === 'necromance'
+            ? 'radial-gradient(ellipse at 50% 38%, rgba(139,0,255,0.24), rgba(22,0,38,0.80) 52%, #03010a 100%)'
           : hasCursedDrop
             ? 'radial-gradient(ellipse at 50% 44%, rgba(138,43,226,0.18), #07020f 58%, #03010a 100%)'
             : 'linear-gradient(180deg,#08041a 0%,#05020f 100%)',
@@ -1026,6 +1037,12 @@ export default function ResultScreen({
                         <span style={{ color: '#fbbf24', fontFamily: 'monospace', fontSize: 10 }}>{rareSignalCount} SIGNALS</span>
                       </div>
                     )}
+                    {hasNecromanceResults && (
+                      <div className="flex items-center justify-between">
+                        <span style={{ color: '#d8b4fe', fontSize: 11 }}>ネクロマンス反応</span>
+                        <span style={{ color: '#c084fc', fontFamily: 'monospace', fontSize: 10 }}>{necromancedMonsters.length} SOULS</span>
+                      </div>
+                    )}
                     {monstersGained.map(monster => (
                       <div key={monster} className="flex items-center justify-between">
                         <span style={{ color: '#9ca3af', fontSize: 11 }}>{monster}</span>
@@ -1134,6 +1151,99 @@ export default function ResultScreen({
               </button>
             </>
           )}
+        </div>
+      ) : screen === 'necromance' ? (
+        <div
+          data-testid="necromance-result-screen"
+          className="relative z-10 h-full flex flex-col"
+          style={{ padding: 'max(18px, env(safe-area-inset-top, 18px)) 16px max(18px, env(safe-area-inset-bottom, 18px))' }}
+        >
+          <div style={{ textAlign: 'center', animation: 'resultSlideIn 0.42s ease-out both' }}>
+            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: '#BC00FB', letterSpacing: '0.25em', marginBottom: 6 }}>
+              NECROMANCE
+            </div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 26, fontWeight: 900, color: '#F0EAFF', textShadow: '0 0 24px rgba(188,0,251,0.52)' }}>
+              魂の使役に成功
+            </div>
+            <div style={{ marginTop: 8, color: '#a5a9b4', fontSize: 12, lineHeight: 1.6 }}>
+              戦場に残った魂を縛り、軍団へ迎え入れた。
+            </div>
+          </div>
+
+          <div
+            className="flex-1 min-h-0 safe-scroll"
+            style={{ marginTop: 18, overflowY: 'auto', display: 'grid', gap: 10, alignContent: 'start' }}
+          >
+            {necromancedMonsters.map((monster, index) => {
+              const tierColor = monster.tier === 'BOSS' ? '#fbbf24' : monster.tier === 'ELITE' ? '#c084fc' : '#60a5fa';
+              return (
+                <div
+                  key={monster.id}
+                  style={{
+                    borderRadius: 12,
+                    border: `1px solid ${tierColor}66`,
+                    background: 'linear-gradient(135deg, rgba(139,0,255,0.18), rgba(10,5,26,0.88))',
+                    padding: '13px 14px',
+                    boxShadow: `0 0 18px ${tierColor}22, inset 0 1px 0 rgba(255,255,255,0.05)`,
+                    animation: `resultSlideIn 0.42s ease-out ${0.08 + index * 0.07}s both`,
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: '50%',
+                        border: `1px solid ${tierColor}88`,
+                        background: `radial-gradient(circle, ${tierColor}2E, rgba(3,1,8,0.96))`,
+                        color: tierColor,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: `0 0 18px ${tierColor}40`,
+                      }}
+                    >
+                      <Skull size={24} />
+                    </div>
+                    <div className="min-w-0" style={{ flex: 1 }}>
+                      <div style={{ fontFamily: "'Cinzel', serif", color: '#F0EAFF', fontSize: 16, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {monster.name}
+                      </div>
+                      <div className="flex items-center gap-2" style={{ marginTop: 5, color: '#8b7da8', fontSize: 10, fontFamily: 'monospace' }}>
+                        <span>{monster.tribe}</span>
+                        <span style={{ color: tierColor }}>{monster.tier ?? 'MINION'}</span>
+                        <span>COST {monster.cost}</span>
+                      </div>
+                    </div>
+                    <div style={{ color: '#c084fc', fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 900, letterSpacing: '0.1em' }}>
+                      BOUND
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={onFinish}
+            style={{
+              marginTop: 14,
+              width: '100%',
+              minHeight: 54,
+              borderRadius: 14,
+              border: '1.5px solid rgba(188,0,251,0.62)',
+              background: 'linear-gradient(135deg, rgba(139,0,255,0.42), rgba(80,0,28,0.34))',
+              color: '#fff',
+              fontFamily: "'Cinzel', serif",
+              fontSize: 14,
+              fontWeight: 900,
+              letterSpacing: '0.08em',
+              boxShadow: '0 0 26px rgba(188,0,251,0.30)',
+            }}
+          >
+            軍団へ戻る
+          </button>
         </div>
       ) : (
         <div
@@ -1301,7 +1411,9 @@ export default function ResultScreen({
               {!skipMode && dropStage === 'revealing' && '鑑定中'}
               {!skipMode && dropStage === 'revealed' && (
                 <>
-                  {allRevealed && currentIndex === normalizedDrops.length - 1 ? '獲得して戻る' : '次の戦利品'}
+                  {allRevealed && currentIndex === normalizedDrops.length - 1
+                    ? hasNecromanceResults ? 'ネクロマンスへ' : '獲得して戻る'
+                    : '次の戦利品'}
                   <ChevronRight size={15} />
                 </>
               )}
