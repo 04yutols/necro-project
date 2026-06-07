@@ -126,7 +126,8 @@ export class GameManager {
           critRate: m.critRate ?? 0, critDmg: m.critDmg ?? 150,
           effectHit: m.effectHit ?? 0, effectRes: m.effectRes ?? 0,
         },
-        resistances: mMaster ? mMaster.resistances || {} : {},
+        resistances: m.resistances ?? mMaster?.resistances ?? {},
+        skillIds: Array.isArray(m.skillIds) ? m.skillIds.filter((id: unknown): id is string => typeof id === 'string') : [],
         spiritCore: m.spiritCore ? {
           id: m.spiritCore.id,
           name: m.spiritCore.name,
@@ -212,6 +213,7 @@ export class GameManager {
             cost: m.cost,
             ...m.stats,
             resistances: m.resistances ?? {},
+            skillIds: m.skillIds ?? [],
           }
         });
       }

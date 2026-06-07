@@ -305,6 +305,50 @@ export async function runMasterDataAudit(): Promise<AuditFinding[]> {
   }
 
   // ---------------------------------------------------------------------------
+  // 3.25 Enemy necromance settings: capture rate, ally stats, and skill refs
+  // ---------------------------------------------------------------------------
+  for (const [enemyKey, enemy] of Object.entries(data.enemies)) {
+    const necromance = enemy['necromance'];
+    if (!isRecord(necromance)) {
+      findings.push({ level: 'FAIL', scope: 'enemies', id: enemyKey, message: 'necromance セクションが存在しません。' });
+      continue;
+    }
+
+    const captureRate = necromance.captureRate;
+    if (typeof captureRate !== 'number' || !Number.isFinite(captureRate) || captureRate < 0 || captureRate > 1) {
+      findings.push({ level: 'FAIL', scope: 'enemies', id: enemyKey, message: 'necromance.captureRate は 0〜1 の数値である必要があります。' });
+    }
+
+    const allyCost = necromance.allyCost;
+    if (!Number.isInteger(allyCost) || Number(allyCost) < 1) {
+      findings.push({ level: 'FAIL', scope: 'enemies', id: enemyKey, message: 'necromance.allyCost は 1 以上の整数である必要があります。' });
+    }
+
+    if (!isRecord(necromance.allyStats)) {
+      findings.push({ level: 'FAIL', scope: 'enemies', id: enemyKey, message: 'necromance.allyStats が存在しません。' });
+    } else {
+      for (const statKey of JOB_STAT_KEYS) {
+        const value = necromance.allyStats[statKey];
+        if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+          findings.push({ level: 'FAIL', scope: 'enemies', id: enemyKey, message: `necromance.allyStats.${statKey} は 0 以上の数値である必要があります。` });
+        }
+      }
+    }
+
+    const necromanceSkillIds = getStringArray(necromance, 'skillIds');
+    if (!Array.isArray(necromance.skillIds)) {
+      findings.push({ level: 'FAIL', scope: 'enemies', id: enemyKey, message: 'necromance.skillIds は配列である必要があります。' });
+    }
+    for (const skillId of necromanceSkillIds) {
+      if (!skillIds.has(skillId)) {
+        findings.push({ level: 'FAIL', scope: 'enemies', id: enemyKey, message: `necromance.skillIds の参照先 "${skillId}" が skills.json に存在しません。` });
+      } else {
+        findings.push({ level: 'PASS', scope: 'enemies', id: enemyKey, message: `ネクロマンススキル参照 "${skillId}" OK` });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // 3.5 Job base stats: each job must define Lv1-100 fixed base stats
   // ---------------------------------------------------------------------------
   const tier1ScoreSamples: number[] = [];
@@ -525,6 +569,19 @@ export async function getDependencies(
               context: `Lv${skillRef.level ?? '?'} 解放`,
             });
           }
+        }
+      }
+      for (const [enemyKey, enemy] of Object.entries(data.enemies)) {
+        const necromance = enemy.necromance as Record<string, unknown> | undefined;
+        const skillIds = Array.isArray(necromance?.skillIds) ? necromance.skillIds : [];
+        if (skillIds.includes(entryKey)) {
+          refs.push({
+            scope: 'enemies',
+            id: enemyKey,
+            label: (enemy.nameJa as string) || enemyKey,
+            href: `/admin/enemies/${enemyKey}`,
+            context: 'ネクロマンス味方化スキル',
+          });
         }
       }
       break;

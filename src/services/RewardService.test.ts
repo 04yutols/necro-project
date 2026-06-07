@@ -256,6 +256,7 @@ describe('RewardService.processStageNecromance', () => {
       name: '霊体騎士',
       cost: 1,
       tier: 'MINION',
+      skillIds: ['skill_necromancer_1'],
     });
   });
 

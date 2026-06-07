@@ -315,6 +315,7 @@ function toMonsterData(row: any): MonsterData {
     cost: row.cost,
     stats: toBaseStats(row),
     resistances: (row.resistances ?? {}) as Resistances,
+    skillIds: Array.isArray(row.skillIds) ? row.skillIds.filter((id: unknown): id is string => typeof id === 'string') : [],
     equippedShardId: row.soulShardId ?? undefined,
     spiritCore: toSpiritCoreData(row.spiritCore),
   };
@@ -771,6 +772,7 @@ export async function processStageResultForUser(
           effectHit: monster.stats.effectHit,
           effectRes: monster.stats.effectRes,
           resistances: (monster.resistances ?? {}) as Prisma.InputJsonValue,
+          skillIds: (monster.skillIds ?? []) as Prisma.InputJsonValue,
         },
       });
     }

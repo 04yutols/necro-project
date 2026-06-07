@@ -194,6 +194,7 @@ describe('GameManager.processStageResult', () => {
         masterId: 'grave_soldier',
         name: '霊体騎士',
       });
+      expect(saved[0].skillIds).toEqual(['skill_necromancer_1']);
     } finally {
       randomSpy.mockRestore();
     }

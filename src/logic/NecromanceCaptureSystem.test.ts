@@ -1,6 +1,7 @@
 import type { EnemyData, StageData } from '../types/game';
 import {
   createNecromancedMonster,
+  getNecromanceRateForEnemy,
   getNecromanceRateForTier,
   getOwnedMonsterMasterIds,
   getStageNecromanceCandidateEnemyIds,
@@ -108,5 +109,33 @@ describe('NecromanceCaptureSystem', () => {
     expect(monster.resistances).toEqual(enemies.boss_a.resistances);
     expect(monster.weaknesses).toEqual(['LIGHT']);
     expect(monster.tribe).toBe('DRAGON');
+  });
+
+  test('enemy necromance config overrides rate, ally cost, stats, and skills', () => {
+    const customEnemy: EnemyData = {
+      ...enemies.elite_a,
+      necromance: {
+        captureRate: 0.25,
+        allyCost: 5,
+        allyStats: { hp: 44, atk: 9, def: 8, spd: 77, critRate: 3, critDmg: 160, effectHit: 6, effectRes: 4 },
+        skillIds: ['skill_necromancer_grave_command'],
+      },
+    };
+
+    expect(getNecromanceRateForEnemy(customEnemy)).toBe(0.25);
+    const monster = createNecromancedMonster(customEnemy, (enemyId) => `custom-${enemyId}`);
+
+    expect(monster).toMatchObject({
+      id: 'custom-elite_a',
+      masterId: 'elite_a',
+      cost: 5,
+      skillIds: ['skill_necromancer_grave_command'],
+      stats: customEnemy.necromance?.allyStats,
+    });
+  });
+
+  test('custom capture rate is clamped to 0-1', () => {
+    expect(getNecromanceRateForEnemy({ ...enemies.minion_a, necromance: { captureRate: 2 } })).toBe(1);
+    expect(getNecromanceRateForEnemy({ ...enemies.minion_a, necromance: { captureRate: -0.5 } })).toBe(0);
   });
 });

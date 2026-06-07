@@ -312,6 +312,7 @@ export interface MonsterData {
   cost: number;
   stats: BaseStats;
   resistances: Resistances;
+  skillIds?: string[]; // 味方化後に保持するスキルID
   // キャラと同じ装備体系 (GDD-007) — 未装備時は undefined（空扱い）
   equipment?: EquipmentSlots;                          // 武器スロット（weapon のみ使用）
   equippedResidues?: (AbyssalResidueData | null)[];    // 深淵の残滓 5スロット
@@ -343,6 +344,13 @@ export interface BossGimmick {
   value?: number;
 }
 
+export interface EnemyNecromanceConfig {
+  captureRate?: number;
+  allyCost?: number;
+  allyStats?: BaseStats;
+  skillIds?: string[];
+}
+
 export interface EnemyData {
   id: string;
   name: string;
@@ -356,6 +364,7 @@ export interface EnemyData {
   shieldHp?: number;
   maxShieldHp?: number;
   gimmicks?: BossGimmick[];
+  necromance?: EnemyNecromanceConfig;
   dropTable: DropEntry[];
   battle?: {
     color: string;

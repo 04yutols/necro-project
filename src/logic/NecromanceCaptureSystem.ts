@@ -1,4 +1,4 @@
-import type { EnemyData, EnemyTier, MonsterData, StageData } from '../types/game';
+import type { BaseStats, EnemyData, EnemyTier, MonsterData, StageData } from '../types/game';
 
 export const NECROMANCE_RATE_BY_TIER: Record<EnemyTier, number> = {
   MINION: 0.12,
@@ -51,6 +51,34 @@ export function getNecromanceRateForTier(tier: EnemyTier): number {
   return NECROMANCE_RATE_BY_TIER[tier] ?? 0;
 }
 
+function clampRate(rate: number): number {
+  return Math.max(0, Math.min(1, rate));
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function resolveAllyStats(enemy: EnemyData): BaseStats {
+  return {
+    ...enemy.stats,
+    ...(enemy.necromance?.allyStats ?? {}),
+  };
+}
+
+export function getNecromanceRateForEnemy(enemy: EnemyData): number {
+  const customRate = enemy.necromance?.captureRate;
+  return clampRate(isFiniteNumber(customRate) ? customRate : getNecromanceRateForTier(enemy.tier));
+}
+
+export function getNecromanceCostForEnemy(enemy: EnemyData): number {
+  const customCost = enemy.necromance?.allyCost;
+  if (isFiniteNumber(customCost) && customCost >= 1) {
+    return Math.floor(customCost);
+  }
+  return NECROMANCE_COST_BY_TIER[enemy.tier] ?? 1;
+}
+
 export function getStageNecromanceCandidateEnemyIds(stage: Pick<StageData, 'waves'>): string[] {
   const seen = new Set<string>();
   const ids: string[] = [];
@@ -72,9 +100,10 @@ export function createNecromancedMonster(enemy: EnemyData, idFactory: (enemyId: 
     masterId: enemy.id,
     name: enemy.nameJa || enemy.name,
     tribe: enemy.tribe,
-    cost: NECROMANCE_COST_BY_TIER[enemy.tier] ?? 1,
-    stats: { ...enemy.stats },
+    cost: getNecromanceCostForEnemy(enemy),
+    stats: resolveAllyStats(enemy),
     resistances: { ...enemy.resistances },
+    skillIds: [...(enemy.necromance?.skillIds ?? [])],
     tier: enemy.tier,
     weaknesses: [...(enemy.weaknesses ?? [])],
   };
@@ -101,7 +130,7 @@ export function rollStageNecromance({
     const enemy = enemies[enemyId];
     if (!enemy) continue;
 
-    const rate = getNecromanceRateForTier(enemy.tier);
+    const rate = getNecromanceRateForEnemy(enemy);
     const roll = rng();
     if (roll >= rate) continue;
 
