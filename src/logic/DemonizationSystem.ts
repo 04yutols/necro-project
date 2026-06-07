@@ -5,6 +5,7 @@ export const DEMON_ACTION_LIMIT = 3;
 
 export type DemonActivationPhase =
   | 'playerTurn'
+  | 'monsterTurn'
   | 'skillMenu'
   | 'itemMenu'
   | 'animating'

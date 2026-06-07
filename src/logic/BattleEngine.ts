@@ -159,18 +159,42 @@ export class BattleEngine {
     if (!playerActionSkipped) {
       this.processPlayerAction(actionType, target, skillId, turnEnemies);
       if (this.isPlayerDefeated()) return this.logs;
-
-      // 4. 軍団の追撃・シナジー (GDD-005)
-      this.processMonsterActions(target, turnEnemies);
     }
 
-    // 5. 敵の反撃 (docs/設計書/26)
+    // 4. 敵の反撃 (docs/設計書/26)
     this.processEnemyCounterAttack(target);
     if (this.isPlayerDefeated()) return this.logs;
 
-    // 6. ターン・WAVE更新 (GDD-002)
+    // 5. ターン・WAVE更新 (GDD-002)
     this.updateState();
 
+    return this.logs;
+  }
+
+  /**
+   * 味方モンスターの独立ターン行動。
+   * 魔神化は主人公専用のため適用しない。
+   */
+  public simulateMonsterAction(
+    monsterId: string,
+    target: MonsterData,
+    enemyCandidates?: MonsterData[],
+  ): BattleLog[] {
+    this.logs = [];
+    const monster = this.state.monsters.find(candidate => candidate?.id === monsterId) ?? null;
+    if (!monster) return this.logs;
+    if ((this.monsterCurrentHp[monster.id] ?? monster.stats.hp) <= 0) return this.logs;
+    if (this.isPlayerDefeated()) {
+      this.recordPlayerDefeat('SYSTEM', `${this.state.player.name}はすでに戦闘不能。`);
+      return this.logs;
+    }
+
+    const turnEnemies = this.resolveEnemyCandidates(target, enemyCandidates);
+    this.activeEnemyCandidates = turnEnemies;
+    this.processMonsterAction(monster, target, turnEnemies);
+    this.processEnemyCounterAttack(target);
+    if (this.isPlayerDefeated()) return this.logs;
+    this.updateState();
     return this.logs;
   }
 
@@ -553,34 +577,29 @@ export class BattleEngine {
     }
   }
 
-  private processMonsterActions(preferredTarget: MonsterData, enemyCandidates: MonsterData[] = [preferredTarget]): void {
-    const { player, monsters } = this.state;
+  private processMonsterAction(monster: MonsterData, preferredTarget: MonsterData, enemyCandidates: MonsterData[] = [preferredTarget]): void {
+    const { player } = this.state;
 
-    let followUpIndex = 0;
-    monsters.forEach(monster => {
-      if (!monster) return;
-      const target = this.selectFollowUpTarget(preferredTarget, enemyCandidates, followUpIndex);
-      if (!target) return;
-      followUpIndex += 1;
+    const target = this.selectFollowUpTarget(preferredTarget, enemyCandidates, 0);
+    if (!target) return;
 
-      const attackProfile = calculateMonsterAttackProfile(monster, { awakened: player.isAwakened });
-      const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(
-        attackProfile.stats,
-        {},
-        target.stats,
-        target.resistances,
-        1.0,
-        attackProfile.element,
-      );
-      const shieldResult = this.applySpiritualShield(target, damage, attackProfile.element);
+    const attackProfile = calculateMonsterAttackProfile(monster, { awakened: player.isAwakened });
+    const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(
+      attackProfile.stats,
+      {},
+      target.stats,
+      target.resistances,
+      1.0,
+      attackProfile.element,
+    );
+    const shieldResult = this.applySpiritualShield(target, damage, attackProfile.element);
 
-      this.applyDamageToEnemy(target, shieldResult.damage);
+    this.applyDamageToEnemy(target, shieldResult.damage);
 
-      const desc = shieldResult.wasShielded
-        ? `${monster.name}の追撃！ 霊的防壁に阻まれた。`
-        : `${monster.name}の追撃！${attackProfile.spiritCoreName ? ` 霊核「${attackProfile.spiritCoreName}」が共鳴。` : ''}`;
-      this.addLog('MONSTER_ATTACK', monster.name, target.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, attackProfile.element, 'STRIKE');
-    });
+    const desc = shieldResult.wasShielded
+      ? `${monster.name}へ命令。霊的防壁に阻まれた。`
+      : `${monster.name}へ攻撃命令！${attackProfile.spiritCoreName ? ` 霊核「${attackProfile.spiritCoreName}」が共鳴。` : ''}`;
+    this.addLog('MONSTER_ATTACK', monster.name, target.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, attackProfile.element, 'STRIKE');
   }
 
   private resolveEnemyCandidates(primaryTarget: MonsterData, enemyCandidates?: MonsterData[]): MonsterData[] {

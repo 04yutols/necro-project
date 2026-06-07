@@ -601,7 +601,7 @@ describe('BattleEngine', () => {
     expect(summoned.every(enemy => engine.getEnemyCurrentHp(enemy.id) === enemy.stats.hp)).toBe(true);
   });
 
-  test('summoned minions join later player AoE and follow-up target candidates', () => {
+  test('summoned minions join later player AoE while monster attacks wait for commands', () => {
     const player = createPlayer(
       { hp: 500, atk: 12, def: 999, critRate: 0 },
       { currentEnergy: 100, maxEnergy: 100 },
@@ -635,10 +635,17 @@ describe('BattleEngine', () => {
       .map(log => log.targetName);
 
     expect(skillTargets).toEqual(['Bloodmire Queen', '血沼の蛭', '腐敗猟犬']);
-    expect(followUpTargets).toEqual(['Bloodmire Queen', '血沼の蛭']);
+    expect(followUpTargets).toEqual([]);
+
+    const monsterLogs = engine.simulateMonsterAction(ally1.id, boss, [boss, ...summoned]);
+    const commandAttack = monsterLogs.find(log => log.action === 'MONSTER_ATTACK');
+    expect(commandAttack).toMatchObject({
+      actorName: ally1.name,
+      targetName: 'Bloodmire Queen',
+    });
   });
 
-  test('party follow-ups spread across alive enemy candidates', () => {
+  test('player actions no longer trigger party follow-ups', () => {
     const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
     const enemyA = createEnemy({ hp: 500, atk: 1, def: 0 });
     const enemyB = createEnemy({ hp: 500, atk: 1, def: 0 });
@@ -657,33 +664,33 @@ describe('BattleEngine', () => {
       .simulateAction('PHYSICAL_ATTACK', enemyA, undefined, [enemyA, enemyB, enemyC]);
     const followUps = logs.filter(log => log.action === 'MONSTER_ATTACK');
 
-    expect(followUps.map(log => log.targetName)).toEqual(['Enemy-A', 'Enemy-B', 'Enemy-C']);
+    expect(followUps).toHaveLength(0);
   });
 
-  test('party follow-ups retarget alive enemies after the preferred target falls', () => {
+  test('commanded monster action retargets alive enemies after the preferred target falls', () => {
     const player = createPlayer({ hp: 500, atk: 1000, def: 999, critRate: 0 });
     const defeatedTarget = createEnemy({ hp: 20, atk: 1, def: 0 });
     const aliveTarget = createEnemy({ hp: 500, atk: 1, def: 0 });
     const ally1 = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
-    const ally2 = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
     defeatedTarget.name = 'Fallen Target';
     aliveTarget.name = 'Alive Target';
 
-    const engine = new BattleEngine(player, [ally1, ally2]);
-    const logs = engine.simulateAction(
+    const engine = new BattleEngine(player, [ally1]);
+    engine.simulateAction(
       'PHYSICAL_ATTACK',
       defeatedTarget,
       undefined,
       [defeatedTarget, aliveTarget],
     );
+    const logs = engine.simulateMonsterAction(ally1.id, defeatedTarget, [defeatedTarget, aliveTarget]);
     const followUps = logs.filter(log => log.action === 'MONSTER_ATTACK');
 
     expect(engine.getEnemyCurrentHp(defeatedTarget.id)).toBe(0);
-    expect(followUps).toHaveLength(2);
+    expect(followUps).toHaveLength(1);
     expect(followUps.every(log => log.targetName === 'Alive Target')).toBe(true);
   });
 
-  test('SpiritCore atkMultiplier increases party monster follow-up damage', () => {
+  test('SpiritCore atkMultiplier increases commanded monster turn damage', () => {
     const player: CharacterData = {
       ...mockPlayer,
       stats: { ...mockPlayer.stats, atk: 1, critRate: 0 },
@@ -714,8 +721,8 @@ describe('BattleEngine', () => {
       },
     };
 
-    const baseLogs = new BattleEngine({ ...player }, [baseMonster]).simulateAction('PHYSICAL_ATTACK', targetBase);
-    const coreLogs = new BattleEngine({ ...player }, [coreMonster]).simulateAction('PHYSICAL_ATTACK', targetCore);
+    const baseLogs = new BattleEngine({ ...player }, [baseMonster]).simulateMonsterAction(baseMonster.id, targetBase);
+    const coreLogs = new BattleEngine({ ...player }, [coreMonster]).simulateMonsterAction(coreMonster.id, targetCore);
     const baseDamage = baseLogs.find(log => log.action === 'MONSTER_ATTACK')?.damage ?? 0;
     const coreDamage = coreLogs.find(log => log.action === 'MONSTER_ATTACK')?.damage ?? 0;
 
