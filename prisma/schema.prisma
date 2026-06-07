@@ -150,6 +150,10 @@ model Character {
   equippedResidue2   AbyssalResidue? @relation("ResidueSlot2", fields: [equippedResidue2Id], references: [id], onDelete: SetNull)
   equippedResidue3   AbyssalResidue? @relation("ResidueSlot3", fields: [equippedResidue3Id], references: [id], onDelete: SetNull)
   equippedResidue4   AbyssalResidue? @relation("ResidueSlot4", fields: [equippedResidue4Id], references: [id], onDelete: SetNull)
+
+  @@index([partySlot0Id])
+  @@index([partySlot1Id])
+  @@index([partySlot2Id])
 }
 
 model Job {
@@ -270,6 +274,7 @@ model Monster {
   effectHit   Float   @default(0.0)
   effectRes   Float   @default(0.0)
   resistances  Json    @default("{}")
+  skillIds     Json    @default("[]")
 
   soulShardId  String?
   soulShard    SoulShard?  @relation(fields: [soulShardId],  references: [id])
@@ -278,6 +283,8 @@ model Monster {
   partySlot0Of Character[] @relation("PartySlot0")
   partySlot1Of Character[] @relation("PartySlot1")
   partySlot2Of Character[] @relation("PartySlot2")
+
+  @@index([characterId])
 }
 
 model SoulShard {

@@ -309,11 +309,13 @@ function toSoulShardData(row: {
 function toMonsterData(row: any): MonsterData {
   return {
     id: row.id,
+    masterId: row.masterId ?? undefined,
     name: row.name,
     tribe: row.tribe,
     cost: row.cost,
     stats: toBaseStats(row),
     resistances: (row.resistances ?? {}) as Resistances,
+    skillIds: Array.isArray(row.skillIds) ? row.skillIds.filter((id: unknown): id is string => typeof id === 'string') : [],
     equippedShardId: row.soulShardId ?? undefined,
     spiritCore: toSpiritCoreData(row.spiritCore),
   };
@@ -616,8 +618,14 @@ export async function processStageResultForUser(
   const expGain  = svc.calculateExp(stage.rewards.baseExp, playerForExp);
   const goldGain = stage.rewards.baseGold;
 
+  const ownedMonsterMasterIds = (await prisma.monster.findMany({
+    where: { characterId: char.id },
+    select: { masterId: true, id: true },
+  })).map(monster => monster.masterId ?? monster.id);
+
   // ドロップ抽選（サーバー側で確定）
   const dropResult = svc.processStageDropTable(stage, char.clearedStages ?? []);
+  dropResult.monsters.push(...svc.processStageNecromance(stage, ownedMonsterMasterIds));
   const bestResidueScore = Math.max(0, ...dropResult.residues.map(residue => calculateResidueScore(residue)));
   const playerName = getPlayerDisplayName(authorizedUser);
 
@@ -749,7 +757,8 @@ export async function processStageResultForUser(
     for (const monster of dropResult.monsters) {
       await tx.monster.create({
         data: {
-          masterId: monster.id,
+          id: monster.id,
+          masterId: monster.masterId ?? monster.id,
           characterId: char.id,
           name: monster.name,
           tribe: monster.tribe,
@@ -763,6 +772,7 @@ export async function processStageResultForUser(
           effectHit: monster.stats.effectHit,
           effectRes: monster.stats.effectRes,
           resistances: (monster.resistances ?? {}) as Prisma.InputJsonValue,
+          skillIds: (monster.skillIds ?? []) as Prisma.InputJsonValue,
         },
       });
     }

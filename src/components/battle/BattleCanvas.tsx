@@ -19,9 +19,10 @@ import { calculateBattleDamage, type BattleDamageResult } from '../../logic/Batt
 import { calculateInitialEnergy } from '../../logic/EnergySystem';
 import { canStartPlayerAction, shouldInitializeBattle, type BattlePhase } from '../../logic/BattleFlowSystem';
 import { calculateMonsterAttackProfile } from '../../logic/MonsterAttackSystem';
+import { getOwnedMonsterMasterIds } from '../../logic/NecromanceCaptureSystem';
 import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
 import { applyAreaGimmickToPlayer, getAreaGimmickMeta, resolveStageAreaGimmick } from '../../logic/AreaGimmickSystem';
-import { buildTurnOrderPreview, calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilPlayer, type TurnOrderActor, type TurnOrderEntry } from '../../logic/TurnOrderSystem';
+import { buildTurnOrderPreview, calculateActionDelay, calculateInitialActionValue, scheduleEnemiesUntilAlly, type TurnOrderActor, type TurnOrderEntry } from '../../logic/TurnOrderSystem';
 import {
   bossGimmickKey,
   calculateBossAvDelay,
@@ -124,6 +125,7 @@ type BattleWave = {
 
 type BattleAvState = {
   player: number;
+  allies: Record<string, number>;
   enemies: Record<number, number>;
 };
 
@@ -506,6 +508,10 @@ function buildLocalStageResult(stage?: StageData, clearedStages: readonly string
   const dropResult = stage
     ? REWARD_SERVICE.processStageDropTable(stage, clearedStages)
     : REWARD_SERVICE.processDropTable([]);
+  if (stage) {
+    const ownedMonsterMasterIds = getOwnedMonsterMasterIds(useGameStore.getState().inventoryMonsters);
+    dropResult.monsters.push(...REWARD_SERVICE.processStageNecromance(stage, ownedMonsterMasterIds));
+  }
   return {
     dropResult,
     expGain: stage?.rewards.baseExp ?? 0,
@@ -1114,8 +1120,9 @@ function TurnOrderStrip({ order }: { order: TurnOrderEntry[] }) {
       {order.slice(0, 5).map((actor, index) => {
         const isCurrent = index === 0;
         const isPlayer = actor.side === 'PLAYER';
-        const color = isPlayer ? '#BC00FB' : '#ef4444';
-        const label = isPlayer ? '勇' : actor.name.slice(0, 1);
+        const isAlly = actor.side === 'ALLY';
+        const color = isPlayer ? '#BC00FB' : isAlly ? '#06b6d4' : '#ef4444';
+        const label = isPlayer ? '勇' : isAlly ? '使' : actor.name.slice(0, 1);
         const actorName = isPlayer ? '骸骨騎士' : actor.name;
         return (
           <div
@@ -1134,6 +1141,8 @@ function TurnOrderStrip({ order }: { order: TurnOrderEntry[] }) {
               borderRadius: 6,
               background: isPlayer
                 ? `linear-gradient(135deg, ${color}2E, rgba(5,1,12,0.9))`
+                : isAlly
+                  ? 'linear-gradient(135deg, rgba(6,182,212,0.22), rgba(5,1,12,0.9))'
                 : 'linear-gradient(135deg, rgba(239,68,68,0.2), rgba(5,1,12,0.9))',
               border: `1px solid ${isCurrent ? color : `${color}66`}`,
               boxShadow: isCurrent ? `0 0 12px ${color}66, inset 0 1px 0 rgba(255,255,255,0.08)` : 'none',
@@ -1826,7 +1835,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const {
     player, party, equippedResidueSlots, inventoryItems,
     addExp, addGold, addClearedStage, updateEnergy, updateEnergyBy, restoreEnergy,
-    addInventoryItems, addAbyssalResidues, addResidueMaterials,
+    addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials,
     consumeInventoryItem,
   } = useGameStore();
   const sfx = useSoundEffects();
@@ -1856,6 +1865,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const [demonActionsRemaining, setDemonActionsRemaining] = useState(0);
   const [demonUltimateUsed, setDemonUltimateUsed] = useState(false);
   const [playerStatusEffects, setPlayerStatusEffects] = useState<StatusEffect[]>([]);
+  const [activeMonsterTurnId, setActiveMonsterTurnId] = useState<string | null>(null);
   const [auto, setAuto] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [log, setLog] = useState([`戦闘開始！${battleWaves[0].title}へ侵攻する。`, `${battleWaves[0].label} 開始。骸骨騎士のターン。`]);
@@ -1873,6 +1883,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     goldGained: number;
     itemsGained: any[];
     monstersGained: string[];
+    necromancedMonsters: MonsterData[];
     isPurplePillar: boolean;
     wavesCleared: number;
     totalWaves: number;
@@ -1891,7 +1902,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const initializedBattleKeyRef = useRef<string | null>(null);
   const phaseRef = useRef<BattlePhase>('playerTurn');
   const playerActionLockRef = useRef(false);
-  const battleAvRef = useRef<BattleAvState>({ player: 0, enemies: {} });
+  const battleAvRef = useRef<BattleAvState>({ player: 0, allies: {}, enemies: {} });
   const bossGimmickFiredRef = useRef<Set<string>>(new Set());
 
   // Build battle party from store
@@ -1900,13 +1911,13 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       id: 'player', name: player?.name ?? '骸骨騎士', icon: '💀',
       hp: playerHp, maxHp: playerMaxHp,
       mp: player?.currentEnergy ?? 0, maxMp: player?.maxEnergy ?? 100,
-      color: '#8A2BE2', active: true,
+      color: '#8A2BE2', active: phase === 'playerTurn',
     },
     ...party.slice(0, 3).map((m, i): BattlePartyMember => m ? {
       id: m.id, name: m.name, icon: m.tribe === 'UNDEAD' ? '🧟' : '👻',
       hp: m.stats?.hp ?? 580, maxHp: (m.stats as any)?.maxHp ?? m.stats?.hp ?? 580,
       mp: 0, maxMp: 100,
-      color: ['#f97316','#06b6d4','#a78bfa'][i], active: false,
+      color: ['#f97316','#06b6d4','#a78bfa'][i], active: activeMonsterTurnId === m.id,
       formation: FORMATION_BADGES[i],
     } : {
       id: `slot_${i}`, name: `使役魔${i+1}`, icon: '💀',
@@ -1921,6 +1932,13 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   const soulFull = soul >= 100;
   const demonizeReady = canActivateDemonModeInPhase(soul, demonized, phase);
   const demonizeSublabel = soulFull ? (phase === 'enemyTurn' ? 'INTERRUPT' : 'READY') : `SOUL ${Math.round(soul)}%`;
+  const phaseMeta = phase === 'playerTurn'
+    ? { label: '自ターン', color: '#22c55e' }
+    : phase === 'monsterTurn'
+      ? { label: '使役ターン', color: '#06b6d4' }
+      : phase === 'enemyTurn'
+        ? { label: '敵ターン', color: '#ef4444' }
+        : { label: '行動中', color: '#f59e0b' };
   const currentWave = battleWaves[waveIndex] ?? battleWaves[0];
   const currentJobId = player?.currentJobId ?? 'warrior';
   const currentJobData = JOBS[currentJobId] ?? JOBS.warrior;
@@ -1937,6 +1955,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     [inventoryItems],
   );
   const demonUltimateSkill = toDemonUltimateSkill(demonForm);
+  const activeMonster = activeMonsterTurnId
+    ? party.find((monster): monster is MonsterData => Boolean(monster && monster.id === activeMonsterTurnId)) ?? null
+    : null;
 
   const addLog = useCallback((line: string) => setLog(prev => [...prev, line]), []);
 
@@ -1969,15 +1990,41 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     return Math.max(1, toEnemyBattleStats(enemy).spd);
   }
 
+  function getMonsterActionSpd(monster: MonsterData) {
+    return Math.max(1, Math.round(monster.stats?.spd ?? 80));
+  }
+
+  function getActivePartyMonsters() {
+    return party.slice(0, 3).filter((monster): monster is MonsterData => Boolean(monster));
+  }
+
   function createInitialAvState(nextEnemies: EnemyState[]): BattleAvState {
     return {
       player: 0,
+      allies: Object.fromEntries(
+        getActivePartyMonsters()
+          .map((monster, index) => [monster.id, calculateInitialActionValue(getMonsterActionSpd(monster), index + 1)]),
+      ),
       enemies: Object.fromEntries(
         nextEnemies
           .filter((enemy) => enemy.hp > 0)
           .map((enemy) => [enemy.id, calculateInitialActionValue(getEnemyActionSpd(enemy))]),
       ),
     };
+  }
+
+  function buildAllyAvActors(avState: BattleAvState = battleAvRef.current): TurnOrderActor[] {
+    return getActivePartyMonsters().map((monster, index) => {
+      const spd = getMonsterActionSpd(monster);
+      return {
+        id: monster.id,
+        name: monster.name,
+        side: 'ALLY' as const,
+        spd,
+        currentAv: avState.allies[monster.id] ?? calculateInitialActionValue(spd, index + 1),
+        tieBreaker: index + 1,
+      };
+    });
   }
 
   function buildEnemyAvActors(nextEnemies: EnemyState[], avState: BattleAvState = battleAvRef.current): TurnOrderActor[] {
@@ -2008,7 +2055,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       currentAv: avState.player,
       tieBreaker: 0,
     };
-    return buildTurnOrderPreview([playerActor, ...buildEnemyAvActors(nextEnemies, avState)]);
+    return buildTurnOrderPreview([playerActor, ...buildAllyAvActors(avState), ...buildEnemyAvActors(nextEnemies, avState)]);
   }
 
   function commitBattleAvState(nextState: BattleAvState, nextEnemies: EnemyState[] = enemiesRef.current) {
@@ -2020,9 +2067,10 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setTurnOrderPreview(buildCanvasTurnOrderPreview(nextEnemies));
   }
 
-  function persistAvSchedule(playerActor: TurnOrderActor, enemyActors: TurnOrderActor[]) {
+  function persistAvSchedule(playerActor: TurnOrderActor, allyActors: TurnOrderActor[], enemyActors: TurnOrderActor[]) {
     battleAvRef.current = {
       player: playerActor.currentAv,
+      allies: Object.fromEntries(allyActors.map((ally) => [ally.id, ally.currentAv])),
       enemies: Object.fromEntries(enemyActors.map((enemy) => [Number(enemy.id), enemy.currentAv])),
     };
   }
@@ -2198,6 +2246,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     waveIndexRef.current = 0;
     enemiesRef.current = firstEnemies;
     commitBattleAvState(createInitialAvState(firstEnemies), firstEnemies);
+    setActiveMonsterTurnId(null);
     bossGimmickFiredRef.current = new Set();
     playerHpRef.current = playerMaxHp;
     setPlayerHp(playerMaxHp);
@@ -2272,6 +2321,19 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         }).then(({ dropResult, expGain, goldGain }) => {
           // ローカル実行時のストア更新
           addInventoryItems([...dropResult.weapons, ...dropResult.consumables]);
+          if (dropResult.monsters.length > 0) {
+            const latestInventory = useGameStore.getState().inventoryMonsters;
+            const owned = new Set(getOwnedMonsterMasterIds(latestInventory));
+            const newMonsters = dropResult.monsters.filter((monster) => {
+              const key = monster.masterId ?? monster.id;
+              if (owned.has(key)) return false;
+              owned.add(key);
+              return true;
+            });
+            if (newMonsters.length > 0) {
+              setInventoryMonsters([...latestInventory, ...newMonsters]);
+            }
+          }
           addAbyssalResidues(dropResult.residues);
           addResidueMaterials(dropResult.materials);
           addExp(expGain);
@@ -2284,7 +2346,8 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
             expGained:      expGain,
             goldGained:     goldGain,
             itemsGained:    convertDropToResultItems(dropResult, player?.name),
-            monstersGained: isBoss ? [`霊核: ${bossName}`] : [],
+            monstersGained: dropResult.monsters.map(monster => `ネクロマンス: ${monster.name}`),
+            necromancedMonsters: dropResult.monsters,
             isPurplePillar: dropResult.weapons.some((w: { rarity: string }) => w.rarity === 'SSR' || w.rarity === 'UR'),
             wavesCleared:   totalWaves,
             totalWaves,
@@ -2296,7 +2359,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
           restoreEnergy();
           setBattleResult({
             isVictory: true, expGained: 0, goldGained: 0,
-            itemsGained: [], monstersGained: [], isPurplePillar: false,
+            itemsGained: [], monstersGained: [], necromancedMonsters: [], isPurplePillar: false,
             wavesCleared: totalWaves, totalWaves, clearTime,
           });
           setShowResult(true);
@@ -2308,6 +2371,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       const nextEnemies = cloneEnemies(nextWave.enemies);
       enemiesRef.current = nextEnemies;
       commitBattleAvState(createInitialAvState(nextEnemies), nextEnemies);
+      setActiveMonsterTurnId(null);
       bossGimmickFiredRef.current = new Set();
       setWaveIndex(nextIndex);
       setEnemies(nextEnemies);
@@ -2320,7 +2384,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         window.setTimeout(() => setFlashColor(null), 600);
       }
     }, battleDelay(1200, 520));
-  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, player?.name, restoreEnergy, sfx, stageId]);
+  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, player?.name, restoreEnergy, sfx, stageId]);
 
   function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
     const id = ++floatId;
@@ -2405,56 +2469,6 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       element,
       synergyBonus: battleSynergyBonus,
     });
-  }
-
-  function getLiveFollowUpTargetId(preferredTargetId: number, followUpIndex: number): number | null {
-    const aliveEnemies = enemiesRef.current.filter(enemy => enemy.hp > 0);
-    const preferred = aliveEnemies.find(enemy => enemy.id === preferredTargetId);
-    const orderedTargets = preferred
-      ? [preferred, ...aliveEnemies.filter(enemy => enemy.id !== preferredTargetId)]
-      : aliveEnemies;
-    if (orderedTargets.length === 0) return null;
-    return orderedTargets[followUpIndex % orderedTargets.length]?.id ?? null;
-  }
-
-  function runPartyFollowUps(preferredTargetId: number): number {
-    const activeMonsters = party
-      .slice(0, 3)
-      .filter((monster): monster is MonsterData => Boolean(monster));
-    if (activeMonsters.length === 0) return 0;
-
-    let totalDamage = 0;
-    let followUpIndex = 0;
-    activeMonsters.forEach((monster, index) => {
-      const targetId = getLiveFollowUpTargetId(preferredTargetId, followUpIndex);
-      if (targetId === null) return;
-      const target = enemiesRef.current.find(enemy => enemy.id === targetId);
-      if (!target) return;
-      followUpIndex += 1;
-
-      const attackProfile = calculateMonsterAttackProfile(monster, { awakened: Boolean(player?.isAwakened) });
-      const result = calculateBattleDamage({
-        attackerStats: attackProfile.stats,
-        attackerElementBoosts: {},
-        defenderStats: toEnemyBattleStats(target),
-        defenderResistances: target.resistances ?? {},
-        powerMultiplier: 1.0,
-        element: attackProfile.element,
-        synergyBonus: battleSynergyBonus,
-      });
-      const colors = ['#f97316', '#06b6d4', '#a78bfa'];
-      const actualDamage = damageEnemy(targetId, result.damage, {
-        color: colors[index] ?? '#d8b4fe',
-        element: attackProfile.element,
-        crit: result.isCritical,
-        isWeakness: result.isWeakness,
-        isResisted: result.isResisted,
-      });
-      totalDamage += actualDamage;
-      addLog(`${monster.name}の追撃！${attackProfile.spiritCoreName ? ` 霊核「${attackProfile.spiritCoreName}」が共鳴。` : ''} ${target.name}に ${actualDamage}ダメージ！`);
-    });
-
-    return totalDamage;
   }
 
   function damageEnemy(
@@ -2732,6 +2746,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       goldGained: 0,
       itemsGained: [],
       monstersGained: [],
+      necromancedMonsters: [],
       isPurplePillar: false,
       wavesCleared: waveIndexRef.current,
       totalWaves: battleWaves.length,
@@ -2773,6 +2788,23 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
     setTimeout(() => runEnemyTurn(demonFormForEnemyTurn), speedMs * 0.25);
   }
 
+  function endMonsterTurn(monster: MonsterData) {
+    if (enemiesRef.current.every(e => e.hp <= 0)) {
+      resolveWaveClear();
+      return;
+    }
+    const nextAllies = {
+      ...battleAvRef.current.allies,
+      [monster.id]: (battleAvRef.current.allies[monster.id] ?? 0) + calculateActionDelay(getMonsterActionSpd(monster)),
+    };
+    setActiveMonsterTurnId(null);
+    commitBattleAvState({
+      ...battleAvRef.current,
+      allies: nextAllies,
+    });
+    setTimeout(() => runEnemyTurn(demonized ? demonForm : null), speedMs * 0.25);
+  }
+
   function runEnemyTurn(activeDemonForm: DemonFormData | null = demonized ? demonForm : null) {
     setBattlePhase('enemyTurn');
     const turnToken = ++enemyTurnSerialRef.current;
@@ -2795,13 +2827,15 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       currentAv: battleAvRef.current.player,
       tieBreaker: 0,
     };
+    const allyActors = buildAllyAvActors();
     const enemyActors = buildEnemyAvActors(statusPhase.alive);
-    const schedule = scheduleEnemiesUntilPlayer({
+    const schedule = scheduleEnemiesUntilAlly({
       player: playerActor,
+      allies: allyActors,
       enemies: enemyActors,
       skippedEnemyIds: new Set(Array.from(statusPhase.skippedIds).map(String)),
     });
-    persistAvSchedule(schedule.player, schedule.enemies);
+    persistAvSchedule(schedule.player, schedule.allies, schedule.enemies);
     setTurnOrderPreview(schedule.orderPreview);
 
     const orderText = formatAvOrder(schedule.orderPreview);
@@ -2839,14 +2873,22 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       }, delay);
     });
     if (scheduledEnemies.length === 0 && schedule.skippedEnemyTurns.length === 0) {
-      addLog('SPD差で敵の行動前に骸骨騎士へ手番が戻る。');
+      const nextName = schedule.nextAlly.side === 'ALLY' ? schedule.nextAlly.name : '骸骨騎士';
+      addLog(`SPD差で敵の行動前に${nextName}へ手番が戻る。`);
     }
     setTimeout(() => {
       if (turnToken !== enemyTurnSerialRef.current) return;
       unlockPlayerAction();
-      setBattlePhase('playerTurn');
       refreshTurnOrderPreview();
-      addLog('骸骨騎士のターン。コマンドを選択しろ。');
+      if (schedule.nextAlly.side === 'ALLY') {
+        setActiveMonsterTurnId(schedule.nextAlly.id);
+        setBattlePhase('monsterTurn');
+        addLog(`${schedule.nextAlly.name}のターン。命令を選択しろ。`);
+      } else {
+        setActiveMonsterTurnId(null);
+        setBattlePhase('playerTurn');
+        addLog('骸骨騎士のターン。コマンドを選択しろ。');
+      }
     }, delay + speedMs * 0.28);
   }
 
@@ -2891,7 +2933,6 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
       setTimeout(() => {
         addLog(`${enemy?.name}に 合計${totalDamage}ダメージ！`);
         applyAilmentToEnemy(tid, { element: attackElement, attackType: baseAttackType });
-        runPartyFollowUps(tid);
         if (demonized) {
           applyDemonRiskFeedback(baseAttackType);
         }
@@ -2973,10 +3014,54 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         applyDemonRiskFeedback(skill.attackType);
       }
       setTimeout(() => {
-        runPartyFollowUps(targets[0] ?? getTargetId());
         endPlayerTurn();
       }, targets.length * targetInterval + speedMs * 0.3);
     }, speedMs * 0.4);
+  }
+
+  function handleMonsterAttack() {
+    const monster = activeMonster;
+    if (!monster) return;
+    if (!tryLockPlayerAction('monsterTurn')) return;
+    actionCountRef.current += 1;
+    sfx.battleAttack('physical');
+    setBattlePhase('animating');
+    const tid = getTargetId();
+    const enemy = enemies.find(e => e.id === tid);
+    const attackProfile = calculateMonsterAttackProfile(monster, { awakened: Boolean(player?.isAwakened) });
+    triggerSkillEffect({
+      name: `${monster.name}の命令攻撃`,
+      element: attackProfile.element,
+      attackType: 'STRIKE',
+      aoe: false,
+    }, [tid]);
+    addLog(`${monster.name}へ攻撃命令！ ${enemy?.name}を狙う。`);
+
+    setTimeout(() => {
+      const target = enemiesRef.current.find(e => e.id === tid);
+      if (!target) {
+        endMonsterTurn(monster);
+        return;
+      }
+      const result = calculateBattleDamage({
+        attackerStats: attackProfile.stats,
+        attackerElementBoosts: {},
+        defenderStats: toEnemyBattleStats(target),
+        defenderResistances: target.resistances ?? {},
+        powerMultiplier: 1.0,
+        element: attackProfile.element,
+        synergyBonus: battleSynergyBonus,
+      });
+      const actualDamage = damageEnemy(tid, result.damage, {
+        color: '#06b6d4',
+        element: attackProfile.element,
+        crit: result.isCritical,
+        isWeakness: result.isWeakness,
+        isResisted: result.isResisted,
+      });
+      addLog(`${monster.name}の攻撃！${attackProfile.spiritCoreName ? ` 霊核「${attackProfile.spiritCoreName}」が共鳴。` : ''} ${target.name}に ${actualDamage}ダメージ！`);
+      setTimeout(() => endMonsterTurn(monster), speedMs * 0.35);
+    }, speedMs * 0.3);
   }
 
   function handleItem(item: BattleConsumableItem) {
@@ -3099,8 +3184,11 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
   // Auto battle
   useEffect(() => {
     console.log('[AUTO effect]', { auto, phase, speedMs });
-    if (!auto || phase !== 'playerTurn') return;
-    const t = setTimeout(() => handleAttack(), speedMs * 0.4);
+    if (!auto || (phase !== 'playerTurn' && phase !== 'monsterTurn')) return;
+    const t = setTimeout(() => {
+      if (phase === 'monsterTurn') handleMonsterAttack();
+      else handleAttack();
+    }, speedMs * 0.4);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auto, phase]);
@@ -3113,6 +3201,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         goldGained={battleResult.goldGained}
         itemsGained={battleResult.itemsGained}
         monstersGained={battleResult.monstersGained}
+        necromancedMonsters={battleResult.necromancedMonsters}
         isPurplePillar={battleResult.isPurplePillar}
         wavesCleared={battleResult.wavesCleared}
         totalWaves={battleResult.totalWaves}
@@ -3149,9 +3238,9 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
             textShadow: demonized ? `0 0 12px ${demonColor}` : '0 0 8px #8A2BE2',
             transition: 'all 0.5s ease',
           }}>{demonized ? `☠ ${demonForm.formName}` : currentWave.isBoss ? `⚠ ${currentWave.title} BOSS` : `${currentWave.title} — ${currentWave.label}/${battleWaves.length}`}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: phase === 'playerTurn' ? '#22c55e' : phase === 'enemyTurn' ? '#ef4444' : '#f59e0b', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div style={{ width: 5, height: 5, borderRadius: '50%', background: phase === 'playerTurn' ? '#22c55e' : phase === 'enemyTurn' ? '#ef4444' : '#f59e0b' }}/>
-            {phase === 'playerTurn' ? '自ターン' : phase === 'enemyTurn' ? '敵ターン' : '行動中'}
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: phaseMeta.color, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 5, height: 5, borderRadius: '50%', background: phaseMeta.color }}/>
+            {phaseMeta.label}
           </div>
         </div>
         {areaGimmick !== 'NONE' && (
@@ -3279,6 +3368,27 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
                   使用できる道具がありません。ダンジョンドロップで補充できます。
                 </div>
               )}
+            </div>
+          </div>
+        ) : phase === 'monsterTurn' ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, color: '#06b6d4', letterSpacing: '0.1em' }}>
+                命令 / {activeMonster?.name ?? '使役魔'}
+              </div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8' }}>
+                対象を選択して攻撃
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, animation: 'commandReveal 0.3s ease-out' }}>
+              <CommandButton
+                icon="🦴"
+                label="攻撃"
+                sublabel="COMMAND"
+                enabled={phase === 'monsterTurn' && Boolean(activeMonster)}
+                color="#06b6d4"
+                onClick={handleMonsterAttack}
+              />
             </div>
           </div>
         ) : (

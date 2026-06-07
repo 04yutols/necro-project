@@ -169,4 +169,47 @@ describe('GameManager.processStageResult', () => {
       randomSpy.mockRestore();
     }
   });
+
+  test('persists necromanced monsters once per enemy master id', async () => {
+    await cleanupUser(email);
+    const { character } = await createUserWithCharacter(email, 'SEC5', 10);
+    const randomValues = [
+      0.99, 0.99, 0.99, // stage drop table misses
+      0.0,              // grave_soldier necromance succeeds
+      0.99, 0.99, 0.99, // other stage enemies miss
+    ];
+    const randomSpy = jest.spyOn(Math, 'random').mockImplementation(() => randomValues.shift() ?? 0.99);
+
+    try {
+      const result = await manager.processStageResult(character.id, 'area1_node1');
+      expect(result.rewards.monsters.map((monster: { masterId?: string }) => monster.masterId)).toEqual(['grave_soldier']);
+
+      const saved = await prisma.monster.findMany({
+        where: { characterId: character.id, masterId: 'grave_soldier' },
+      });
+      expect(saved).toHaveLength(1);
+      expect(saved[0]).toMatchObject({
+        id: result.rewards.monsters[0].id,
+        characterId: character.id,
+        masterId: 'grave_soldier',
+        name: '霊体騎士',
+      });
+      expect(saved[0].skillIds).toEqual(['skill_necromancer_1']);
+    } finally {
+      randomSpy.mockRestore();
+    }
+
+    const secondSpy = jest.spyOn(Math, 'random').mockReturnValue(0.0);
+    try {
+      const second = await manager.processStageResult(character.id, 'area1_node1');
+      expect(second.rewards.monsters.some((monster: { masterId?: string }) => monster.masterId === 'grave_soldier')).toBe(false);
+
+      const savedAfterSecond = await prisma.monster.findMany({
+        where: { characterId: character.id, masterId: 'grave_soldier' },
+      });
+      expect(savedAfterSecond).toHaveLength(1);
+    } finally {
+      secondSpy.mockRestore();
+    }
+  });
 });

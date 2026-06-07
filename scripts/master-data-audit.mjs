@@ -245,6 +245,27 @@ function validateEnemies(findings) {
       add(findings, 'enemies', id, 'WARN', `${enemy.tier} has no shieldHp`);
     }
 
+    if (!isObject(enemy.necromance)) {
+      add(findings, 'enemies', id, 'FAIL', 'necromance must be an object');
+    } else {
+      if (!isNumber(enemy.necromance.captureRate) || enemy.necromance.captureRate < 0 || enemy.necromance.captureRate > 1) {
+        add(findings, 'enemies', id, 'FAIL', 'necromance.captureRate must be between 0 and 1');
+      }
+      if (!Number.isInteger(enemy.necromance.allyCost) || enemy.necromance.allyCost < 1) {
+        add(findings, 'enemies', id, 'FAIL', 'necromance.allyCost must be an integer >= 1');
+      }
+      validateStats(findings, 'enemies', id, enemy.necromance.allyStats);
+      if (!Array.isArray(enemy.necromance.skillIds)) {
+        add(findings, 'enemies', id, 'FAIL', 'necromance.skillIds must be an array');
+      } else {
+        for (const skillId of enemy.necromance.skillIds) {
+          if (typeof skillId !== 'string' || !data.skills[skillId]) {
+            add(findings, 'enemies', id, 'FAIL', `necromance skillId does not exist: ${skillId}`);
+          }
+        }
+      }
+    }
+
     for (const [index, gimmick] of (enemy.gimmicks ?? []).entries()) {
       if (!GIMMICK_TRIGGERS.has(gimmick.trigger)) add(findings, 'enemies', id, 'FAIL', `gimmicks[${index}].trigger is invalid: ${gimmick.trigger}`);
       if (!GIMMICK_EFFECTS.has(gimmick.effect)) add(findings, 'enemies', id, 'FAIL', `gimmicks[${index}].effect is invalid: ${gimmick.effect}`);

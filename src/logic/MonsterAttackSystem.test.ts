@@ -32,7 +32,7 @@ describe('MonsterAttackSystem', () => {
     expect(profile.spiritCoreName).toBeUndefined();
   });
 
-  test('applies SpiritCore atkMultiplier and element to monster follow-up profile', () => {
+  test('applies SpiritCore atkMultiplier and element to monster attack profile', () => {
     const profile = calculateMonsterAttackProfile(makeMonster({
       spiritCore: {
         id: 'core-thunder',

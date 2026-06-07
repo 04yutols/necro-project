@@ -242,3 +242,48 @@ describe('RewardService.processStageDropTable', () => {
     expect(result.residues[0].rarity).toBe('EPIC');
   });
 });
+
+describe('RewardService.processStageNecromance', () => {
+  test('ステージ出現敵をネクロマンス成功モンスターとして生成する', () => {
+    const result = svc.processStageNecromance({
+      waves: [
+        { label: 'WAVE 1', role: 'WARMUP', enemyIds: ['grave_soldier', 'rot_hound'], intent: '' },
+      ],
+    }, [], makeSeqRng([0.0, 0.0]));
+
+    expect(result.map(monster => monster.masterId)).toEqual(['grave_soldier', 'rot_hound']);
+    expect(result[0]).toMatchObject({
+      name: '霊体騎士',
+      cost: 1,
+      tier: 'MINION',
+      skillIds: ['skill_necromancer_1'],
+    });
+  });
+
+  test('所有済みmasterIdはネクロマンス候補から除外する', () => {
+    const result = svc.processStageNecromance({
+      waves: [
+        { label: 'WAVE 1', role: 'WARMUP', enemyIds: ['grave_soldier', 'rot_hound'], intent: '' },
+      ],
+    }, ['grave_soldier'], makeSeqRng([0.0]));
+
+    expect(result.map(monster => monster.masterId)).toEqual(['rot_hound']);
+  });
+
+  test('BOSSは0.1%未満のrollでのみ成功する', () => {
+    const miss = svc.processStageNecromance({
+      waves: [
+        { label: 'WAVE 1', role: 'BOSS', enemyIds: ['ossuary_wyrm_lord'], intent: '' },
+      ],
+    }, [], makeSeqRng([0.001]));
+    const hit = svc.processStageNecromance({
+      waves: [
+        { label: 'WAVE 1', role: 'BOSS', enemyIds: ['ossuary_wyrm_lord'], intent: '' },
+      ],
+    }, [], makeSeqRng([0.0009]));
+
+    expect(miss).toHaveLength(0);
+    expect(hit).toHaveLength(1);
+    expect(hit[0]).toMatchObject({ masterId: 'ossuary_wyrm_lord', cost: 4, tier: 'BOSS' });
+  });
+});

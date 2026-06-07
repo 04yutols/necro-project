@@ -1,6 +1,6 @@
 import { calcAVDelay } from './StatusAilmentSystem';
 
-export type TurnActorSide = 'PLAYER' | 'ENEMY';
+export type TurnActorSide = 'PLAYER' | 'ALLY' | 'ENEMY';
 
 export interface TurnOrderActor {
   id: string;
@@ -17,7 +17,9 @@ export interface TurnOrderEntry extends TurnOrderActor {
 
 export interface EnemyPhaseSchedule {
   player: TurnOrderActor;
+  allies: TurnOrderActor[];
   enemies: TurnOrderActor[];
+  nextAlly: TurnOrderActor;
   enemyActions: TurnOrderActor[];
   skippedEnemyTurns: TurnOrderActor[];
   orderPreview: TurnOrderEntry[];
@@ -66,27 +68,32 @@ export function buildTurnOrderPreview(
   return buildTurnOrder(actors).slice(0, Math.max(0, Math.floor(maxEntries)));
 }
 
-export function scheduleEnemiesUntilPlayer({
+export function scheduleEnemiesUntilAlly({
   player,
+  allies = [],
   enemies,
   skippedEnemyIds = new Set<string>(),
   maxEnemyActions = Math.max(1, enemies.length * 2),
 }: {
   player: TurnOrderActor;
+  allies?: TurnOrderActor[];
   enemies: TurnOrderActor[];
   skippedEnemyIds?: Set<string>;
   maxEnemyActions?: number;
 }): EnemyPhaseSchedule {
   let nextPlayer = { ...player };
+  let nextAllies = allies.map((ally) => ({ ...ally }));
   let nextEnemies = enemies.map((enemy) => ({ ...enemy }));
   const enemyActions: TurnOrderActor[] = [];
   const skippedEnemyTurns: TurnOrderActor[] = [];
-  const orderPreview = buildTurnOrderPreview([nextPlayer, ...nextEnemies]);
+  const getAllActors = () => [nextPlayer, ...nextAllies, ...nextEnemies];
+  const orderPreview = buildTurnOrderPreview(getAllActors());
 
   for (let guard = 0; guard < maxEnemyActions; guard++) {
-    const nextActor = buildTurnOrder([nextPlayer, ...nextEnemies])[0];
-    if (!nextActor || nextActor.side === 'PLAYER') break;
-    if (nextActor.currentAv >= nextPlayer.currentAv) break;
+    const nextActor = buildTurnOrder(getAllActors())[0];
+    if (!nextActor || nextActor.side === 'PLAYER' || nextActor.side === 'ALLY') break;
+    const nextAllyActor = buildTurnOrder([nextPlayer, ...nextAllies])[0];
+    if (nextAllyActor && nextActor.currentAv >= nextAllyActor.currentAv) break;
 
     const enemyIndex = nextEnemies.findIndex((enemy) => enemy.id === nextActor.id);
     if (enemyIndex < 0) break;
@@ -101,9 +108,31 @@ export function scheduleEnemiesUntilPlayer({
 
   return {
     player: nextPlayer,
+    allies: nextAllies,
     enemies: nextEnemies,
+    nextAlly: buildTurnOrder([nextPlayer, ...nextAllies])[0] ?? nextPlayer,
     enemyActions,
     skippedEnemyTurns,
     orderPreview,
   };
+}
+
+export function scheduleEnemiesUntilPlayer({
+  player,
+  enemies,
+  skippedEnemyIds = new Set<string>(),
+  maxEnemyActions = Math.max(1, enemies.length * 2),
+}: {
+  player: TurnOrderActor;
+  enemies: TurnOrderActor[];
+  skippedEnemyIds?: Set<string>;
+  maxEnemyActions?: number;
+}): EnemyPhaseSchedule {
+  return scheduleEnemiesUntilAlly({
+    player,
+    allies: [],
+    enemies,
+    skippedEnemyIds,
+    maxEnemyActions,
+  });
 }

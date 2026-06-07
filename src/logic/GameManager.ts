@@ -126,7 +126,8 @@ export class GameManager {
           critRate: m.critRate ?? 0, critDmg: m.critDmg ?? 150,
           effectHit: m.effectHit ?? 0, effectRes: m.effectRes ?? 0,
         },
-        resistances: mMaster ? mMaster.resistances || {} : {},
+        resistances: m.resistances ?? mMaster?.resistances ?? {},
+        skillIds: Array.isArray(m.skillIds) ? m.skillIds.filter((id: unknown): id is string => typeof id === 'string') : [],
         spiritCore: m.spiritCore ? {
           id: m.spiritCore.id,
           name: m.spiritCore.name,
@@ -154,10 +155,16 @@ export class GameManager {
     });
     if (!char) throw new Error("Character not found");
 
+    const ownedMonsterMasterIds = (await prisma.monster.findMany({
+      where: { characterId },
+      select: { masterId: true, id: true },
+    })).map((monster: { masterId: string | null; id: string }) => monster.masterId ?? monster.id);
+
     // 1. 経験値と報酬の計算
     const playerConverted = this.convertToCharacterData(char);
     const expGain = this.rewardService.calculateExp(stage.rewards.baseExp, playerConverted);
     const rewards = this.rewardService.processStageDropTable(stage, char.clearedStages ?? []);
+    rewards.monsters.push(...this.rewardService.processStageNecromance(stage, ownedMonsterMasterIds));
 
     // 2. DBへの反映 (トランザクション)
     await prisma.$transaction(async (tx: any) => {
@@ -194,14 +201,19 @@ export class GameManager {
         }
       }
 
-      // ドロップモンスターの追加（第1章では発生しない — 将来拡張用）
+      // ネクロマンス成功モンスターの追加
       for (const m of rewards.monsters) {
         await tx.monster.create({
           data: {
+            id: m.id,
+            masterId: m.masterId ?? m.id,
+            characterId,
             name: m.name,
             tribe: m.tribe,
             cost: m.cost,
             ...m.stats,
+            resistances: m.resistances ?? {},
+            skillIds: m.skillIds ?? [],
           }
         });
       }

@@ -12,6 +12,7 @@ type Enemy = {
   tier?: string;
   tribe?: string;
   stats?: { hp?: number; atk?: number; def?: number; spd?: number };
+  necromance?: { captureRate?: number; allyCost?: number };
 };
 
 type Props = {
@@ -113,6 +114,16 @@ export default function EnemiesList({ data }: Props) {
                     {entry.nameJa ?? entry.name ?? key}
                   </span>
                   <span style={{ fontSize: 11, fontFamily: 'Space Mono, monospace', color: '#7878a8' }}>{entry.name}</span>
+                  {entry.necromance?.captureRate != null && (
+                    <span style={{ fontSize: 10, fontFamily: 'Space Mono, monospace', color: '#c084fc', background: 'rgba(88,28,135,0.28)', border: '1px solid rgba(168,85,247,0.22)', borderRadius: 999, padding: '2px 7px' }}>
+                      NECRO {(entry.necromance.captureRate * 100).toFixed(entry.necromance.captureRate < 0.01 ? 3 : 1)}%
+                    </span>
+                  )}
+                  {entry.necromance?.allyCost != null && (
+                    <span style={{ fontSize: 10, fontFamily: 'Space Mono, monospace', color: '#d8b4fe' }}>
+                      Cost {entry.necromance.allyCost}
+                    </span>
+                  )}
                   <div className="flex gap-2 flex-wrap ml-auto">
                     {stats.hp != null && <StatBar label="HP" value={stats.hp} max={200} />}
                     {stats.atk != null && <StatBar label="ATK" value={stats.atk} max={80} />}

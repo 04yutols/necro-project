@@ -5,6 +5,7 @@ import {
   buildTurnOrderPreview,
   calculateActionDelay,
   calculateInitialActionValue,
+  scheduleEnemiesUntilAlly,
   scheduleEnemiesUntilPlayer,
   type TurnOrderActor,
 } from './TurnOrderSystem';
@@ -58,6 +59,21 @@ describe('TurnOrderSystem', () => {
     expect(schedule.enemyActions.map((actor) => actor.id)).toEqual(['fast']);
     expect(schedule.enemies.find((actor) => actor.id === 'fast')?.currentAv).toBe(100);
     expect(schedule.enemies.find((actor) => actor.id === 'slow')?.currentAv).toBe(167);
+  });
+
+  test('schedules enemies only until the next allied actor turn', () => {
+    const player: TurnOrderActor = { id: 'player', name: 'Player', side: 'PLAYER', spd: 100, currentAv: 150 };
+    const ally: TurnOrderActor = { id: 'ally-1', name: 'Skeleton', side: 'ALLY', spd: 90, currentAv: 120 };
+    const fastEnemy: TurnOrderActor = { id: 'fast', name: 'Fast Enemy', side: 'ENEMY', spd: 200, currentAv: 50 };
+    const slowEnemy: TurnOrderActor = { id: 'slow', name: 'Slow Enemy', side: 'ENEMY', spd: 60, currentAv: 130 };
+
+    const schedule = scheduleEnemiesUntilAlly({ player, allies: [ally], enemies: [fastEnemy, slowEnemy] });
+
+    expect(schedule.enemyActions.map((actor) => actor.id)).toEqual(['fast', 'fast']);
+    expect(schedule.nextAlly.id).toBe('ally-1');
+    expect(schedule.allies[0].currentAv).toBe(120);
+    expect(schedule.enemies.find((actor) => actor.id === 'fast')?.currentAv).toBe(150);
+    expect(schedule.enemies.find((actor) => actor.id === 'slow')?.currentAv).toBe(130);
   });
 
   test('advances skipped enemy turns without executing attacks', () => {
