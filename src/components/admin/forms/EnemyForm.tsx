@@ -13,6 +13,7 @@ import DropTableEditor, { DropEntry } from './shared/DropTableEditor';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
+import AIEnemyDraftPanel from '../AIEnemyDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
 import type { SkillData } from '@/types/game';
 
@@ -296,6 +297,17 @@ export default function EnemyForm({ initialData, entryKey, isNew, itemIds, mater
         isNew={isNew}
         entryKey={entryKey}
       />
+
+      {isNew && (
+        <AIEnemyDraftPanel
+          onApply={(draft) => {
+            const draftId = typeof draft.id === 'string' && draft.id ? draft.id : entryKey;
+            setForm(initForm(draft, draftId));
+            setActiveTab(TABS[0]);
+            setError(null);
+          }}
+        />
+      )}
 
       {error && (
         <div
