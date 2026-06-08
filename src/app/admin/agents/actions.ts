@@ -26,6 +26,11 @@ import { runAreaAgent, type AreaAgentResult } from '@/lib/agent/areaAgent';
 import { runMonsterAgent, type MonsterAgentResult } from '@/lib/agent/monsterAgent';
 import { runAuditFixAgent, type AuditFixResult } from '@/lib/agent/auditFixAgent';
 import { getScopeEntry, type MasterData } from '@/lib/agent/auditFix/scopeRegistry';
+import { runSimEvalAgent, type SimEvalResult } from '@/lib/agent/simEvalAgent';
+import { buildSimulationReport, type SimTarget, type SimulationReport } from '@/lib/agent/sim/simulationReport';
+import { POWER_TABLE, classifySkill, findBand } from '@/lib/agent/skillBalance';
+import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
+import type { ElementType } from '@/types/game';
 
 function assertDev() {
   if (process.env.NODE_ENV !== 'development') {
@@ -623,4 +628,124 @@ export async function getAuditFailGroupsAction(): Promise<{ scope: string; id: s
     else map.set(key, { scope: f.scope, id: f.id, count: 1 });
   }
   return [...map.values()];
+}
+
+// ---------------------------------------------------------------------------
+// Agent E: シミュレータ連携（バランス評価）
+//   ダメージ計算は calculateBattleDamage（決定論）。LLM はレポートを解釈するだけ。
+// ---------------------------------------------------------------------------
+export type EvaluateBalanceActionResult = SimEvalResult & {
+  report: SimulationReport | null;
+};
+
+/** スキルの分類 + tier(owner職業) + mpCost から power 帯テキストを作る。 */
+function powerBandHint(skill: Record<string, unknown>, tier: number): string {
+  const cls = classifySkill(String(skill.type), String(skill.targetType));
+  if (!cls) return 'power 帯: 分類不明';
+  const band = findBand(cls, Number(skill.mpCost));
+  if (!band) return `power 帯: ${cls} の mpCost ${skill.mpCost} は帯外`;
+  const [lo, hi] = tier === 2 ? band.t2 : band.t1;
+  return `${cls} / mpCost ${skill.mpCost} / Tier${tier} の power 帯: ${lo}〜${hi}（設計書19）`;
+}
+
+/**
+ * 職業 × スキル × 敵集合 を決定論的にシミュレートし、LLM の評定を返す。
+ * enemyIds 未指定なら全エネミーを対象にする。
+ */
+export async function evaluateBalanceAction(
+  jobId: string,
+  skillId: string,
+  level: number,
+  enemyIds?: string[],
+  options?: { model?: string },
+): Promise<EvaluateBalanceActionResult> {
+  assertDev();
+
+  const [jobs, skills, enemies] = await Promise.all([
+    getMasterFile('jobs'),
+    getMasterFile('skills'),
+    getMasterFile('enemies'),
+  ]);
+
+  const job = jobs[jobId] as Record<string, unknown> | undefined;
+  const skill = skills[skillId] as Record<string, unknown> | undefined;
+  if (!job) return { report: null, evaluation: null, recChecks: [], log: [], error: `職業 "${jobId}" が存在しません。` };
+  if (!skill) return { report: null, evaluation: null, recChecks: [], log: [], error: `スキル "${skillId}" が存在しません。` };
+
+  // 攻撃側ステータス（ジョブのレベル別基礎値）
+  const jobStats = getJobBaseStatsAtLevel(
+    { baseStatsByLevel: job.baseStatsByLevel as never, statModifiers: job.statModifiers as never },
+    Math.max(1, Math.min(100, level || 1)),
+  );
+
+  const tier = typeof job.tier === 'number' ? job.tier : 1;
+  const attacker = { atk: Math.round(jobStats.atk), critRate: jobStats.critRate, critDmg: jobStats.critDmg };
+  const simSkill = {
+    power: typeof skill.power === 'number' ? skill.power : 1.0,
+    mpCost: typeof skill.mpCost === 'number' ? skill.mpCost : 0,
+    element: (typeof skill.element === 'string' ? skill.element : 'NONE') as ElementType,
+    targetType: (skill.targetType === 'ALL_ENEMIES' ? 'ALL_ENEMIES' : 'SINGLE') as 'SINGLE' | 'ALL_ENEMIES',
+  };
+
+  const ids = enemyIds && enemyIds.length > 0 ? enemyIds : Object.keys(enemies);
+  const targets: SimTarget[] = ids
+    .map((id): SimTarget | null => {
+      const e = enemies[id] as Record<string, unknown> | undefined;
+      if (!e) return null;
+      const stats = (e.stats as Record<string, number>) ?? {};
+      return {
+        id,
+        tier: typeof e.tier === 'string' ? e.tier : undefined,
+        hp: stats.hp ?? 1,
+        def: stats.def ?? 0,
+        resistances: (e.resistances as Record<string, number>) ?? {},
+      };
+    })
+    .filter((t): t is SimTarget => t !== null);
+
+  if (targets.length === 0) {
+    return { report: null, evaluation: null, recChecks: [], log: [], error: '対象の敵がありません。' };
+  }
+
+  // 決定論レポート（LLM 不使用）
+  const report = buildSimulationReport(attacker, simSkill, targets);
+
+  const designContext = [
+    powerBandHint(skill, tier),
+    'エネルギー効率の目安: 1 EN あたり 20〜35。',
+    '1確率が高すぎる（MINIONを軒並み1確）場合は power 過剰の疑い。',
+  ].join('\n');
+
+  const result = await runSimEvalAgent({
+    report,
+    designContext,
+    recCheckContext: {
+      skill: { type: String(skill.type), targetType: String(skill.targetType), mpCost: Number(skill.mpCost), tier },
+    },
+    model: options?.model,
+  });
+
+  return { ...result, report };
+}
+
+/** シミュレータ評価パネル用の選択肢（職業 / スキル / 敵）。 */
+export async function getSimSelectorOptions(): Promise<{
+  jobs: { id: string; label: string }[];
+  skills: { id: string; label: string }[];
+  enemies: { id: string; label: string }[];
+}> {
+  assertDev();
+  const [jobs, skills, enemies] = await Promise.all([
+    getMasterFile('jobs'),
+    getMasterFile('skills'),
+    getMasterFile('enemies'),
+  ]);
+  return {
+    jobs: Object.entries(jobs).map(([id, j]) => ({ id, label: `${(j as Record<string, unknown>).displayName ?? id}` })),
+    skills: Object.entries(skills).map(([id, s]) => {
+      const sk = s as Record<string, unknown>;
+      return { id, label: `${sk.name ?? id}（${sk.type}/${sk.element}/mp${sk.mpCost}/pow${sk.power}）` };
+    }),
+    enemies: Object.entries(enemies).map(([id, e]) => ({ id, label: `${(e as Record<string, unknown>).nameJa ?? id}（${(e as Record<string, unknown>).tier}）` })),
+  };
 }

@@ -17,6 +17,7 @@
     "agent:verify-area": "tsx scripts/verify-area-agent.mts",
     "agent:verify-monster": "tsx scripts/verify-monster-agent.mts",
     "agent:verify-audit-fix": "tsx scripts/verify-audit-fix-agent.mts",
+    "agent:verify-sim-eval": "tsx scripts/verify-sim-eval-agent.mts",
     "data:audit": "node scripts/master-data-audit.mjs",
     "data:template": "node scripts/master-data-template.mjs",
     "balance:report": "node scripts/balance-report.mjs",
