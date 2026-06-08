@@ -27,6 +27,14 @@ import { runMonsterAgent, type MonsterAgentResult } from '@/lib/agent/monsterAge
 import { runAuditFixAgent, type AuditFixResult } from '@/lib/agent/auditFixAgent';
 import { getScopeEntry, type MasterData } from '@/lib/agent/auditFix/scopeRegistry';
 import { runSimEvalAgent, type SimEvalResult } from '@/lib/agent/simEvalAgent';
+import { runStoryAgent, type StoryAgentResult } from '@/lib/agent/storyAgent';
+import { runBulkAgent } from '@/lib/agent/bulkAgent';
+import type { BulkSpec } from '@/lib/agent/bulk/bulkSpec';
+import { applyBulkSpec, buildPatchedCollection, selectMatchedIds, auditMutationFields, type BulkChange } from '@/lib/agent/bulk/bulkEngine';
+import { saveEntry } from '../actions';
+import { buildStoryContext } from '@/lib/agent/story/storyContext';
+import type { StoryValidationContext } from '@/lib/agent/story/storyValidator';
+import { getStoryScenes, getStoryScenesForPack, getStoryScene, getStoryCharacters, getStoryPackSummaries } from '../actions';
 import { buildSimulationReport, type SimTarget, type SimulationReport } from '@/lib/agent/sim/simulationReport';
 import { POWER_TABLE, classifySkill, findBand } from '@/lib/agent/skillBalance';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
@@ -747,5 +755,315 @@ export async function getSimSelectorOptions(): Promise<{
       return { id, label: `${sk.name ?? id}（${sk.type}/${sk.element}/mp${sk.mpCost}/pow${sk.power}）` };
     }),
     enemies: Object.entries(enemies).map(([id, e]) => ({ id, label: `${(e as Record<string, unknown>).nameJa ?? id}（${(e as Record<string, unknown>).tier}）` })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Agent E（E-5）: 生成直後のスキル草案をバランス評価（保存前）
+// ---------------------------------------------------------------------------
+/**
+ * スキル草案（未保存）を、指定職業の atk で全エネミーに対しシミュレートし評定する。
+ * 草案パネルの「バランス評価」導線で使う。
+ */
+export async function evaluateSkillDraftAction(
+  draft: Record<string, unknown>,
+  jobId: string,
+  level = 60,
+  options?: { model?: string },
+): Promise<EvaluateBalanceActionResult> {
+  assertDev();
+
+  const [jobs, enemies] = await Promise.all([getMasterFile('jobs'), getMasterFile('enemies')]);
+  const job = jobs[jobId] as Record<string, unknown> | undefined;
+  if (!job) return { report: null, evaluation: null, recChecks: [], log: [], error: `職業 "${jobId}" が存在しません。` };
+
+  const jobStats = getJobBaseStatsAtLevel(
+    { baseStatsByLevel: job.baseStatsByLevel as never, statModifiers: job.statModifiers as never },
+    Math.max(1, Math.min(100, level || 60)),
+  );
+  const tier = typeof job.tier === 'number' ? job.tier : 1;
+  const attacker = { atk: Math.round(jobStats.atk), critRate: jobStats.critRate, critDmg: jobStats.critDmg };
+  const simSkill = {
+    power: typeof draft.power === 'number' ? draft.power : 1.0,
+    mpCost: typeof draft.mpCost === 'number' ? draft.mpCost : 0,
+    element: (typeof draft.element === 'string' ? draft.element : 'NONE') as ElementType,
+    targetType: (draft.targetType === 'ALL_ENEMIES' ? 'ALL_ENEMIES' : 'SINGLE') as 'SINGLE' | 'ALL_ENEMIES',
+  };
+
+  const targets: SimTarget[] = Object.entries(enemies)
+    .map(([id, e]): SimTarget | null => {
+      const en = e as Record<string, unknown>;
+      const stats = (en.stats as Record<string, number>) ?? {};
+      return { id, tier: typeof en.tier === 'string' ? en.tier : undefined, hp: stats.hp ?? 1, def: stats.def ?? 0, resistances: (en.resistances as Record<string, number>) ?? {} };
+    })
+    .filter((t): t is SimTarget => t !== null);
+  if (targets.length === 0) return { report: null, evaluation: null, recChecks: [], log: [], error: '対象の敵がありません。' };
+
+  const report = buildSimulationReport(attacker, simSkill, targets);
+  const designContext = [
+    powerBandHint(draft, tier),
+    'エネルギー効率の目安: 1 EN あたり 20〜35。',
+    '1確率が高すぎる場合は power 過剰の疑い。',
+  ].join('\n');
+
+  const result = await runSimEvalAgent({
+    report,
+    designContext,
+    recCheckContext: { skill: { type: String(draft.type), targetType: String(draft.targetType), mpCost: Number(draft.mpCost), tier } },
+    model: options?.model,
+  });
+
+  return { ...result, report };
+}
+
+// ---------------------------------------------------------------------------
+// Agent C: ストーリーシーン生成（構造=決定論ゲート / 物語=多案→人間選択）
+// ---------------------------------------------------------------------------
+export type StorySceneActionResult = StoryAgentResult;
+
+async function buildStoryValidationContext(excludeSceneId?: string): Promise<StoryValidationContext> {
+  const [characters, allScenes, stages, areas] = await Promise.all([
+    getStoryCharacters(),
+    getStoryScenes(),
+    getMasterFile('stages'),
+    getMasterFile('areas'),
+  ]);
+  const existingSceneIds = new Set(
+    allScenes.map((s) => s.id).filter((id): id is string => typeof id === 'string' && id !== excludeSceneId),
+  );
+  return {
+    characters,
+    stageIds: new Set(Object.keys(stages)),
+    areaIds: new Set(Object.keys(areas)),
+    existingSceneIds,
+  };
+}
+
+async function buildContextText(packId: string | undefined, insertAfterId: string | null): Promise<string> {
+  const [characters, allScenes] = await Promise.all([getStoryCharacters(), getStoryScenes()]);
+  const packScenes = packId ? (await getStoryScenesForPack(packId)) ?? allScenes : allScenes;
+  return buildStoryContext({ characters, allScenes, packScenes, insertAfterId });
+}
+
+/**
+ * 新規シーンを生成する（type/trigger/id 等の骨子 + 指示 → lines 含む 3 案）。
+ */
+export async function generateStorySceneAction(
+  brief: string,
+  skeleton: Record<string, unknown>,
+  context: { packId?: string; insertAfterId?: string | null },
+  options?: { candidateCount?: number; model?: string },
+): Promise<StorySceneActionResult> {
+  assertDev();
+  if (!brief || brief.trim().length < 4) {
+    return { candidates: [], rejected: 0, rejectionReasons: [], attempts: 0, log: [], error: '指示を入力してください（4文字以上）。' };
+  }
+  const validationContext = await buildStoryValidationContext(typeof skeleton.id === 'string' ? skeleton.id : undefined);
+  const storyContext = await buildContextText(context.packId, context.insertAfterId ?? null);
+  return runStoryAgent({
+    mode: 'new',
+    brief: brief.trim(),
+    skeleton,
+    storyContext,
+    validationContext,
+    candidateCount: options?.candidateCount ?? 3,
+    model: options?.model,
+  });
+}
+
+/**
+ * 既存シーンの lines を補完/磨く（骨子は維持、lines を 3 案）。
+ */
+export async function completeSceneLinesAction(
+  sceneId: string,
+  brief: string,
+  context: { packId?: string },
+  options?: { candidateCount?: number; model?: string },
+): Promise<StorySceneActionResult> {
+  assertDev();
+  const scene = await getStoryScene(sceneId);
+  if (!scene) {
+    return { candidates: [], rejected: 0, rejectionReasons: [], attempts: 0, log: [], error: `シーン "${sceneId}" が見つかりません。` };
+  }
+  const validationContext = await buildStoryValidationContext(sceneId);
+  const storyContext = await buildContextText(context.packId, sceneId);
+  // 骨子は lines を除いた既存シーン
+  const { lines: _lines, ...skeleton } = scene as unknown as Record<string, unknown>;
+  void _lines;
+  return runStoryAgent({
+    mode: 'complete',
+    brief: brief.trim(),
+    skeleton,
+    storyContext,
+    validationContext,
+    candidateCount: options?.candidateCount ?? 3,
+    model: options?.model,
+  });
+}
+
+/** ストーリー生成パネル用の選択肢（パック / キャラ / シーン）。 */
+export async function getStoryAgentOptions(): Promise<{
+  packs: { id: string; label: string }[];
+  characters: { id: string; label: string }[];
+}> {
+  assertDev();
+  const [packs, characters] = await Promise.all([getStoryPackSummaries(), getStoryCharacters()]);
+  return {
+    packs: packs.map((p) => ({ id: p.id, label: `${p.label}（${p.sceneCount}シーン）` })),
+    characters: Object.entries(characters).map(([id, c]) => ({ id, label: (c as { nameJa?: string }).nameJa || id })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Agent D: 一括変更フロー（LLM=NL→Spec翻訳 / 変更=決定論エンジン / ゲート=per-content+監査）
+//   previewBulkChangeAction は非破壊（ディスクに書かない）。
+// ---------------------------------------------------------------------------
+export type BulkChangeValidation = { id: string; ok: boolean; fails: string[]; warns: string[] };
+export type BulkPreviewResult = {
+  spec: BulkSpec | null;
+  changes: { id: string; diff: BulkChange['diff'] }[];
+  validations: BulkChangeValidation[];
+  /** 監査: パッチ適用で新規に出た FAIL（[scope/id] message）。 */
+  newAuditFails: string[];
+  /** 一致エンティティに存在しない operation フィールド（typo/幻覚の疑い）。 */
+  missingFields: string[];
+  ok: boolean;
+  attempts: number;
+  log: string[];
+  error?: string;
+};
+
+/** 各 file の代表エンティティからフィールドパス一覧（ヒント）を作る。 */
+function buildFieldHints(all: MasterData): string {
+  const lines: string[] = [];
+  const collect = (obj: unknown, prefix: string, out: Set<string>, depth: number) => {
+    if (depth > 2 || typeof obj !== 'object' || obj === null || Array.isArray(obj)) return;
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      const path = prefix ? `${prefix}.${k}` : k;
+      const t = Array.isArray(v) ? 'array' : typeof v;
+      out.add(`${path}:${t}`);
+      if (t === 'object') collect(v, path, out, depth + 1);
+    }
+  };
+  for (const file of Object.keys(all)) {
+    const first = Object.values(all[file] ?? {})[0];
+    if (!first) continue;
+    const fields = new Set<string>();
+    collect(first, '', fields, 0);
+    lines.push(`## ${file}\n  ${[...fields].slice(0, 30).join(', ')}`);
+  }
+  return lines.join('\n');
+}
+
+const FILE_LABEL: Record<string, string> = {
+  enemies: 'enemies', skills: 'skills', stages: 'stages', jobs: 'jobs',
+  items: 'items', materials: 'materials', monsters: 'monsters', demonForms: 'demonForms', areas: 'areas',
+};
+
+function failKeyOfFinding(f: AuditFinding): string {
+  return `${f.scope}|${f.id}|${f.message}`;
+}
+
+/**
+ * 一括変更をプレビューする（非破壊）。NL→Spec→決定論適用→二層ゲート検証。
+ * ディスクには一切書かない。
+ */
+export async function previewBulkChangeAction(instruction: string): Promise<BulkPreviewResult> {
+  assertDev();
+  if (!instruction || instruction.trim().length < 4) {
+    return { spec: null, changes: [], validations: [], newAuditFails: [], missingFields: [], ok: false, attempts: 0, log: [], error: '指示を入力してください（4文字以上）。' };
+  }
+
+  const all = (await getAllMasterData()) as unknown as MasterData;
+
+  const agentRes = await runBulkAgent({ instruction: instruction.trim(), fieldHints: buildFieldHints(all) });
+  if (!agentRes.spec) {
+    return { spec: null, changes: [], validations: [], newAuditFails: [], missingFields: [], ok: false, attempts: agentRes.attempts, log: agentRes.log, error: agentRes.error ?? 'Spec を生成できませんでした。' };
+  }
+  const spec = agentRes.spec;
+
+  const file = FILE_LABEL[spec.file];
+  const entities = (all[file] ?? {}) as Record<string, Record<string, unknown>>;
+  const changes = applyBulkSpec(entities, spec);
+
+  if (changes.length === 0) {
+    return { spec, changes: [], validations: [], newAuditFails: [], missingFields: [], ok: false, attempts: agentRes.attempts, log: [...agentRes.log, '条件に一致する対象がありません。'], error: '条件に一致する対象がありません。' };
+  }
+
+  // 層1: per-content バリデータ（scopeRegistry）
+  const scopeEntry = getScopeEntry(spec.file);
+  const validations: BulkChangeValidation[] = [];
+  if (scopeEntry) {
+    for (const c of changes) {
+      const ctx = scopeEntry.buildContext(all, c.id, c.after);
+      const v = scopeEntry.validate(c.after, ctx);
+      validations.push({
+        id: c.id,
+        ok: v.ok,
+        fails: v.findings.filter((f) => f.level === 'FAIL').map((f) => `${f.field}: ${f.message}`),
+        warns: v.findings.filter((f) => f.level === 'WARN').map((f) => `${f.field}: ${f.message}`),
+      });
+    }
+  }
+
+  // 層2: in-memory 監査（全変更を override して新規 FAIL を検出）
+  const baseline = await auditMasterData();
+  const baselineFailKeys = new Set(baseline.filter((f) => f.level === 'FAIL').map(failKeyOfFinding));
+  const patchedCollection = buildPatchedCollection(entities, changes);
+  const auditAfter = await auditMasterData({ [spec.file]: patchedCollection } as never);
+  const newAuditFails = auditAfter
+    .filter((f) => f.level === 'FAIL' && !baselineFailKeys.has(failKeyOfFinding(f)))
+    .map((f) => `[${f.scope}/${f.id}] ${f.message}`);
+
+  // operation の field が一致エンティティに存在しないもの（typo/幻覚）を検出
+  const matchedIds = selectMatchedIds(entities, spec.filter);
+  const matchedEntities = matchedIds.map((id) => entities[id]);
+  const missingFields = auditMutationFields(matchedEntities, spec.operation);
+
+  const perContentOk = validations.every((v) => v.ok);
+  const ok = perContentOk && newAuditFails.length === 0;
+
+  return {
+    spec,
+    changes: changes.map((c) => ({ id: c.id, diff: c.diff })),
+    validations,
+    newAuditFails,
+    missingFields,
+    ok,
+    attempts: agentRes.attempts,
+    log: [...agentRes.log, `対象 ${changes.length} 件 / per-content ${perContentOk ? 'PASS' : 'FAIL'} / 新規監査FAIL ${newAuditFails.length}${missingFields.length ? ` / 不在フィールド ${missingFields.length}` : ''}`],
+  };
+}
+
+/**
+ * 一括変更を適用する（承認後のみ。各 entity を saveEntry で保存）。
+ * preview と同じ spec を渡して再適用 → 保存 → 再監査結果を返す。
+ */
+export async function applyBulkChangeAction(spec: BulkSpec): Promise<{ savedIds: string[]; failedIds: string[]; audit: { fail: number; warn: number }; error?: string }> {
+  assertDev();
+  const all = (await getAllMasterData()) as unknown as MasterData;
+  const file = FILE_LABEL[spec.file];
+  const entities = (all[file] ?? {}) as Record<string, Record<string, unknown>>;
+  const changes = applyBulkSpec(entities, spec);
+  if (changes.length === 0) {
+    return { savedIds: [], failedIds: [], audit: { fail: 0, warn: 0 }, error: '対象がありません。' };
+  }
+
+  const savedIds: string[] = [];
+  const failedIds: string[] = [];
+  for (const c of changes) {
+    const r = await saveEntry(spec.file as never, c.id, c.after);
+    if (r.success) savedIds.push(c.id);
+    else failedIds.push(c.id);
+  }
+
+  const audit = await auditMasterData();
+  return {
+    savedIds,
+    failedIds,
+    audit: {
+      fail: audit.filter((f) => f.level === 'FAIL').length,
+      warn: audit.filter((f) => f.level === 'WARN').length,
+    },
   };
 }

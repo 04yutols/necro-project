@@ -12,9 +12,17 @@ import { useEffect, useState } from 'react';
 import {
   generateSkillDraftAction,
   getSkillOwnerOptions,
+  evaluateSkillDraftAction,
   type GenerateSkillActionResult,
   type SkillOwnerSelector,
+  type EvaluateBalanceActionResult,
 } from '@/app/admin/agents/actions';
+
+const VERDICT_LABEL: Record<string, { label: string; color: string }> = {
+  BALANCED: { label: '適正', color: '#86efac' },
+  TOO_STRONG: { label: '強すぎ', color: '#fca5a5' },
+  TOO_WEAK: { label: '弱すぎ', color: '#fbbf24' },
+};
 
 type Props = {
   onApply: (draft: Record<string, unknown>) => void;
@@ -32,6 +40,25 @@ export default function AISkillDraftPanel({ onApply }: Props) {
   const [result, setResult] = useState<GenerateSkillActionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [applied, setApplied] = useState(false);
+  const [evalResult, setEvalResult] = useState<EvaluateBalanceActionResult | null>(null);
+  const [evalLoading, setEvalLoading] = useState(false);
+
+  async function handleEvaluate() {
+    if (!result?.draft) return;
+    const [kind, id] = ownerKey.split(':');
+    if (kind !== 'job') { setError('バランス評価は職業スキルのみ対応です。'); return; }
+    setEvalLoading(true);
+    setEvalResult(null);
+    try {
+      const res = await evaluateSkillDraftAction(result.draft, id);
+      setEvalResult(res);
+      if (res.error) setError(res.error);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setEvalLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!open || jobs.length > 0) return;
@@ -60,6 +87,7 @@ export default function AISkillDraftPanel({ onApply }: Props) {
     setError(null);
     setResult(null);
     setApplied(false);
+    setEvalResult(null);
     try {
       const res = await generateSkillDraftAction(requirements, owner);
       setResult(res);
@@ -141,7 +169,35 @@ export default function AISkillDraftPanel({ onApply }: Props) {
                 {applied ? '✓ 反映済み（保存ボタンで確定）' : 'フォームに反映 ↓'}
               </button>
             )}
+            {result?.draft && ownerKey.startsWith('job:') && (
+              <button
+                onClick={handleEvaluate}
+                disabled={evalLoading}
+                style={{ padding: '8px 18px', borderRadius: 6, background: 'rgba(139,0,255,0.15)', border: '1px solid rgba(139,0,255,0.35)', color: '#d8b4fe', fontSize: 13, fontWeight: 600, cursor: evalLoading ? 'wait' : 'pointer' }}
+              >
+                {evalLoading ? '評価中…' : '⚖ バランス評価'}
+              </button>
+            )}
           </div>
+
+          {evalResult?.evaluation && evalResult.report && (
+            <div style={{ marginTop: 10, padding: '10px 12px', background: '#0c0c12', border: '1px solid rgba(139,0,255,0.25)', borderRadius: 6 }}>
+              <div style={{ fontSize: 11, color: '#7878a8', marginBottom: 6 }}>
+                全敵シミュレート: 1確率 {Math.round(evalResult.report.summary.oneShotRate * 100)}% / 効率 {evalResult.report.summary.energyEfficiency ?? 'N/A'} / 平均期待 {evalResult.report.summary.avgExpected}
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: VERDICT_LABEL[evalResult.evaluation.verdict]?.color }}>
+                {VERDICT_LABEL[evalResult.evaluation.verdict]?.label}（{evalResult.evaluation.verdict}）
+              </span>
+              <p style={{ fontSize: 12, color: '#c8c8d8', marginTop: 6, lineHeight: 1.5 }}>{evalResult.evaluation.rationale}</p>
+              {evalResult.evaluation.recommendations.map((r, i) => (
+                <div key={i} style={{ fontSize: 12, color: '#c8c8d8', marginTop: 4 }}>
+                  <span style={{ fontFamily: 'monospace', color: '#d8b4fe' }}>{r.target}</span> {r.current} → <b style={{ color: '#86efac' }}>{r.suggested}</b>
+                  <span style={{ color: '#7878a8' }}> — {r.reason}</span>
+                  {evalResult.recChecks[i] && !evalResult.recChecks[i].inBand && <span style={{ color: '#fbbf24', fontSize: 11 }}> {evalResult.recChecks[i].note}</span>}
+                </div>
+              ))}
+            </div>
+          )}
 
           {error && (
             <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, color: '#fca5a5', fontSize: 12 }}>

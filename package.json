@@ -18,6 +18,8 @@
     "agent:verify-monster": "tsx scripts/verify-monster-agent.mts",
     "agent:verify-audit-fix": "tsx scripts/verify-audit-fix-agent.mts",
     "agent:verify-sim-eval": "tsx scripts/verify-sim-eval-agent.mts",
+    "agent:verify-story": "tsx scripts/verify-story-agent.mts",
+    "agent:verify-bulk": "tsx scripts/verify-bulk-agent.mts",
     "data:audit": "node scripts/master-data-audit.mjs",
     "data:template": "node scripts/master-data-template.mjs",
     "balance:report": "node scripts/balance-report.mjs",
