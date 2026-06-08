@@ -9,6 +9,7 @@ import FormField from './shared/FormField';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
+import AIWeaponDraftPanel from '../AIWeaponDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
 import type { ItemData, WeaponRarity, WeaponArchetype } from '@/types/game';
 import {
@@ -329,6 +330,17 @@ export default function ItemForm({ initialData, entryKey, isNew, dependencies = 
         isNew={isNew}
         entryKey={entryKey}
       />
+
+      {isNew && (
+        <AIWeaponDraftPanel
+          onApply={(draft) => {
+            const draftId = typeof draft.id === 'string' && draft.id ? draft.id : entryKey;
+            setForm(initForm(draft, draftId));
+            setActiveTab(TABS[0]);
+            setError(null);
+          }}
+        />
+      )}
 
       {error && (
         <div style={{
