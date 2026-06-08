@@ -1,8 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { AuditFinding, AuditLevel } from '@/app/admin/actions';
+import AuditFixModal from './AuditFixModal';
+
+const AI_FIXABLE_SCOPES = new Set([
+  'enemies', 'skills', 'demonForms', 'stages', 'items', 'materials', 'jobs', 'areas', 'monsters',
+]);
 
 const LEVEL_STYLES: Record<AuditLevel, { bg: string; color: string; border: string; label: string }> = {
   PASS: {
@@ -44,8 +50,10 @@ type Props = {
 const TABS: AuditLevel[] = ['FAIL', 'WARN', 'PASS'];
 
 export default function AuditPanel({ findings }: Props) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<AuditLevel>('FAIL');
   const [showAll, setShowAll] = useState(false);
+  const [fixTarget, setFixTarget] = useState<{ scope: string; id: string } | null>(null);
 
   const counts = {
     FAIL: findings.filter((f) => f.level === 'FAIL').length,
@@ -159,6 +167,16 @@ export default function AuditPanel({ findings }: Props) {
                   {finding.message}
                 </p>
               </div>
+              {/* AI 修正ボタン（FAIL かつ対応 scope のみ） */}
+              {finding.level === 'FAIL' && AI_FIXABLE_SCOPES.has(finding.scope) && (
+                <button
+                  onClick={() => setFixTarget({ scope: finding.scope, id: finding.id })}
+                  className="shrink-0 text-[10px] font-space font-semibold px-2 py-1 rounded mt-0.5"
+                  style={{ background: 'rgba(139,0,255,0.18)', border: '1px solid rgba(139,0,255,0.4)', color: '#d8b4fe', cursor: 'pointer' }}
+                >
+                  ✦ AI修正
+                </button>
+              )}
             </div>
           );
         })}
@@ -179,6 +197,18 @@ export default function AuditPanel({ findings }: Props) {
           </button>
         )}
       </div>
+
+      {fixTarget && (
+        <AuditFixModal
+          scope={fixTarget.scope}
+          entityId={fixTarget.id}
+          onClose={() => setFixTarget(null)}
+          onApplied={() => {
+            setFixTarget(null);
+            router.refresh(); // 監査を再実行（サーバーコンポーネント再評価）
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import ResistanceGrid from './shared/ResistanceGrid';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
+import AIMonsterDraftPanel from '../AIMonsterDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
 
 const TABS = ['基本情報', 'ステータス', '属性耐性', '依存関係'];
@@ -139,6 +140,17 @@ export default function MonsterForm({ initialData, entryKey, isNew, dependencies
         isNew={isNew}
         entryKey={entryKey}
       />
+
+      {isNew && (
+        <AIMonsterDraftPanel
+          onApply={(draft) => {
+            const draftId = typeof draft.id === 'string' && draft.id ? draft.id : entryKey;
+            setForm(initForm(draft, draftId));
+            setActiveTab(TABS[0]);
+            setError(null);
+          }}
+        />
+      )}
 
       {error && (
         <div style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '10px 14px', color: '#fca5a5', fontSize: 14, marginBottom: 16 }}>

@@ -11,7 +11,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { getMasterFile } from '../actions';
+import { getMasterFile, getAllMasterData, getEntry, auditMasterData, type AuditFinding } from '../actions';
 import { runEnemyAgent, type EnemyAgentResult } from '@/lib/agent/enemyAgent';
 import { deriveTierBands } from '@/lib/agent/enemyBalance';
 import { runSkillAgent, type SkillAgentResult } from '@/lib/agent/skillAgent';
@@ -23,6 +23,9 @@ import { runWeaponAgent, type WeaponAgentResult } from '@/lib/agent/weaponAgent'
 import { runMaterialAgent, type MaterialAgentResult } from '@/lib/agent/materialAgent';
 import { runJobAgent, type JobAgentResult } from '@/lib/agent/jobAgent';
 import { runAreaAgent, type AreaAgentResult } from '@/lib/agent/areaAgent';
+import { runMonsterAgent, type MonsterAgentResult } from '@/lib/agent/monsterAgent';
+import { runAuditFixAgent, type AuditFixResult } from '@/lib/agent/auditFixAgent';
+import { getScopeEntry, type MasterData } from '@/lib/agent/auditFix/scopeRegistry';
 
 function assertDev() {
   if (process.env.NODE_ENV !== 'development') {
@@ -497,4 +500,127 @@ export async function generateAreaDraftAction(
   const idCollision = draftId ? Object.keys(areas).includes(draftId) : false;
 
   return { ...result, idCollision };
+}
+
+// ---------------------------------------------------------------------------
+// 味方魔物草案生成（cost が戦力を決める）
+// ---------------------------------------------------------------------------
+export type GenerateMonsterActionResult = MonsterAgentResult & { idCollision?: boolean };
+
+export async function generateMonsterDraftAction(
+  requirements: string,
+  cost: number,
+  options?: { maxAttempts?: number; model?: string },
+): Promise<GenerateMonsterActionResult> {
+  assertDev();
+
+  if (!requirements || requirements.trim().length < 4) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  }
+  const costNum = Number.isInteger(cost) && cost >= 1 ? cost : 1;
+
+  const monsters = await getMasterFile('monsters');
+
+  const result = await runMonsterAgent({
+    requirements: requirements.trim(),
+    cost: costNum,
+    existingMonsters: monsters,
+    maxAttempts: options?.maxAttempts ?? 3,
+    model: options?.model,
+  });
+
+  const draftId = result.draft && typeof result.draft.id === 'string' ? result.draft.id : null;
+  const idCollision = draftId ? Object.keys(monsters).includes(draftId) : false;
+
+  return { ...result, idCollision };
+}
+
+// ---------------------------------------------------------------------------
+// Agent B: 監査修正（既存エンティティの FAIL を最小変更で修正）
+// ---------------------------------------------------------------------------
+export type FixAuditActionResult = AuditFixResult & {
+  scope: string;
+  entityId: string;
+  targetFindings: AuditFinding[];
+};
+
+function failKeyOf(f: AuditFinding): string {
+  return `${f.scope}|${f.id}|${f.message}`;
+}
+
+/**
+ * 指定エンティティの監査 FAIL を AI に修正させ、二層ゲートで検証した結果を返す。
+ * 保存はしない（UI で diff 確認 → 既存 saveEntry で適用）。
+ */
+export async function fixAuditFindingAction(
+  scope: string,
+  entityId: string,
+  options?: { maxAttempts?: number; model?: string },
+): Promise<FixAuditActionResult> {
+  assertDev();
+
+  const entry = getScopeEntry(scope);
+  if (!entry) {
+    return {
+      scope, entityId, targetFindings: [],
+      patched: null, diff: [], perContent: null, audit: null, ok: false, attempts: 0, log: [],
+      error: `未対応の scope: ${scope}`,
+    };
+  }
+
+  const [all, currentEntity, baseline] = await Promise.all([
+    getAllMasterData(),
+    getEntry(scope as never, entityId),
+    auditMasterData(),
+  ]);
+
+  if (!currentEntity) {
+    return {
+      scope, entityId, targetFindings: [],
+      patched: null, diff: [], perContent: null, audit: null, ok: false, attempts: 0, log: [],
+      error: `エンティティ "${scope}/${entityId}" が見つかりません。`,
+    };
+  }
+
+  const targetFindings = baseline.filter(
+    (f) => f.level === 'FAIL' && f.scope === scope && f.id === entityId,
+  );
+  if (targetFindings.length === 0) {
+    return {
+      scope, entityId, targetFindings: [],
+      patched: null, diff: [], perContent: null, audit: null, ok: true, attempts: 0,
+      log: ['このエンティティに FAIL はありません。'],
+    };
+  }
+
+  const baselineFailKeys = new Set(baseline.filter((f) => f.level === 'FAIL').map(failKeyOf));
+
+  const result = await runAuditFixAgent({
+    scope,
+    entityId,
+    findings: targetFindings,
+    currentEntity,
+    all: all as unknown as MasterData,
+    auditFn: (override) => auditMasterData(override as never),
+    baselineFailKeys,
+    maxAttempts: options?.maxAttempts ?? 3,
+    model: options?.model,
+  });
+
+  return { ...result, scope, entityId, targetFindings };
+}
+
+/** 監査全体の FAIL を (scope,id) 単位でグルーピングして返す（バッチUI用）。 */
+export async function getAuditFailGroupsAction(): Promise<{ scope: string; id: string; count: number }[]> {
+  assertDev();
+  const findings = await auditMasterData();
+  const map = new Map<string, { scope: string; id: string; count: number }>();
+  for (const f of findings) {
+    if (f.level !== 'FAIL') continue;
+    const key = `${f.scope}|${f.id}`;
+    const cur = map.get(key);
+    if (cur) cur.count++;
+    else map.set(key, { scope: f.scope, id: f.id, count: 1 });
+  }
+  return [...map.values()];
 }
