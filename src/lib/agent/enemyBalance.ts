@@ -21,6 +21,9 @@ export type EnemyValidationResult = {
   findings: EnemyValidationFinding[];
 };
 
+/** スキルのメタデータ（味方スキルの素性整合チェック用）。 */
+export type SkillMeta = { element?: string; type?: string; targetType?: string };
+
 export type EnemyBalanceContext = {
   /** 既存エネミー（自分自身を除く想定）。tier 帯の学習に使う。 */
   existingEnemies: Record<string, unknown>;
@@ -30,6 +33,18 @@ export type EnemyBalanceContext = {
   materialIds: Set<string>;
   /** skills.json のキー集合（necromance.skillIds 参照検証用）。 */
   skillIds: Set<string>;
+  /** skillId → メタ（任意。あれば味方スキルの属性整合を検証する）。 */
+  skillMeta?: Record<string, SkillMeta>;
+};
+
+/** tier ごとの味方化規約（97_モンスターネクロマンス獲得機能設計.md と同期）。 */
+export const NECROMANCE_TIER_CONVENTION: Record<
+  string,
+  { captureRate: number; allyCost: number; skillCount: [number, number] }
+> = {
+  MINION: { captureRate: 0.12, allyCost: 1, skillCount: [1, 2] },
+  ELITE: { captureRate: 0.04, allyCost: 2, skillCount: [1, 3] },
+  BOSS: { captureRate: 0.001, allyCost: 4, skillCount: [2, 4] },
 };
 
 export const VALID_TIERS = ['MINION', 'ELITE', 'BOSS'] as const;
@@ -262,20 +277,38 @@ export function validateEnemyDraft(
   }
 
   // --- necromance（味方化設定。audit と同等のルール） ---
+  // necromance = 味方化したときにプレイヤーが使う性能そのもの。
+  // createNecromancedMonster() が allyStats / skillIds をそのまま使役モンスターに転写する。
   const necro = draft.necromance;
+  const tierConv = typeof tier === 'string' ? NECROMANCE_TIER_CONVENTION[tier] : undefined;
   if (!isRecord(necro)) {
     fail('necromance', 'necromance セクションが存在しません。');
   } else {
+    // captureRate: tier 規約と照合
     const captureRate = getNum(necro, 'captureRate');
     if (captureRate === null || captureRate < 0 || captureRate > 1) {
       fail('necromance.captureRate', 'captureRate は 0〜1 の数値である必要があります。');
+    } else if (tierConv && Math.abs(captureRate - tierConv.captureRate) > 1e-9) {
+      warn(
+        'necromance.captureRate',
+        `${tier} の捕獲率は規約上 ${tierConv.captureRate} です（現在: ${captureRate}）。意図的でなければ揃えてください。`,
+      );
     }
+
+    // allyCost: tier 規約と照合
     const allyCost = getNum(necro, 'allyCost');
     if (allyCost === null || allyCost < 1 || !Number.isInteger(allyCost)) {
       fail('necromance.allyCost', 'allyCost は 1 以上の整数である必要があります。');
+    } else if (tierConv && allyCost !== tierConv.allyCost) {
+      warn(
+        'necromance.allyCost',
+        `${tier} の味方コストは規約上 ${tierConv.allyCost} です（現在: ${allyCost}）。編成コスト設計と整合させてください。`,
+      );
     }
+
+    // allyStats: 構造 + 敵 tier 帯との整合（味方が tier 帯を逸脱して強すぎ/弱すぎないか）
     if (!isRecord(necro.allyStats)) {
-      fail('necromance.allyStats', 'allyStats が存在しません。');
+      fail('necromance.allyStats', 'allyStats が存在しません。味方化時のステータスを設計してください。');
     } else {
       for (const key of STAT_KEYS) {
         const v = getNum(necro.allyStats, key);
@@ -283,17 +316,71 @@ export function validateEnemyDraft(
           fail(`necromance.allyStats.${key}`, `allyStats.${key} は 0 以上の数値である必要があります。`);
         }
       }
+      // critDmg スケール（敵 stats と同様、味方も%表記）
+      const allyCritDmg = getNum(necro.allyStats, 'critDmg');
+      if (allyCritDmg !== null && allyCritDmg > 0 && allyCritDmg < 100) {
+        fail(
+          'necromance.allyStats.critDmg',
+          `allyStats.critDmg は%表記です（150前後）。${allyCritDmg} はスケール誤りの可能性が高い。`,
+        );
+      }
+      // 敵 tier 帯との整合（味方は敵から生成されるため同 tier 帯が妥当）
+      if (typeof tier === 'string') {
+        const bands = deriveTierBands(ctx.existingEnemies)[tier];
+        if (bands) {
+          for (const stat of BAND_CHECK_STATS) {
+            const v = getNum(necro.allyStats, stat);
+            const band = bands[stat];
+            if (v === null || !band) continue;
+            const lo = band.min * (1 - BAND_TOLERANCE);
+            const hi = band.max * (1 + BAND_TOLERANCE);
+            if (v < lo || v > hi) {
+              warn(
+                `necromance.allyStats.${stat}`,
+                `味方 ${stat}=${v} が ${tier} 帯 ${band.min}〜${band.max}（許容 ${Math.floor(lo)}〜${Math.ceil(hi)}）から外れています。味方戦力バランスを確認してください。`,
+              );
+            }
+          }
+        }
+      }
     }
+
+    // skillIds: 参照整合 + 数 + 素性整合（味方の戦闘行動を決める最重要要素）
     if (!Array.isArray(necro.skillIds)) {
       fail('necromance.skillIds', 'skillIds は配列である必要があります。');
-    } else if (necro.skillIds.length === 0) {
-      warn('necromance.skillIds', 'skillIds が空です。味方化時のスキルを 1 つ以上指定してください。');
     } else {
-      for (const sid of necro.skillIds) {
+      const skillIds = necro.skillIds;
+      if (skillIds.length === 0) {
+        warn(
+          'necromance.skillIds',
+          '味方スキルが未設定です。スキル無しの味方は通常攻撃しかできません。種族/属性に合うスキルを1つ以上設計してください。',
+        );
+      } else if (tierConv) {
+        const [minN, maxN] = tierConv.skillCount;
+        if (skillIds.length < minN || skillIds.length > maxN) {
+          warn(
+            'necromance.skillIds',
+            `${tier} の味方スキル数は ${minN}〜${maxN} が目安です（現在: ${skillIds.length}）。`,
+          );
+        }
+      }
+      // 草稿の弱点（=この敵が弱い属性）。味方がその属性スキルを持つのは素性的に違和感。
+      const draftWeak = Array.isArray(draft.weaknesses)
+        ? draft.weaknesses.filter((w): w is string => typeof w === 'string')
+        : [];
+      for (const sid of skillIds) {
         if (typeof sid !== 'string' || !ctx.skillIds.has(sid)) {
           fail('necromance.skillIds', `skillIds 参照 "${String(sid)}" が skills.json に存在しません。`);
-        } else {
-          pass('necromance.skillIds', `ネクロマンススキル参照 "${sid}" OK`);
+          continue;
+        }
+        pass('necromance.skillIds', `ネクロマンススキル参照 "${sid}" OK`);
+        // 素性整合（任意・skillMeta があるとき）: 弱点属性を自ら振るうのは違和感 → WARN
+        const meta = ctx.skillMeta?.[sid];
+        if (meta?.element && meta.element !== 'NONE' && draftWeak.includes(meta.element)) {
+          warn(
+            'necromance.skillIds',
+            `味方スキル "${sid}" は ${meta.element} 属性ですが、この魔物は ${meta.element} が弱点です。素性に合う属性のスキルを推奨します。`,
+          );
         }
       }
     }

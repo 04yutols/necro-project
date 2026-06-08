@@ -42,12 +42,24 @@ console.log('要件:', requirements);
 console.log('既存エネミー数:', Object.keys(enemies).length);
 console.log('');
 
+const skillCatalog = Object.entries(skills).map(([id, s]) => {
+  const sk = s as Record<string, unknown>;
+  return {
+    id,
+    nameJa: typeof sk.name === 'string' ? sk.name : undefined,
+    element: typeof sk.element === 'string' ? sk.element : undefined,
+    type: typeof sk.type === 'string' ? sk.type : undefined,
+    targetType: typeof sk.targetType === 'string' ? sk.targetType : undefined,
+    mpCost: typeof sk.mpCost === 'number' ? sk.mpCost : undefined,
+  };
+});
+
 const result = await runEnemyAgent({
   requirements,
   existingEnemies: enemies,
   itemIds: Object.keys(items),
   materialIds: Object.keys(materials),
-  skillIds: Object.keys(skills),
+  skills: skillCatalog,
   designContext: '（検証用: tier 帯は既存データから自動算出）',
   maxAttempts: 3,
 });
@@ -66,6 +78,16 @@ console.log('');
 console.log('--- 生成された草稿 ---');
 console.log(JSON.stringify(result.draft, null, 2));
 
+// --- 味方化（necromance）設計の確認表示 ---
+const necro = result.draft?.necromance as Record<string, unknown> | undefined;
+if (necro) {
+  console.log('');
+  console.log('--- 味方化（necromance）設計 ---');
+  console.log('  captureRate:', necro.captureRate, '/ allyCost:', necro.allyCost);
+  console.log('  allyStats:', JSON.stringify(necro.allyStats));
+  console.log('  skillIds:', JSON.stringify(necro.skillIds));
+}
+
 // --- アサーション（統合テスト合否判定） ---
 const failures: string[] = [];
 if (result.error) failures.push(`agent error: ${result.error}`);
@@ -74,10 +96,17 @@ if (!result.validation?.ok) failures.push('決定論的検証が PASS しませ�
 if (result.attempts < 1 || result.attempts > 3) failures.push(`attempts が範囲外: ${result.attempts}`);
 const cd = (result.draft?.stats as Record<string, number> | undefined)?.critDmg;
 if (cd !== undefined && cd < 100) failures.push(`critDmg スケール誤り: ${cd}`);
+// 味方化設計が組み込まれていること
+if (!necro) failures.push('necromance セクションが生成されませんでした');
+if (necro && !necro.allyStats) failures.push('allyStats が未設計');
+const allySkills = necro?.skillIds;
+if (!Array.isArray(allySkills) || allySkills.length === 0) {
+  failures.push('味方スキル(skillIds)が未設定（味方が通常攻撃しかできない）');
+}
 
 console.log('');
 if (failures.length === 0) {
-  console.log('✅ 統合テスト合格: 草稿生成 → 決定論的検証 PASS → スケール規約遵守');
+  console.log('✅ 統合テスト合格: 敵性能＋味方化設計（ステータス/コスト/スキル）→ 決定論的検証 PASS');
   process.exit(0);
 } else {
   console.log('❌ 統合テスト不合格:');

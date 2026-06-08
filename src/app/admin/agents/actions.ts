@@ -87,12 +87,25 @@ export async function generateEnemyDraftAction(
     getMasterFile('skills'),
   ]);
 
+  // スキルを素性付きカタログに変換（味方スキル選定 + 属性整合検証に使う）
+  const skillCatalog = Object.entries(skills).map(([id, s]) => {
+    const sk = s as Record<string, unknown>;
+    return {
+      id,
+      nameJa: typeof sk.name === 'string' ? sk.name : undefined,
+      element: typeof sk.element === 'string' ? sk.element : undefined,
+      type: typeof sk.type === 'string' ? sk.type : undefined,
+      targetType: typeof sk.targetType === 'string' ? sk.targetType : undefined,
+      mpCost: typeof sk.mpCost === 'number' ? sk.mpCost : undefined,
+    };
+  });
+
   const result = await runEnemyAgent({
     requirements: requirements.trim(),
     existingEnemies: enemies,
     itemIds: Object.keys(items),
     materialIds: Object.keys(materials),
-    skillIds: Object.keys(skills),
+    skills: skillCatalog,
     designContext: buildDesignContext(enemies),
     maxAttempts: options?.maxAttempts ?? 3,
     model: options?.model,

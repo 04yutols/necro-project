@@ -54,8 +54,19 @@ type GeminiCandidate = {
 
 type GeminiResponse = {
   candidates?: GeminiCandidate[];
-  error?: { message?: string };
+  error?: {
+    message?: string;
+    details?: { '@type'?: string; retryDelay?: string }[];
+  };
 };
+
+/** 429 応答の RetryInfo から待機秒数を取り出す（"21.6s" → 21.6）。なければ null。 */
+function parseRetryDelaySec(resp: GeminiResponse): number | null {
+  const detail = resp.error?.details?.find((d) => typeof d.retryDelay === 'string');
+  if (!detail?.retryDelay) return null;
+  const m = detail.retryDelay.match(/([\d.]+)s/);
+  return m ? Number(m[1]) : null;
+}
 
 /**
  * Gemini にテキスト生成を依頼し、生成テキストを返す。
@@ -83,8 +94,11 @@ export async function generateText(prompt: string, opts: GenerateOptions = {}): 
     body.systemInstruction = { parts: [{ text: opts.system }] };
   }
 
-  // 一時的エラー（429 レート超過 / 500・503 過負荷）は指数バックオフで最大3回再試行。
+  // 一時的エラー（429 レート超過 / 500・503 過負荷）は再試行。
+  // 429 はサーバ指定の retryDelay を尊重する（無駄打ちでレート窓をさらに圧迫しないため）。
   const MAX_RETRIES = 3;
+  /** retryDelay がこの秒数を超える場合は待たずに諦める（呼び出し側を長時間ブロックしない）。 */
+  const MAX_WAIT_SEC = 30;
   let data: GeminiResponse | null = null;
   let lastStatus = 0;
   let lastMessage = '';
@@ -106,8 +120,13 @@ export async function generateText(prompt: string, opts: GenerateOptions = {}): 
     if (!transient || attempt === MAX_RETRIES) {
       throw new GeminiError(lastMessage, res.status);
     }
-    // 1s, 2s, 4s バックオフ
-    await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+    // 待機秒数: 429 はサーバ指定の retryDelay を優先（+1s 余裕）。なければ指数バックオフ。
+    const serverDelay = res.status === 429 ? parseRetryDelaySec(json) : null;
+    const waitSec = serverDelay !== null ? serverDelay + 1 : 2 ** attempt;
+    if (waitSec > MAX_WAIT_SEC) {
+      throw new GeminiError(`${lastMessage}（推奨待機 ${Math.round(waitSec)}s が上限超過のため中断）`, res.status);
+    }
+    await new Promise((r) => setTimeout(r, waitSec * 1000));
   }
   if (!data) {
     throw new GeminiError(lastMessage || 'Gemini API への接続に失敗しました。', lastStatus);

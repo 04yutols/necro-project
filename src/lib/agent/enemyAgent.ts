@@ -17,6 +17,16 @@ import {
   type EnemyValidationResult,
 } from './enemyBalance';
 
+/** プロンプト/検証で使うスキルのメタデータ付きエントリ。 */
+export type SkillCatalogEntry = {
+  id: string;
+  nameJa?: string;
+  element?: string;
+  type?: string;
+  targetType?: string;
+  mpCost?: number;
+};
+
 export type EnemyAgentInput = {
   /** 自然言語の要件。例:「area1_boss 前座の ICE 弱点 ELITE アンデッド」 */
   requirements: string;
@@ -24,7 +34,8 @@ export type EnemyAgentInput = {
   existingEnemies: Record<string, unknown>;
   itemIds: string[];
   materialIds: string[];
-  skillIds: string[];
+  /** スキルカタログ（素性付き）。味方スキル選定と参照検証に使う。 */
+  skills: SkillCatalogEntry[];
   /** 設計指針の抜粋（呼び出し側で設計書から読み込んで渡す）。 */
   designContext: string;
   /** 最大再生成回数。 */
@@ -45,6 +56,7 @@ const StateAnnotation = Annotation.Root({
   requirements: Annotation<string>,
   designContext: Annotation<string>,
   balanceCtx: Annotation<EnemyBalanceContext>,
+  skillCatalog: Annotation<SkillCatalogEntry[]>,
   maxAttempts: Annotation<number>,
   model: Annotation<string>,
   draft: Annotation<Record<string, unknown> | null>({
@@ -98,10 +110,10 @@ const ENEMY_SCHEMA_HINT = `{
   ],
   "description": "設計意図を日本語で1〜2文",
   "necromance": {
-    "captureRate": 0〜1,
-    "allyCost": 1以上の整数,
+    "captureRate": "0〜1。tier規約: MINION 0.12 / ELITE 0.04 / BOSS 0.001",
+    "allyCost": "整数。tier規約: MINION 1 / ELITE 2 / BOSS 4",
     "allyStats": { "hp": int, "atk": int, "def": int, "spd": int, "critRate": number, "critDmg": number, "effectHit": number, "effectRes": number },
-    "skillIds": ["既存のスキルID"]
+    "skillIds": ["味方化時に使うスキルID（素性に合うものを選ぶ。下のスキルカタログから）"]
   }
 }`;
 
@@ -115,7 +127,17 @@ function buildPrompt(state: State): string {
     })
     .join('\n');
 
+  const skillCatalog = state.skillCatalog
+    .map(
+      (s) =>
+        `  ${s.id} [${s.element ?? 'NONE'}/${s.type ?? '-'}/${s.targetType ?? '-'}${
+          s.mpCost !== undefined ? `/mp${s.mpCost}` : ''
+        }]${s.nameJa ? ` ${s.nameJa}` : ''}`,
+    )
+    .join('\n');
+
   const base = `あなたは Necromance Brave のゲームデザイナーです。要件に合うエネミー1体を、既存データと整合する形で設計してください。
+このゲームの敵は「ネクロマンスで味方（使役モンスター）にできる」のが核心です。敵としての性能と、味方化したときの性能（necromance）の両方を必ず設計してください。
 
 # 要件
 ${state.requirements}
@@ -126,10 +148,13 @@ ${state.designContext}
 # 既存エネミー（tier バランスの参考にすること。stats は既存の同 tier 帯に揃える）
 ${existingSummary}
 
-# 参照可能な ID
+# 参照可能な武器/素材 ID
 - 武器(items): ${[...ctx.itemIds].join(', ') || '（なし）'}
 - 素材(materials): ${[...ctx.materialIds].join(', ') || '（なし）'}
-- スキル(skills): ${[...ctx.skillIds].slice(0, 40).join(', ')}
+
+# スキルカタログ（味方の skillIds はここから素性に合うものを選ぶ）
+形式: id [属性/種別/対象/コスト] 名前
+${skillCatalog}
 
 # 出力スキーマ（このJSONオブジェクトのみを出力。説明文やマークダウンは不要）
 ${ENEMY_SCHEMA_HINT}
@@ -149,10 +174,20 @@ ${ENEMY_SCHEMA_HINT}
 - gimmicks は ELITE/BOSS 用。MINION には付けない。ギミック要求がなければ gimmicks は省略してよい。
 - trigger/effect は上記の列挙値のみ。独自の文字列は禁止。
 
+# 味方化（necromance）設計（重要・敵性能と同じくらい丁寧に）
+- この魔物を味方にしたときの性能。allyStats と skillIds がそのまま使役モンスターの戦闘性能になる。
+- **allyStats**: 敵 stats と同じ tier 帯に収める（インフレ厳禁）。基本は敵 stats を踏襲しつつ、味方として自然な値にする。critDmg は%表記(150前後)。
+- **captureRate / allyCost**: 上記 tier 規約（MINION 0.12/1, ELITE 0.04/2, BOSS 0.001/4）に必ず合わせる。
+- **skillIds（最重要）**: 味方の戦闘行動そのもの。空にしない。
+  - 魔物の素性に合う属性のスキルを選ぶ。例: 闇耐性の高いアンデッド→DARK系、火を操る魔物→FIRE系、素早い物理系→PHYSICAL/SINGLE。
+  - この魔物の弱点属性のスキルは選ばない（弱点を自ら振るうのは不自然）。
+  - 数の目安: MINION 1〜2、ELITE 1〜3、BOSS 2〜4。役割（物理アタッカー/魔法/全体/単体）を意識して組む。
+
 # 厳守事項
 - dropTable.itemId / necromance.skillIds は上記の参照可能IDから選ぶこと（存在しないIDは禁止）。
 - weaknesses に挙げた属性は resistances で必ず負の値（例 -30）にすること。
 - stats は既存の同 tier エネミーの数値帯に合わせること（インフレ厳禁）。
+- 敵性能と味方化（necromance）の両方を必ず埋めること。
 - id は既存と重複しない snake_case にすること。`;
 
   if (state.feedback) {
@@ -230,17 +265,23 @@ const graph = new StateGraph(StateAnnotation)
  * エネミー草稿を生成する。検証 FAIL の場合は最大 maxAttempts まで自動再生成する。
  */
 export async function runEnemyAgent(input: EnemyAgentInput): Promise<EnemyAgentResult> {
+  const skillMeta: Record<string, { element?: string; type?: string; targetType?: string }> = {};
+  for (const s of input.skills) {
+    skillMeta[s.id] = { element: s.element, type: s.type, targetType: s.targetType };
+  }
   const balanceCtx: EnemyBalanceContext = {
     existingEnemies: input.existingEnemies,
     itemIds: new Set(input.itemIds),
     materialIds: new Set(input.materialIds),
-    skillIds: new Set(input.skillIds),
+    skillIds: new Set(input.skills.map((s) => s.id)),
+    skillMeta,
   };
 
   const final = await graph.invoke({
     requirements: input.requirements,
     designContext: input.designContext,
     balanceCtx,
+    skillCatalog: input.skills,
     maxAttempts: input.maxAttempts ?? 3,
     model: input.model ?? DEFAULT_GEMINI_MODEL,
   });

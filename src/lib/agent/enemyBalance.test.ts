@@ -17,7 +17,12 @@ const CTX: EnemyBalanceContext = {
   existingEnemies: EXISTING_ENEMIES,
   itemIds: new Set(['bone_cleaver', 'mourning_bell_crozier']),
   materialIds: new Set(['grave_crystal', 'bone_chip']),
-  skillIds: new Set(['skill_darkpriest_1', 'skill_necromancer_1']),
+  skillIds: new Set(['skill_darkpriest_1', 'skill_necromancer_1', 'skill_mage_1']),
+  skillMeta: {
+    skill_darkpriest_1: { element: 'DARK', type: 'MAGICAL', targetType: 'SINGLE' },
+    skill_necromancer_1: { element: 'DARK', type: 'MAGICAL', targetType: 'SINGLE' },
+    skill_mage_1: { element: 'FIRE', type: 'MAGICAL', targetType: 'SINGLE' },
+  },
 };
 
 function validDraft(): Record<string, unknown> {
@@ -38,10 +43,10 @@ function validDraft(): Record<string, unknown> {
     battle: { color: '#66CCFF', sprite: 'WRAITH', size: 0.8 },
     description: '氷に弱いエリート。',
     necromance: {
-      captureRate: 0.05,
-      allyCost: 4,
-      allyStats: { hp: 50, atk: 6, def: 8, spd: 55, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 10 },
-      skillIds: ['skill_darkpriest_1'],
+      captureRate: 0.04, // ELITE 規約
+      allyCost: 2, // ELITE 規約
+      allyStats: { hp: 55, atk: 7, def: 8, spd: 70, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 10 },
+      skillIds: ['skill_darkpriest_1'], // DARK（弱点 ICE と被らない）
     },
   };
 }
@@ -208,6 +213,76 @@ describe('validateEnemyDraft - gimmicks & shield', () => {
     const d = { ...validDraft(), shieldHp: 20 };
     const res = validateEnemyDraft(d, CTX);
     expect(res.findings.some((f) => f.field === 'maxShieldHp' && f.level === 'WARN')).toBe(true);
+  });
+});
+
+describe('validateEnemyDraft - necromance (ally) design', () => {
+  it('passes a well-formed ally design with no WARN/FAIL on necromance', () => {
+    const res = validateEnemyDraft(validDraft(), CTX);
+    const necroFindings = res.findings.filter((f) => f.field.startsWith('necromance'));
+    expect(necroFindings.some((f) => f.level === 'FAIL')).toBe(false);
+    expect(necroFindings.some((f) => f.level === 'WARN')).toBe(false);
+  });
+
+  it('WARNs when captureRate does not match tier convention', () => {
+    const d = validDraft();
+    (d.necromance as Record<string, unknown>).captureRate = 0.5;
+    const res = validateEnemyDraft(d, CTX);
+    expect(res.findings.some((f) => f.field === 'necromance.captureRate' && f.level === 'WARN')).toBe(true);
+  });
+
+  it('WARNs when allyCost does not match tier convention', () => {
+    const d = validDraft();
+    (d.necromance as Record<string, unknown>).allyCost = 4; // ELITE は 2
+    const res = validateEnemyDraft(d, CTX);
+    expect(res.findings.some((f) => f.field === 'necromance.allyCost' && f.level === 'WARN')).toBe(true);
+  });
+
+  it('WARNs when ally has no skills (would only basic-attack)', () => {
+    const d = validDraft();
+    (d.necromance as Record<string, unknown>).skillIds = [];
+    const res = validateEnemyDraft(d, CTX);
+    expect(res.findings.some((f) => f.field === 'necromance.skillIds' && f.level === 'WARN')).toBe(true);
+  });
+
+  it('WARNs when allyStats fall outside the enemy tier band', () => {
+    const d = validDraft();
+    (d.necromance as Record<string, unknown>).allyStats = {
+      hp: 9999, atk: 7, def: 8, spd: 70, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 10,
+    };
+    const res = validateEnemyDraft(d, CTX);
+    expect(res.findings.some((f) => f.field === 'necromance.allyStats.hp' && f.level === 'WARN')).toBe(true);
+  });
+
+  it('FAILs when allyStats.critDmg uses fraction scale', () => {
+    const d = validDraft();
+    (d.necromance as Record<string, unknown>).allyStats = {
+      hp: 55, atk: 7, def: 8, spd: 70, critRate: 5, critDmg: 1.5, effectHit: 0, effectRes: 10,
+    };
+    expect(validateEnemyDraft(d, CTX).ok).toBe(false);
+  });
+
+  it('WARNs when an ally skill uses the monster\'s own weakness element', () => {
+    // monster weak to ICE; give it a FIRE... no — give it a skill whose element IS the weakness.
+    // Make the monster weak to FIRE and assign skill_mage_1 (FIRE).
+    const d = validDraft();
+    d.resistances = { FIRE: -30 };
+    d.weaknesses = ['FIRE'];
+    (d.necromance as Record<string, unknown>).skillIds = ['skill_mage_1']; // FIRE
+    const res = validateEnemyDraft(d, CTX);
+    expect(res.findings.some((f) => f.field === 'necromance.skillIds' && f.level === 'WARN' && /弱点/.test(f.message))).toBe(true);
+  });
+
+  it('does not warn element coherence when ally skill matches the monster theme', () => {
+    const d = validDraft(); // weak ICE, ally skill DARK
+    const res = validateEnemyDraft(d, CTX);
+    expect(res.findings.some((f) => f.field === 'necromance.skillIds' && /弱点/.test(f.message))).toBe(false);
+  });
+
+  it('FAILs when an ally skill does not exist in skills.json', () => {
+    const d = validDraft();
+    (d.necromance as Record<string, unknown>).skillIds = ['skill_nonexistent'];
+    expect(validateEnemyDraft(d, CTX).ok).toBe(false);
   });
 });
 
