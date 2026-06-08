@@ -146,10 +146,25 @@ function jobPowerScore(stats: Record<string, unknown>): number {
 // ---------------------------------------------------------------------------
 // Public: run full audit
 // ---------------------------------------------------------------------------
-export async function runMasterDataAudit(): Promise<AuditFinding[]> {
+/**
+ * マスターデータ監査。`override` を渡すと、その分だけ in-memory で差し替えてから検査する
+ * （非破壊プレビュー用。監査エージェント Agent B が修正パッチを保存前に検証するのに使う）。
+ * override 無し時はディスクの現状をそのまま検査する（= 従来の runMasterDataAudit）。
+ */
+export async function auditMasterData(
+  override?: Partial<MasterDataCollection>,
+): Promise<AuditFinding[]> {
   assertDev();
 
-  const data = await getAllMasterData();
+  const base = await getAllMasterData();
+  // override されたファイルはエンティティ単位でマージ（指定 entity のみ差し替え/追加）
+  const data: MasterDataCollection = { ...base };
+  if (override) {
+    for (const key of Object.keys(override) as (keyof MasterDataCollection)[]) {
+      const ov = override[key];
+      if (ov) data[key] = { ...base[key], ...ov };
+    }
+  }
   const findings: AuditFinding[] = [];
 
   const enemyIds = new Set(Object.keys(data.enemies));
@@ -499,6 +514,11 @@ export async function runMasterDataAudit(): Promise<AuditFinding[]> {
   }
 
   return findings;
+}
+
+/** 後方互換: 従来の全件監査（ディスク現状）。 */
+export async function runMasterDataAudit(): Promise<AuditFinding[]> {
+  return auditMasterData();
 }
 
 // ---------------------------------------------------------------------------

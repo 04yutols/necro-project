@@ -9,6 +9,7 @@ import FormField from './shared/FormField';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
+import AIDemonFormDraftPanel from '../AIDemonFormDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
 
 const TABS = ['基本情報', 'Effect A', 'Effect B', '奥義', '依存関係'];
@@ -232,6 +233,17 @@ export default function DemonFormEditor({ initialData, entryKey, isNew, dependen
         isNew={isNew}
         entryKey={entryKey}
       />
+
+      {isNew && (
+        <AIDemonFormDraftPanel
+          onApply={(draft) => {
+            const draftKey = typeof draft.jobId === 'string' && draft.jobId ? draft.jobId : entryKey;
+            setForm(initForm(draft, draftKey));
+            setActiveTab(TABS[0]);
+            setError(null);
+          }}
+        />
+      )}
 
       {error && (
         <div style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '10px 14px', color: '#fca5a5', fontSize: 14, marginBottom: 16 }}>

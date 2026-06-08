@@ -7,6 +7,7 @@ import FormTabs from './shared/FormTabs';
 import FormSaveBar from './shared/FormSaveBar';
 import FormField from './shared/FormField';
 import ConfirmDialog from './shared/ConfirmDialog';
+import AIStorySceneCandidates from '../AIStorySceneCandidates';
 import type { StoryScene, StoryCharacter, DialogueLine, CharacterPortrait, SceneTrigger } from '@/types/story';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -513,6 +514,15 @@ export default function StorySceneForm({
         saving={saving}
         isNew={isNew}
         entryKey={form.id}
+      />
+
+      <AIStorySceneCandidates
+        currentScene={form}
+        isNew={isNew}
+        onApply={(lines) => {
+          setForm((f) => ({ ...f, lines }));
+          setActiveTab('台詞編集');
+        }}
       />
 
       <FormTabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />

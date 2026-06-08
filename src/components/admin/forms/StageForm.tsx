@@ -20,6 +20,7 @@ import DropTableEditor, { DropEntry } from './shared/DropTableEditor';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
+import AIStageDraftPanel from '../AIStageDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
 
 const TABS = ['基本情報', 'WAVE設定', '報酬', '依存関係'];
@@ -294,6 +295,17 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
         isNew={isNew}
         entryKey={entryKey}
       />
+
+      {isNew && (
+        <AIStageDraftPanel
+          onApply={(draft) => {
+            const draftId = typeof draft.id === 'string' && draft.id ? draft.id : entryKey;
+            setForm(initForm(draft, draftId, undefined, stages));
+            setActiveTab(TABS[0]);
+            setError(null);
+          }}
+        />
+      )}
 
       {error && (
         <div style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '10px 14px', color: '#fca5a5', fontSize: 14, marginBottom: 16 }}>

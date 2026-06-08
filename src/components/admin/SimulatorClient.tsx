@@ -5,6 +5,7 @@ import { calculateBattleDamage } from '@/logic/BattleDamage';
 import { INITIAL_PLAYER_BASE_STATS } from '@/logic/BalanceConfig';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
 import type { ElementType, BaseStats } from '@/types/game';
+import SimEvalCard from './SimEvalCard';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -989,6 +990,14 @@ export default function SimulatorClient({
           </div>
         </div>
       </div>
+
+      <SimEvalCard
+        jobId={jobId}
+        skillId={resolvedSkillId}
+        level={level}
+        enemyId={enemyId}
+        onApplyPower={(value) => setManualPower(value)}
+      />
     </div>
   );
 }

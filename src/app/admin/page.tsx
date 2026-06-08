@@ -116,6 +116,18 @@ export default async function AdminDashboard() {
         >
           ダメージシミュレータ →
         </Link>
+        <Link
+          href="/admin/agents/batch"
+          className="px-4 py-2 rounded text-xs font-space font-semibold tracking-wide"
+          style={{
+            background: 'rgba(139,0,255,0.12)',
+            border: '1px solid rgba(139,0,255,0.3)',
+            color: '#c084fc',
+            textDecoration: 'none',
+          }}
+        >
+          AI 一括変更 →
+        </Link>
       </div>
     </div>
   );
