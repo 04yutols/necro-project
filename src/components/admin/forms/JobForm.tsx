@@ -9,6 +9,7 @@ import FormSaveBar from './shared/FormSaveBar';
 import FormField from './shared/FormField';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
+import AIJobDraftPanel from '../AIJobDraftPanel';
 import DependenciesTab from './shared/DependenciesTab';
 import type { DependencyRef } from '@/app/admin/actions';
 import type { BaseStats, JobBaseStatsByLevel, SkillData } from '@/types/game';
@@ -322,6 +323,16 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
         isNew={isNew}
         entryKey={entryKey}
       />
+
+      {isNew && (
+        <AIJobDraftPanel
+          onApply={(draft) => {
+            setForm(initForm(draft));
+            setActiveTab(TABS[0]);
+            setError(null);
+          }}
+        />
+      )}
 
       {error && (
         <div style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '10px 14px', color: '#fca5a5', fontSize: 14, marginBottom: 16 }}>

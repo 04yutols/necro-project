@@ -11,6 +11,7 @@ import FormField from './shared/FormField';
 import FormSaveBar from './shared/FormSaveBar';
 import FormTabs from './shared/FormTabs';
 import JsonSidebar from './shared/JsonSidebar';
+import AIAreaDraftPanel from '../AIAreaDraftPanel';
 
 const TABS = ['基本情報', '表示設定', '依存関係'];
 
@@ -184,6 +185,17 @@ export default function AreaForm({ initialData, entryKey, isNew, dependencies = 
         isNew={isNew}
         entryKey={entryKey}
       />
+
+      {isNew && (
+        <AIAreaDraftPanel
+          onApply={(draft) => {
+            const draftId = typeof draft.id === 'string' && draft.id ? draft.id : entryKey;
+            setForm(initForm(draft, draftId, areas));
+            setActiveTab(TABS[0]);
+            setError(null);
+          }}
+        />
+      )}
 
       {error && (
         <div style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '10px 14px', color: '#fca5a5', fontSize: 14, marginBottom: 16 }}>

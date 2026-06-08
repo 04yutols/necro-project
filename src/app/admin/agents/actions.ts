@@ -20,6 +20,9 @@ import { runDemonAgent, type DemonAgentResult } from '@/lib/agent/demonAgent';
 import type { DemonJobOwner } from '@/lib/agent/demonBalance';
 import { runStageAgent, type StageAgentResult } from '@/lib/agent/stageAgent';
 import { runWeaponAgent, type WeaponAgentResult } from '@/lib/agent/weaponAgent';
+import { runMaterialAgent, type MaterialAgentResult } from '@/lib/agent/materialAgent';
+import { runJobAgent, type JobAgentResult } from '@/lib/agent/jobAgent';
+import { runAreaAgent, type AreaAgentResult } from '@/lib/agent/areaAgent';
 
 function assertDev() {
   if (process.env.NODE_ENV !== 'development') {
@@ -382,6 +385,116 @@ export async function generateWeaponDraftAction(
 
   const draftId = result.draft && typeof result.draft.id === 'string' ? result.draft.id : null;
   const idCollision = draftId ? Object.keys(items).includes(draftId) : false;
+
+  return { ...result, idCollision };
+}
+
+// ---------------------------------------------------------------------------
+// 素材草案生成（rarity が expValue 帯を決める）
+// ---------------------------------------------------------------------------
+export type GenerateMaterialActionResult = MaterialAgentResult & { idCollision?: boolean };
+
+export async function generateMaterialDraftAction(
+  requirements: string,
+  rarity: string,
+  options?: { maxAttempts?: number; model?: string },
+): Promise<GenerateMaterialActionResult> {
+  assertDev();
+
+  if (!requirements || requirements.trim().length < 4) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  }
+  if (!['COMMON', 'RARE', 'EPIC', 'LEGENDARY'].includes(rarity)) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: `レアリティ "${rarity}" は不正です。` };
+  }
+
+  const materials = await getMasterFile('materials');
+
+  const result = await runMaterialAgent({
+    requirements: requirements.trim(),
+    rarity,
+    existingMaterials: materials,
+    maxAttempts: options?.maxAttempts ?? 3,
+    model: options?.model,
+  });
+
+  const draftId = result.draft && typeof result.draft.id === 'string' ? result.draft.id : null;
+  const idCollision = draftId ? Object.keys(materials).includes(draftId) : false;
+
+  return { ...result, idCollision };
+}
+
+// ---------------------------------------------------------------------------
+// 職業草案生成（tier が設計思想を決める / skills は category 一致）
+// ---------------------------------------------------------------------------
+export type GenerateJobActionResult = JobAgentResult & { idCollision?: boolean };
+
+export async function generateJobDraftAction(
+  requirements: string,
+  tier: number,
+  options?: { maxAttempts?: number; model?: string },
+): Promise<GenerateJobActionResult> {
+  assertDev();
+
+  if (!requirements || requirements.trim().length < 4) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  }
+  const tierNum = tier === 2 ? 2 : 1;
+
+  const [jobs, skills] = await Promise.all([getMasterFile('jobs'), getMasterFile('skills')]);
+
+  const skillCatalog = Object.entries(skills).map(([id, s]) => {
+    const sk = s as Record<string, unknown>;
+    return {
+      id,
+      nameJa: typeof sk.name === 'string' ? sk.name : undefined,
+      type: typeof sk.type === 'string' ? sk.type : undefined,
+      element: typeof sk.element === 'string' ? sk.element : undefined,
+      targetType: typeof sk.targetType === 'string' ? sk.targetType : undefined,
+    };
+  });
+
+  const result = await runJobAgent({
+    requirements: requirements.trim(),
+    tier: tierNum,
+    existingJobs: jobs,
+    skills: skillCatalog,
+    maxAttempts: options?.maxAttempts ?? 3,
+    model: options?.model,
+  });
+
+  const draftId = result.draft && typeof result.draft.id === 'string' ? result.draft.id : null;
+  const idCollision = draftId ? Object.keys(jobs).includes(draftId) : false;
+
+  return { ...result, idCollision };
+}
+
+// ---------------------------------------------------------------------------
+// エリア草案生成（マップメタデータ。id=ch{chapter}_area{area}）
+// ---------------------------------------------------------------------------
+export type GenerateAreaActionResult = AreaAgentResult & { idCollision?: boolean };
+
+export async function generateAreaDraftAction(
+  requirements: string,
+  options?: { maxAttempts?: number; model?: string },
+): Promise<GenerateAreaActionResult> {
+  assertDev();
+
+  if (!requirements || requirements.trim().length < 4) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  }
+
+  const areas = await getMasterFile('areas');
+
+  const result = await runAreaAgent({
+    requirements: requirements.trim(),
+    existingAreas: areas,
+    maxAttempts: options?.maxAttempts ?? 3,
+    model: options?.model,
+  });
+
+  const draftId = result.draft && typeof result.draft.id === 'string' ? result.draft.id : null;
+  const idCollision = draftId ? Object.keys(areas).includes(draftId) : false;
 
   return { ...result, idCollision };
 }
