@@ -14,6 +14,8 @@ import path from 'path';
 import { getMasterFile } from '../actions';
 import { runEnemyAgent, type EnemyAgentResult } from '@/lib/agent/enemyAgent';
 import { deriveTierBands } from '@/lib/agent/enemyBalance';
+import { runSkillAgent, type SkillAgentResult } from '@/lib/agent/skillAgent';
+import type { SkillOwner } from '@/lib/agent/skillBalance';
 
 function assertDev() {
   if (process.env.NODE_ENV !== 'development') {
@@ -115,4 +117,103 @@ export async function generateEnemyDraftAction(
   const idCollision = draftId ? Object.keys(enemies).includes(draftId) : false;
 
   return { ...result, idCollision };
+}
+
+// ---------------------------------------------------------------------------
+// スキル草案生成（職業 or 魔物に紐づく）
+// ---------------------------------------------------------------------------
+export type GenerateSkillActionResult = SkillAgentResult & { idCollision?: boolean };
+
+/** 紐付き先の指定。job の場合 jobId、monster の場合 monsterId。 */
+export type SkillOwnerSelector =
+  | { kind: 'job'; id: string }
+  | { kind: 'monster'; id: string };
+
+/** 属性傾向を resistances から導出（負の耐性=弱点は除外し、正の耐性側を傾向とみなす）。 */
+function deriveElementAffinity(resistances: unknown): string[] {
+  if (typeof resistances !== 'object' || resistances === null) return [];
+  const out: string[] = [];
+  for (const [el, v] of Object.entries(resistances as Record<string, unknown>)) {
+    if (typeof v === 'number' && v > 0) out.push(el);
+  }
+  return out;
+}
+
+export async function generateSkillDraftAction(
+  requirements: string,
+  owner: SkillOwnerSelector,
+  options?: { maxAttempts?: number; model?: string },
+): Promise<GenerateSkillActionResult> {
+  assertDev();
+
+  if (!requirements || requirements.trim().length < 4) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  }
+
+  const [skills, jobs, monsters] = await Promise.all([
+    getMasterFile('skills'),
+    getMasterFile('jobs'),
+    getMasterFile('monsters'),
+  ]);
+
+  // 紐付き先 owner を構築
+  let resolvedOwner: SkillOwner;
+  if (owner.kind === 'job') {
+    const job = jobs[owner.id] as Record<string, unknown> | undefined;
+    if (!job) {
+      return { draft: null, validation: null, attempts: 0, log: [], error: `職業 "${owner.id}" が存在しません。` };
+    }
+    resolvedOwner = {
+      kind: 'job',
+      id: owner.id,
+      displayName: (job.displayName as string) ?? (job.name as string) ?? owner.id,
+      category: job.category as string | undefined,
+      baseAttackType: job.baseAttackType as string | undefined,
+      tier: typeof job.tier === 'number' ? job.tier : 1,
+    };
+  } else {
+    const monster = monsters[owner.id] as Record<string, unknown> | undefined;
+    if (!monster) {
+      return { draft: null, validation: null, attempts: 0, log: [], error: `魔物 "${owner.id}" が存在しません。` };
+    }
+    resolvedOwner = {
+      kind: 'monster',
+      id: owner.id,
+      displayName: (monster.name as string) ?? owner.id,
+      tribe: monster.tribe as string | undefined,
+      elementAffinity: deriveElementAffinity(monster.resistances),
+    };
+  }
+
+  const result = await runSkillAgent({
+    requirements: requirements.trim(),
+    owner: resolvedOwner,
+    existingSkills: skills,
+    maxAttempts: options?.maxAttempts ?? 3,
+    model: options?.model,
+  });
+
+  const draftId = result.draft && typeof result.draft.id === 'string' ? result.draft.id : null;
+  const idCollision = draftId ? Object.keys(skills).includes(draftId) : false;
+
+  return { ...result, idCollision };
+}
+
+/** スキル草案パネル用: 紐付き先の選択肢（職業/魔物の id と表示名）。 */
+export async function getSkillOwnerOptions(): Promise<{
+  jobs: { id: string; label: string }[];
+  monsters: { id: string; label: string }[];
+}> {
+  assertDev();
+  const [jobs, monsters] = await Promise.all([getMasterFile('jobs'), getMasterFile('monsters')]);
+  return {
+    jobs: Object.entries(jobs).map(([id, j]) => {
+      const job = j as Record<string, unknown>;
+      return { id, label: `${(job.displayName as string) ?? id}（${job.category}/${job.baseAttackType}/T${job.tier ?? 1}）` };
+    }),
+    monsters: Object.entries(monsters).map(([id, m]) => {
+      const mon = m as Record<string, unknown>;
+      return { id, label: `${(mon.name as string) ?? id}（${mon.tribe}）` };
+    }),
+  };
 }

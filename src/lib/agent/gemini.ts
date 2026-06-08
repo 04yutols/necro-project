@@ -1,15 +1,30 @@
 /**
- * Gemini (Google AI Studio) REST client.
+ * Gemini REST client（2 バックエンド対応）。
  *
- * 管理画面のエージェント専用。重い SDK を入れず、REST を直接叩くことで
- * AI Studio の API キー形式（AQ.* / AIza* 双方）に依存せず制御する。
- * 開発環境でのみ利用する前提（呼び出し側で assertDev() ガードを通す）。
+ * - **aistudio**: generativelanguage.googleapis.com（API キー認証）
+ * - **vertex**: {region}-aiplatform.googleapis.com（GCP ADC / Bearer トークン認証）
+ *
+ * `GEMINI_BACKEND=vertex` で Vertex AI を使用。Vertex は GCP プロジェクト課金の
+ * クォータを使うため、AI Studio 無料枠の日次上限を回避できる。
+ * 管理画面のエージェント専用・開発環境のみ（呼び出し側で assertDev() ガード）。
  */
 
-const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
+const AISTUDIO_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-/** 既定モデル。AI Studio で利用可能なことを動作確認済み。 */
+/** 既定モデル。AI Studio / Vertex 双方で利用可能なことを動作確認済み。 */
 export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+
+export type GeminiBackend = 'aistudio' | 'vertex';
+
+/** 使用バックエンドを決定する。GEMINI_BACKEND を優先、無ければ AI Studio。 */
+export function getGeminiBackend(): GeminiBackend {
+  const b = (process.env.GEMINI_BACKEND ?? '').trim().toLowerCase();
+  if (b === 'vertex') return 'vertex';
+  if (b === 'aistudio') return 'aistudio';
+  // 明示が無い場合、Vertex 用の設定があれば vertex、それ以外は aistudio
+  if (process.env.GOOGLE_CLOUD_PROJECT) return 'vertex';
+  return 'aistudio';
+}
 
 export class GeminiError extends Error {
   constructor(
@@ -29,6 +44,36 @@ export function getGeminiApiKey(): string {
     );
   }
   return key.trim();
+}
+
+const VERTEX_DEFAULT_REGION = 'us-central1';
+
+// google-auth-library のクライアントを使い回す（トークンは内部でキャッシュ/更新）。
+let cachedAuth: { getAccessToken: () => Promise<string | null | undefined>; getProjectId: () => Promise<string> } | null = null;
+
+async function getVertexConfig(): Promise<{ project: string; region: string; token: string }> {
+  const region = process.env.GOOGLE_CLOUD_REGION?.trim() || VERTEX_DEFAULT_REGION;
+  // ADC から認証クライアントを取得（動的 import で edge バンドルへ混入させない）
+  if (!cachedAuth) {
+    const { GoogleAuth } = await import('google-auth-library');
+    const auth = new GoogleAuth({
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    });
+    const client = await auth.getClient();
+    cachedAuth = {
+      getAccessToken: () => client.getAccessToken().then((r) => r.token),
+      getProjectId: () => auth.getProjectId(),
+    };
+  }
+  const project = process.env.GOOGLE_CLOUD_PROJECT?.trim() || (await cachedAuth.getProjectId());
+  if (!project) {
+    throw new GeminiError('GOOGLE_CLOUD_PROJECT が解決できません。.env か gcloud のデフォルトプロジェクトを設定してください。');
+  }
+  const token = await cachedAuth.getAccessToken();
+  if (!token) {
+    throw new GeminiError('Vertex AI のアクセストークンを取得できません。`gcloud auth application-default login` を実行してください。');
+  }
+  return { project, region, token };
 }
 
 export type GenerateOptions = {
@@ -72,8 +117,8 @@ function parseRetryDelaySec(resp: GeminiResponse): number | null {
  * Gemini にテキスト生成を依頼し、生成テキストを返す。
  */
 export async function generateText(prompt: string, opts: GenerateOptions = {}): Promise<string> {
-  const apiKey = getGeminiApiKey();
   const model = opts.model ?? DEFAULT_GEMINI_MODEL;
+  const backend = getGeminiBackend();
 
   // JSON 生成時は thinking を「小さめの固定予算」に絞る。完全無効化(0)だと制約充足や
   // 設計の質が落ちやすく、無制限(動的)だと出力枠を食って JSON が切れる。1024 トークンの
@@ -94,6 +139,17 @@ export async function generateText(prompt: string, opts: GenerateOptions = {}): 
     body.systemInstruction = { parts: [{ text: opts.system }] };
   }
 
+  // バックエンドごとに URL とヘッダを構築する。
+  let url: string;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (backend === 'vertex') {
+    const { project, region, token } = await getVertexConfig();
+    url = `https://${region}-aiplatform.googleapis.com/v1/projects/${project}/locations/${region}/publishers/google/models/${model}:generateContent`;
+    headers.Authorization = `Bearer ${token}`;
+  } else {
+    url = `${AISTUDIO_ENDPOINT}/${model}:generateContent?key=${getGeminiApiKey()}`;
+  }
+
   // 一時的エラー（429 レート超過 / 500・503 過負荷）は再試行。
   // 429 はサーバ指定の retryDelay を尊重する（無駄打ちでレート窓をさらに圧迫しないため）。
   const MAX_RETRIES = 3;
@@ -103,9 +159,9 @@ export async function generateText(prompt: string, opts: GenerateOptions = {}): 
   let lastStatus = 0;
   let lastMessage = '';
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const res = await fetch(`${ENDPOINT}/${model}:generateContent?key=${apiKey}`, {
+    const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
       signal: opts.signal,
     });
