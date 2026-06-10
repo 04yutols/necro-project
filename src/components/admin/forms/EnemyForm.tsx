@@ -10,6 +10,7 @@ import FormField from './shared/FormField';
 import StatInputGrid from './shared/StatInputGrid';
 import ResistanceGrid from './shared/ResistanceGrid';
 import DropTableEditor, { DropEntry } from './shared/DropTableEditor';
+import { gimmickValueToInput, gimmickRowsToJson } from './shared/gimmickValue';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
@@ -128,13 +129,7 @@ function formToJson(form: EnemyFormState): Record<string, unknown> {
       ? { shieldHp: form.shieldHp, maxShieldHp: form.maxShieldHp }
       : {}),
     ...(form.gimmicks.length > 0
-      ? {
-          gimmicks: form.gimmicks.map((g) => ({
-            trigger: g.trigger,
-            effect: g.effect,
-            value: g.value,
-          })),
-        }
+      ? { gimmicks: gimmickRowsToJson(form.gimmicks) }
       : {}),
     necromance: necromanceToJson(form.necromance),
     dropTable: form.dropTable,
@@ -172,7 +167,13 @@ function initForm(data: Record<string, unknown> | null, key: string): EnemyFormS
   const stats = (raw.stats as Record<string, number>) ?? {};
   const resistances = (raw.resistances as Record<string, number>) ?? {};
   const battle = (raw.battle as Record<string, unknown>) ?? {};
-  const gimmicks = (raw.gimmicks as GimmickRow[]) ?? [];
+  const gimmicks: GimmickRow[] = Array.isArray(raw.gimmicks)
+    ? (raw.gimmicks as Record<string, unknown>[]).map((g) => ({
+        trigger: typeof g.trigger === 'string' ? g.trigger : '',
+        effect: typeof g.effect === 'string' ? g.effect : '',
+        value: gimmickValueToInput(g.value),
+      }))
+    : [];
   const dropTable = (raw.dropTable as DropEntry[]) ?? [];
   const tier = (raw.tier as string) ?? 'MINION';
   const necromance = (raw.necromance as Record<string, unknown>) ?? {};
@@ -488,7 +489,7 @@ export default function EnemyForm({ initialData, entryKey, isNew, itemIds, mater
                       <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 32px', gap: 6, alignItems: 'center' }}>
                         <input type="text" value={g.trigger} onChange={(e) => updateGimmick(idx, { trigger: e.target.value })} style={inputStyle} placeholder="ON_SHIELD_BREAK" />
                         <input type="text" value={g.effect} onChange={(e) => updateGimmick(idx, { effect: e.target.value })} style={inputStyle} placeholder="SUMMON" />
-                        <input type="text" value={g.value} onChange={(e) => updateGimmick(idx, { value: e.target.value })} style={inputStyle} placeholder="earthbound_grudge" />
+                        <input type="text" value={g.value} onChange={(e) => updateGimmick(idx, { value: e.target.value })} style={inputStyle} placeholder="1（数値）" />
                         <button
                           onClick={() => updateField('gimmicks', form.gimmicks.filter((_, i) => i !== idx))}
                           style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(220,38,38,0.3)', color: '#fca5a5', borderRadius: 4, cursor: 'pointer', fontSize: 12, width: 28, height: 28 }}

@@ -286,6 +286,21 @@ describe('validateEnemyDraft - necromance (ally) design', () => {
   });
 });
 
+describe('validateEnemyDraft - unknown fields (R-3)', () => {
+  it('WARNs on an unknown top-level field but stays ok', () => {
+    const d = validDraft();
+    (d as Record<string, unknown>).foobar = 123;
+    const res = validateEnemyDraft(d, CTX);
+    expect(res.ok).toBe(true); // 未知フィールドは WARN（FAIL ではない）
+    expect(res.findings.some((f) => f.field === 'foobar' && f.level === 'WARN')).toBe(true);
+  });
+
+  it('a clean valid draft has no unknown-field WARN', () => {
+    const res = validateEnemyDraft(validDraft(), CTX);
+    expect(res.findings.some((f) => /未知のフィールド/.test(f.message))).toBe(false);
+  });
+});
+
 describe('validateEnemyDraft - missing fields', () => {
   it('FAILs when required string fields are missing', () => {
     const res = validateEnemyDraft({ tier: 'MINION', tribe: 'UNDEAD' }, CTX);

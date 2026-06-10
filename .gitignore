@@ -45,3 +45,6 @@ next-env.d.ts
 
 !.env.example
 !.env.local.example
+
+# 一括変更の undo 用スナップショット（git追跡しない）
+src/data/master/.snapshots/

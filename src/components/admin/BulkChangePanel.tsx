@@ -11,6 +11,7 @@ import { useState } from 'react';
 import {
   previewBulkChangeAction,
   applyBulkChangeAction,
+  restoreBulkSnapshotAction,
   type BulkPreviewResult,
 } from '@/app/admin/agents/actions';
 
@@ -26,7 +27,9 @@ export default function BulkChangePanel() {
   const [applying, setApplying] = useState(false);
   const [preview, setPreview] = useState<BulkPreviewResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [applied, setApplied] = useState<{ saved: number; failed: number; fail: number; warn: number } | null>(null);
+  const [applied, setApplied] = useState<{ saved: number; failed: number; fail: number; warn: number; snapshotId: string | null } | null>(null);
+  const [undoing, setUndoing] = useState(false);
+  const [undone, setUndone] = useState(false);
 
   async function handlePreview() {
     setLoading(true);
@@ -51,11 +54,29 @@ export default function BulkChangePanel() {
     try {
       const res = await applyBulkChangeAction(preview.spec);
       if (res.error) setError(res.error);
-      else setApplied({ saved: res.savedIds.length, failed: res.failedIds.length, fail: res.audit.fail, warn: res.audit.warn });
+      else {
+        setApplied({ saved: res.savedIds.length, failed: res.failedIds.length, fail: res.audit.fail, warn: res.audit.warn, snapshotId: res.snapshotId });
+        setUndone(false);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setApplying(false);
+    }
+  }
+
+  async function handleUndo() {
+    if (!applied?.snapshotId) return;
+    setUndoing(true);
+    setError(null);
+    try {
+      const res = await restoreBulkSnapshotAction(applied.snapshotId);
+      if (res.ok) setUndone(true);
+      else setError(res.error ?? '復元に失敗しました');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUndoing(false);
     }
   }
 
@@ -102,8 +123,23 @@ export default function BulkChangePanel() {
       )}
 
       {applied && (
-        <div style={{ marginTop: 12, padding: '10px 12px', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.35)', borderRadius: 6, color: '#86efac', fontSize: 13 }}>
-          ✓ 適用完了: {applied.saved} 件保存{applied.failed > 0 ? ` / ${applied.failed} 件失敗` : ''}。再監査: FAIL {applied.fail} / WARN {applied.warn}
+        <div style={{ marginTop: 12, padding: '10px 12px', background: undone ? 'rgba(255,255,255,0.04)' : 'rgba(74,222,128,0.1)', border: `1px solid ${undone ? 'rgba(255,255,255,0.12)' : 'rgba(74,222,128,0.35)'}`, borderRadius: 6, color: undone ? '#9090b0' : '#86efac', fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {undone ? (
+            <span>↩ 元に戻しました（スナップショットから復元）。</span>
+          ) : (
+            <>
+              <span>✓ 適用完了: {applied.saved} 件保存{applied.failed > 0 ? ` / ${applied.failed} 件失敗` : ''}。再監査: FAIL {applied.fail} / WARN {applied.warn}</span>
+              {applied.snapshotId && (
+                <button
+                  onClick={handleUndo}
+                  disabled={undoing}
+                  style={{ marginLeft: 'auto', fontSize: 12, padding: '4px 12px', borderRadius: 6, background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.4)', color: '#fbbf24', cursor: undoing ? 'wait' : 'pointer' }}
+                >
+                  {undoing ? '復元中…' : '↩ 元に戻す'}
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
 

@@ -12,11 +12,19 @@
 import { useState } from 'react';
 import {
   generateEnemyDraftAction,
+  evaluateEnemyDraftAction,
   type GenerateEnemyActionResult,
+  type EvaluateEnemyDraftResult,
 } from '@/app/admin/agents/actions';
 
 type Props = {
   onApply: (draft: Record<string, unknown>) => void;
+};
+
+const VERDICT_LABEL: Record<string, { label: string; color: string }> = {
+  BALANCED: { label: '適正', color: '#86efac' },
+  TOO_STRONG: { label: '硬すぎ', color: '#fca5a5' },
+  TOO_WEAK: { label: '脆すぎ', color: '#fbbf24' },
 };
 
 const PRESETS = [
@@ -38,12 +46,30 @@ export default function AIEnemyDraftPanel({ onApply }: Props) {
   const [result, setResult] = useState<GenerateEnemyActionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [applied, setApplied] = useState(false);
+  const [evalResult, setEvalResult] = useState<EvaluateEnemyDraftResult | null>(null);
+  const [evalLoading, setEvalLoading] = useState(false);
+
+  async function handleEvaluate() {
+    if (!result?.draft) return;
+    setEvalLoading(true);
+    setEvalResult(null);
+    try {
+      const res = await evaluateEnemyDraftAction(result.draft);
+      setEvalResult(res);
+      if (res.error) setError(res.error);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setEvalLoading(false);
+    }
+  }
 
   async function handleGenerate() {
     setLoading(true);
     setError(null);
     setResult(null);
     setApplied(false);
+    setEvalResult(null);
     try {
       const res = await generateEnemyDraftAction(requirements);
       setResult(res);
@@ -178,7 +204,55 @@ export default function AIEnemyDraftPanel({ onApply }: Props) {
                 {applied ? '✓ 反映済み（保存ボタンで確定）' : 'フォームに反映 ↓'}
               </button>
             )}
+            {result?.draft && (
+              <button
+                onClick={handleEvaluate}
+                disabled={evalLoading}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 6,
+                  background: 'rgba(139,0,255,0.15)',
+                  border: '1px solid rgba(139,0,255,0.35)',
+                  color: '#d8b4fe',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: evalLoading ? 'wait' : 'pointer',
+                }}
+              >
+                {evalLoading ? '評価中…' : '⚖ バランス評価'}
+              </button>
+            )}
           </div>
+
+          {evalResult?.evaluation && evalResult.report && (
+            <div style={{ marginTop: 10, padding: '10px 12px', background: '#0c0c12', border: '1px solid rgba(139,0,255,0.25)', borderRadius: 6 }}>
+              <div style={{ fontSize: 11, color: '#7878a8', marginBottom: 6 }}>
+                代表アタッカー（全職業中央値 atk {evalResult.report.attacker.atk}）× 代表スキル {evalResult.report.rows.length} 種:
+                平均撃破 {evalResult.report.summary.avgHitsToKill} 発 / 1確 {evalResult.report.summary.oneShotCount} 種 / 弱点ヒット {evalResult.report.summary.weaknessHitCount} 種
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
+                {evalResult.report.rows.map((r, i) => (
+                  <div key={i} style={{ fontSize: 11, color: '#9090b0', fontFamily: 'monospace' }}>
+                    {r.skill.id}（{r.skill.classification}）→ 期待 {r.result.expected} / {r.result.oneShot ? '1確' : `${r.result.hitsToKill}発`}
+                    {r.result.isWeakness ? ' / 弱点' : r.result.isResisted ? ' / 耐性' : ''}
+                  </div>
+                ))}
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: VERDICT_LABEL[evalResult.evaluation.verdict]?.color }}>
+                {VERDICT_LABEL[evalResult.evaluation.verdict]?.label}（{evalResult.evaluation.verdict}）
+              </span>
+              <p style={{ fontSize: 12, color: '#c8c8d8', marginTop: 6, lineHeight: 1.5 }}>{evalResult.evaluation.rationale}</p>
+              {evalResult.evaluation.recommendations.map((r, i) => (
+                <div key={i} style={{ fontSize: 12, color: '#c8c8d8', marginTop: 4 }}>
+                  <span style={{ fontFamily: 'monospace', color: '#d8b4fe' }}>{r.target}</span> {r.current} → <b style={{ color: '#86efac' }}>{r.suggested}</b>
+                  <span style={{ color: '#7878a8' }}> — {r.reason}</span>
+                  {evalResult.recChecks[i] && !evalResult.recChecks[i].inBand && (
+                    <span style={{ color: '#fbbf24', fontSize: 11 }}> {evalResult.recChecks[i].note}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {error && (
             <div

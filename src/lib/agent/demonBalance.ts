@@ -8,6 +8,8 @@
  * フォームは職業に紐づく（key=jobId）ため、紐付き先の job tier / 基礎攻撃と整合を検閲する。
  */
 
+import { findUnknownFields } from './knownFields';
+
 export type DemonValidationLevel = 'PASS' | 'WARN' | 'FAIL';
 export type DemonValidationFinding = { level: DemonValidationLevel; field: string; message: string };
 export type DemonValidationResult = { ok: boolean; findings: DemonValidationFinding[] };
@@ -220,6 +222,8 @@ export function validateDemonFormDraft(draft: unknown, ctx: DemonBalanceContext)
     }
   }
 
+  // R-3: 未知トップレベルフィールドを WARN 検出
+  findings.push(...findUnknownFields(draft, 'demonForms'));
   const ok = findings.every((f) => f.level !== 'FAIL');
   if (ok && findings.length === 0) {
     pass('root', '構造・列挙・Tierルール・power 基準すべて問題ありません。');

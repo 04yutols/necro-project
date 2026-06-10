@@ -6,6 +6,8 @@
  * 紐付き先（owner）の category / baseAttackType / tier と整合するかを検閲する。
  */
 
+import { findUnknownFields } from './knownFields';
+
 export type SkillValidationLevel = 'PASS' | 'WARN' | 'FAIL';
 
 export type SkillValidationFinding = {
@@ -253,6 +255,8 @@ export function validateSkillDraft(draft: unknown, ctx: SkillBalanceContext): Sk
     }
   }
 
+  // R-3: 未知トップレベルフィールドを WARN 検出
+  findings.push(...findUnknownFields(draft, 'skills'));
   const ok = findings.every((f) => f.level !== 'FAIL');
   if (ok && findings.length === 0) {
     pass('root', '構造・列挙・power 表・owner 整合すべて問題ありません。');

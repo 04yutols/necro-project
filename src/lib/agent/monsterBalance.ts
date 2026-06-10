@@ -7,6 +7,8 @@
  * 敵(enemies)とは別スケール（プレイヤー側は高め）なので、enemies 帯は使わず monsters から学習する。
  */
 
+import { findUnknownFields } from './knownFields';
+
 export type MonsterValidationLevel = 'PASS' | 'WARN' | 'FAIL';
 export type MonsterValidationFinding = { level: MonsterValidationLevel; field: string; message: string };
 export type MonsterValidationResult = { ok: boolean; findings: MonsterValidationFinding[] };
@@ -147,6 +149,8 @@ export function validateMonsterDraft(draft: unknown, ctx: MonsterBalanceContext)
     }
   }
 
+  // R-3: 未知トップレベルフィールドを WARN 検出
+  findings.push(...findUnknownFields(draft, 'monsters'));
   const ok = findings.every((f) => f.level !== 'FAIL');
   if (ok && findings.length === 0) {
     pass('root', '構造・列挙・cost 帯・スケールすべて問題ありません。');

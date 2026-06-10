@@ -10,6 +10,8 @@
  * 紐付き先はエリア（chapter/area）。
  */
 
+import { findUnknownFields } from './knownFields';
+
 export type StageValidationLevel = 'PASS' | 'WARN' | 'FAIL';
 export type StageValidationFinding = { level: StageValidationLevel; field: string; message: string };
 export type StageValidationResult = { ok: boolean; findings: StageValidationFinding[] };
@@ -250,6 +252,8 @@ export function validateStageDraft(draft: unknown, ctx: StageBalanceContext): St
     fail('position', 'position.x / position.y は数値である必要があります。');
   }
 
+  // R-3: 未知トップレベルフィールドを WARN 検出
+  findings.push(...findUnknownFields(draft, 'stages'));
   const ok = findings.every((f) => f.level !== 'FAIL');
   if (ok && findings.length === 0) {
     pass('root', '構造・参照整合・列挙すべて問題ありません。');

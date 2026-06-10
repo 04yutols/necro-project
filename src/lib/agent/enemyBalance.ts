@@ -8,6 +8,8 @@
  *   既存 enemies.json の実データから動的に学習する。
  */
 
+import { findUnknownFields } from './knownFields';
+
 export type EnemyValidationLevel = 'PASS' | 'WARN' | 'FAIL';
 
 export type EnemyValidationFinding = {
@@ -455,6 +457,8 @@ export function validateEnemyDraft(
     fail('battle', 'battle はオブジェクトである必要があります。');
   }
 
+  // R-3: 未知トップレベルフィールドを WARN 検出
+  findings.push(...findUnknownFields(draft, 'enemies'));
   const ok = findings.every((f) => f.level !== 'FAIL');
   if (ok && findings.length === 0) {
     pass('root', '構造・参照・tier 帯すべて問題ありません。');

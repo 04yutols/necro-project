@@ -8,6 +8,7 @@
 
 import { generateJson, DEFAULT_GEMINI_MODEL } from './gemini';
 import { reportToText, type SimulationReport } from './sim/simulationReport';
+import { enemyReportToText, type EnemyDraftReport } from './sim/enemyDraftReport';
 import {
   checkRecommendations,
   type Recommendation,
@@ -88,9 +89,70 @@ function coerceEvaluation(raw: unknown): SimEvaluation | null {
 }
 
 export async function runSimEvalAgent(input: SimEvalInput): Promise<SimEvalResult> {
+  return runEval(buildPrompt(input), input.recCheckContext, input.model, undefined);
+}
+
+// ---------------------------------------------------------------------------
+// R-7: enemy 草案の評定（代表スキル数種 vs この敵）
+// ---------------------------------------------------------------------------
+export type EnemySimEvalInput = {
+  report: EnemyDraftReport;
+  /** 設計帯コンテキスト（tier 帯など）。 */
+  designContext: string;
+  /** 推奨の帯チェック用コンテキスト（enemy 必須）。 */
+  recCheckContext: RecCheckContext;
+  model?: string;
+};
+
+/** enemy 評定では推奨対象を敵側に限定する。 */
+const ENEMY_VALID_TARGETS = ['enemy.hp', 'enemy.def'];
+
+function buildEnemyPrompt(input: EnemySimEvalInput): string {
+  return `あなたは Necromance Brave のバランスデザイナーです。以下は実バトルと同一の計算式で算出した
+「代表スキル数種でこの敵を攻撃した」シミュレーション結果（決定論的・確定値）です。
+この敵の耐久バランスを評定してください。数値はあなたが計算したものではありません。
+
+# シミュレーション結果
+${enemyReportToText(input.report)}
+
+# 設計帯（doc15）
+${input.designContext}
+
+# 評定の観点
+- TOO_STRONG = 敵として硬すぎる（撃破発数が tier の想定を大きく超える）
+- TOO_WEAK = 脆すぎる（代表スキルの多くで1確になる等、tier の想定未満）
+- 目安: MINION は 1〜2 発、ELITE は 3〜5 発、BOSS は 6 発以上の攻防が成立すること。
+- 弱点ヒット 0 の場合は「弱点を突く動機が無い」点も指摘する。
+
+# 出力（このJSONオブジェクトのみ。説明文やマークダウン不要）
+{
+  "verdict": "BALANCED | TOO_STRONG | TOO_WEAK",
+  "rationale": "数値を引用した日本語の評定（2〜4文）",
+  "recommendations": [
+    { "target": "enemy.hp | enemy.def", "current": 数値, "suggested": 数値, "reason": "短い理由" }
+  ]
+}
+
+# 厳守
+- 数値は与えられたものだけを使う（再計算・捏造しない）。
+- 推奨は設計帯に収める。問題なければ verdict=BALANCED で recommendations は空配列 [] にする。
+- recommendations の target は enemy.hp / enemy.def の2種のみ。`;
+}
+
+export async function runEnemySimEvalAgent(input: EnemySimEvalInput): Promise<SimEvalResult> {
+  return runEval(buildEnemyPrompt(input), input.recCheckContext, input.model, ENEMY_VALID_TARGETS);
+}
+
+/** 共通: プロンプト実行 → 評定パース → 推奨の帯チェック。 */
+async function runEval(
+  prompt: string,
+  recCheckContext: RecCheckContext,
+  model: string | undefined,
+  allowedTargets: string[] | undefined,
+): Promise<SimEvalResult> {
   try {
-    const raw = await generateJson<unknown>(buildPrompt(input), {
-      model: input.model ?? DEFAULT_GEMINI_MODEL,
+    const raw = await generateJson<unknown>(prompt, {
+      model: model ?? DEFAULT_GEMINI_MODEL,
       temperature: 0.4,
       maxOutputTokens: 4096,
       thinkingBudget: 1024,
@@ -99,7 +161,10 @@ export async function runSimEvalAgent(input: SimEvalInput): Promise<SimEvalResul
     if (!evaluation) {
       return { evaluation: null, recChecks: [], log: ['評定のパースに失敗しました'], error: '評定を解釈できませんでした。' };
     }
-    const recChecks = checkRecommendations(evaluation.recommendations, input.recCheckContext);
+    if (allowedTargets) {
+      evaluation.recommendations = evaluation.recommendations.filter((r) => allowedTargets.includes(r.target));
+    }
+    const recChecks = checkRecommendations(evaluation.recommendations, recCheckContext);
     const outOfBand = recChecks.filter((c) => !c.inBand).length;
     return {
       evaluation,

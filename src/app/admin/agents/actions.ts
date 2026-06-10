@@ -13,7 +13,18 @@ import fs from 'fs';
 import path from 'path';
 import { getMasterFile, getAllMasterData, getEntry, auditMasterData, type AuditFinding } from '../actions';
 import { runEnemyAgent, type EnemyAgentResult } from '@/lib/agent/enemyAgent';
-import { deriveTierBands } from '@/lib/agent/enemyBalance';
+import {
+  validateRequirements,
+  deriveElementAffinity,
+  buildEnemyDesignContext,
+  powerBandHint,
+  buildFieldHints,
+  findingKey,
+  buildSimTargets,
+  toSimSkill,
+  snapshotFileOf,
+  clampLevel,
+} from '@/lib/agent/actionSupport';
 import { runSkillAgent, type SkillAgentResult } from '@/lib/agent/skillAgent';
 import type { SkillOwner } from '@/lib/agent/skillBalance';
 import { runDemonAgent, type DemonAgentResult } from '@/lib/agent/demonAgent';
@@ -26,19 +37,25 @@ import { runAreaAgent, type AreaAgentResult } from '@/lib/agent/areaAgent';
 import { runMonsterAgent, type MonsterAgentResult } from '@/lib/agent/monsterAgent';
 import { runAuditFixAgent, type AuditFixResult } from '@/lib/agent/auditFixAgent';
 import { getScopeEntry, type MasterData } from '@/lib/agent/auditFix/scopeRegistry';
-import { runSimEvalAgent, type SimEvalResult } from '@/lib/agent/simEvalAgent';
+import { runSimEvalAgent, runEnemySimEvalAgent, type SimEvalResult } from '@/lib/agent/simEvalAgent';
 import { runStoryAgent, type StoryAgentResult } from '@/lib/agent/storyAgent';
 import { runBulkAgent } from '@/lib/agent/bulkAgent';
 import type { BulkSpec } from '@/lib/agent/bulk/bulkSpec';
 import { applyBulkSpec, buildPatchedCollection, selectMatchedIds, auditMutationFields, type BulkChange } from '@/lib/agent/bulk/bulkEngine';
+import { applyChangesWithWriter } from '@/lib/agent/bulk/applyEngine';
+import { writeSnapshot, listSnapshots, restoreSnapshot, pruneSnapshots } from '@/lib/agent/bulk/snapshot';
 import { saveEntry } from '../actions';
 import { buildStoryContext } from '@/lib/agent/story/storyContext';
 import type { StoryValidationContext } from '@/lib/agent/story/storyValidator';
 import { getStoryScenes, getStoryScenesForPack, getStoryScene, getStoryCharacters, getStoryPackSummaries } from '../actions';
-import { buildSimulationReport, type SimTarget, type SimulationReport } from '@/lib/agent/sim/simulationReport';
-import { POWER_TABLE, classifySkill, findBand } from '@/lib/agent/skillBalance';
+import { buildSimulationReport, type SimulationReport } from '@/lib/agent/sim/simulationReport';
+import {
+  selectRepresentativeSkills,
+  medianAttacker,
+  buildEnemyDraftReport,
+  type EnemyDraftReport,
+} from '@/lib/agent/sim/enemyDraftReport';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
-import type { ElementType } from '@/types/game';
 
 function assertDev() {
   if (process.env.NODE_ENV !== 'development') {
@@ -46,38 +63,17 @@ function assertDev() {
   }
 }
 
-/** 設計指針コンテキストを構築する（静的ポリシー + 実データから学習した tier 帯）。 */
-function buildDesignContext(existingEnemies: Record<string, unknown>): string {
-  const bands = deriveTierBands(existingEnemies);
-  const bandLines = Object.entries(bands)
-    .map(([tier, stats]) => {
-      const parts = Object.entries(stats)
-        .map(([k, b]) => `${k} ${b.min}〜${b.max}`)
-        .join(', ');
-      return `  ${tier}: ${parts}`;
-    })
-    .join('\n');
-
-  // 設計書 15（ワールド・エネミー設計）の方針抜粋を任意で添付
-  let docExcerpt = '';
+/** 設計書 15（ワールド・エネミー設計）の方針抜粋を読む（読めなくても致命的ではない）。 */
+function readDoc15Excerpt(): string {
   try {
     const docPath = path.join(process.cwd(), 'docs', '設計書', '15_ワールド・ダンジョン・エネミー設計.md');
     if (fs.existsSync(docPath)) {
-      docExcerpt = fs.readFileSync(docPath, 'utf-8').slice(0, 1200);
+      return fs.readFileSync(docPath, 'utf-8').slice(0, 1200);
     }
   } catch {
-    // 設計書が読めなくても致命的ではない
+    // noop
   }
-
-  return `## tier 別ステータス帯（現行 enemies.json の実データから算出。これに揃えること）
-${bandLines}
-
-## バランス方針
-- MINION は露払い、ELITE は中ボス級耐久、BOSS は最大耐久。tier 間の数値が逆転しないこと。
-- 弱点は resistances を負の値にすることで表現する（例: weaknesses=["ICE"] なら resistances.ICE < 0）。
-- critRate/critDmg/effectHit/effectRes は既存に倣う（多くは critDmg=150、他は控えめ）。
-
-${docExcerpt ? `## 設計書 15 抜粋\n${docExcerpt}` : ''}`.trim();
+  return '';
 }
 
 export type GenerateEnemyActionResult = EnemyAgentResult & {
@@ -95,14 +91,9 @@ export async function generateEnemyDraftAction(
 ): Promise<GenerateEnemyActionResult> {
   assertDev();
 
-  if (!requirements || requirements.trim().length < 4) {
-    return {
-      draft: null,
-      validation: null,
-      attempts: 0,
-      log: [],
-      error: '要件を入力してください（4文字以上）。',
-    };
+  const reqError = validateRequirements(requirements);
+  if (reqError) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: reqError };
   }
 
   const [enemies, items, materials, skills] = await Promise.all([
@@ -131,7 +122,7 @@ export async function generateEnemyDraftAction(
     itemIds: Object.keys(items),
     materialIds: Object.keys(materials),
     skills: skillCatalog,
-    designContext: buildDesignContext(enemies),
+    designContext: buildEnemyDesignContext(enemies, readDoc15Excerpt()),
     maxAttempts: options?.maxAttempts ?? 3,
     model: options?.model,
   });
@@ -152,16 +143,6 @@ export type SkillOwnerSelector =
   | { kind: 'job'; id: string }
   | { kind: 'monster'; id: string };
 
-/** 属性傾向を resistances から導出（負の耐性=弱点は除外し、正の耐性側を傾向とみなす）。 */
-function deriveElementAffinity(resistances: unknown): string[] {
-  if (typeof resistances !== 'object' || resistances === null) return [];
-  const out: string[] = [];
-  for (const [el, v] of Object.entries(resistances as Record<string, unknown>)) {
-    if (typeof v === 'number' && v > 0) out.push(el);
-  }
-  return out;
-}
-
 export async function generateSkillDraftAction(
   requirements: string,
   owner: SkillOwnerSelector,
@@ -169,8 +150,9 @@ export async function generateSkillDraftAction(
 ): Promise<GenerateSkillActionResult> {
   assertDev();
 
-  if (!requirements || requirements.trim().length < 4) {
-    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  const reqError = validateRequirements(requirements);
+  if (reqError) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: reqError };
   }
 
   const [skills, jobs, monsters] = await Promise.all([
@@ -253,8 +235,9 @@ export async function generateDemonFormDraftAction(
 ): Promise<GenerateDemonActionResult> {
   assertDev();
 
-  if (!requirements || requirements.trim().length < 4) {
-    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  const reqError = validateRequirements(requirements);
+  if (reqError) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: reqError };
   }
 
   const [demonForms, jobs] = await Promise.all([getMasterFile('demonForms'), getMasterFile('jobs')]);
@@ -308,8 +291,9 @@ export async function generateStageDraftAction(
 ): Promise<GenerateStageActionResult> {
   assertDev();
 
-  if (!requirements || requirements.trim().length < 4) {
-    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  const reqError = validateRequirements(requirements);
+  if (reqError) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: reqError };
   }
 
   const [stages, enemies, items, materials, areas] = await Promise.all([
@@ -382,8 +366,9 @@ export async function generateWeaponDraftAction(
 ): Promise<GenerateWeaponActionResult> {
   assertDev();
 
-  if (!requirements || requirements.trim().length < 4) {
-    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  const reqError = validateRequirements(requirements);
+  if (reqError) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: reqError };
   }
   if (!['R', 'SR', 'SSR', 'UR'].includes(rarity)) {
     return { draft: null, validation: null, attempts: 0, log: [], error: `レアリティ "${rarity}" は不正です。` };
@@ -417,8 +402,9 @@ export async function generateMaterialDraftAction(
 ): Promise<GenerateMaterialActionResult> {
   assertDev();
 
-  if (!requirements || requirements.trim().length < 4) {
-    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  const reqError = validateRequirements(requirements);
+  if (reqError) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: reqError };
   }
   if (!['COMMON', 'RARE', 'EPIC', 'LEGENDARY'].includes(rarity)) {
     return { draft: null, validation: null, attempts: 0, log: [], error: `レアリティ "${rarity}" は不正です。` };
@@ -452,8 +438,9 @@ export async function generateJobDraftAction(
 ): Promise<GenerateJobActionResult> {
   assertDev();
 
-  if (!requirements || requirements.trim().length < 4) {
-    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  const reqError = validateRequirements(requirements);
+  if (reqError) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: reqError };
   }
   const tierNum = tier === 2 ? 2 : 1;
 
@@ -496,8 +483,9 @@ export async function generateAreaDraftAction(
 ): Promise<GenerateAreaActionResult> {
   assertDev();
 
-  if (!requirements || requirements.trim().length < 4) {
-    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  const reqError = validateRequirements(requirements);
+  if (reqError) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: reqError };
   }
 
   const areas = await getMasterFile('areas');
@@ -527,8 +515,9 @@ export async function generateMonsterDraftAction(
 ): Promise<GenerateMonsterActionResult> {
   assertDev();
 
-  if (!requirements || requirements.trim().length < 4) {
-    return { draft: null, validation: null, attempts: 0, log: [], error: '要件を入力してください（4文字以上）。' };
+  const reqError = validateRequirements(requirements);
+  if (reqError) {
+    return { draft: null, validation: null, attempts: 0, log: [], error: reqError };
   }
   const costNum = Number.isInteger(cost) && cost >= 1 ? cost : 1;
 
@@ -556,10 +545,6 @@ export type FixAuditActionResult = AuditFixResult & {
   entityId: string;
   targetFindings: AuditFinding[];
 };
-
-function failKeyOf(f: AuditFinding): string {
-  return `${f.scope}|${f.id}|${f.message}`;
-}
 
 /**
  * 指定エンティティの監査 FAIL を AI に修正させ、二層ゲートで検証した結果を返す。
@@ -606,7 +591,7 @@ export async function fixAuditFindingAction(
     };
   }
 
-  const baselineFailKeys = new Set(baseline.filter((f) => f.level === 'FAIL').map(failKeyOf));
+  const baselineFailKeys = new Set(baseline.filter((f) => f.level === 'FAIL').map(findingKey));
 
   const result = await runAuditFixAgent({
     scope,
@@ -646,14 +631,17 @@ export type EvaluateBalanceActionResult = SimEvalResult & {
   report: SimulationReport | null;
 };
 
-/** スキルの分類 + tier(owner職業) + mpCost から power 帯テキストを作る。 */
-function powerBandHint(skill: Record<string, unknown>, tier: number): string {
-  const cls = classifySkill(String(skill.type), String(skill.targetType));
-  if (!cls) return 'power 帯: 分類不明';
-  const band = findBand(cls, Number(skill.mpCost));
-  if (!band) return `power 帯: ${cls} の mpCost ${skill.mpCost} は帯外`;
-  const [lo, hi] = tier === 2 ? band.t2 : band.t1;
-  return `${cls} / mpCost ${skill.mpCost} / Tier${tier} の power 帯: ${lo}〜${hi}（設計書19）`;
+/** sim 評価の共通設計帯ヒント（単体効率 + AoE 合算効率の目安）。 */
+function simDesignContext(skillLike: Record<string, unknown>, tier: number): string {
+  const isAoe = skillLike.targetType === 'ALL_ENEMIES';
+  return [
+    powerBandHint(skillLike, tier),
+    'エネルギー効率の目安: 単体スキルは 1 EN あたり 20〜35。',
+    ...(isAoe
+      ? ['AoE は 1 回の発動で最大 3 体に同時ヒットする。summary の AoE 合算効率で判断し、目安は 36〜63（単体の約1.8倍）。']
+      : []),
+    '1確率が高すぎる（MINIONを軒並み1確）場合は power 過剰の疑い。',
+  ].join('\n');
 }
 
 /**
@@ -683,46 +671,21 @@ export async function evaluateBalanceAction(
   // 攻撃側ステータス（ジョブのレベル別基礎値）
   const jobStats = getJobBaseStatsAtLevel(
     { baseStatsByLevel: job.baseStatsByLevel as never, statModifiers: job.statModifiers as never },
-    Math.max(1, Math.min(100, level || 1)),
+    clampLevel(level, 1),
   );
 
   const tier = typeof job.tier === 'number' ? job.tier : 1;
   const attacker = { atk: Math.round(jobStats.atk), critRate: jobStats.critRate, critDmg: jobStats.critDmg };
-  const simSkill = {
-    power: typeof skill.power === 'number' ? skill.power : 1.0,
-    mpCost: typeof skill.mpCost === 'number' ? skill.mpCost : 0,
-    element: (typeof skill.element === 'string' ? skill.element : 'NONE') as ElementType,
-    targetType: (skill.targetType === 'ALL_ENEMIES' ? 'ALL_ENEMIES' : 'SINGLE') as 'SINGLE' | 'ALL_ENEMIES',
-  };
+  const simSkill = toSimSkill(skill);
 
-  const ids = enemyIds && enemyIds.length > 0 ? enemyIds : Object.keys(enemies);
-  const targets: SimTarget[] = ids
-    .map((id): SimTarget | null => {
-      const e = enemies[id] as Record<string, unknown> | undefined;
-      if (!e) return null;
-      const stats = (e.stats as Record<string, number>) ?? {};
-      return {
-        id,
-        tier: typeof e.tier === 'string' ? e.tier : undefined,
-        hp: stats.hp ?? 1,
-        def: stats.def ?? 0,
-        resistances: (e.resistances as Record<string, number>) ?? {},
-      };
-    })
-    .filter((t): t is SimTarget => t !== null);
-
+  const targets = buildSimTargets(enemies, enemyIds);
   if (targets.length === 0) {
     return { report: null, evaluation: null, recChecks: [], log: [], error: '対象の敵がありません。' };
   }
 
   // 決定論レポート（LLM 不使用）
   const report = buildSimulationReport(attacker, simSkill, targets);
-
-  const designContext = [
-    powerBandHint(skill, tier),
-    'エネルギー効率の目安: 1 EN あたり 20〜35。',
-    '1確率が高すぎる（MINIONを軒並み1確）場合は power 過剰の疑い。',
-  ].join('\n');
+  const designContext = simDesignContext(skill, tier);
 
   const result = await runSimEvalAgent({
     report,
@@ -779,37 +742,91 @@ export async function evaluateSkillDraftAction(
 
   const jobStats = getJobBaseStatsAtLevel(
     { baseStatsByLevel: job.baseStatsByLevel as never, statModifiers: job.statModifiers as never },
-    Math.max(1, Math.min(100, level || 60)),
+    clampLevel(level, 60),
   );
   const tier = typeof job.tier === 'number' ? job.tier : 1;
   const attacker = { atk: Math.round(jobStats.atk), critRate: jobStats.critRate, critDmg: jobStats.critDmg };
-  const simSkill = {
-    power: typeof draft.power === 'number' ? draft.power : 1.0,
-    mpCost: typeof draft.mpCost === 'number' ? draft.mpCost : 0,
-    element: (typeof draft.element === 'string' ? draft.element : 'NONE') as ElementType,
-    targetType: (draft.targetType === 'ALL_ENEMIES' ? 'ALL_ENEMIES' : 'SINGLE') as 'SINGLE' | 'ALL_ENEMIES',
-  };
+  const simSkill = toSimSkill(draft);
 
-  const targets: SimTarget[] = Object.entries(enemies)
-    .map(([id, e]): SimTarget | null => {
-      const en = e as Record<string, unknown>;
-      const stats = (en.stats as Record<string, number>) ?? {};
-      return { id, tier: typeof en.tier === 'string' ? en.tier : undefined, hp: stats.hp ?? 1, def: stats.def ?? 0, resistances: (en.resistances as Record<string, number>) ?? {} };
-    })
-    .filter((t): t is SimTarget => t !== null);
+  const targets = buildSimTargets(enemies);
   if (targets.length === 0) return { report: null, evaluation: null, recChecks: [], log: [], error: '対象の敵がありません。' };
 
   const report = buildSimulationReport(attacker, simSkill, targets);
-  const designContext = [
-    powerBandHint(draft, tier),
-    'エネルギー効率の目安: 1 EN あたり 20〜35。',
-    '1確率が高すぎる場合は power 過剰の疑い。',
-  ].join('\n');
+  const designContext = simDesignContext(draft, tier);
 
   const result = await runSimEvalAgent({
     report,
     designContext,
     recCheckContext: { skill: { type: String(draft.type), targetType: String(draft.targetType), mpCost: Number(draft.mpCost), tier } },
+    model: options?.model,
+  });
+
+  return { ...result, report };
+}
+
+// ---------------------------------------------------------------------------
+// Agent E（R-7）: 生成直後の enemy 草案をバランス評価（保存前・非破壊）
+//   「代表スキル数種 vs この敵」を決定論シミュレートし、LLM が耐久バランスを評定する。
+// ---------------------------------------------------------------------------
+export type EvaluateEnemyDraftResult = SimEvalResult & {
+  report: EnemyDraftReport | null;
+};
+
+/**
+ * enemy 草案（未保存）を、全職業中央値の代表アタッカー × 代表スキル 4 分類で評価する。
+ * level の既定は 10（第1章想定）。
+ */
+export async function evaluateEnemyDraftAction(
+  draft: Record<string, unknown>,
+  level = 10,
+  options?: { model?: string },
+): Promise<EvaluateEnemyDraftResult> {
+  assertDev();
+
+  const [jobs, skills, enemies] = await Promise.all([
+    getMasterFile('jobs'),
+    getMasterFile('skills'),
+    getMasterFile('enemies'),
+  ]);
+
+  const stats = (draft.stats as Record<string, number>) ?? {};
+  const tier = typeof draft.tier === 'string' ? draft.tier : 'MINION';
+  const target = {
+    id: typeof draft.id === 'string' ? draft.id : '(draft)',
+    tier,
+    hp: typeof stats.hp === 'number' ? stats.hp : 1,
+    def: typeof stats.def === 'number' ? stats.def : 0,
+    resistances: (draft.resistances as Record<string, number>) ?? {},
+  };
+
+  // 代表アタッカー = 全職業の指定レベル時点ステータスの中央値
+  const lvl = clampLevel(level, 10);
+  const jobStatList = Object.values(jobs).map((j) => {
+    const job = j as Record<string, unknown>;
+    const s = getJobBaseStatsAtLevel(
+      { baseStatsByLevel: job.baseStatsByLevel as never, statModifiers: job.statModifiers as never },
+      lvl,
+    );
+    return { atk: s.atk, critRate: s.critRate, critDmg: s.critDmg };
+  });
+  if (jobStatList.length === 0) {
+    return { report: null, evaluation: null, recChecks: [], log: [], error: '職業データがありません。' };
+  }
+  const attacker = medianAttacker(jobStatList);
+
+  // 代表スキル = power 表 4 分類ごとの中央値スキル（決定論的選抜）
+  const repSkills = selectRepresentativeSkills(skills);
+  if (repSkills.length === 0) {
+    return { report: null, evaluation: null, recChecks: [], log: [], error: '代表スキルを選抜できません（スキルデータ不足）。' };
+  }
+
+  const report = buildEnemyDraftReport(attacker, repSkills, target);
+  const designContext = buildEnemyDesignContext(enemies);
+
+  const result = await runEnemySimEvalAgent({
+    report,
+    designContext,
+    recCheckContext: { enemy: { tier, existingEnemies: enemies } },
     model: options?.model,
   });
 
@@ -933,36 +950,10 @@ export type BulkPreviewResult = {
   error?: string;
 };
 
-/** 各 file の代表エンティティからフィールドパス一覧（ヒント）を作る。 */
-function buildFieldHints(all: MasterData): string {
-  const lines: string[] = [];
-  const collect = (obj: unknown, prefix: string, out: Set<string>, depth: number) => {
-    if (depth > 2 || typeof obj !== 'object' || obj === null || Array.isArray(obj)) return;
-    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-      const path = prefix ? `${prefix}.${k}` : k;
-      const t = Array.isArray(v) ? 'array' : typeof v;
-      out.add(`${path}:${t}`);
-      if (t === 'object') collect(v, path, out, depth + 1);
-    }
-  };
-  for (const file of Object.keys(all)) {
-    const first = Object.values(all[file] ?? {})[0];
-    if (!first) continue;
-    const fields = new Set<string>();
-    collect(first, '', fields, 0);
-    lines.push(`## ${file}\n  ${[...fields].slice(0, 30).join(', ')}`);
-  }
-  return lines.join('\n');
-}
-
 const FILE_LABEL: Record<string, string> = {
   enemies: 'enemies', skills: 'skills', stages: 'stages', jobs: 'jobs',
   items: 'items', materials: 'materials', monsters: 'monsters', demonForms: 'demonForms', areas: 'areas',
 };
-
-function failKeyOfFinding(f: AuditFinding): string {
-  return `${f.scope}|${f.id}|${f.message}`;
-}
 
 /**
  * 一括変更をプレビューする（非破壊）。NL→Spec→決定論適用→二層ゲート検証。
@@ -1008,11 +999,11 @@ export async function previewBulkChangeAction(instruction: string): Promise<Bulk
 
   // 層2: in-memory 監査（全変更を override して新規 FAIL を検出）
   const baseline = await auditMasterData();
-  const baselineFailKeys = new Set(baseline.filter((f) => f.level === 'FAIL').map(failKeyOfFinding));
+  const baselineFailKeys = new Set(baseline.filter((f) => f.level === 'FAIL').map(findingKey));
   const patchedCollection = buildPatchedCollection(entities, changes);
   const auditAfter = await auditMasterData({ [spec.file]: patchedCollection } as never);
   const newAuditFails = auditAfter
-    .filter((f) => f.level === 'FAIL' && !baselineFailKeys.has(failKeyOfFinding(f)))
+    .filter((f) => f.level === 'FAIL' && !baselineFailKeys.has(findingKey(f)))
     .map((f) => `[${f.scope}/${f.id}] ${f.message}`);
 
   // operation の field が一致エンティティに存在しないもの（typo/幻覚）を検出
@@ -1035,35 +1026,76 @@ export async function previewBulkChangeAction(instruction: string): Promise<Bulk
   };
 }
 
+const MASTER_DATA_DIR = path.join(process.cwd(), 'src', 'data', 'master');
+const SNAPSHOT_DIR = path.join(MASTER_DATA_DIR, '.snapshots');
+const SNAPSHOT_KEEP = 20;
+
+export type ApplyBulkResult = {
+  savedIds: string[];
+  failedIds: { id: string; error?: string }[];
+  audit: { fail: number; warn: number };
+  /** R-2: 適用前に作成したスナップショット（undo 用）。 */
+  snapshotId: string | null;
+  error?: string;
+};
+
 /**
- * 一括変更を適用する（承認後のみ。各 entity を saveEntry で保存）。
- * preview と同じ spec を渡して再適用 → 保存 → 再監査結果を返す。
+ * 一括変更を適用する（承認後のみ）。
+ * R-2: 保存の前に対象ファイル全体をスナップショットへ退避し、undo を可能にする。
+ * R-1: 保存ループは applyChangesWithWriter（注入式・テスト済み）に委譲する。
  */
-export async function applyBulkChangeAction(spec: BulkSpec): Promise<{ savedIds: string[]; failedIds: string[]; audit: { fail: number; warn: number }; error?: string }> {
+export async function applyBulkChangeAction(spec: BulkSpec): Promise<ApplyBulkResult> {
   assertDev();
   const all = (await getAllMasterData()) as unknown as MasterData;
   const file = FILE_LABEL[spec.file];
   const entities = (all[file] ?? {}) as Record<string, Record<string, unknown>>;
   const changes = applyBulkSpec(entities, spec);
   if (changes.length === 0) {
-    return { savedIds: [], failedIds: [], audit: { fail: 0, warn: 0 }, error: '対象がありません。' };
+    return { savedIds: [], failedIds: [], audit: { fail: 0, warn: 0 }, snapshotId: null, error: '対象がありません。' };
   }
 
-  const savedIds: string[] = [];
-  const failedIds: string[] = [];
-  for (const c of changes) {
-    const r = await saveEntry(spec.file as never, c.id, c.after);
-    if (r.success) savedIds.push(c.id);
-    else failedIds.push(c.id);
+  // R-2: 適用前スナップショット（ファイル全体を退避）
+  let snapshotId: string | null = null;
+  try {
+    const meta = writeSnapshot(SNAPSHOT_DIR, spec.file, entities, `bulk: ${spec.note ?? JSON.stringify(spec.operation)}`);
+    snapshotId = meta.id;
+    pruneSnapshots(SNAPSHOT_DIR, spec.file, SNAPSHOT_KEEP);
+  } catch {
+    // スナップショット失敗時も適用は続行可能だが、undo 不能を示すため snapshotId=null のまま
   }
+
+  // R-1: 保存ループ（注入式・テスト済み）
+  const { savedIds, failedIds } = await applyChangesWithWriter(changes, (id, after) =>
+    saveEntry(spec.file as never, id, after),
+  );
 
   const audit = await auditMasterData();
   return {
     savedIds,
     failedIds,
+    snapshotId,
     audit: {
       fail: audit.filter((f) => f.level === 'FAIL').length,
       warn: audit.filter((f) => f.level === 'WARN').length,
     },
   };
+}
+
+/** スナップショット一覧（undo UI 用）。 */
+export async function listBulkSnapshotsAction(file?: string): Promise<{ id: string; file: string; timestamp: string; entityCount: number; reason?: string }[]> {
+  assertDev();
+  return listSnapshots(SNAPSHOT_DIR, file);
+}
+
+/** スナップショットからマスターファイルを復元する（undo）。 */
+export async function restoreBulkSnapshotAction(snapshotId: string): Promise<{ ok: boolean; entityCount: number; audit?: { fail: number; warn: number }; error?: string }> {
+  assertDev();
+  // snapshotId は "{file}__{timestamp}.json" 形式。file 名から対象ファイルを決定。
+  const file = snapshotFileOf(snapshotId);
+  if (!FILE_LABEL[file]) return { ok: false, entityCount: 0, error: `スナップショットの対象ファイル "${file}" が不正です。` };
+  const targetPath = path.join(MASTER_DATA_DIR, `${file}.json`);
+  const res = restoreSnapshot(SNAPSHOT_DIR, snapshotId, targetPath);
+  if (!res.ok) return res;
+  const audit = await auditMasterData();
+  return { ...res, audit: { fail: audit.filter((f) => f.level === 'FAIL').length, warn: audit.filter((f) => f.level === 'WARN').length } };
 }

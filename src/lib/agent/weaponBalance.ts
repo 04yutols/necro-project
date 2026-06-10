@@ -7,6 +7,8 @@
  * rarity を主コンテキストとして整合を検閲する。
  */
 
+import { findUnknownFields } from './knownFields';
+
 export type WeaponValidationLevel = 'PASS' | 'WARN' | 'FAIL';
 export type WeaponValidationFinding = { level: WeaponValidationLevel; field: string; message: string };
 export type WeaponValidationResult = { ok: boolean; findings: WeaponValidationFinding[] };
@@ -196,6 +198,8 @@ export function validateWeaponDraft(draft: unknown, ctx: WeaponBalanceContext): 
   validatePassive(draft.passiveA, 'passiveA', push);
   validatePassive(draft.passiveB, 'passiveB', push);
 
+  // R-3: 未知トップレベルフィールドを WARN 検出
+  findings.push(...findUnknownFields(draft, 'items'));
   const ok = findings.every((f) => f.level !== 'FAIL');
   if (ok && findings.length === 0) {
     pass('root', '構造・レアリティ枠構成・パッシブすべて問題ありません。');
