@@ -1,0 +1,41 @@
+# CI: 型チェック + ユニットテスト + マスターデータ非破壊チェック
+#
+# 設計書 106 §4「CI で git diff --stat src/data/master が空であることを確認」の実装。
+# ライブ verify（Gemini 必須）と Playwright E2E は意図的に含めない
+# （前者は API 課金・秘密鍵、後者は dev サーバ起動が必要。必要になったら別ジョブで追加）。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      # src/tests/ の統合テストは実 DB（Neon の DATABASE_URL）が必要なため CI では除外。
+      # DB シークレットを設定したら別ジョブ（needs: test）で `npx jest --ci src/tests` を追加する。
+      - name: Unit tests
+        run: npx jest --ci --silent --testPathIgnorePatterns="<rootDir>/src/tests/"
+
+      # テストの非破壊性を機械的に担保（ユニットがマスターデータを書き換えていないこと）
+      - name: Master data must be untouched
+        run: git diff --exit-code --stat src/data/master

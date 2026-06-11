@@ -164,15 +164,26 @@ jobs:
 
 ---
 
-## 5. 推奨アクション（優先順）
+## 5. 推奨アクション（優先順）と対応状況 ★2026-06-11 改修実施
 
-1. **A-1**: `/api/debug` の削除（5 分で終わる・効果大）
-2. **A-2**: CI ワークフロー追加（tsc + jest + master 非破壊チェック）
-3. **B-1**: `dev` スクリプト再編 + CLAUDE.md 修正（新セッションの混乱防止）
-4. **B-2**: Prisma / adapter-neon のバージョン整合
-5. **C-4**: リリースゲート 2 件の実機確認（第1章リリース判定）
-6. **B-6 L-2 / B-7 / C-1**: 小粒の負債整理（各 30 分級）
-7. **B-4**: 巨大コンポーネント分割（中期・挙動不変リファクタとして計画化）
+| 優先 | 項目 | 状況 |
+|---|---|---|
+| 1 | **A-1**: `/api/debug` の削除 | ✅ **完了** — 参照ゼロを確認しルートごと削除。ビルド出力からも消滅 |
+| 2 | **A-2**: CI ワークフロー追加 | ✅ **完了** — `.github/workflows/ci.yml`（tsc + jest + `git diff --exit-code src/data/master`）。DB 統合テスト（`src/tests/`）は実 Neon 必須のため CI では除外（コメントで明記）。CI コマンドはローカル検証済み（619 PASS） |
+| 3 | **B-1**: `dev` スクリプト再編 + CLAUDE.md 修正 | ✅ **完了** — `dev`=next dev（フル機能）/ `dev:ui`=vite。CLAUDE.md の Commands と「BattleCanvas (PixiJS)」誤記（実体は SVG+Framer Motion）も修正 |
+| 4 | **B-2**: Prisma / adapter-neon バージョン整合 | ✅ **完了** — prisma / @prisma/client / @prisma/adapter-neon を **6.19.3 に統一**（~6.19.2 でマイナー固定）。`prisma generate` + 実 DB 統合テスト 4 suites PASS で動作確認 |
+| 5 | **C-4**: リリースゲート 2 件の実機確認 | ⏳ **要ユーザー実機** — NextAuth クラウドセーブ / iOS Safari 100dvh はコードでなく実機検証。REMAINING.md E-1/E-2 に手順記載済み |
+| 6 | **B-6 L-2**: BattleEngine WAVE 進行 | ✅ **完了** — 敵全滅トリガーへ変更 + テスト 2 件追加（battle-engine-dev へ委任） |
+| 6 | **NL-1**: SynergyBonus 未使用フィールド | ✅ **完了** — 読み取りゼロを確認し型から削除（同上委任） |
+| 6 | **B-7**: gimmick trigger/effect の select 化 | ✅ **完了** — enum select 化・未知値は「未知:」option で保全 |
+| 6 | **C-1**: REMAINING.md 整理 | ✅ **完了** — R-1（実は解決済み）/ M-B / M-C / L-1 を解決済みへ更新。TECH_DEBT.md も同期 |
+| 7 | **B-4**: 巨大コンポーネント分割 | ✅ **計画完了** — `docs/設計書/108_巨大コンポーネント分割計画.md`（LegionHub 8 Phase / BattleCanvas 7 Phase の挙動不変計画。実装は別途） |
+
+**改修後の最終検証**: `npx tsc --noEmit` PASS / Jest **68 suites・626 tests 全 PASS** / `next build` 成功 /
+`git diff src/data/master` 空。
+
+**残課題（本レポート起票分で未対応）**: B-3（next-auth beta → 正式版追従計画）/ B-5（Playwright webServer 化）/
+C-2（マスターデータ境界の型付け）/ C-3（console.log のロガー化）/ B-4 の実装フェーズ。
 
 ---
 

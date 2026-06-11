@@ -145,17 +145,16 @@ BattleCanvas の行動フローに AV（アクションバリュー）計算を�
 
 ---
 
-### L-2. BattleEngineのWAVE進行が「10ターン経過」トリガー
+### ✅ L-2. BattleEngineのWAVE進行が「10ターン経過」トリガー（2026-06-11 完了）
 
 **問題：**  
 `BattleEngine.updateState()` は「`turn > 10` でWAVE+1」というロジック。  
 実際のBattleCanvasは敵全滅を検知して次WAVEに進む独自ロジックを持っているため、  
 BattleEngineを将来接続したときに挙動が衝突する可能性がある。
 
-**対応方針：** BattleEngineのWAVE進行を「敵全滅トリガー」に変更しておく（接続時に一本化）。
-
-**関連ファイル：**
-- `src/logic/BattleEngine.ts` — `updateState()`（line ~757）
+**完了内容：**
+- `updateState()` を「現 WAVE の敵が全員 HP=0 になったときのみ WAVE+1（turn リセット）」へ変更。10 ターントリガーは削除。
+- `BattleEngine.test.ts` に「敵全滅で WAVE 進行」「敵残存ならターン経過でも進行しない」を追加。全テスト PASS。
 
 ---
 
@@ -320,17 +319,16 @@ ORC シナジーなどで `defenseReducePct` が加算されるが、
 
 ## 🟢 Low（追加） — 動作はするが将来の不整合リスク
 
-### NL-1. 種族シナジー `atkBonus` / `defBonus` / `avBonus` が未使用
+### ✅ NL-1. 種族シナジー `atkBonus` / `defBonus` / `avBonus` が未使用（2026-06-11 完了）
 
 **問題：**  
 `SynergyBonus` に `atkBonus`、`defBonus`、`avBonus` フィールドがあるが、  
 `BattleDamage.ts` でも BattleCanvas でも参照されていない。
 
-**対応方針：** 仕様として不要なら型から削除。使うなら ATK/DEF 計算に加算する。
-
-**関連ファイル：**
-- `src/logic/TribeSynergySystem.ts`
-- `src/logic/BattleDamage.ts`（使用箇所なし）
+**完了内容：**
+- 全使用箇所 grep で「定義と代入のみ・読み取りゼロ」を確認し、3 フィールドを型と代入箇所から削除。
+- `actions.ts` / `NecroService.ts` の `atkBonus` は `SoulShardData.effect.atkBonus`（別型）で混同なし。
+- BEAST+DRAGON クロス共鳴の `elementDmgBonus+10` は維持。テスト更新済み・全 PASS。
 
 ---
 

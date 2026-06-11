@@ -87,10 +87,10 @@ describe('calculatePartyTribeSynergy', () => {
     expect(b.fireDarkDmgBonus).toBe(20);
   });
 
-  it('BEAST+DRAGON クロス共鳴 → avBonus=-20, elementDmgBonus+10', () => {
+  it('BEAST+DRAGON クロス共鳴 → elementDmgBonus+10 (avBonus は NL-1 で削除済み)', () => {
     const b = calculatePartyTribeSynergy([makeMonster('BEAST'), makeMonster('DRAGON')]);
-    expect(b.avBonus).toBe(-20);
     expect(b.elementDmgBonus).toBe(10);
+    // avBonus はシナジー計算に接続されていなかった死にフィールドのため削除 (NL-1)
   });
 
   it('UNDEAD×2 + DEMON(1) → Layer1 + クロス共鳴の両方を享受', () => {

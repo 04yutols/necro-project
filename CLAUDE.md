@@ -22,13 +22,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev          # Next.js dev server on 0.0.0.0:3000
+npm run dev          # Next.js dev server on 0.0.0.0:3000（フル機能: Server Actions / admin / NextAuth）
+npm run dev:ui       # Vite dev server（UI 高速イテレーション用。Server Actions/admin は動かない）
 npm run build        # Production build
 npm test             # Run all Jest tests
 npm test -- --testPathPattern="BattleEngine"  # Single test file
 npx tsc --noEmit     # Type check (run after every code change)
 npx playwright test  # E2E tests (expects dev server at localhost:3080)
 ```
+
+CI（`.github/workflows/ci.yml`）: push/PR で tsc + jest（`src/tests/` の DB 統合テストは除外）+
+`git diff --exit-code src/data/master`（テスト非破壊チェック）を実行する。
 
 ## Architecture
 
@@ -55,7 +59,7 @@ BattleCanvas loaded via `next/dynamic` with `ssr: false`.
 
 ```
 src/components/
-  battle/    BattleCanvas.tsx (PixiJS), ResultScreen.tsx
+  battle/    BattleCanvas.tsx (SVG + Framer Motion。PixiJS 不使用), ResultScreen.tsx
   home/      HomeHero.tsx
   layout/    ResponsiveFrame.tsx, BottomNavBar, DashboardFrame, MobileHeader
   legion/    LegionHub.tsx (army formation + equipment)

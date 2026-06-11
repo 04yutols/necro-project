@@ -1047,7 +1047,11 @@ export class BattleEngine {
 
   private updateState(): void {
     this.state.turn++;
-    if (this.state.turn > 10) {
+    // WAVE 進行は「10ターン経過」ではなく「現 WAVE の敵が全滅」で判定する (L-2 fix)
+    const allCurrentWaveEnemiesDead =
+      this.activeEnemyCandidates.length > 0 &&
+      this.activeEnemyCandidates.every(enemy => this.getEnemyRuntimeHp(enemy) <= 0);
+    if (allCurrentWaveEnemiesDead) {
       this.state.wave = Math.min(3, this.state.wave + 1);
       this.state.turn = 1;
     }
