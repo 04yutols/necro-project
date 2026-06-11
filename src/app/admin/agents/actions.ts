@@ -45,6 +45,7 @@ import { applyBulkSpec, buildPatchedCollection, selectMatchedIds, auditMutationF
 import { applyChangesWithWriter } from '@/lib/agent/bulk/applyEngine';
 import { writeSnapshot, listSnapshots, restoreSnapshot, pruneSnapshots } from '@/lib/agent/bulk/snapshot';
 import { saveEntry } from '../actions';
+import { assertDev } from '../adminGuard';
 import { buildStoryContext } from '@/lib/agent/story/storyContext';
 import type { StoryValidationContext } from '@/lib/agent/story/storyValidator';
 import { getStoryScenes, getStoryScenesForPack, getStoryScene, getStoryCharacters, getStoryPackSummaries } from '../actions';
@@ -56,12 +57,6 @@ import {
   type EnemyDraftReport,
 } from '@/lib/agent/sim/enemyDraftReport';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
-
-function assertDev() {
-  if (process.env.NODE_ENV !== 'development') {
-    throw new Error('Agent actions are only available in development mode.');
-  }
-}
 
 /** 設計書 15（ワールド・エネミー設計）の方針抜粋を読む（読めなくても致命的ではない）。 */
 function readDoc15Excerpt(): string {

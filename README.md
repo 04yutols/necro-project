@@ -29,13 +29,15 @@ Testing:    Jest (unit), Playwright (E2E)
 
 ```bash
 # Docker (推奨)
+# .env.local に AUTH_SECRET / DATABASE_URL / 任意で GEMINI_API_KEY を設定
+# POSTGRES_PASSWORD は必要に応じて shell env で上書き
 docker compose up --build
 # → http://localhost:3080
 
 # ローカル
 npm install
-# .env に DATABASE_URL="postgresql://..." を設定
-npx prisma db push && npx prisma generate
+# .env.local に DATABASE_URL="postgresql://..." を設定
+npx prisma migrate deploy && npx prisma generate
 npm run dev
 # → http://localhost:3000
 ```
@@ -107,10 +109,11 @@ battleLogs: string[]                      // 最大50件
 ## ダメージ計算式
 
 ```
-baseDamage = stat² / (stat + counterStat)   // 物理: ATK vs DEF / 魔法: MATK vs MDEF
-finalDamage = baseDamage × powerMultiplier × elementMultiplier × (1 + TEC/100)
-critMultiplier = 1.5 + TEC/200              // LUCK% でクリット判定
-elementMultiplier = 1 - (resistance / 100)  // resistance < 0 → 弱点
+baseDamage = ATK × powerMultiplier
+defMultiplier = 1 - DEF / (DEF + 200)
+elementMultiplier = 1 - resistance / 100    // resistance < 0 → 弱点
+critMultiplier = 1 + critDmg / 100          // critDmg=100 で2.0倍
+finalDamage = baseDamage × defMultiplier × elementMultiplier × element/synergy boosts × critMultiplier
 ```
 
 ## テスト

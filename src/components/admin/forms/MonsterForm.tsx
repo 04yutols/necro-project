@@ -11,6 +11,7 @@ import ResistanceGrid from './shared/ResistanceGrid';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
+import { validateEntryId } from './shared/entryId';
 import AIMonsterDraftPanel from '../AIMonsterDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
 
@@ -110,10 +111,16 @@ export default function MonsterForm({ initialData, entryKey, isNew, dependencies
   }
 
   async function handleConfirmedSave() {
+    const idValidation = validateEntryId(isNew ? form.id : entryKey, 'モンスターID');
+    if (!idValidation.ok) {
+      setShowSaveConfirm(false);
+      setError(idValidation.error);
+      return;
+    }
+
     setSaving(true);
     setShowSaveConfirm(false);
-    const saveKey = isNew ? (form.id || entryKey) : entryKey;
-    const result = await saveEntry('monsters', saveKey, formToJson(form));
+    const result = await saveEntry('monsters', idValidation.id, formToJson(form));
     setSaving(false);
     if (result.success) router.push('/admin/monsters');
     else setError(result.error ?? '保存に失敗しました');

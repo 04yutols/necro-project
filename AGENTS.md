@@ -64,15 +64,16 @@ All screens must fit `h-[100dvh]` without scrolling or overlapping critical info
 ### Damage formula (BattleEngine)
 
 ```
-baseDamage = stat² / (stat + counterStat)          // ATK vs DEF, or MATK vs MDEF
-finalDamage = baseDamage × powerMultiplier × elementMultiplier × (1 + TEC/100)
-critMultiplier = 1.5 + TEC/200  (applied when LUCK% roll succeeds)
+baseDamage = ATK × powerMultiplier
+defMultiplier = 1 - DEF / (DEF + 200)
 elementMultiplier = 1 - (resistance / 100)          // resistance < 0 → weakness
+critMultiplier = 1 + critDmg / 100                  // critDmg=100 → 2.0x
+finalDamage = baseDamage × defMultiplier × elementMultiplier × element/synergy boosts × critMultiplier
 ```
 
 ### Stats system
 
-9 base stats: `hp, mp, atk, def, matk, mdef, agi, luck, tec`. Physical jobs have low max MP / low skill cost; Magical jobs have high max MP / high skill cost. Passive bonuses accumulated via job level milestones persist across job changes and are stored in `passiveAtkBonus` etc. on the Character model.
+8 base stats: `hp, atk, def, spd, critRate, critDmg, effectHit, effectRes`. Passive bonuses accumulated via job level milestones persist across job changes and are stored in `passiveAtkBonus` etc. on the Character model.
 
 ### Database (Prisma + PostgreSQL)
 

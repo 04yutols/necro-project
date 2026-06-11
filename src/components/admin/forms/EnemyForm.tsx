@@ -14,6 +14,7 @@ import { gimmickValueToInput, gimmickRowsToJson } from './shared/gimmickValue';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
+import { validateEntryId } from './shared/entryId';
 import AIEnemyDraftPanel from '../AIEnemyDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
 import type { SkillData } from '@/types/game';
@@ -263,9 +264,16 @@ export default function EnemyForm({ initialData, entryKey, isNew, itemIds, mater
   }
 
   async function handleConfirmedSave() {
+    const idValidation = validateEntryId(form.id, 'エネミーID');
+    if (!idValidation.ok) {
+      setShowSaveConfirm(false);
+      setError(idValidation.error);
+      return;
+    }
+
     setSaving(true);
     setShowSaveConfirm(false);
-    const result = await saveEntry('enemies', form.id || entryKey, formToJson(form));
+    const result = await saveEntry('enemies', idValidation.id, formToJson({ ...form, id: idValidation.id }));
     setSaving(false);
     if (result.success) {
       router.push('/admin/enemies');

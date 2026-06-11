@@ -46,6 +46,7 @@ import { calculateBattleDamage, calculateIncomingEnemyDamage, type BattleDamageR
 import {
   bossGimmickKey,
   findReviveGimmick,
+  getEnrageMultiplier,
   getReviveHp,
   resolveSummonMinionIds,
   shouldTriggerBossGimmick,
@@ -742,7 +743,7 @@ export class BattleEngine {
 
     switch (g.effect) {
       case 'ENRAGE':
-        boss.stats = { ...boss.stats, atk: Math.floor(boss.stats.atk * 1.5) };
+        boss.stats = { ...boss.stats, atk: Math.floor(boss.stats.atk * getEnrageMultiplier(g)) };
         this.addLog('BOSS_ENRAGE', boss.name, boss.name,
           `【ENRAGE】${boss.name}が激怒した！ 攻撃力が大幅に上昇する！`);
         break;

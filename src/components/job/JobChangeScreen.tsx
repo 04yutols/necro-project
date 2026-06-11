@@ -195,7 +195,7 @@ export default function JobChangeScreen() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', maxWidth: '100vw', overflow: 'hidden' }}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', maxWidth: '100vw' }}
     >
       <div
         className="absolute inset-0 flex flex-col overflow-hidden job-change-screen__shell"

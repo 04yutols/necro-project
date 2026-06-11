@@ -28,6 +28,7 @@ import {
   calculateBossAvDelay,
   findReviveGimmick,
   getBossAvDelayBase,
+  getEnrageMultiplier,
   getReviveHp,
   resolveSummonMinionIds,
   shouldTriggerBossGimmick,
@@ -2862,7 +2863,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
           enemyAtk: effectiveAtk,
           playerDef: playerStats?.def ?? FALLBACK_PLAYER_STATS.def,
           incomingMultiplier: incomingMult,
-          enrageMultiplier: enraged ? Number(enrage?.value ?? 1.35) : 1,
+          enrageMultiplier: enraged ? getEnrageMultiplier(enrage) : 1,
           variance: 0.8 + Math.random() * 0.4,
         });
         const newHp = applyPlayerDamage(playerHpRef.current, dmg);

@@ -9,6 +9,7 @@ import FormField from './shared/FormField';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
+import { validateEntryId } from './shared/entryId';
 import AISkillDraftPanel from '../AISkillDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
 
@@ -134,9 +135,16 @@ export default function SkillForm({ initialData, entryKey, isNew, dependencies =
   }
 
   async function handleConfirmedSave() {
+    const idValidation = validateEntryId(form.id, 'スキルID');
+    if (!idValidation.ok) {
+      setShowSaveConfirm(false);
+      setError(idValidation.error);
+      return;
+    }
+
     setSaving(true);
     setShowSaveConfirm(false);
-    const result = await saveEntry('skills', form.id || entryKey, formToJson(form));
+    const result = await saveEntry('skills', idValidation.id, formToJson({ ...form, id: idValidation.id }));
     setSaving(false);
     if (result.success) router.push('/admin/skills');
     else setError(result.error ?? '保存に失敗しました');

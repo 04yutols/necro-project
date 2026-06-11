@@ -106,7 +106,7 @@ damage *= (1 - resistance/100)
 
 // 5. 会心
 isCritical = random() * 100 < (critRate + synergyBonus.critRateBonus)
-if (isCritical) damage *= (critDmg + synergyBonus.critDmgBonus) / 100
+if (isCritical) damage *= 1 + (critDmg + synergyBonus.critDmgBonus) / 100
 
 finalDamage = Math.max(1, Math.floor(damage))
 ```

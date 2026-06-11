@@ -7,6 +7,7 @@
     "dev": "next dev -H 0.0.0.0",
     "dev:ui": "vite",
     "start": "next start -H 0.0.0.0",
+    "db:migrate:deploy": "prisma migrate deploy",
     "test": "jest",
     "agent:verify": "tsx scripts/verify-enemy-agent.mts",
     "agent:verify-skill": "tsx scripts/verify-skill-agent.mts",

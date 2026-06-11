@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { encode } from 'next-auth/jwt';
 import { prisma } from '@/lib/prisma';
+import { checkAuthRateLimit } from '@/services/RateLimitService';
 import { SESSION_MAX_AGE_SECONDS } from '@/services/SessionSecurityService';
 
 const isSecure = process.env.AUTH_URL?.startsWith('https://') ?? false;
 const COOKIE_NAME = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token';
+const RATE_LIMIT_ERROR = '試行回数が多すぎます。しばらく待ってから再試行してください';
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,6 +17,17 @@ export async function POST(req: NextRequest) {
 
     if (!email || !password) {
       return NextResponse.json({ error: 'メールアドレスとパスワードを入力してください' }, { status: 400 });
+    }
+
+    const rateLimit = await checkAuthRateLimit(req, 'login', email);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: RATE_LIMIT_ERROR },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rateLimit.retryAfterSec) },
+        },
+      );
     }
 
     const user = await prisma.user.findUnique({ where: { email } });

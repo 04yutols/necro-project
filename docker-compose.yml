@@ -4,7 +4,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: necro_user
-      POSTGRES_PASSWORD: necro_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-necro_password}
       POSTGRES_DB: necro_db
     ports:
       - "5432:5432"
@@ -21,8 +21,10 @@ services:
     restart: always
     ports:
       - "3080:3000"
+    env_file:
+      - .env.local
     environment:
-      DATABASE_URL: "postgresql://necro_user:necro_password@db:5432/necro_db"
+      DATABASE_URL: "postgresql://necro_user:${POSTGRES_PASSWORD:-necro_password}@db:5432/necro_db"
     depends_on:
       db:
         condition: service_healthy
