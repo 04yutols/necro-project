@@ -103,6 +103,8 @@ export interface SkillData {
   targetType?: 'SINGLE' | 'ALL_ENEMIES' | 'SELF' | 'ALLY';
   effectKey?: string;
   isUltimate?: boolean; // 奥義フラグ — true のとき maxEnergy を全消費
+  flags?: string[];
+  ailments?: Array<{ type: AilmentType; baseRate: number }>;
   ailmentType?: AilmentType;
   ailmentBaseRate?: number;
   healSelfPct?: number; // 与えた実HPダメージに対する自己回復率%

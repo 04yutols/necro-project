@@ -33,6 +33,23 @@ import { ReloginModal } from '../components/auth/ReloginModal';
 import { Home as HomeIcon, Lock } from 'lucide-react';
 import { isAbyssalResidueUnlocked } from '../logic/AbyssalResidueUnlockSystem';
 
+function isNextClientRuntime() {
+  return typeof window !== 'undefined'
+    && Boolean((window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__);
+}
+
+async function requestStageAttempt(stageId: string): Promise<string | null> {
+  if (!isNextClientRuntime()) return null;
+  const { startStageAction } = await import('./actions');
+  const result = await startStageAction(stageId);
+  if (result.success) return result.stageAttemptId;
+  if (result.error === 'SESSION_EXPIRED') {
+    window.dispatchEvent(new Event('necro-session-expired'));
+  }
+  console.warn('Stage start was rejected.', result.error);
+  return null;
+}
+
 function AbyssalResidueLockedScreen({ onBack, onMap }: { onBack: () => void; onMap: () => void }) {
   return (
     <div className="w-full h-full flex items-center justify-center bg-[#050505] p-5">
@@ -82,7 +99,9 @@ function GameContent() {
 
   const [isInBattle, setIsInBattle] = useState(false);
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  const [activeStageAttemptId, setActiveStageAttemptId] = useState<string | null>(null);
   const [pendingStageId, setPendingStageId] = useState<string | null>(null);
+  const [pendingStageAttemptId, setPendingStageAttemptId] = useState<string | null>(null);
   const [logPanel, setLogPanel] = useState<'STORY' | 'BATTLE' | 'WORLD'>('STORY');
   const { unlockAudio } = useBGM({
     currentTab,
@@ -93,26 +112,33 @@ function GameContent() {
 
   const equippingMonster = equippingMonsterId ? inventoryMonsters.find(m => m.id === equippingMonsterId) : null;
 
-  const startStageNow = useCallback((stageId: string) => {
+  const startStageNow = useCallback((stageId: string, stageAttemptId: string | null) => {
     setActiveStageId(stageId);
+    setActiveStageAttemptId(stageAttemptId);
     setIsInBattle(true);
     setCurrentTab('BATTLE');
   }, [setCurrentTab]);
 
-  const requestStageStart = useCallback((stageId: string) => {
+  const requestStageStart = useCallback(async (stageId: string) => {
+    const requiresStageAttempt = authFlow.status !== 'guest';
+    const stageAttemptId = requiresStageAttempt ? await requestStageAttempt(stageId) : null;
+    if (requiresStageAttempt && isNextClientRuntime() && !stageAttemptId) return;
     if (triggerStageEnter(stageId)) {
       setPendingStageId(stageId);
+      setPendingStageAttemptId(stageAttemptId);
       return;
     }
-    startStageNow(stageId);
-  }, [startStageNow, triggerStageEnter]);
+    startStageNow(stageId, stageAttemptId);
+  }, [authFlow.status, startStageNow, triggerStageEnter]);
 
   useEffect(() => {
     if (!pendingStageId || activeStoryScene || storyQueueLength > 0) return;
     const stageId = pendingStageId;
+    const stageAttemptId = pendingStageAttemptId;
     setPendingStageId(null);
-    startStageNow(stageId);
-  }, [activeStoryScene, pendingStageId, startStageNow, storyQueueLength]);
+    setPendingStageAttemptId(null);
+    startStageNow(stageId, stageAttemptId);
+  }, [activeStoryScene, pendingStageAttemptId, pendingStageId, startStageNow, storyQueueLength]);
 
   if (authFlow.status === 'authRequired') {
     return <AuthGate onAuthenticated={authFlow.reload} />;
@@ -184,7 +210,7 @@ function GameContent() {
         return (
           <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
             <AreaMap onStartStage={(stageId) => {
-              requestStageStart(stageId);
+              void requestStageStart(stageId);
             }} />
           </motion.div>
         );
@@ -290,8 +316,9 @@ function GameContent() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               style={{ position: 'absolute', inset: 0, zIndex: 9999, display: 'flex', flexDirection: 'column', background: '#000', overflow: 'hidden' }}
             >
-              <BattleCanvas stageId={activeStageId ?? undefined} onEnd={() => {
+              <BattleCanvas stageId={activeStageId ?? undefined} stageAttemptId={activeStageAttemptId} onEnd={() => {
                 setIsInBattle(false);
+                setActiveStageAttemptId(null);
                 setCurrentTab('MAP');
               }} />
             </motion.div>
@@ -302,7 +329,7 @@ function GameContent() {
               style={{ position: 'absolute', inset: 0, zIndex: 9999 }}
             >
               <AreaMap onStartStage={(stageId) => {
-                requestStageStart(stageId);
+                void requestStageStart(stageId);
               }} />
             </motion.div>
           ) : (

@@ -77,6 +77,7 @@
 | ログインフロー・キャラ作成・DB同期の全体アーキテクチャを知りたい | [37_オンラインゲームアーキテクチャ再設計.md](37_オンラインゲームアーキテクチャ再設計.md) |
 | 登録/ログイン/キャラ作成の画面遷移・DBバインディング・エラー処理を知りたい | [38_ログイン登録フロー設計.md](38_ログイン登録フロー設計.md) |
 | `fetchPlayerAction` のIDOR対策・所有者確認実装を知りたい | [52_SEC2_fetchPlayerAction_IDOR設計.md](52_SEC2_fetchPlayerAction_IDOR設計.md) |
+| Phase 0 リリースブロッカー（ステージ開始証跡、ランキング上限、奥義、DEF軽減、自傷、BottomNav）を知りたい | [109_Phase0リリースブロッカー改善設計.md](109_Phase0リリースブロッカー改善設計.md) |
 | `GameManager.updateParty` のDB保存・所有魔物検証を知りたい | [53_SEC3_GameManager_updateParty永続化設計.md](53_SEC3_GameManager_updateParty永続化設計.md) |
 | 報酬インスタンスIDの暗号論的生成・SEC-4対応を知りたい | [54_SEC4_暗号論的ID生成設計.md](54_SEC4_暗号論的ID生成設計.md) |
 | `critRate` とドロップ率ボーナスの分離・SEC-5対応を知りたい | [55_SEC5_ドロップ率ボーナスcritRate分離設計.md](55_SEC5_ドロップ率ボーナスcritRate分離設計.md) |

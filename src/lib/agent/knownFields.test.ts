@@ -36,7 +36,7 @@ describe('KNOWN_TOP_LEVEL_FIELDS - completeness vs actual data keys', () => {
   // 実データの実キー（誤検出防止のため、許容集合がこれらを全て含むことを保証）
   const ACTUAL: Record<string, string[]> = {
     enemies: ['battle', 'description', 'dropTable', 'gimmicks', 'id', 'maxShieldHp', 'name', 'nameEn', 'nameJa', 'necromance', 'resistances', 'shieldHp', 'stats', 'tier', 'tribe', 'weaknesses'],
-    skills: ['ailmentBaseRate', 'ailmentType', 'attackType', 'description', 'effectKey', 'element', 'healSelfPct', 'id', 'mpCost', 'name', 'power', 'targetType', 'type'],
+    skills: ['ailmentBaseRate', 'ailmentType', 'ailments', 'attackType', 'description', 'effectKey', 'element', 'flags', 'healSelfPct', 'id', 'isUltimate', 'mpCost', 'name', 'power', 'targetType', 'type'],
     stages: ['area', 'areaGimmick', 'chapter', 'chapterName', 'description', 'difficulty', 'element', 'id', 'isAreaBoss', 'name', 'nameEn', 'nameJa', 'nodeType', 'position', 'rewards', 'unlockRequires', 'waveCount', 'waves'],
     jobs: ['baseAttackType', 'baseStatsByLevel', 'category', 'description', 'displayName', 'energyCurve', 'levelBonuses', 'name', 'nameEn', 'role', 'skills', 'statModifiers', 'tier', 'title', 'unlock'],
     items: ['archetype', 'battleEffect', 'battleUsable', 'flavor', 'icon', 'id', 'ilv', 'isUnique', 'name', 'passiveA', 'passiveB', 'quantity', 'rank', 'rarity', 'stats', 'subOptions', 'type', 'weaponRarity'],

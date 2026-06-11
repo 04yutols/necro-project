@@ -15,7 +15,7 @@ import { startTutorialBattlePhase } from '../../hooks/useTutorialTrigger';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { RewardService, type StageDropResult } from '../../services/RewardService';
 import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/StatSystem';
-import { calculateBattleDamage, type BattleDamageResult } from '../../logic/BattleDamage';
+import { calculateBattleDamage, calculateIncomingEnemyDamage, type BattleDamageResult } from '../../logic/BattleDamage';
 import { calculateInitialEnergy } from '../../logic/EnergySystem';
 import { canStartPlayerAction, shouldInitializeBattle, type BattlePhase } from '../../logic/BattleFlowSystem';
 import { calculateMonsterAttackProfile } from '../../logic/MonsterAttackSystem';
@@ -36,11 +36,13 @@ import { applyPlayerDamage, isPlayerDead } from '../../logic/PlayerDefeat';
 import type { StageResultMeta } from '../../types/online';
 import {
   DEMON_ACTION_LIMIT,
+  calculateDemonSelfDamage,
   canActivateDemonModeInPhase,
   getDemonActionHitCount,
   getDemonDamageMultiplier,
   getDemonIncomingDamageMultiplier,
   getDemonRiskLabel,
+  shouldApplyDemonSelfDamage,
   shouldInterruptEnemyTurnOnDemonize,
   shouldBypassDefense,
   shouldIgnoreResistance,
@@ -57,6 +59,7 @@ import type { AilmentType, BaseStats, BossGimmick, DemonFormData, DropEntry, Ele
 
 interface BattleCanvasProps {
   stageId?: string;
+  stageAttemptId?: string | null;
   onEnd: () => void;
 }
 
@@ -524,14 +527,14 @@ function isNextClientRuntime() {
     && Boolean((window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__);
 }
 
-async function processStageResultLocal(stageId?: string, meta: StageResultMeta = {}) {
+async function processStageResultLocal(stageId?: string, stageAttemptId?: string | null, meta: StageResultMeta = {}) {
   const stage = stageId ? STAGES[stageId] : undefined;
 
   if (stageId && isNextClientRuntime()) {
     try {
       const { processStageResultAction } = await import('../../app/actions');
       const onlineResult = await Promise.race([
-        processStageResultAction(stageId, meta),
+        processStageResultAction(stageId, stageAttemptId ?? null, meta),
         new Promise<never>((_, reject) => {
           window.setTimeout(() => reject(new Error('Stage result action timed out.')), 3500);
         }),
@@ -1830,7 +1833,7 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
 }
 
 // ── MAIN BATTLE CANVAS ────────────────────────────────────────────────────────
-export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
+export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleCanvasProps) {
   console.log('[BattleCanvas] render at', Date.now());
   const {
     player, party, equippedResidueSlots, inventoryItems,
@@ -2314,7 +2317,7 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         const totalWaves  = battleWaves.length;
         const turnCount   = Math.max(1, actionCountRef.current);
 
-        processStageResultLocal(stageId, {
+        processStageResultLocal(stageId, stageAttemptId, {
           turnCount,
           clearTimeSec: clearTime,
           totalDamage: totalDamageRef.current,
@@ -2855,7 +2858,13 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
         const enraged = Boolean(enrage && enemy.hp / enemy.maxHp <= 0.5);
         const incomingMult = getDemonIncomingDamageMultiplier(activeDemonForm);
         const effectiveAtk = enemy.atk * getAilmentAttackMultiplier(enemy.statusEffects);
-        const dmg = Math.round(effectiveAtk * incomingMult * (enraged ? Number(enrage?.value ?? 1.35) : 1) * (0.8 + Math.random() * 0.4));
+        const dmg = calculateIncomingEnemyDamage({
+          enemyAtk: effectiveAtk,
+          playerDef: playerStats?.def ?? FALLBACK_PLAYER_STATS.def,
+          incomingMultiplier: incomingMult,
+          enrageMultiplier: enraged ? Number(enrage?.value ?? 1.35) : 1,
+          variance: 0.8 + Math.random() * 0.4,
+        });
         const newHp = applyPlayerDamage(playerHpRef.current, dmg);
         playerHpRef.current = newHp;
         setPlayerHp(newHp);
@@ -2943,10 +2952,16 @@ export default function BattleCanvas({ stageId, onEnd }: BattleCanvasProps) {
 
   function applyDemonRiskFeedback(attackType: SkillAttackType) {
     if (!demonized || !demonForm.effectB.riskType) return;
-    if (demonForm.effectB.riskType === 'SELF_DAMAGE' && (attackType === 'MAGIC' || attackType === 'SUMMON')) {
-      const backlash = Math.max(1, Math.round(demonForm.effectB.riskValue ?? 12));
+    if (shouldApplyDemonSelfDamage(demonForm, attackType)) {
+      const backlash = calculateDemonSelfDamage(playerMaxHp, demonForm.effectB.riskValue);
+      const newHp = applyPlayerDamage(playerHpRef.current, backlash);
+      playerHpRef.current = newHp;
+      setPlayerHp(newHp);
       spawnFloat('42%', '58%', backlash, { color: '#fb7185' });
-      addLog(`代償発動: 味方の生命を${backlash}%分燃やし、${demonForm.formName}が魔力を維持する。`);
+      addLog(`代償発動: 味方の生命を${backlash}削り、${demonForm.formName}が魔力を維持する。（残HP: ${newHp}）`);
+      if (isPlayerDead(newHp)) {
+        triggerPlayerDefeat();
+      }
       return;
     }
     if (demonForm.effectB.riskType === 'ENERGY_DRAIN') {

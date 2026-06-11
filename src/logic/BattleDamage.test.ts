@@ -1,4 +1,4 @@
-import { calculateBattleDamage } from './BattleDamage';
+import { calculateBattleDamage, calculateIncomingEnemyDamage } from './BattleDamage';
 import type { BaseStats } from '../types/game';
 
 const attacker: BaseStats = {
@@ -126,5 +126,27 @@ describe('calculateBattleDamage', () => {
     expect(result.isCritical).toBe(true);
     expect(result.isWeakness).toBe(true);
     expect(result.isResisted).toBe(false);
+  });
+});
+
+describe('calculateIncomingEnemyDamage', () => {
+  test('reduces enemy-to-player damage by player DEF', () => {
+    const noDef = calculateIncomingEnemyDamage({ enemyAtk: 100, playerDef: 0, variance: 1 });
+    const highDef = calculateIncomingEnemyDamage({ enemyAtk: 100, playerDef: 200, variance: 1 });
+
+    expect(noDef).toBe(100);
+    expect(highDef).toBe(50);
+  });
+
+  test('keeps demon incoming and enrage multipliers after DEF mitigation', () => {
+    const damage = calculateIncomingEnemyDamage({
+      enemyAtk: 100,
+      playerDef: 100,
+      incomingMultiplier: 2,
+      enrageMultiplier: 1.5,
+      variance: 1,
+    });
+
+    expect(damage).toBe(200);
   });
 });

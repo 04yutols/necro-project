@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client';
 import { createCredentialsUser } from '@/services/AuthService';
 import { RewardService, StageDropResult } from '@/services/RewardService';
 import { MasterDataService } from '@/services/MasterDataService';
-import { RankingService } from '@/services/RankingService';
+import { RankingService, normalizeStageClearMetrics } from '@/services/RankingService';
 import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventService';
 import { JobService } from '@/services/JobService';
 import { NecroService } from '@/services/NecroService';
@@ -15,6 +15,7 @@ import { calculateEnergyState } from '@/logic/EnergySystem';
 import { levelFromTotalExp } from '@/logic/ExperienceSystem';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
 import { isAbyssalResidueUnlocked } from '@/logic/AbyssalResidueUnlockSystem';
+import { isStageUnlocked } from '@/logic/DungeonSystem';
 import {
   calculateDismantleRewards,
   calculateReforgedWeapon,
@@ -29,6 +30,7 @@ import type {
   AbyssalResidueData,
   BaseStats,
   CharacterData,
+  EnemyData,
   ElementType,
   EquipmentSlots,
   ItemData,
@@ -39,6 +41,7 @@ import type {
   Resistances,
   SoulShardData,
   SpiritCoreData,
+  StageData,
   WeaponMaterialData,
   WeaponMaterialType,
   WeaponRarity,
@@ -72,6 +75,10 @@ export interface StageResultPayload {
   error?:    string;
 }
 
+export type StageStartPayload =
+  | { success: true; stageAttemptId: string; tokenId: string; expiresAt: string }
+  | { success: false; error: string };
+
 export type GrowthActionType = 'RANK_UP' | 'CHANGE_JOB';
 
 export type SoulStoneActionResult =
@@ -97,6 +104,8 @@ const STARTER_WEAPON_BY_JOB: Record<string, string> = {
 const STAGE_ID_ALIASES: Record<string, string> = {
   '1-1': 'area1_node1',
 };
+
+const STAGE_ATTEMPT_TTL_MS = 2 * 60 * 60 * 1000;
 
 const CHARACTER_GAME_DATA_INCLUDE = {
   jobs: true,
@@ -487,6 +496,79 @@ function resolveStageId(stageId: string): string {
   return STAGE_ID_ALIASES[stageId] ?? stageId;
 }
 
+function stageResultFailure(error: string): StageResultPayload {
+  return {
+    success: false,
+    dropResult: emptyDrop(),
+    expGain: 0,
+    goldGain: 0,
+    cloudSaved: false,
+    error,
+  };
+}
+
+function getStageEnemyHpTotal(stage: StageData, enemies: Record<string, EnemyData>): number {
+  return stage.waves.reduce((total, wave) => total + wave.enemyIds.reduce((waveTotal, enemyId) => {
+    const enemy = enemies[enemyId];
+    const revive = enemy?.gimmicks?.find((gimmick) => gimmick.effect === 'REVIVE');
+    const reviveHp = revive && enemy
+      ? Math.floor(enemy.stats.hp * Math.max(0, Number(revive.value ?? 0.5)))
+      : 0;
+    return waveTotal + (enemy?.stats.hp ?? 0) + reviveHp;
+  }, 0), 0);
+}
+
+function getStageMetricCaps(stage: StageData, mds: MasterDataService) {
+  const enemyHpTotal = getStageEnemyHpTotal(stage, mds.getAllEnemies());
+  return {
+    maxTurnCount: Math.max(30, stage.waveCount * 30),
+    maxClearTimeSec: 60 * 60,
+    maxTotalDamage: Math.max(1000, enemyHpTotal * 4),
+  };
+}
+
+function readStageAttemptArgs(
+  stageAttemptIdOrMeta: string | StageResultMeta | null | undefined,
+  meta: StageResultMeta | undefined,
+): { stageAttemptId: string | null; meta: StageResultMeta } {
+  if (typeof stageAttemptIdOrMeta === 'string') {
+    return { stageAttemptId: stageAttemptIdOrMeta, meta: meta ?? {} };
+  }
+  return { stageAttemptId: null, meta: stageAttemptIdOrMeta ?? meta ?? {} };
+}
+
+async function consumeStageAttempt(
+  tx: Prisma.TransactionClient,
+  stageAttemptId: string,
+  input: { userId: string; characterId: string; stageId: string },
+): Promise<string | null> {
+  const now = new Date();
+  const consumed = await tx.stageAttempt.updateMany({
+    where: {
+      id: stageAttemptId,
+      userId: input.userId,
+      characterId: input.characterId,
+      stageId: input.stageId,
+      consumedAt: null,
+      expiresAt: { gt: now },
+    },
+    data: { consumedAt: now },
+  });
+  if (consumed.count === 1) return null;
+
+  const attempt = await tx.stageAttempt.findUnique({
+    where: { id: stageAttemptId },
+    select: { userId: true, characterId: true, stageId: true, consumedAt: true, expiresAt: true },
+  });
+  if (!attempt) return 'INVALID_STAGE_ATTEMPT';
+  if (attempt.userId !== input.userId) return 'TOKEN_USER_MISMATCH';
+  if (attempt.characterId !== input.characterId) return 'TOKEN_CHARACTER_MISMATCH';
+  if (attempt.stageId !== input.stageId) return 'TOKEN_STAGE_MISMATCH';
+  if (attempt.consumedAt) return 'STAGE_ATTEMPT_CONSUMED';
+  if (attempt.expiresAt <= now) return 'STAGE_ATTEMPT_EXPIRED';
+  return 'INVALID_STAGE_ATTEMPT';
+}
+
 function getStarterWeaponId(jobId: string): string {
   return STARTER_WEAPON_BY_JOB[jobId] ?? STARTER_WEAPON_BY_JOB.warrior;
 }
@@ -554,11 +636,66 @@ async function getAuthorizedUser(userId: string): Promise<ServerGameUser | null>
 }
 
 /**
+ * ステージ開始時にサーバー側で解放状態を確認し、短命・単回消費の証跡を発行する。
+ */
+export async function startStageAction(stageId: string): Promise<StageStartPayload> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) {
+    return { success: false, error: 'SESSION_EXPIRED' };
+  }
+  return startStageForUser(toServerUser(session.user), stageId);
+}
+
+export async function startStageForUser(user: ServerGameUser, stageId: string): Promise<StageStartPayload> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) {
+    return { success: false, error: 'SESSION_EXPIRED' };
+  }
+
+  const mds = MasterDataService.getInstance();
+  const normalizedStageId = resolveStageId(stageId);
+  const stage = mds.getStage(normalizedStageId);
+  if (!stage) return { success: false, error: 'STAGE_NOT_FOUND' };
+  if (stage.nodeType === 'SAFE') return { success: false, error: 'STAGE_NOT_PLAYABLE' };
+
+  const char = await prisma.character.findFirst({
+    where: { userId: authorizedUser.id },
+    select: { id: true, clearedStages: true },
+  });
+  if (!char) return { success: false, error: 'CHARACTER_NOT_FOUND' };
+  if (!isStageUnlocked(stage, char.clearedStages ?? [])) {
+    return { success: false, error: 'STAGE_LOCKED' };
+  }
+
+  const expiresAt = new Date(Date.now() + STAGE_ATTEMPT_TTL_MS);
+  const attempt = await prisma.stageAttempt.create({
+    data: {
+      userId: authorizedUser.id,
+      characterId: char.id,
+      stageId: normalizedStageId,
+      expiresAt,
+    },
+    select: { id: true, expiresAt: true },
+  });
+
+  return {
+    success: true,
+    stageAttemptId: attempt.id,
+    tokenId: attempt.id,
+    expiresAt: attempt.expiresAt.toISOString(),
+  };
+}
+
+/**
  * ステージクリア後のリザルト処理。
  * ログイン済み時はサーバー側でドロップ抽選 + DB保存を行う。
  * Next.js 実行時にセッションがない場合は、クライアントで再ログインを促す。
  */
-export async function processStageResultAction(stageId: string, meta: StageResultMeta = {}): Promise<StageResultPayload> {
+export async function processStageResultAction(
+  stageId: string,
+  stageAttemptIdOrMeta?: string | StageResultMeta | null,
+  maybeMeta?: StageResultMeta,
+): Promise<StageResultPayload> {
   const session = await auth().catch(() => null);
   if (!session?.user?.id) {
     return {
@@ -570,14 +707,21 @@ export async function processStageResultAction(stageId: string, meta: StageResul
       error: 'SESSION_EXPIRED',
     };
   }
-  return processStageResultForUser(toServerUser(session.user), stageId, meta);
+  const { stageAttemptId, meta } = readStageAttemptArgs(stageAttemptIdOrMeta, maybeMeta);
+  return processStageResultForUser(toServerUser(session.user), stageId, stageAttemptId, meta);
 }
 
 export async function processStageResultForUser(
   user: ServerGameUser,
   stageId: string,
-  meta: StageResultMeta = {},
+  stageAttemptIdOrMeta?: string | StageResultMeta | null,
+  maybeMeta?: StageResultMeta,
 ): Promise<StageResultPayload> {
+  const { stageAttemptId, meta } = readStageAttemptArgs(stageAttemptIdOrMeta, maybeMeta);
+  if (!stageAttemptId) {
+    return stageResultFailure('MISSING_STAGE_ATTEMPT');
+  }
+
   const authorizedUser = await getAuthorizedUser(user.id);
   if (!authorizedUser) {
     return {
@@ -597,6 +741,11 @@ export async function processStageResultForUser(
 
   if (!stage) {
     return { success: false, dropResult: emptyDrop(), expGain: 0, goldGain: 0, error: 'Stage not found' };
+  }
+  const metricCaps = getStageMetricCaps(stage, mds);
+  const normalizedMetrics = normalizeStageClearMetrics(meta, metricCaps);
+  if (!normalizedMetrics.ok) {
+    return stageResultFailure(normalizedMetrics.error);
   }
   const userId = authorizedUser.id;
 
@@ -630,8 +779,18 @@ export async function processStageResultForUser(
   const playerName = getPlayerDisplayName(authorizedUser);
 
   // DB 保存（トランザクション）
-  const transactionResult = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+  let transactionResult: { stageRecord: OnlineStageRecordSummary & { becameTopResidue?: boolean }; worldEvents: WorldLogEntry[] };
+  try {
+    transactionResult = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const worldEvents: WorldLogEntry[] = [];
+    const stageAttemptError = await consumeStageAttempt(tx, stageAttemptId, {
+      userId,
+      characterId: char.id,
+      stageId: normalizedStageId,
+    });
+    if (stageAttemptError) {
+      throw new Error(stageAttemptError);
+    }
 
     // 武器保存
     for (const weapon of dropResult.weapons) {
@@ -793,11 +952,12 @@ export async function processStageResultForUser(
     const stageRecord = await RankingService.recordStageClear(tx, {
       userId,
       stageId: normalizedStageId,
-      turnCount: meta.turnCount,
-      clearTimeSec: meta.clearTimeSec,
-      totalDamage: meta.totalDamage,
+      turnCount: normalizedMetrics.turnCount,
+      clearTimeSec: normalizedMetrics.clearTimeSec,
+      totalDamage: normalizedMetrics.totalDamage,
       isBossStage,
       bestResidueScore,
+      ...metricCaps,
     });
 
     if (isWorldFirstBossClear) {
@@ -815,8 +975,23 @@ export async function processStageResultForUser(
       }, userId));
     }
 
-    return { stageRecord, worldEvents };
-  });
+      return { stageRecord, worldEvents };
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (
+      message === 'INVALID_STAGE_ATTEMPT'
+      || message === 'TOKEN_USER_MISMATCH'
+      || message === 'TOKEN_CHARACTER_MISMATCH'
+      || message === 'TOKEN_STAGE_MISMATCH'
+      || message === 'STAGE_ATTEMPT_CONSUMED'
+      || message === 'STAGE_ATTEMPT_EXPIRED'
+      || message === 'INVALID_STAGE_RESULT_META'
+    ) {
+      return stageResultFailure(message);
+    }
+    throw error;
+  }
 
   await RankingService.invalidate();
   await publishWorldEvents(transactionResult.worldEvents);

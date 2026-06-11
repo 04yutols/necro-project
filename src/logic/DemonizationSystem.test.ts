@@ -5,6 +5,7 @@ import {
   activateDemonMode,
   canActivateDemonMode,
   canActivateDemonModeInPhase,
+  calculateDemonSelfDamage,
   clampDemonGauge,
   consumeDemonAction,
   getDemonActionHitCount,
@@ -14,6 +15,7 @@ import {
   isDemonStatusImmune,
   markDemonUltimateUsed,
   resolveDemonActivation,
+  shouldApplyDemonSelfDamage,
   shouldBypassDefense,
   shouldInterruptEnemyTurnOnDemonize,
   shouldIgnoreResistance,
@@ -144,6 +146,15 @@ describe('DemonizationSystem', () => {
     expect(getDemonRiskLabel('GLASS_CANNON')).toBe('紙装甲');
     expect(getDemonRiskLabel('SETUP_DEPENDENT')).toBe('仕込み依存');
     expect(getDemonRiskLabel(null as unknown as DemonRiskType)).toBe('なし');
+  });
+
+  test('SELF_DAMAGE risk applies only to magical/summon actions and uses max HP percent', () => {
+    expect(shouldApplyDemonSelfDamage(DEMON_FORMS.archmage, 'MAGIC')).toBe(true);
+    expect(shouldApplyDemonSelfDamage(DEMON_FORMS.necromancer, 'SUMMON')).toBe(true);
+    expect(shouldApplyDemonSelfDamage(DEMON_FORMS.archmage, 'SLASH')).toBe(false);
+    expect(shouldApplyDemonSelfDamage(DEMON_FORMS.berserker, 'SLASH')).toBe(false);
+    expect(calculateDemonSelfDamage(1000, 20)).toBe(200);
+    expect(calculateDemonSelfDamage(820, undefined)).toBe(82);
   });
 
   test('INTERRUPT activation is allowed during enemy turn and returns control to player turn', () => {

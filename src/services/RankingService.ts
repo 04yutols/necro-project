@@ -67,6 +67,9 @@ export interface StageClearRecordInput extends StageResultMeta {
   stageId: string;
   isBossStage?: boolean;
   bestResidueScore?: number;
+  maxTurnCount?: number;
+  maxClearTimeSec?: number;
+  maxTotalDamage?: number;
 }
 
 export interface StageRecordResult {
@@ -76,6 +79,36 @@ export interface StageRecordResult {
   totalDamage: number;
   improved: boolean;
   becameTopResidue: boolean;
+}
+
+export type StageClearMetricValidation =
+  | { ok: true; turnCount: number; clearTimeSec: number; totalDamage: number }
+  | { ok: false; error: 'INVALID_STAGE_RESULT_META' };
+
+export function normalizeStageClearMetrics(
+  input: StageResultMeta,
+  caps: { maxTurnCount?: number; maxClearTimeSec?: number; maxTotalDamage?: number } = {},
+): StageClearMetricValidation {
+  const hasInvalidFiniteValue = [input.turnCount, input.clearTimeSec, input.totalDamage]
+    .some((value) => value !== undefined && !Number.isFinite(value));
+  if (hasInvalidFiniteValue) return { ok: false, error: 'INVALID_STAGE_RESULT_META' };
+  if (input.turnCount !== undefined && input.turnCount < 1) return { ok: false, error: 'INVALID_STAGE_RESULT_META' };
+  if (input.clearTimeSec !== undefined && input.clearTimeSec < 1) return { ok: false, error: 'INVALID_STAGE_RESULT_META' };
+  if (input.totalDamage !== undefined && input.totalDamage < 0) return { ok: false, error: 'INVALID_STAGE_RESULT_META' };
+
+  const rawTurnCount = Math.round(input.turnCount ?? 10);
+  const maxTurnCount = Math.max(1, Math.round(caps.maxTurnCount ?? 300));
+  const turnCount = Math.min(rawTurnCount, maxTurnCount);
+
+  const rawClearTimeSec = Math.round(input.clearTimeSec ?? turnCount * 5);
+  const maxClearTimeSec = Math.max(1, Math.round(caps.maxClearTimeSec ?? 21600));
+  const clearTimeSec = Math.min(rawClearTimeSec, maxClearTimeSec);
+
+  const rawTotalDamage = Math.round(input.totalDamage ?? 0);
+  const maxTotalDamage = Math.max(0, Math.round(caps.maxTotalDamage ?? Number.MAX_SAFE_INTEGER));
+  const totalDamage = Math.min(rawTotalDamage, maxTotalDamage);
+
+  return { ok: true, turnCount, clearTimeSec, totalDamage };
 }
 
 export class RankingService {
@@ -153,9 +186,15 @@ export class RankingService {
   }
 
   static async recordStageClear(tx: Prisma.TransactionClient, input: StageClearRecordInput): Promise<StageRecordResult> {
-    const turnCount = Math.max(1, Math.round(input.turnCount ?? 10));
-    const clearTimeSec = Math.max(0, Math.round(input.clearTimeSec ?? turnCount * 5));
-    const totalDamage = Math.max(0, Math.round(input.totalDamage ?? 0));
+    const metrics = normalizeStageClearMetrics(input, {
+      maxTurnCount: input.maxTurnCount,
+      maxClearTimeSec: input.maxClearTimeSec,
+      maxTotalDamage: input.maxTotalDamage,
+    });
+    if (!metrics.ok) {
+      throw new Error(metrics.error);
+    }
+    const { turnCount, clearTimeSec, totalDamage } = metrics;
     const bestResidueScore = Math.max(0, input.bestResidueScore ?? 0);
     const existing = await tx.stageRecord.findUnique({
       where: { userId_stageId: { userId: input.userId, stageId: input.stageId } },
