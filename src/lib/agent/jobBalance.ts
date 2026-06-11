@@ -6,6 +6,8 @@
  * baseStatsByLevel（lv1〜100）はフォーム側が補間生成するため、草稿では任意（無くてよい）。
  */
 
+import { findUnknownFields } from './knownFields';
+
 export type JobValidationLevel = 'PASS' | 'WARN' | 'FAIL';
 export type JobValidationFinding = { level: JobValidationLevel; field: string; message: string };
 export type JobValidationResult = { ok: boolean; findings: JobValidationFinding[] };
@@ -192,6 +194,8 @@ export function validateJobDraft(draft: unknown, ctx: JobBalanceContext): JobVal
     }
   }
 
+  // R-3: 未知トップレベルフィールドを WARN 検出
+  findings.push(...findUnknownFields(draft, 'jobs'));
   const ok = findings.every((f) => f.level !== 'FAIL');
   if (ok && findings.length === 0) {
     pass('root', '構造・列挙・倍率・スキル整合すべて問題ありません。');

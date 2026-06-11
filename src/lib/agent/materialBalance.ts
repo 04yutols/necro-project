@@ -5,6 +5,8 @@
  * 参照される側。rarity が expValue 帯を決めるため、実データから rarity 別帯を学習して検閲する。
  */
 
+import { findUnknownFields } from './knownFields';
+
 export type MaterialValidationLevel = 'PASS' | 'WARN' | 'FAIL';
 export type MaterialValidationFinding = { level: MaterialValidationLevel; field: string; message: string };
 export type MaterialValidationResult = { ok: boolean; findings: MaterialValidationFinding[] };
@@ -107,6 +109,8 @@ export function validateMaterialDraft(draft: unknown, ctx: MaterialBalanceContex
     }
   }
 
+  // R-3: 未知トップレベルフィールドを WARN 検出
+  findings.push(...findUnknownFields(draft, 'materials'));
   const ok = findings.every((f) => f.level !== 'FAIL');
   if (ok && findings.length === 0) {
     pass('root', '構造・列挙・expValue 帯すべて問題ありません。');

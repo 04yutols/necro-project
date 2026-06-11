@@ -1,4 +1,5 @@
 import {
+  AOE_ASSUMED_TARGETS,
   buildSimulationReport,
   evaluateAgainstTarget,
   reportToText,
@@ -90,6 +91,43 @@ describe('buildSimulationReport - summary aggregation', () => {
       target({ id: 'c', resistances: {} }),
     ]);
     expect(r.summary.weaknessCoverage).toBeCloseTo(1 / 3, 2);
+  });
+});
+
+describe('R-5: AoE aggregate summary', () => {
+  const targets: SimTarget[] = [
+    target({ id: 'weak', hp: 100, def: 0 }),       // expected 200
+    target({ id: 'tanky', hp: 1000, def: 200 }),   // expected 100
+  ];
+  const AOE: SimSkill = { ...SKILL, targetType: 'ALL_ENEMIES' };
+
+  it('SINGLE skill has no aoe summary', () => {
+    const r = buildSimulationReport(ATK, SKILL, targets);
+    expect(r.summary.aoe).toBeUndefined();
+  });
+
+  it('ALL_ENEMIES adds totalExpectedPerCast = avgExpected × assumedTargets', () => {
+    const r = buildSimulationReport(ATK, AOE, targets);
+    expect(r.summary.aoe).toBeDefined();
+    expect(r.summary.aoe!.assumedTargets).toBe(AOE_ASSUMED_TARGETS);
+    expect(r.summary.aoe!.totalExpectedPerCast).toBe(150 * AOE_ASSUMED_TARGETS); // avgExpected 150
+    expect(r.summary.aoe!.energyEfficiency).toBeCloseTo((150 * AOE_ASSUMED_TARGETS) / 10, 2);
+  });
+
+  it('aoe energyEfficiency is null for mpCost 0', () => {
+    const r = buildSimulationReport(ATK, { ...AOE, mpCost: 0 }, targets);
+    expect(r.summary.aoe!.energyEfficiency).toBeNull();
+  });
+
+  it('reportToText includes the AoE aggregate line', () => {
+    const txt = reportToText(buildSimulationReport(ATK, AOE, targets));
+    expect(txt).toContain('AoE合算');
+    expect(txt).toContain(`想定 ${AOE_ASSUMED_TARGETS} 体`);
+  });
+
+  it('reportToText omits the AoE line for SINGLE', () => {
+    const txt = reportToText(buildSimulationReport(ATK, SKILL, targets));
+    expect(txt).not.toContain('AoE合算');
   });
 });
 

@@ -5,6 +5,8 @@
  * stages から chapter+area で参照される（"ch{chapter}_area{area}"）ため、id 規約の整合が重要。
  */
 
+import { findUnknownFields } from './knownFields';
+
 export type AreaValidationLevel = 'PASS' | 'WARN' | 'FAIL';
 export type AreaValidationFinding = { level: AreaValidationLevel; field: string; message: string };
 export type AreaValidationResult = { ok: boolean; findings: AreaValidationFinding[] };
@@ -112,6 +114,8 @@ export function validateAreaDraft(draft: unknown, ctx: AreaBalanceContext): Area
     warn('sortOrder', `sortOrder が未設定です。マップ並び順のため ${suggestedSortOrder(Number(chapter), Number(area))} を推奨します。`);
   }
 
+  // R-3: 未知トップレベルフィールドを WARN 検出
+  findings.push(...findUnknownFields(draft, 'areas'));
   const ok = findings.every((f) => f.level !== 'FAIL');
   if (ok && findings.length === 0) {
     pass('root', '構造・id 規約・color・position すべて問題ありません。');

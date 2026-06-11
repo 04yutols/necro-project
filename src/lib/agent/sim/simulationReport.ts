@@ -45,6 +45,19 @@ export type PerTarget = {
   isResisted: boolean;
 };
 
+/** R-5: AoE の想定同時ヒット数（WAVE の敵は最大 3 体。doc15）。 */
+export const AOE_ASSUMED_TARGETS = 3;
+
+/** R-5: AoE（ALL_ENEMIES）のみ付く合算メトリクス。 */
+export type AoeSummary = {
+  /** 想定同時ヒット数（= AOE_ASSUMED_TARGETS）。 */
+  assumedTargets: number;
+  /** 1 回の発動の合算期待ダメージ（avgExpected × assumedTargets）。 */
+  totalExpectedPerCast: number;
+  /** 合算期待 / mpCost。mpCost=0 は null。 */
+  energyEfficiency: number | null;
+};
+
 export type SimulationReport = {
   attacker: SimAttacker;
   skill: SimSkill;
@@ -60,6 +73,8 @@ export type SimulationReport = {
     weaknessCoverage: number;
     /** 期待ダメージの平均。 */
     avgExpected: number;
+    /** R-5: AoE のみ。複数体同時ヒットの合算評価。 */
+    aoe?: AoeSummary;
   };
 };
 
@@ -145,6 +160,19 @@ export function buildSimulationReport(
   const weaknessCoverage = perTarget.filter((p) => p.isWeakness).length / n;
   const energyEfficiency = skill.mpCost > 0 ? Number((avgExpected / skill.mpCost).toFixed(2)) : null;
 
+  // R-5: AoE は 1 回の発動で複数体に同時ヒットするため、合算メトリクスを別枠で持つ
+  const aoe: AoeSummary | undefined =
+    skill.targetType === 'ALL_ENEMIES'
+      ? {
+          assumedTargets: AOE_ASSUMED_TARGETS,
+          totalExpectedPerCast: avgExpected * AOE_ASSUMED_TARGETS,
+          energyEfficiency:
+            skill.mpCost > 0
+              ? Number(((avgExpected * AOE_ASSUMED_TARGETS) / skill.mpCost).toFixed(2))
+              : null,
+        }
+      : undefined;
+
   return {
     attacker,
     skill,
@@ -155,6 +183,7 @@ export function buildSimulationReport(
       avgHitsToKill: Number(avgHitsToKill.toFixed(2)),
       weaknessCoverage: Number(weaknessCoverage.toFixed(3)),
       avgExpected,
+      ...(aoe ? { aoe } : {}),
     },
   };
 }
@@ -175,5 +204,10 @@ export function reportToText(report: SimulationReport): string {
     '対象別:',
     ...lines,
     `要約: 1確率 ${Math.round(su.oneShotRate * 100)}% / 平均撃破 ${su.avgHitsToKill}発 / エネルギー効率 ${su.energyEfficiency ?? 'N/A'} / 弱点カバー ${Math.round(su.weaknessCoverage * 100)}% / 平均期待 ${su.avgExpected}`,
+    ...(su.aoe
+      ? [
+          `AoE合算: 想定 ${su.aoe.assumedTargets} 体同時ヒット / 1発動の合算期待 ${su.aoe.totalExpectedPerCast} / 合算エネルギー効率 ${su.aoe.energyEfficiency ?? 'N/A'}（AoE はこの合算効率で判断すること）`,
+        ]
+      : []),
   ].join('\n');
 }
