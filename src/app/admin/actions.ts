@@ -9,15 +9,7 @@ import {
   sortStoryScenes,
 } from '@/data/story/packs';
 import type { StoryPack, StoryPackSummary } from '@/data/story/packs';
-
-// ---------------------------------------------------------------------------
-// Production guard
-// ---------------------------------------------------------------------------
-function assertDev() {
-  if (process.env.NODE_ENV !== 'development') {
-    throw new Error('Admin actions are only available in development mode.');
-  }
-}
+import { assertDev, withDevGuard } from './adminGuard';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -725,12 +717,11 @@ export async function getEntry(
 // ---------------------------------------------------------------------------
 // Public: save entry (create or update)
 // ---------------------------------------------------------------------------
-export async function saveEntry(
+async function saveEntryImpl(
   fileKey: keyof MasterDataCollection,
   entryKey: string,
   data: Record<string, unknown>,
 ): Promise<{ success: boolean; error?: string }> {
-  assertDev();
   try {
     const fileMap: Record<keyof MasterDataCollection, string> = {
       areas: 'areas.json',
@@ -754,14 +745,15 @@ export async function saveEntry(
   }
 }
 
+export const saveEntry = withDevGuard(saveEntryImpl);
+
 // ---------------------------------------------------------------------------
 // Public: delete entry
 // ---------------------------------------------------------------------------
-export async function deleteEntry(
+async function deleteEntryImpl(
   fileKey: keyof MasterDataCollection,
   entryKey: string,
 ): Promise<{ success: boolean; error?: string }> {
-  assertDev();
   try {
     const fileMap: Record<keyof MasterDataCollection, string> = {
       areas: 'areas.json',
@@ -784,6 +776,8 @@ export async function deleteEntry(
     return { success: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+export const deleteEntry = withDevGuard(deleteEntryImpl);
 
 // ---------------------------------------------------------------------------
 // Story: read scenes

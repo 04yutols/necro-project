@@ -64,6 +64,7 @@ model User {
   discoveredItems Item[]  @relation("Discoverer")
   weaponMaterials WeaponMaterial[]
   stageRecords  StageRecord[]
+  stageAttempts StageAttempt[]
   playerStats   PlayerStats?
   worldLogs     WorldLog[]
 }
@@ -136,6 +137,7 @@ model Character {
 
   // 進行管理
   clearedStages   String[] @default([])
+  stageAttempts   StageAttempt[]
   soulShards      SoulShard[] @relation("CharacterSoulShards")
 
   // 深淵の残滓（5部位）
@@ -323,6 +325,23 @@ model StageRecord {
   @@unique([userId, stageId])
   @@index([stageId, turnCount])
   @@index([stageId, clearTimeSec])
+}
+
+model StageAttempt {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  stageId     String
+  issuedAt    DateTime  @default(now())
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, stageId, consumedAt])
+  @@index([characterId, stageId])
+  @@index([expiresAt])
 }
 
 model PlayerStats {

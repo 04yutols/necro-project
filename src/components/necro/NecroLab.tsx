@@ -104,7 +104,7 @@ function ResidueSlotCard({ slot, slotIndex, isActive, onTap }: SlotProps) {
     <motion.button
       onClick={onTap}
       whileTap={{ scale: 0.92 }}
-      className="flex-1 rounded-2xl flex flex-col items-center justify-center gap-1 relative overflow-hidden"
+      className="flex-1 rounded-2xl flex flex-col items-center justify-center gap-1 relative"
       style={{
         height: 82,
         background: slot
@@ -189,8 +189,9 @@ function ResidueDetailStrip({ residue, isEquipped, onEquip }: StripProps) {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -6 }}
         transition={{ duration: 0.18 }}
-        className="gothic-panel rounded-2xl overflow-hidden relative"
+        className="gothic-panel rounded-2xl relative"
       >
+        <div className="overflow-hidden rounded-2xl relative">
         <div className="absolute top-0 left-0 right-0 h-[2px] pointer-events-none"
           style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />
 
@@ -262,6 +263,7 @@ function ResidueDetailStrip({ residue, isEquipped, onEquip }: StripProps) {
             {isEquipped ? '✓ 装備中' : '装備する'}
           </motion.button>
         </div>
+        </div>
       </motion.div>
     </AnimatePresence>
   );
@@ -284,7 +286,7 @@ function ResidueGridCard({ residue, isSelected, isEquipped, onSelect }: GridCard
     <motion.button
       onClick={onSelect}
       whileTap={{ scale: 0.91 }}
-      className="rounded-xl flex flex-col items-center gap-1 py-2.5 px-1.5 relative overflow-hidden"
+      className="rounded-xl flex flex-col items-center gap-1 py-2.5 px-1.5 relative"
       style={{
         height: GRID_ITEM_H,
         background: isSelected
@@ -419,8 +421,9 @@ function EquipTab({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 18 }}
       transition={{ duration: 0.2 }}
-      className="flex flex-col flex-1 overflow-hidden"
+      className="flex flex-col flex-1"
     >
+      <div className="flex flex-col flex-1 overflow-hidden">
       {/* 3 residue slots */}
       <div id="tut-residue-slots" className="shrink-0 flex gap-2 px-3 pt-2.5 pb-1.5">
         {equippedResidueSlots.map((slot, i) => (
@@ -463,6 +466,7 @@ function EquipTab({
         equippedIds={equippedIds}
         onSelect={id => { sound.playTap(); onSelectResidue(id); }}
       />
+      </div>
     </motion.div>
   );
 }
@@ -607,7 +611,7 @@ function MaterialCard({ mat, isSelected, onToggle }: { mat: ResidueMatData; isSe
     <motion.button
       onClick={onToggle}
       whileTap={{ scale: 0.9 }}
-      className="rounded-xl flex flex-col items-center gap-1 py-2.5 px-1 relative overflow-hidden"
+      className="rounded-xl flex flex-col items-center gap-1 py-2.5 px-1 relative"
       style={{
         height: 88,
         background: isSelected
@@ -698,8 +702,9 @@ function EnhanceTab({ abyssalResidues, residueMaterials, selectedId, onEnhance, 
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -18 }}
       transition={{ duration: 0.2 }}
-      className="flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5"
+      className="flex flex-col flex-1"
     >
+      <div className="flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5">
       <StatsComparison residue={selectedResidue} expGain={totalExpGain} />
 
       <EnhanceGauge residue={selectedResidue} previewExpGain={totalExpGain} />
@@ -765,6 +770,7 @@ function EnhanceTab({ abyssalResidues, residueMaterials, selectedId, onEnhance, 
       >
         強 化
       </motion.button>
+      </div>
     </motion.div>
   );
 }

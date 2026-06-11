@@ -2503,7 +2503,8 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
       <div className="flex-1 min-h-0 relative mt-2" style={{ width: '100%', alignSelf: 'stretch' }}>
         <AnimatePresence mode="wait">
           {tab === 'EQUIP' ? (
-            <motion.div key="equip" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.16 }} className="absolute inset-0 flex flex-col overflow-hidden" style={{ position: 'absolute', inset: 0, width: '100%' }}>
+            <motion.div key="equip" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.16 }} className="absolute inset-0" style={{ position: 'absolute', inset: 0, width: '100%' }}>
+              <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ width: '100%' }}>
               {isResidueSlot ? (
                 <>
                   <ResidueSlotRail
@@ -2562,6 +2563,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
                   )}
                 </>
               )}
+              </div>
             </motion.div>
           ) : tab === 'TRANSMUTE' ? (
             <TransmutationPanel
@@ -2578,7 +2580,8 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
               onDismantle={handleDismantleWeapon}
             />
           ) : (
-            <motion.div key="enhance" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.16 }} className="absolute inset-0 flex flex-col overflow-hidden px-3 pt-1 pb-3 gap-2" style={{ position: 'absolute', inset: 0, width: '100%' }}>
+            <motion.div key="enhance" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.16 }} className="absolute inset-0" style={{ position: 'absolute', inset: 0, width: '100%' }}>
+              <div className="absolute inset-0 flex flex-col overflow-hidden px-3 pt-1 pb-3 gap-2" style={{ width: '100%' }}>
               {isResidueSlot ? (
                 <>
                   {/* Residue selector for enhance */}
@@ -2642,6 +2645,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
                   onReforge={handleReforgeWeapon}
                 />
               )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

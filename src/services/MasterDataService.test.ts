@@ -83,4 +83,19 @@ describe('MasterDataService typed accessors', () => {
     expect(demonForms.warrior.formName).toBe('黒翼の剣聖');
     expect(materials.bone_chip.rarity).toBe('COMMON');
   });
+
+  test('all jobs expose a matching ultimate skill in master data', () => {
+    const jobs = svc.getAllJobs();
+    const skills = svc.getAllSkills();
+
+    Object.entries(jobs).forEach(([jobId, job]) => {
+      const ultimateId = `ult_${jobId}`;
+      expect(job.skills.some((entry) => entry.skillId === ultimateId)).toBe(true);
+      expect(skills[ultimateId]).toMatchObject({
+        id: ultimateId,
+        isUltimate: true,
+        mpCost: job.energyCurve.ultimateCost,
+      });
+    });
+  });
 });

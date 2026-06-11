@@ -19,6 +19,14 @@ export interface BattleDamageResult {
   isResisted: boolean;
 }
 
+export interface IncomingEnemyDamageInput {
+  enemyAtk: number;
+  playerDef: number;
+  incomingMultiplier?: number;
+  enrageMultiplier?: number;
+  variance?: number;
+}
+
 /**
  * BattleEngine / BattleCanvas 共通のダメージ式。
  *
@@ -72,4 +80,22 @@ export function calculateBattleDamage({
     isWeakness,
     isResisted,
   };
+}
+
+export function calculateIncomingEnemyDamage({
+  enemyAtk,
+  playerDef,
+  incomingMultiplier = 1,
+  enrageMultiplier = 1,
+  variance = 1,
+}: IncomingEnemyDamageInput): number {
+  const safeAtk = Math.max(0, Number.isFinite(enemyAtk) ? enemyAtk : 0);
+  const safeDef = Math.max(0, Number.isFinite(playerDef) ? playerDef : 0);
+  const defMult = 1 - safeDef / (safeDef + 200);
+  const damage = safeAtk
+    * defMult
+    * Math.max(0, incomingMultiplier)
+    * Math.max(0, enrageMultiplier)
+    * Math.max(0, variance);
+  return Math.max(1, Math.round(damage));
 }

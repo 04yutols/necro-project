@@ -26,11 +26,13 @@ import { calculatePartyTribeSynergy, type SynergyBonus } from './TribeSynergySys
 import { applyAreaGimmickToPlayer } from './AreaGimmickSystem';
 import {
   type DemonRuntimeState,
+  calculateDemonSelfDamage,
   getDemonDamageMultiplier,
   getDemonActionHitCount,
   getDemonIncomingDamageMultiplier,
   isDemonStatusImmune,
   shouldBypassDefense,
+  shouldApplyDemonSelfDamage,
   shouldIgnoreResistance,
   markDemonUltimateUsed,
   consumeDemonAction,
@@ -40,10 +42,11 @@ import {
   type WeaponPassiveContext,
   type WeaponPassiveResult,
 } from './WeaponPassive';
-import { calculateBattleDamage, type BattleDamageResult } from './BattleDamage';
+import { calculateBattleDamage, calculateIncomingEnemyDamage, type BattleDamageResult } from './BattleDamage';
 import {
   bossGimmickKey,
   findReviveGimmick,
+  getEnrageMultiplier,
   getReviveHp,
   resolveSummonMinionIds,
   shouldTriggerBossGimmick,
@@ -452,9 +455,8 @@ export class BattleEngine {
     }
 
     // SELF_DAMAGE リスク: 攻撃後に HP を削る
-    if (isDemonActive && demon!.form?.effectB.riskType === 'SELF_DAMAGE') {
-      const selfDmgPct = demon!.form.effectB.riskValue ?? 10;
-      const selfDmg = Math.floor(this.playerInitialMaxHp * selfDmgPct / 100);
+    if (isDemonActive && shouldApplyDemonSelfDamage(demon!.form, attackType)) {
+      const selfDmg = calculateDemonSelfDamage(this.playerInitialMaxHp, demon!.form?.effectB.riskValue);
       this.applyDamageToPlayer(selfDmg);
       this.addLog('DEMON_SELF_DAMAGE', player.name, player.name,
         `【深淵の理】魔神化の代償で ${selfDmg} の反動ダメージ！`);
@@ -667,9 +669,11 @@ export class BattleEngine {
       // モンスター全滅 → アルドが直接受ける
       const playerProfile = calculateCharacterStatProfile(player);
       const incomingMult = getDemonIncomingDamageMultiplier(this.demonState?.form ?? null);
-      const rawDmg = Math.max(1, Math.floor(
-        enemy.stats.atk * (1 - playerProfile.total.def / (playerProfile.total.def + 200)) * incomingMult
-      ));
+      const rawDmg = calculateIncomingEnemyDamage({
+        enemyAtk: enemy.stats.atk,
+        playerDef: playerProfile.total.def,
+        incomingMultiplier: incomingMult,
+      });
       const nextHp = this.applyDamageToPlayer(rawDmg);
       this.addLog('ENEMY_ATTACK', enemy.name, player.name,
         isPlayerDead(nextHp)
@@ -739,7 +743,7 @@ export class BattleEngine {
 
     switch (g.effect) {
       case 'ENRAGE':
-        boss.stats = { ...boss.stats, atk: Math.floor(boss.stats.atk * 1.5) };
+        boss.stats = { ...boss.stats, atk: Math.floor(boss.stats.atk * getEnrageMultiplier(g)) };
         this.addLog('BOSS_ENRAGE', boss.name, boss.name,
           `【ENRAGE】${boss.name}が激怒した！ 攻撃力が大幅に上昇する！`);
         break;
@@ -1047,7 +1051,11 @@ export class BattleEngine {
 
   private updateState(): void {
     this.state.turn++;
-    if (this.state.turn > 10) {
+    // WAVE 進行は「10ターン経過」ではなく「現 WAVE の敵が全滅」で判定する (L-2 fix)
+    const allCurrentWaveEnemiesDead =
+      this.activeEnemyCandidates.length > 0 &&
+      this.activeEnemyCandidates.every(enemy => this.getEnemyRuntimeHp(enemy) <= 0);
+    if (allCurrentWaveEnemiesDead) {
       this.state.wave = Math.min(3, this.state.wave + 1);
       this.state.turn = 1;
     }

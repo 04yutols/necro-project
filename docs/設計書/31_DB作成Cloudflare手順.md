@@ -202,11 +202,13 @@ Cloudflare Pages からは `prisma migrate` を直接実行できません。
 ```bash
 # 本番用の接続文字列を一時的に使ってマイグレーション
 # （本番と開発が同じ Neon プロジェクトの場合はそのまま）
-npx prisma migrate deploy
+DATABASE_URL="postgresql://..." npm run db:migrate:deploy
 ```
 
 > `migrate deploy` は `migrate dev` と違い、既存のマイグレーションを適用するだけです。  
 > 安全に本番 DB に反映できます。
+> Cloudflare Pages の deploy 前後どちらでもよいが、DB スキーマを参照するコード変更では
+> **deploy 前に成功させてから** Pages を再デプロイします。
 
 ---
 
@@ -250,6 +252,7 @@ Neon には Git と同様の「ブランチ」機能があります。
 [ ] http://localhost:3000 でプレイヤー登録・ログインができる
 
 Cloudflare
+[ ] DATABASE_URL を本番 Neon に向けて `npm run db:migrate:deploy` が成功した
 [ ] GitHub push 後に Cloudflare でビルドが成功する
 [ ] https://necro-project.pages.dev にアクセスできる
 [ ] ゲームが起動してログインできる

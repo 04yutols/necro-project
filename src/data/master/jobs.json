@@ -42,6 +42,10 @@
         "skillId": "skill_warrior_1"
       },
       {
+        "level": 1,
+        "skillId": "ult_warrior"
+      },
+      {
         "level": 4,
         "skillId": "skill_warrior_thunder_slash"
       },
@@ -1098,6 +1102,10 @@
       {
         "level": 1,
         "skillId": "skill_mage_1"
+      },
+      {
+        "level": 1,
+        "skillId": "ult_mage"
       },
       {
         "level": 3,
@@ -2162,6 +2170,10 @@
         "skillId": "skill_darkpriest_1"
       },
       {
+        "level": 1,
+        "skillId": "ult_dark_priest"
+      },
+      {
         "level": 6,
         "skillId": "skill_darkpriest_curse_bind"
       }
@@ -3210,6 +3222,10 @@
       {
         "level": 1,
         "skillId": "skill_rogue_1"
+      },
+      {
+        "level": 1,
+        "skillId": "ult_rogue"
       },
       {
         "level": 8,
@@ -4274,6 +4290,10 @@
       {
         "level": 1,
         "skillId": "skill_darkknight_shadow_edge"
+      },
+      {
+        "level": 1,
+        "skillId": "ult_dark_knight"
       },
       {
         "level": 8,
@@ -5341,6 +5361,10 @@
         "skillId": "skill_berserker_blood_cleave"
       },
       {
+        "level": 1,
+        "skillId": "ult_berserker"
+      },
+      {
         "level": 10,
         "skillId": "skill_berserker_earth_breaker"
       }
@@ -6401,6 +6425,10 @@
       {
         "level": 1,
         "skillId": "skill_archmage_elemental_cascade"
+      },
+      {
+        "level": 1,
+        "skillId": "ult_archmage"
       },
       {
         "level": 12,
@@ -7466,6 +7494,10 @@
         "skillId": "skill_sorcerer_tempest_lance"
       },
       {
+        "level": 1,
+        "skillId": "ult_sorcerer"
+      },
+      {
         "level": 10,
         "skillId": "skill_sorcerer_mirror_spark"
       }
@@ -8527,6 +8559,10 @@
       {
         "level": 1,
         "skillId": "skill_warlock_abyss_hex"
+      },
+      {
+        "level": 1,
+        "skillId": "ult_warlock"
       },
       {
         "level": 12,
@@ -9594,6 +9630,10 @@
         "skillId": "skill_necromancer_1"
       },
       {
+        "level": 1,
+        "skillId": "ult_necromancer"
+      },
+      {
         "level": 8,
         "skillId": "skill_necromancer_grave_command"
       }
@@ -10659,6 +10699,10 @@
         "skillId": "skill_assassin_void_step"
       },
       {
+        "level": 1,
+        "skillId": "ult_assassin"
+      },
+      {
         "level": 9,
         "skillId": "skill_assassin_thunder_kill"
       }
@@ -11722,6 +11766,10 @@
       {
         "level": 1,
         "skillId": "skill_trickster_mirage_bolt"
+      },
+      {
+        "level": 1,
+        "skillId": "ult_trickster"
       },
       {
         "level": 10,

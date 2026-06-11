@@ -4,6 +4,7 @@ import {
   calculateBossAvDelay,
   findReviveGimmick,
   getBossAvDelayBase,
+  getEnrageMultiplier,
   getReviveHp,
   resolveSummonMinionIds,
   shouldTriggerBossGimmick,
@@ -32,6 +33,15 @@ describe('BossGimmickSystem', () => {
   test('restores 50% HP for legacy value=1 revive data', () => {
     expect(getReviveHp(1120, revive)).toBe(560);
     expect(getReviveHp(1120, { ...revive, value: 0.35 })).toBe(392);
+  });
+
+  test('resolves ENRAGE multiplier from master data value', () => {
+    const enrage: BossGimmick = { trigger: 'HP_BELOW_50', effect: 'ENRAGE', value: 1.5 };
+
+    expect(getEnrageMultiplier(enrage)).toBe(1.5);
+    expect(getEnrageMultiplier({ ...enrage, value: 1 })).toBe(1);
+    expect(getEnrageMultiplier({ ...enrage, value: undefined })).toBe(1.5);
+    expect(getEnrageMultiplier({ ...enrage, value: 0 })).toBe(1.5);
   });
 
   test('triggers summon minions on shield break and resolves boss-specific pool', () => {

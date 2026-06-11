@@ -16,7 +16,7 @@ export const KNOWN_TOP_LEVEL_FIELDS: Record<string, readonly string[]> = {
   ],
   skills: [
     'id', 'name', 'mpCost', 'power', 'type', 'element', 'attackType', 'targetType', 'effectKey',
-    'description', 'ailmentType', 'ailmentBaseRate', 'healSelfPct',
+    'description', 'ailmentType', 'ailmentBaseRate', 'healSelfPct', 'isUltimate', 'flags', 'ailments',
   ],
   stages: [
     'id', 'name', 'nameJa', 'nameEn', 'chapter', 'chapterName', 'area', 'nodeType', 'element',

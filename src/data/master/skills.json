@@ -115,7 +115,7 @@
     "id": "skill_darkpriest_1",
     "name": "ドレイン",
     "mpCost": 15,
-    "power": 1.2,
+    "power": 1.4,
     "type": "MAGICAL",
     "element": "DARK",
     "attackType": "MAGIC",
@@ -130,7 +130,7 @@
     "id": "skill_darkpriest_curse_bind",
     "name": "呪縛",
     "mpCost": 13,
-    "power": 1.32,
+    "power": 1.35,
     "type": "MAGICAL",
     "element": "DARK",
     "attackType": "MAGIC",
@@ -359,5 +359,211 @@
     "targetType": "SINGLE",
     "effectKey": "wind_slash",
     "description": "風に任せた一撃。会心とドロップへの願掛けを兼ねる軽い斬撃。"
+  },
+  "ult_warrior": {
+    "id": "ult_warrior",
+    "name": "天地剣",
+    "mpCost": 100,
+    "power": 3.5,
+    "type": "PHYSICAL",
+    "element": "LIGHT",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "light_slash_ult",
+    "flags": [
+      "IGNORE_DEF"
+    ],
+    "description": "剣士の全技法を一閃に凝縮した神速の斬撃。あらゆる防御を断ち切る。",
+    "isUltimate": true
+  },
+  "ult_mage": {
+    "id": "ult_mage",
+    "name": "連鎖爆魔陣",
+    "mpCost": 80,
+    "power": 2.5,
+    "type": "MAGICAL",
+    "element": "FIRE",
+    "attackType": "MAGIC",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "fire_magic_ult",
+    "ailmentType": "BURN",
+    "ailmentBaseRate": 0.4,
+    "description": "五つの魔法陣を連鎖させ、敵全体を炎の渦に飲み込む。",
+    "isUltimate": true
+  },
+  "ult_dark_priest": {
+    "id": "ult_dark_priest",
+    "name": "黒礼の命食",
+    "mpCost": 80,
+    "power": 2.8,
+    "type": "MAGICAL",
+    "element": "DARK",
+    "attackType": "MAGIC",
+    "targetType": "SINGLE",
+    "effectKey": "dark_magic_ult",
+    "ailmentType": "POISON",
+    "ailmentBaseRate": 0.5,
+    "flags": [
+      "HP_DRAIN_20"
+    ],
+    "description": "禁断の黒礼でターゲットの命を喰らう。ダメージの一部が術者の生命力に還元される。",
+    "isUltimate": true
+  },
+  "ult_rogue": {
+    "id": "ult_rogue",
+    "name": "影乱連斬",
+    "mpCost": 90,
+    "power": 3.2,
+    "type": "PHYSICAL",
+    "element": "DARK",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "dark_slash_ult",
+    "flags": [
+      "BLEED_STACK_3"
+    ],
+    "description": "影に溶け込み、瞬時に無数の斬撃を叩き込む。傷口からは止まらぬ血が溢れ出す。",
+    "isUltimate": true
+  },
+  "ult_dark_knight": {
+    "id": "ult_dark_knight",
+    "name": "深淵剣霊斬",
+    "mpCost": 110,
+    "power": 4,
+    "type": "PHYSICAL",
+    "element": "DARK",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "dark_slash_ult",
+    "ailmentType": "WEAKEN",
+    "ailmentBaseRate": 1,
+    "flags": [
+      "IGNORE_DEF"
+    ],
+    "description": "剣に宿る闇の霊魂が敵の防御を無力化しながら斬り裂く。命中した敵は確実に衰弱する。",
+    "isUltimate": true
+  },
+  "ult_berserker": {
+    "id": "ult_berserker",
+    "name": "絶狂乱刃",
+    "mpCost": 120,
+    "power": 4.5,
+    "type": "PHYSICAL",
+    "element": "FIRE",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "fire_slash_ult",
+    "ailmentType": "BURN",
+    "ailmentBaseRate": 1,
+    "description": "血と炎を纏った一撃。制御不能の熱狂が敵を焼き尽くす。",
+    "isUltimate": true
+  },
+  "ult_archmage": {
+    "id": "ult_archmage",
+    "name": "禁忌霊滅陣",
+    "mpCost": 100,
+    "power": 3,
+    "type": "MAGICAL",
+    "element": "DARK",
+    "attackType": "MAGIC",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "dark_magic_ult",
+    "ailments": [
+      {
+        "type": "BURN",
+        "baseRate": 0.35
+      },
+      {
+        "type": "POISON",
+        "baseRate": 0.3
+      }
+    ],
+    "description": "禁忌の術式で死霊炎を全域に解き放つ。生命を灼き、毒を流し込む。",
+    "isUltimate": true
+  },
+  "ult_sorcerer": {
+    "id": "ult_sorcerer",
+    "name": "嵐霊法陣",
+    "mpCost": 90,
+    "power": 3.5,
+    "type": "MAGICAL",
+    "element": "WIND",
+    "attackType": "MAGIC",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "wind_magic_ult",
+    "flags": [
+      "ENEMY_SPD_DOWN_30_2T"
+    ],
+    "description": "嵐の霊が敵全体に宿り、行動を大幅に遅延させる。風は敵の足を絡め取る。",
+    "isUltimate": true
+  },
+  "ult_warlock": {
+    "id": "ult_warlock",
+    "name": "冥府星墜",
+    "mpCost": 90,
+    "power": 4.2,
+    "type": "MAGICAL",
+    "element": "DARK",
+    "attackType": "PROJECTILE",
+    "targetType": "SINGLE",
+    "effectKey": "dark_projectile_ult",
+    "ailmentType": "POISON",
+    "ailmentBaseRate": 1,
+    "flags": [
+      "IGNORE_DEF"
+    ],
+    "description": "冥府から落とした黒い星が全防御を無効化して命中する。毒が全身に回る。",
+    "isUltimate": true
+  },
+  "ult_necromancer": {
+    "id": "ult_necromancer",
+    "name": "死界大召集",
+    "mpCost": 120,
+    "power": 3.2,
+    "type": "MAGICAL",
+    "element": "DARK",
+    "attackType": "SUMMON",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "dark_summon_ult",
+    "ailmentType": "POISON",
+    "ailmentBaseRate": 0.45,
+    "flags": [
+      "PARTY_HP_REGEN_2T"
+    ],
+    "description": "死界から無数の骸骨兵を召喚し敵全体に突撃させる。我が軍は不死だ。",
+    "isUltimate": true
+  },
+  "ult_assassin": {
+    "id": "ult_assassin",
+    "name": "千殺影縫い",
+    "mpCost": 90,
+    "power": 4.8,
+    "type": "PHYSICAL",
+    "element": "DARK",
+    "attackType": "SLASH",
+    "targetType": "SINGLE",
+    "effectKey": "dark_slash_ult",
+    "flags": [
+      "IGNORE_DEF",
+      "BLEED_STACK_3"
+    ],
+    "description": "影の中から放った一撃は、敵を縫い留める。防御を無視し、3重の出血傷を刻む。",
+    "isUltimate": true
+  },
+  "ult_trickster": {
+    "id": "ult_trickster",
+    "name": "万象乱舞",
+    "mpCost": 85,
+    "power": 3.2,
+    "type": "MAGICAL",
+    "element": "WIND",
+    "attackType": "MAGIC",
+    "targetType": "ALL_ENEMIES",
+    "effectKey": "wind_magic_ult",
+    "flags": [
+      "RANDOM_AILMENT_0.35"
+    ],
+    "description": "虚像が敵全体を翻弄する大魔法。付与される混乱は術者にも予測できない。",
+    "isUltimate": true
   }
 }

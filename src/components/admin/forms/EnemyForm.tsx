@@ -14,6 +14,7 @@ import { gimmickValueToInput, gimmickRowsToJson } from './shared/gimmickValue';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
+import { validateEntryId } from './shared/entryId';
 import AIEnemyDraftPanel from '../AIEnemyDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
 import type { SkillData } from '@/types/game';
@@ -23,6 +24,8 @@ const TIERS = ['MINION', 'ELITE', 'BOSS'];
 const TRIBES = ['UNDEAD', 'DEMON', 'BEAST', 'HUMANOID', 'DRAGON', 'ORC'];
 const SPRITES = ['WRAITH', 'GIANT', 'WYRM'];
 const ELEMENTS = ['FIRE', 'WATER', 'THUNDER', 'EARTH', 'WIND', 'ICE', 'LIGHT', 'DARK', 'NONE'];
+const GIMMICK_TRIGGERS = ['HP_BELOW_50', 'TURN_3', 'ON_SHIELD_BREAK', 'ON_REVIVE'];
+const GIMMICK_EFFECTS = ['ENRAGE', 'AV_DELAY', 'REVIVE', 'SUMMON_MINIONS'];
 const MASTER_SKILLS = skillsData as Record<string, SkillData>;
 const NECROMANCE_RATE_BY_TIER: Record<string, number> = { MINION: 0.12, ELITE: 0.04, BOSS: 0.001 };
 const NECROMANCE_COST_BY_TIER: Record<string, number> = { MINION: 1, ELITE: 2, BOSS: 4 };
@@ -261,9 +264,16 @@ export default function EnemyForm({ initialData, entryKey, isNew, itemIds, mater
   }
 
   async function handleConfirmedSave() {
+    const idValidation = validateEntryId(form.id, 'エネミーID');
+    if (!idValidation.ok) {
+      setShowSaveConfirm(false);
+      setError(idValidation.error);
+      return;
+    }
+
     setSaving(true);
     setShowSaveConfirm(false);
-    const result = await saveEntry('enemies', form.id || entryKey, formToJson(form));
+    const result = await saveEntry('enemies', idValidation.id, formToJson({ ...form, id: idValidation.id }));
     setSaving(false);
     if (result.success) {
       router.push('/admin/enemies');
@@ -487,8 +497,16 @@ export default function EnemyForm({ initialData, entryKey, isNew, itemIds, mater
                     </div>
                     {form.gimmicks.map((g, idx) => (
                       <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 32px', gap: 6, alignItems: 'center' }}>
-                        <input type="text" value={g.trigger} onChange={(e) => updateGimmick(idx, { trigger: e.target.value })} style={inputStyle} placeholder="ON_SHIELD_BREAK" />
-                        <input type="text" value={g.effect} onChange={(e) => updateGimmick(idx, { effect: e.target.value })} style={inputStyle} placeholder="SUMMON" />
+                        <select value={g.trigger} onChange={(e) => updateGimmick(idx, { trigger: e.target.value })} style={selectStyle}>
+                          <option value="">（選択）</option>
+                          {g.trigger && !GIMMICK_TRIGGERS.includes(g.trigger) && <option value={g.trigger}>未知: {g.trigger}</option>}
+                          {GIMMICK_TRIGGERS.map((t) => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        <select value={g.effect} onChange={(e) => updateGimmick(idx, { effect: e.target.value })} style={selectStyle}>
+                          <option value="">（選択）</option>
+                          {g.effect && !GIMMICK_EFFECTS.includes(g.effect) && <option value={g.effect}>未知: {g.effect}</option>}
+                          {GIMMICK_EFFECTS.map((e) => <option key={e} value={e}>{e}</option>)}
+                        </select>
                         <input type="text" value={g.value} onChange={(e) => updateGimmick(idx, { value: e.target.value })} style={inputStyle} placeholder="1（数値）" />
                         <button
                           onClick={() => updateField('gimmicks', form.gimmicks.filter((_, i) => i !== idx))}

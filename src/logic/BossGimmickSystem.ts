@@ -10,6 +10,7 @@ export interface BossGimmickTriggerContext {
 
 const DEFAULT_REVIVE_HP_RATIO = 0.5;
 const DEFAULT_SUMMON_COUNT = 2;
+export const DEFAULT_ENRAGE_MULTIPLIER = 1.5;
 export const DEFAULT_BOSS_AV_DELAY = 40;
 const SUMMON_POOLS: Record<string, string[]> = {
   blood_mire_queen: ['bloodmire_leech', 'rot_hound'],
@@ -59,6 +60,14 @@ export function getReviveHp(maxHp: number, gimmick: BossGimmick): number {
     ? configured
     : DEFAULT_REVIVE_HP_RATIO;
   return Math.max(1, Math.floor(maxHp * ratio));
+}
+
+export function getEnrageMultiplier(gimmick: BossGimmick | undefined): number {
+  const value = gimmick?.value;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 1) {
+    return DEFAULT_ENRAGE_MULTIPLIER;
+  }
+  return value;
 }
 
 export function resolveSummonMinionIds(

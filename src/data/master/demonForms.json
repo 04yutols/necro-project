@@ -174,7 +174,7 @@
     },
     "ultimateSkill": {
       "nameJa": "流星葬列・アストラルレイン",
-      "damage": { "power": 3.8, "element": "THUNDER", "targetType": "ALL", "attackType": "MAGIC", "flags": ["ELEMENT_SURGE"] },
+      "damage": { "power": 4.0, "element": "THUNDER", "targetType": "ALL", "attackType": "MAGIC", "flags": ["ELEMENT_SURGE"] },
       "lingering": { "type": "PARTY_BUFF", "descJa": "味方全体の速度を3行動の間上昇させる星屑の流れを残す。", "duration": 3 }
     },
     "visual": { "color": "#fde047", "soft": "rgba(253,224,71,0.18)", "icon": "✦" }
@@ -266,7 +266,7 @@
     },
     "ultimateSkill": {
       "nameJa": "虚実劇場・亡霊カーテンコール",
-      "damage": { "power": 3.9, "element": "WIND", "targetType": "ALL", "attackType": "PROJECTILE", "flags": ["MIRAGE_CHAIN"] },
+      "damage": { "power": 4.0, "element": "WIND", "targetType": "ALL", "attackType": "PROJECTILE", "flags": ["MIRAGE_CHAIN"] },
       "lingering": { "type": "FIELD", "descJa": "味方の次の攻撃に幻影追撃を付与する虚実の舞台を3行動展開する。", "duration": 3 }
     },
     "visual": { "color": "#22d3ee", "soft": "rgba(34,211,238,0.18)", "icon": "✦" }

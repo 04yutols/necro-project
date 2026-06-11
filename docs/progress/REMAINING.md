@@ -7,9 +7,13 @@
 
 ## 🔴 Critical — これが残るとゲームが起動しない / バトルが崩壊する
 
-### R-1. `monsters.json` に第1章エネミーが10体未登録
+### ✅ R-1. 第1章エネミー10体の未登録（2026-06-11 解決確認）
 
-**状況:**
+**解決:** 下表の 10 体はすべて **`enemies.json` に登録済み**であることを実データ照合で確認
+（エネミーの正は monsters.json ではなく enemies.json。stages の参照整合も監査 PASS）。
+本項は記載が陳腐化していたため解決済みへ変更。
+
+**旧状況（参考）:**
 `stages.json` が参照しているモンスター ID がすべて `monsters.json` に存在しない。
 バトル開始時にエネミーデータが `undefined` になりゲームが壊れる。
 
@@ -53,9 +57,12 @@
 
 ---
 
-### M-B. TECH_DEBT L-2: BattleEngine の WAVE 進行が「10ターン経過」トリガー
+### ✅ M-B. TECH_DEBT L-2: BattleEngine の WAVE 進行が「10ターン経過」トリガー（2026-06-11 完了）
 
-**問題:**
+**完了:** `updateState()` を「現 WAVE の敵全滅」トリガーへ変更（10 ターントリガーは削除）。
+「敵全滅で WAVE 進行」「敵残存ならターン経過でも進行しない」のテストを追加し全 PASS。
+
+**旧問題:**
 ```typescript
 // src/logic/BattleEngine.ts:761
 if (this.state.turn > 10) { // ← 10ターン経過でWAVE+1
@@ -68,9 +75,12 @@ BattleCanvas は「敵全滅」でWAVE進行するため、将来 BattleEngine �
 
 ---
 
-### M-C. TECH_DEBT NL-1: SynergyBonus 未使用フィールド 3件
+### ✅ M-C. TECH_DEBT NL-1: SynergyBonus 未使用フィールド 3件（2026-06-11 完了）
 
-**問題:** `SynergyBonus` に `atkBonus`, `defBonus`, `avBonus` があるが `BattleDamage.ts` や BattleCanvas で参照されていない。
+**完了:** 全使用箇所 grep で「定義と代入のみ・読み取りゼロ」を確認し、`atkBonus`/`defBonus`/`avBonus` を
+型と代入箇所から削除（死にフィールド除去）。`elementDmgBonus` 等の実効フィールドは維持。全テスト PASS。
+
+**旧問題:** `SynergyBonus` に `atkBonus`, `defBonus`, `avBonus` があるが `BattleDamage.ts` や BattleCanvas で参照されていない。
 
 **対応方針:** 仕様として使わないなら型から削除。使うなら ATK/DEF/AV 計算に加算する。
 **関連ファイル:** `src/logic/TribeSynergySystem.ts`, `src/logic/BattleDamage.ts`
@@ -88,12 +98,9 @@ BattleCanvas は「敵全滅」でWAVE進行するため、将来 BattleEngine �
 
 ## 🟢 Low — 動作に影響しないが整備が必要
 
-### L-1. 未コミットのファイルがある（`EnergySystem.ts` / `EnergySystem.test.ts`）
+### ✅ L-1. 未コミットのファイルがある（`EnergySystem.ts` / `EnergySystem.test.ts`）（2026-06-11 解決確認）
 
-**状況:** `src/logic/EnergySystem.ts` と `src/logic/EnergySystem.test.ts` が untracked 状態。
-機能は接続済みだがコミットされていない。
-
-**対応:** `git add` してコミット。
+**解決:** 両ファイルとも git 追跡済み（`git ls-files` で確認）。
 
 ---
 
@@ -183,11 +190,12 @@ BattleCanvas は「敵全滅」でWAVE進行するため、将来 BattleEngine �
 
 ## 第1章リリース前の最終確認リスト
 
-- [ ] R-1: monsters.json に第1章エネミー10体を追加
+- [x] R-1: 第1章エネミー10体 → enemies.json に全件登録済みを確認（2026-06-11）
 - [x] M-A: 残りスタブ `fetchPlayerAction` の削除または本実装判断
-- [ ] M-B: BattleEngine WAVE進行を「敵全滅トリガー」に変更
-- [ ] L-1: EnergySystem.ts / EnergySystem.test.ts をコミット
+- [x] M-B: BattleEngine WAVE進行を「敵全滅トリガー」に変更（2026-06-11）
+- [x] M-C: SynergyBonus 未使用フィールド削除（2026-06-11）
+- [x] L-1: EnergySystem.ts / EnergySystem.test.ts → git 追跡済みを確認（2026-06-11）
 - [ ] L-2: 設計書番号の重複解消（45/46/47 各2冊）
 - [ ] L-3: `00_INDEX.md` を最新設計書一覧に更新
-- [ ] E-1: Neon DB 接続環境でのログイン→クラウドセーブ確認
-- [ ] E-2: iOS Safari 実機レイアウト確認
+- [ ] E-1: Neon DB 接続環境でのログイン→クラウドセーブ確認（実機・要ユーザー確認）
+- [ ] E-2: iOS Safari 実機レイアウト確認（実機・要ユーザー確認）

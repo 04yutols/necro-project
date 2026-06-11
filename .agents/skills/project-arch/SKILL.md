@@ -94,13 +94,11 @@ Tribe: 'UNDEAD' | 'DEMON' | 'BEAST' | 'HUMANOID'
 ## ダメージ計算式 (BattleEngine.ts)
 
 ```
-baseDamage = stat² / (stat + counterStat)
-  物理: ATK vs DEF
-  魔法: MATK vs MDEF
-
-finalDamage = baseDamage × powerMultiplier × elementMultiplier × (1 + TEC/100)
-critMultiplier = 1.5 + TEC/200  (LUCK% でクリット判定)
+baseDamage = ATK × powerMultiplier
+defMultiplier = 1 - DEF / (DEF + 200)
 elementMultiplier = 1 - (resistance / 100)  (resistance < 0 → 弱点)
+critMultiplier = 1 + critDmg / 100          (critDmg=100 → 2.0倍)
+finalDamage = baseDamage × defMultiplier × elementMultiplier × element/synergy boosts × critMultiplier
 ```
 
 ## MasterDataService

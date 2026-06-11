@@ -22,13 +22,24 @@ export interface WeaponPassiveResult {
   logDesc?: string;
 }
 
+function getWeaponRank(ctx: WeaponPassiveContext): number {
+  const rank = ctx.actor.equipment?.weapon?.rank ?? 0;
+  if (!Number.isFinite(rank)) return 0;
+  return Math.max(0, Math.floor(rank));
+}
+
+function getRankedPassiveValue(passive: WeaponPassive, rank: number, fallback: number): number {
+  const values = passive.values.filter((value) => Number.isFinite(value));
+  if (values.length === 0) return fallback;
+  const index = Math.min(Math.max(rank, 1) - 1, values.length - 1);
+  return values[index] ?? fallback;
+}
+
 function evalSoulShatter(passive: WeaponPassive, ctx: WeaponPassiveContext): WeaponPassiveResult | null {
   if (ctx.trigger !== 'ON_SHIELD_BREAK' || !ctx.didBreakShield) return null;
 
-  const rank = (ctx.actor.equipment?.weapon as any)?.rank ?? 0;
-  const baseVal = passive.values[0] ?? 0.3;
-  const maxVal  = passive.values[1] ?? 0.6;
-  const rate    = baseVal + (maxVal - baseVal) * (rank / 5);
+  const rank = getWeaponRank(ctx);
+  const rate = getRankedPassiveValue(passive, rank, 0.3);
 
   const bonusDamage = Math.floor(ctx.actor.stats.atk * rate);
   return {
@@ -40,10 +51,8 @@ function evalSoulShatter(passive: WeaponPassive, ctx: WeaponPassiveContext): Wea
 function evalActionValue(passive: WeaponPassive, ctx: WeaponPassiveContext): WeaponPassiveResult | null {
   if (!ctx.isCritical && ctx.trigger !== 'ON_CRIT') return null;
 
-  const rank = (ctx.actor.equipment?.weapon as any)?.rank ?? 0;
-  const baseVal = passive.values[0] ?? 1;
-  const maxVal  = passive.values[1] ?? 2;
-  const avRed   = Math.floor(baseVal + (maxVal - baseVal) * (rank / 5));
+  const rank = getWeaponRank(ctx);
+  const avRed = Math.floor(getRankedPassiveValue(passive, rank, 1));
   if (avRed <= 0) return null;
 
   return {
@@ -55,10 +64,8 @@ function evalActionValue(passive: WeaponPassive, ctx: WeaponPassiveContext): Wea
 function evalDemonMode(passive: WeaponPassive, ctx: WeaponPassiveContext): WeaponPassiveResult | null {
   if (ctx.trigger !== 'ON_ATTACK') return null;
 
-  const rank = (ctx.actor.equipment?.weapon as any)?.rank ?? 0;
-  const baseVal = passive.values[0] ?? 5;
-  const maxVal  = passive.values[1] ?? 10;
-  const gaugeDelta = Math.floor(baseVal + (maxVal - baseVal) * (rank / 5));
+  const rank = getWeaponRank(ctx);
+  const gaugeDelta = Math.floor(getRankedPassiveValue(passive, rank, 5));
 
   if (passive.condition === 'DEMON_ACTIVE') {
     if (!ctx.isDemonMode) return null;

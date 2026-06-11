@@ -29,7 +29,7 @@ describe('evaluateWeaponPassive', () => {
   });
 
   it('SOUL_SHATTER: ON_SHIELD_BREAK 時のみ発動', () => {
-    const passive: WeaponPassive = { nameJa: '霊魂砕き', descTemplate: '{value}', values: [0.3, 0.6], systemTag: 'SOUL_SHATTER' };
+    const passive: WeaponPassive = { nameJa: '霊魂砕き', descTemplate: '{value}', values: [0.3, 0.4, 0.5, 0.6, 0.7], systemTag: 'SOUL_SHATTER' };
 
     const noBreak: WeaponPassiveContext = { trigger: 'ON_SHIELD_BREAK', actor: makePlayer(), didBreakShield: false };
     expect(evaluateWeaponPassive(passive, noBreak)).toBeNull();
@@ -40,22 +40,22 @@ describe('evaluateWeaponPassive', () => {
     expect(result!.bonusDamage).toBeGreaterThan(0);
   });
 
-  it('SOUL_SHATTER: rank 0→5 でダメージ倍率が 2 倍になる', () => {
-    const passive: WeaponPassive = { nameJa: '霊魂砕き', descTemplate: '{value}', values: [0.3, 0.6], systemTag: 'SOUL_SHATTER' };
+  it('SOUL_SHATTER: rank 1/5 は values の Rank1/Rank5 を直接参照する', () => {
+    const passive: WeaponPassive = { nameJa: '霊魂砕き', descTemplate: '{value}', values: [0.3, 0.4, 0.5, 0.6, 0.7], systemTag: 'SOUL_SHATTER' };
 
-    const rank0 = makePlayer(0);
+    const rank1 = makePlayer(1);
     const rank5 = makePlayer(5);
-    const ctx0: WeaponPassiveContext = { trigger: 'ON_SHIELD_BREAK', actor: rank0, didBreakShield: true };
+    const ctx1: WeaponPassiveContext = { trigger: 'ON_SHIELD_BREAK', actor: rank1, didBreakShield: true };
     const ctx5: WeaponPassiveContext = { trigger: 'ON_SHIELD_BREAK', actor: rank5, didBreakShield: true };
 
-    const r0 = evaluateWeaponPassive(passive, ctx0)!;
+    const r1 = evaluateWeaponPassive(passive, ctx1)!;
     const r5 = evaluateWeaponPassive(passive, ctx5)!;
-    // rank5 bonus / rank0 bonus ≈ 0.6 / 0.3 = 2
-    expect(r5.bonusDamage! / r0.bonusDamage!).toBeCloseTo(2, 0);
+    expect(r1.bonusDamage).toBe(300);
+    expect(r5.bonusDamage).toBe(700);
   });
 
   it('ACTION_VALUE: 会心時のみ avReduction を返す', () => {
-    const passive: WeaponPassive = { nameJa: '早駆け', descTemplate: '{value}', values: [1, 2], systemTag: 'ACTION_VALUE' };
+    const passive: WeaponPassive = { nameJa: '早駆け', descTemplate: '{value}', values: [1, 2, 3, 4, 5], systemTag: 'ACTION_VALUE' };
 
     const noCrit: WeaponPassiveContext = { trigger: 'ON_ATTACK', actor: makePlayer(), isCritical: false };
     expect(evaluateWeaponPassive(passive, noCrit)).toBeNull();
@@ -64,22 +64,28 @@ describe('evaluateWeaponPassive', () => {
     const result = evaluateWeaponPassive(passive, withCrit);
     expect(result).not.toBeNull();
     expect(result!.avReduction).toBeGreaterThan(0);
+
+    const rank5: WeaponPassiveContext = { trigger: 'ON_ATTACK', actor: makePlayer(5), isCritical: true };
+    expect(evaluateWeaponPassive(passive, rank5)!.avReduction).toBe(5);
   });
 
   it('DEMON_MODE: isDemonMode=false 時はゲージ増加を返す', () => {
-    const passive: WeaponPassive = { nameJa: '魔神呼応', descTemplate: '{value}', values: [5, 10], systemTag: 'DEMON_MODE' };
+    const passive: WeaponPassive = { nameJa: '魔神呼応', descTemplate: '{value}', values: [5, 8, 11, 14, 20], systemTag: 'DEMON_MODE' };
     const ctx: WeaponPassiveContext = { trigger: 'ON_ATTACK', actor: makePlayer(), isDemonMode: false };
     const result = evaluateWeaponPassive(passive, ctx);
     expect(result).not.toBeNull();
     expect(result!.demonGaugeDelta).toBeGreaterThan(0);
     expect(result!.bonusDamage).toBeUndefined();
+
+    const rank5 = evaluateWeaponPassive(passive, { trigger: 'ON_ATTACK', actor: makePlayer(5), isDemonMode: false });
+    expect(rank5!.demonGaugeDelta).toBe(20);
   });
 
   it('DEMON_MODE: condition=DEMON_ACTIVE かつ isDemonMode=true 時は bonusDamage を返す', () => {
     const passive: WeaponPassive = {
       nameJa: '魔神昂揚',
       descTemplate: '{value}',
-      values: [5, 10],
+      values: [5, 8, 11, 14, 20],
       systemTag: 'DEMON_MODE',
       condition: 'DEMON_ACTIVE',
     };

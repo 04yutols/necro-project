@@ -23,8 +23,10 @@ import {
   processStageResultForUser,
   rankUpWeaponForUser,
   reforgeWeaponForUser,
+  startStageForUser,
 } from '../app/actions';
 import type { ServerGameUser } from '../types/serverGame';
+import type { StageResultMeta } from '../types/online';
 
 jest.setTimeout(45000);
 
@@ -72,6 +74,13 @@ async function cleanupUser(email: string) {
   await prisma.item.deleteMany({ where: { ownerId: user.id } });
   await prisma.item.deleteMany({ where: { discovererId: user.id } });
   await prisma.user.delete({ where: { id: user.id } });
+}
+
+async function clearStageForTest(user: ServerGameUser, stageId: string, meta: StageResultMeta = {}) {
+  const started = await startStageForUser(user, stageId);
+  expect(started.success).toBe(true);
+  if (!started.success) throw new Error(started.error);
+  return processStageResultForUser(user, stageId, started.stageAttemptId, meta);
 }
 
 describe('new account backend progression: signup -> starter job -> 1-1 clear -> equip drops', () => {
@@ -188,15 +197,29 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     if (!changedBackToWarrior.success) throw new Error(changedBackToWarrior.error);
     expect(changedBackToWarrior.data.player.currentJobId).toBe('warrior');
 
+    const lockedStart = await startStageForUser(user, 'area2_gate');
+    expect(lockedStart).toEqual({ success: false, error: 'STAGE_LOCKED' });
+
     const initialBaseStats = changedBackToWarrior.data.player.baseStats;
     const initialProfile = calculateCharacterStatProfile(changedBackToWarrior.data.player, changedBackToWarrior.data.equippedResidueSlots);
     expect(initialProfile.total.atk).toBeGreaterThan(created.data.player.stats.atk);
 
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.01);
-    const clearResult = await processStageResultForUser(user, '1-1', {
+    const directResult = await processStageResultForUser(user, '1-1', {
       turnCount: 5,
       clearTimeSec: 42,
       totalDamage: 3200,
+    });
+    expect(directResult).toMatchObject({ success: false, error: 'MISSING_STAGE_ATTEMPT' });
+
+    const firstAttempt = await startStageForUser(user, '1-1');
+    expect(firstAttempt.success).toBe(true);
+    if (!firstAttempt.success) throw new Error(firstAttempt.error);
+
+    const clearResult = await processStageResultForUser(user, '1-1', firstAttempt.stageAttemptId, {
+      turnCount: 5,
+      clearTimeSec: 42,
+      totalDamage: Number.MAX_SAFE_INTEGER,
     });
     randomSpy.mockRestore();
 
@@ -205,6 +228,14 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(clearResult.expGain).toBeGreaterThan(0);
     expect(clearResult.dropResult.weapons.length).toBeGreaterThan(0);
     expect(clearResult.dropResult.residues).toHaveLength(0);
+    expect(clearResult.stageRecord?.totalDamage).toBeLessThan(Number.MAX_SAFE_INTEGER);
+
+    const reusedAttempt = await processStageResultForUser(user, '1-1', firstAttempt.stageAttemptId, {
+      turnCount: 5,
+      clearTimeSec: 42,
+      totalDamage: 3200,
+    });
+    expect(reusedAttempt).toMatchObject({ success: false, error: 'STAGE_ATTEMPT_CONSUMED' });
 
     const afterClear = await loadCharacterForUser(user);
     expect(afterClear.success).toBe(true);
@@ -265,10 +296,10 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(afterWeaponEquip.total.atk).toBeGreaterThan(beforeWeaponEquip.total.atk);
 
     const chapterProgressSpy = jest.spyOn(Math, 'random').mockReturnValue(0.01);
-    await processStageResultForUser(user, 'area1_node2');
-    await processStageResultForUser(user, 'area1_boss');
-    await processStageResultForUser(user, 'area1_node3');
-    const area2GateResult = await processStageResultForUser(user, 'area2_gate');
+    await clearStageForTest(user, 'area1_node2');
+    await clearStageForTest(user, 'area1_boss');
+    await clearStageForTest(user, 'area1_node3');
+    const area2GateResult = await clearStageForTest(user, 'area2_gate');
     chapterProgressSpy.mockRestore();
 
     expect(area2GateResult.success).toBe(true);

@@ -138,6 +138,17 @@ export function getDemonIncomingDamageMultiplier(form: DemonFormData | null): nu
   return Math.max(1, form.effectB.riskValue ?? 2);
 }
 
+export function shouldApplyDemonSelfDamage(form: DemonFormData | null, attackType: SkillAttackType): boolean {
+  if (!form || form.effectB.riskType !== 'SELF_DAMAGE') return false;
+  return attackType === 'MAGIC' || attackType === 'SUMMON';
+}
+
+export function calculateDemonSelfDamage(maxHp: number, riskValue?: number): number {
+  const safeMaxHp = Math.max(1, Math.floor(Number.isFinite(maxHp) ? maxHp : 1));
+  const pct = Math.max(1, Number.isFinite(riskValue ?? Number.NaN) ? riskValue! : 10);
+  return Math.max(1, Math.floor(safeMaxHp * pct / 100));
+}
+
 export function shouldIgnoreResistance(form: DemonFormData | null): boolean {
   return Boolean(form?.effectA.flags?.includes('IGNORE_RESISTANCE'));
 }

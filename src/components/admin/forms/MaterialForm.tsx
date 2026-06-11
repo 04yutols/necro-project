@@ -9,6 +9,7 @@ import FormField from './shared/FormField';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
+import { validateEntryId } from './shared/entryId';
 import AIMaterialDraftPanel from '../AIMaterialDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
 
@@ -87,9 +88,16 @@ export default function MaterialForm({ initialData, entryKey, isNew, dependencie
   }
 
   async function handleConfirmedSave() {
+    const idValidation = validateEntryId(form.id, '素材ID');
+    if (!idValidation.ok) {
+      setShowSaveConfirm(false);
+      setError(idValidation.error);
+      return;
+    }
+
     setSaving(true);
     setShowSaveConfirm(false);
-    const result = await saveEntry('materials', form.id || entryKey, formToJson(form));
+    const result = await saveEntry('materials', idValidation.id, formToJson({ ...form, id: idValidation.id }));
     setSaving(false);
     if (result.success) router.push('/admin/materials');
     else setError(result.error ?? '保存に失敗しました');

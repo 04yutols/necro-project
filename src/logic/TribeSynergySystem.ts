@@ -11,9 +11,6 @@ export interface SynergyBonus {
   defenseReducePct?: number;
   effectHitBonus?: number;
   demonGaugePerTurn?: number;
-  avBonus?: number;
-  atkBonus?: number;
-  defBonus?: number;
   absorbDmgPct?: number;
   ailmentImmune?: ('POISON' | 'BLEED')[];
   ailmentDurationBonus?: number;
@@ -107,12 +104,7 @@ function applyCrossResonance(tribes: Set<string>, bonus: SynergyBonus): void {
     addBonus(bonus, 'effectHitBonus', 10);
   }
   if (tribes.has('BEAST') && tribes.has('DRAGON')) {
-    addBonus(bonus, 'avBonus', -20);
     addBonus(bonus, 'elementDmgBonus', 10);
-  }
-  if (tribes.has('ORC') && tribes.has('HUMANOID')) {
-    addBonus(bonus, 'defBonus', 20);
-    addBonus(bonus, 'atkBonus', 8);
   }
   if (tribes.has('UNDEAD') && tribes.has('ORC')) {
     addBonus(bonus, 'defenseReducePct', 10);

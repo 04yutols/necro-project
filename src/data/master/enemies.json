@@ -512,7 +512,7 @@
       {
         "trigger": "HP_BELOW_50",
         "effect": "ENRAGE",
-        "value": 1
+        "value": 1.5
       },
       {
         "trigger": "TURN_3",
@@ -522,7 +522,7 @@
       {
         "trigger": "HP_BELOW_50",
         "effect": "REVIVE",
-        "value": 1
+        "value": 1.5
       }
     ],
     "dropTable": [

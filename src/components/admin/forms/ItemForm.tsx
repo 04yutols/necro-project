@@ -9,6 +9,7 @@ import FormField from './shared/FormField';
 import JsonSidebar from './shared/JsonSidebar';
 import ConfirmDialog from './shared/ConfirmDialog';
 import DependenciesTab from './shared/DependenciesTab';
+import { validateEntryId } from './shared/entryId';
 import AIWeaponDraftPanel from '../AIWeaponDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
 import type { ItemData, WeaponRarity, WeaponArchetype } from '@/types/game';
@@ -239,9 +240,16 @@ export default function ItemForm({ initialData, entryKey, isNew, dependencies = 
   }
 
   async function handleConfirmedSave() {
+    const idValidation = validateEntryId(form.id, 'アイテムID');
+    if (!idValidation.ok) {
+      setShowSaveConfirm(false);
+      setError(idValidation.error);
+      return;
+    }
+
     setSaving(true);
     setShowSaveConfirm(false);
-    const result = await saveEntry('items', form.id || entryKey, formToJson(form));
+    const result = await saveEntry('items', idValidation.id, formToJson({ ...form, id: idValidation.id }));
     setSaving(false);
     if (result.success) router.push('/admin/items');
     else setError(result.error ?? '保存に失敗しました');

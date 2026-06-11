@@ -730,4 +730,38 @@ describe('BattleEngine', () => {
     expect(coreDamage).toBe(80);
     expect(coreLogs.find(log => log.action === 'MONSTER_ATTACK')?.description).toContain('怨霊の霊核');
   });
+
+  // ── WAVE 進行ロジック (L-2) ──────────────────────────────────────────────
+  describe('WAVE 進行: 敵全滅トリガー', () => {
+    test('現 WAVE の敵が全滅したら次のアクションで WAVE が 2 に進む', () => {
+      // atk を十分高くして 1 撃で倒す
+      const player = createPlayer({ hp: 500, atk: 9999, def: 30, critRate: 0 });
+      const enemy = createEnemy({ hp: 10, atk: 1, def: 0 });
+      const engine = new BattleEngine(player, []);
+
+      // 1 ターン目: 敵を倒す。このログはまだ wave=1
+      const logsT1 = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+      const waveT1 = logsT1.find(l => l.action === 'PHYSICAL_ATTACK')?.wave;
+      expect(waveT1).toBe(1);
+
+      // 2 ターン目: updateState が敵全滅を検知して wave=2 にリセット済みのはず
+      const logsT2 = engine.simulateAction('PHYSICAL_ATTACK', enemy, undefined, [enemy]);
+      const waveT2 = logsT2.find(l => l.action === 'PHYSICAL_ATTACK')?.wave;
+      expect(waveT2).toBe(2);
+    });
+
+    test('敵が残っていれば 15 ターン経過しても WAVE が進まない', () => {
+      // 敵の hp を高くして絶対に倒せないようにする
+      const player = createPlayer({ hp: 500, atk: 1, def: 30, critRate: 0 });
+      const enemy = createEnemy({ hp: 999999, atk: 1, def: 0 });
+      const engine = new BattleEngine(player, []);
+
+      for (let i = 0; i < 14; i++) {
+        engine.simulateAction('PHYSICAL_ATTACK', enemy);
+      }
+      const logs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+      const wave = logs.find(l => l.action === 'PHYSICAL_ATTACK')?.wave;
+      expect(wave).toBe(1);
+    });
+  });
 });
