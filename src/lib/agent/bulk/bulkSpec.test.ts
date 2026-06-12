@@ -23,9 +23,10 @@ describe('validateBulkSpec - valid', () => {
     expect(res.spec?.operation[0]).toEqual({ field: 'power', op: 'add', value: -0.1 });
   });
 
-  it('allows empty filter (whole file)', () => {
+  it('allows empty filter but warns that it targets the whole file', () => {
     const res = validateBulkSpec({ file: 'enemies', filter: [], operation: [{ field: 'stats.def', op: 'mul', value: 1.1 }] });
     expect(res.ok).toBe(true);
+    expect(res.findings).toContainEqual(expect.objectContaining({ level: 'WARN', field: 'filter' }));
   });
 
   it('supports dot-notation fields', () => {

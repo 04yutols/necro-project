@@ -250,7 +250,8 @@ function routeAfterValidate(state: State): 'regenerate' | typeof END {
   return 'regenerate';
 }
 
-const graph = new StateGraph(StateAnnotation)
+function createGraph() {
+  return new StateGraph(StateAnnotation)
   .addNode('generate', generateDraftNode)
   .addNode('validate', validateNode)
   .addEdge(START, 'generate')
@@ -260,6 +261,14 @@ const graph = new StateGraph(StateAnnotation)
     [END]: END,
   })
   .compile();
+}
+
+let graph: ReturnType<typeof createGraph> | null = null;
+
+function getGraph(): ReturnType<typeof createGraph> {
+  graph ??= createGraph();
+  return graph;
+}
 
 /**
  * エネミー草稿を生成する。検証 FAIL の場合は最大 maxAttempts まで自動再生成する。
@@ -277,7 +286,7 @@ export async function runEnemyAgent(input: EnemyAgentInput): Promise<EnemyAgentR
     skillMeta,
   };
 
-  const final = await graph.invoke({
+  const final = await getGraph().invoke({
     requirements: input.requirements,
     designContext: input.designContext,
     balanceCtx,

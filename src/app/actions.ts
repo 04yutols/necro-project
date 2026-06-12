@@ -3,7 +3,7 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
-import { createCredentialsUser } from '@/services/AuthService';
+import { changePasswordForUser, createCredentialsUser } from '@/services/AuthService';
 import { RewardService, StageDropResult } from '@/services/RewardService';
 import { MasterDataService } from '@/services/MasterDataService';
 import { RankingService, normalizeStageClearMetrics } from '@/services/RankingService';
@@ -62,6 +62,26 @@ export async function signUpAction(
   displayName: string,
 ): Promise<SignUpResult> {
   return createCredentialsUser({ email, password, displayName });
+}
+
+export interface ChangePasswordResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function changePasswordAction(
+  currentPassword: string,
+  newPassword: string,
+): Promise<ChangePasswordResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) {
+    return { success: false, error: 'ログインが必要です' };
+  }
+  return changePasswordForUser({
+    userId: session.user.id,
+    currentPassword,
+    newPassword,
+  });
 }
 
 export interface StageResultPayload {

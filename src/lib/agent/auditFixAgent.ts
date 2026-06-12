@@ -190,7 +190,8 @@ function routeAfterValidate(state: State): 'regenerate' | typeof END {
   return 'regenerate';
 }
 
-const graph = new StateGraph(StateAnnotation)
+function createGraph() {
+  return new StateGraph(StateAnnotation)
   .addNode('generate', generateNode)
   .addNode('validate', validateNode)
   .addEdge(START, 'generate')
@@ -200,9 +201,17 @@ const graph = new StateGraph(StateAnnotation)
     [END]: END,
   })
   .compile();
+}
+
+let graph: ReturnType<typeof createGraph> | null = null;
+
+function getGraph(): ReturnType<typeof createGraph> {
+  graph ??= createGraph();
+  return graph;
+}
 
 export async function runAuditFixAgent(input: AuditFixInput): Promise<AuditFixResult> {
-  const final = await graph.invoke({
+  const final = await getGraph().invoke({
     scope: input.scope,
     entityId: input.entityId,
     findings: input.findings,

@@ -30,8 +30,9 @@ function emptyResidueSlots(): (AbyssalResidueData | null)[] {
 }
 
 function getE2EInitialClearedStages(): string[] {
-  if (process.env.NODE_ENV === 'production') return [];
   if (typeof window === 'undefined') return [];
+  const isLocalE2EHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  if (process.env.NODE_ENV === 'production' && !isLocalE2EHost) return [];
   try {
     const raw = window.sessionStorage.getItem('necro-e2e-cleared-stages');
     if (!raw) return [];

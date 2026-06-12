@@ -207,7 +207,8 @@ function routeAfterValidate(state: State): 'regenerate' | typeof END {
   return 'regenerate';
 }
 
-const graph = new StateGraph(StateAnnotation)
+function createGraph() {
+  return new StateGraph(StateAnnotation)
   .addNode('generate', generateDraftNode)
   .addNode('validate', validateNode)
   .addEdge(START, 'generate')
@@ -217,6 +218,14 @@ const graph = new StateGraph(StateAnnotation)
     [END]: END,
   })
   .compile();
+}
+
+let graph: ReturnType<typeof createGraph> | null = null;
+
+function getGraph(): ReturnType<typeof createGraph> {
+  graph ??= createGraph();
+  return graph;
+}
 
 export async function runStageAgent(input: StageAgentInput): Promise<StageAgentResult> {
   const enemyTiers: Record<string, string> = {};
@@ -235,7 +244,7 @@ export async function runStageAgent(input: StageAgentInput): Promise<StageAgentR
   const bands = deriveRewardBands(input.existingStages);
   const rewardHint = `既存の baseExp ${bands.exp ? `${bands.exp.min}〜${bands.exp.max}` : '不明'} / baseGold ${bands.gold ? `${bands.gold.min}〜${bands.gold.max}` : '不明'} を目安に、難易度相応で設定。`;
 
-  const final = await graph.invoke({
+  const final = await getGraph().invoke({
     requirements: input.requirements,
     area: input.area,
     enemies: input.enemies,

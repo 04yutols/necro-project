@@ -2,10 +2,10 @@
 
 import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cloud, LogIn, LogOut, ShieldCheck, UserPlus, X } from 'lucide-react';
+import { Cloud, KeyRound, LogIn, LogOut, ShieldCheck, UserPlus, X } from 'lucide-react';
 import { signIn, signOut } from 'next-auth/react';
 
-type AuthMode = 'login' | 'signup';
+type AuthMode = 'login' | 'signup' | 'password';
 type SessionStatus = 'loading' | 'guest' | 'authenticated' | 'unavailable';
 
 interface SessionUser {
@@ -49,6 +49,8 @@ export function AuthPanel() {
   const [mode, setMode] = useState<AuthMode | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -98,6 +100,8 @@ export function AuthPanel() {
   const resetFormState = () => {
     setMessage(null);
     setSubmitting(false);
+    setCurrentPassword('');
+    setNewPassword('');
   };
 
   const openDialog = (nextMode: AuthMode) => {
@@ -142,6 +146,21 @@ export function AuthPanel() {
         if (!response.ok || !result?.success) {
           throw new Error(result?.error ?? '登録に失敗しました');
         }
+      }
+
+      if (mode === 'password') {
+        const { changePasswordAction } = await import('@/app/actions');
+        const result = await changePasswordAction(currentPassword, newPassword);
+        if (!result.success) {
+          throw new Error(result.error ?? 'パスワード変更に失敗しました');
+        }
+        await signOut({ redirect: false });
+        setStatusTracked('guest');
+        setUser(null);
+        window.dispatchEvent(new Event('necro-auth-changed'));
+        setMessage('パスワードを変更しました。再ログインしてください。');
+        window.setTimeout(closeDialog, 450);
+        return;
       }
 
       await signInWithCredentials();
@@ -199,9 +218,9 @@ export function AuthPanel() {
         }}
       >
         <Cloud size={16} color={status === 'authenticated' ? '#D4AF37' : '#8b7da8'} />
-        <button
-          type="button"
-          onClick={() => openDialog('login')}
+          <button
+            type="button"
+            onClick={() => openDialog(status === 'authenticated' ? 'password' : 'login')}
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -310,13 +329,19 @@ export function AuthPanel() {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, marginBottom: 16 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    {mode === 'login' ? <ShieldCheck size={18} color="#D4AF37" /> : <UserPlus size={18} color="#D4AF37" />}
+                    {mode === 'password'
+                      ? <KeyRound size={18} color="#D4AF37" />
+                      : mode === 'login'
+                        ? <ShieldCheck size={18} color="#D4AF37" />
+                        : <UserPlus size={18} color="#D4AF37" />}
                     <span style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 18, fontWeight: 800, letterSpacing: '0.04em', color: '#F0EAFF' }}>
-                      {mode === 'login' ? 'ログイン' : '登録'}
+                      {mode === 'password' ? 'パスワード変更' : mode === 'login' ? 'ログイン' : '登録'}
                     </span>
                   </div>
                   <p style={{ margin: 0, fontSize: 11, lineHeight: 1.7, color: 'rgba(220,210,240,0.68)', fontFamily: "'Noto Sans JP', sans-serif" }}>
-                    クラウドセーブ、ランキング、世界ログを有効化します。
+                    {mode === 'password'
+                      ? '変更後は他の端末を含む全セッションが失効します。'
+                      : 'クラウドセーブ、ランキング、世界ログを有効化します。'}
                   </p>
                 </div>
                 <button
@@ -339,56 +364,89 @@ export function AuthPanel() {
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-                {(['login', 'signup'] as const).map((tabMode) => (
-                  <button
-                    key={tabMode}
-                    type="button"
-                    onClick={() => {
-                      setMode(tabMode);
-                      setMessage(null);
-                    }}
-                    style={{
-                      minHeight: 42,
-                      borderRadius: 12,
-                      border: mode === tabMode ? '1px solid rgba(139,0,255,0.56)' : '1px solid rgba(255,255,255,0.08)',
-                      background: mode === tabMode ? 'rgba(139,0,255,0.18)' : 'rgba(255,255,255,0.035)',
-                      color: mode === tabMode ? '#E9D5FF' : '#8b7da8',
-                      fontFamily: "'Noto Sans JP', sans-serif",
-                      fontSize: 12,
-                      fontWeight: 900,
-                      letterSpacing: '0.08em',
-                    }}
-                  >
-                    {tabMode === 'login' ? 'ログイン' : '新規登録'}
-                  </button>
-                ))}
-              </div>
+              {mode !== 'password' && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                    {(['login', 'signup'] as const).map((tabMode) => (
+                      <button
+                        key={tabMode}
+                        type="button"
+                        onClick={() => {
+                          setMode(tabMode);
+                          setMessage(null);
+                        }}
+                        style={{
+                          minHeight: 42,
+                          borderRadius: 12,
+                          border: mode === tabMode ? '1px solid rgba(139,0,255,0.56)' : '1px solid rgba(255,255,255,0.08)',
+                          background: mode === tabMode ? 'rgba(139,0,255,0.18)' : 'rgba(255,255,255,0.035)',
+                          color: mode === tabMode ? '#E9D5FF' : '#8b7da8',
+                          fontFamily: "'Noto Sans JP', sans-serif",
+                          fontSize: 12,
+                          fontWeight: 900,
+                          letterSpacing: '0.08em',
+                        }}
+                      >
+                        {tabMode === 'login' ? 'ログイン' : '新規登録'}
+                      </button>
+                    ))}
+                  </div>
 
-              <label style={{ display: 'grid', gap: 7, marginBottom: 12 }}>
-                <span style={{ fontSize: 10, fontWeight: 900, color: '#8b7da8', letterSpacing: '0.16em', fontFamily: "'Cinzel', serif" }}>EMAIL</span>
-                <input
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  style={inputStyle}
-                />
-              </label>
+                  <label style={{ display: 'grid', gap: 7, marginBottom: 12 }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: '#8b7da8', letterSpacing: '0.16em', fontFamily: "'Cinzel', serif" }}>EMAIL</span>
+                    <input
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      required
+                      style={inputStyle}
+                    />
+                  </label>
 
-              <label style={{ display: 'grid', gap: 7, marginBottom: mode === 'signup' ? 12 : 16 }}>
-                <span style={{ fontSize: 10, fontWeight: 900, color: '#8b7da8', letterSpacing: '0.16em', fontFamily: "'Cinzel', serif" }}>PASSWORD</span>
-                <input
-                  type="password"
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  minLength={8}
-                  required
-                  style={inputStyle}
-                />
-              </label>
+                  <label style={{ display: 'grid', gap: 7, marginBottom: mode === 'signup' ? 12 : 16 }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: '#8b7da8', letterSpacing: '0.16em', fontFamily: "'Cinzel', serif" }}>PASSWORD</span>
+                    <input
+                      type="password"
+                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      minLength={8}
+                      required
+                      style={inputStyle}
+                    />
+                  </label>
+                </>
+              )}
+
+              {mode === 'password' && (
+                <>
+                  <label style={{ display: 'grid', gap: 7, marginBottom: 12 }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: '#8b7da8', letterSpacing: '0.16em', fontFamily: "'Cinzel', serif" }}>CURRENT PASSWORD</span>
+                    <input
+                      type="password"
+                      autoComplete="current-password"
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      minLength={8}
+                      required
+                      style={inputStyle}
+                    />
+                  </label>
+                  <label style={{ display: 'grid', gap: 7, marginBottom: 16 }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: '#8b7da8', letterSpacing: '0.16em', fontFamily: "'Cinzel', serif" }}>NEW PASSWORD</span>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      minLength={8}
+                      required
+                      style={inputStyle}
+                    />
+                  </label>
+                </>
+              )}
 
               {mode === 'signup' && (
                 <label style={{ display: 'grid', gap: 7, marginBottom: 16 }}>
@@ -441,7 +499,7 @@ export function AuthPanel() {
                   opacity: submitting ? 0.65 : 1,
                 }}
               >
-                {submitting ? '通信中' : mode === 'login' ? 'ログイン' : '登録してログイン'}
+                  {submitting ? '通信中' : mode === 'password' ? '変更' : mode === 'login' ? 'ログイン' : '登録してログイン'}
               </button>
             </motion.form>
           </motion.div>

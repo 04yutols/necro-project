@@ -10,7 +10,7 @@ test.describe('Armory and status UX', () => {
   });
 
   test('opens the current Legion detail screen and exposes Star-Rail-style stats', async ({ page }) => {
-    await expect(page.getByText('LEGION')).toBeVisible();
+    await expect(page.getByRole('main').getByText('LEGION', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: /DETAIL/ }).click();
 
     await expect(page.getByText('統合詳細ハブ')).toBeVisible();
@@ -28,7 +28,7 @@ test.describe('Armory and status UX', () => {
 
   test('opens the weapon armory from the current equipment hub', async ({ page }) => {
     await page.getByRole('button', { name: /DETAIL/ }).click();
-    await page.getByText('武器').first().click({ force: true });
+    await page.getByRole('button', { name: /武器/ }).click();
 
     await expect(page.getByText('武器庫')).toBeVisible();
     await expect(page.getByText('霊銀の斬骨刀').first()).toBeVisible();
@@ -43,7 +43,7 @@ test.describe('Armory and status UX', () => {
 
   test('reforges a weapon by one ILv and previews the next step', async ({ page }) => {
     await page.getByRole('button', { name: /DETAIL/ }).click();
-    await page.getByText('武器').first().click({ force: true });
+    await page.getByRole('button', { name: /武器/ }).click();
     await page.getByRole('button', { name: '共鳴' }).click();
 
     await expect(page.getByText('ILvを1上げてATKを必ず強化。サブステは20ILvごとに伸び、SSRとURは属性枠も育つ。')).toBeVisible();

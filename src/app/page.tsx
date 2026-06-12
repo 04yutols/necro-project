@@ -76,7 +76,7 @@ function AbyssalResidueLockedScreen({ onBack, onMap }: { onBack: () => void; onM
           <button type="button" onClick={onBack} className="min-h-11 rounded-xl border border-white/10 bg-white/5 text-[11px] font-black tracking-[0.14em] text-[#B8B0C8]">
             拠点へ
           </button>
-          <button type="button" onClick={onMap} className="min-h-11 rounded-xl border border-[#8A2BE266] bg-[#8A2BE226] text-[11px] font-black tracking-[0.14em] text-[#F0EAFF]">
+          <button type="button" onClick={onMap} className="min-h-11 rounded-xl border border-[#8B00FF66] bg-[#8B00FF26] text-[11px] font-black tracking-[0.14em] text-[#F0EAFF]">
             出撃へ
           </button>
         </div>
@@ -272,7 +272,7 @@ function GameContent() {
                     onClick={() => setLogPanel(panel)}
                     className="px-3 py-1.5 text-[9px] font-black tracking-widest uppercase transition-colors"
                     style={{
-                      color: logPanel === panel ? '#F0EAFF' : '#6b5f7a',
+                      color: logPanel === panel ? '#F0EAFF' : '#A5A9B4',
                       background: logPanel === panel ? 'rgba(139,0,255,0.22)' : 'transparent',
                     }}
                   >

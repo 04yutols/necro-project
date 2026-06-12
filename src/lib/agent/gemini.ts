@@ -10,6 +10,7 @@
  */
 
 const AISTUDIO_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 /** 既定モデル。AI Studio / Vertex 双方で利用可能なことを動作確認済み。 */
 export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
@@ -34,6 +35,14 @@ export class GeminiError extends Error {
     super(message);
     this.name = 'GeminiError';
   }
+}
+
+function resolveSignal(signal: AbortSignal | undefined): AbortSignal | undefined {
+  if (signal) return signal;
+  if (typeof AbortSignal === 'undefined' || typeof AbortSignal.timeout !== 'function') return undefined;
+  const timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return undefined;
+  return AbortSignal.timeout(timeoutMs);
 }
 
 export function getGeminiApiKey(): string {
@@ -119,6 +128,7 @@ function parseRetryDelaySec(resp: GeminiResponse): number | null {
 export async function generateText(prompt: string, opts: GenerateOptions = {}): Promise<string> {
   const model = opts.model ?? DEFAULT_GEMINI_MODEL;
   const backend = getGeminiBackend();
+  const signal = resolveSignal(opts.signal);
 
   // JSON 生成時は thinking を「小さめの固定予算」に絞る。完全無効化(0)だと制約充足や
   // 設計の質が落ちやすく、無制限(動的)だと出力枠を食って JSON が切れる。1024 トークンの
@@ -163,7 +173,7 @@ export async function generateText(prompt: string, opts: GenerateOptions = {}): 
       method: 'POST',
       headers,
       body: JSON.stringify(body),
-      signal: opts.signal,
+      signal,
     });
     const json = (await res.json()) as GeminiResponse;
     if (res.ok) {

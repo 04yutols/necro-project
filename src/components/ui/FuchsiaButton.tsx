@@ -20,7 +20,7 @@ export function FuchsiaButton({
   
   const variants = {
     primary: "bg-fuchsia text-white border-fuchsia/80 shadow-[0_0_20px_rgba(255,0,255,0.3)] hover:brightness-110",
-    secondary: "bg-secondary text-dark border-secondary/80 shadow-[0_0_20px_rgba(0,255,255,0.3)] hover:brightness-110",
+    secondary: "bg-secondary text-dark border-secondary/80 shadow-[0_0_20px_rgba(212,175,55,0.22)] hover:brightness-110",
     ghost: "bg-black/40 text-gray-400 border-gray-800 hover:border-primary hover:text-primary"
   };
 

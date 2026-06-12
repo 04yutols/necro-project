@@ -374,7 +374,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
     await prepareE2EPage(page);
     await openHomeSection(page, '装備・編成');
 
-    await expect(page.getByText('LEGION')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('main').getByText('LEGION', { exact: true })).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: /DETAIL/ }).click();
     await expect(page.getByText('統合詳細ハブ')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('ATK', { exact: true })).toBeVisible();

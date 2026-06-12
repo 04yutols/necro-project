@@ -40,6 +40,35 @@ export type MasterDataCollection = {
 // ---------------------------------------------------------------------------
 const MASTER_DIR = path.join(process.cwd(), 'src', 'data', 'master');
 const STORY_DIR = path.join(process.cwd(), 'src', 'data', 'story');
+const MASTER_FILE_MAP: Record<keyof MasterDataCollection, string> = {
+  areas: 'areas.json',
+  enemies: 'enemies.json',
+  stages: 'stages.json',
+  jobs: 'jobs.json',
+  skills: 'skills.json',
+  items: 'items.json',
+  materials: 'materials.json',
+  monsters: 'monsters.json',
+  demonForms: 'demonForms.json',
+};
+
+function writeJsonAtomic(filePath: string, data: unknown): void {
+  const dir = path.dirname(filePath);
+  const tmpPath = path.join(dir, `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`);
+  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
+  fs.renameSync(tmpPath, filePath);
+}
+
+function normalizeManagedId(id: string, label: string): string {
+  const normalized = id.trim();
+  if (!/^[a-z][a-z0-9_]*$/.test(normalized)) {
+    throw new Error(`${label} は英小文字始まりの snake_case で入力してください。`);
+  }
+  if (['__proto__', 'prototype', 'constructor'].includes(normalized)) {
+    throw new Error(`${label} に予約語は使用できません。`);
+  }
+  return normalized;
+}
 
 function readMasterJson(filename: string): Record<string, Record<string, unknown>> {
   const filePath = path.join(MASTER_DIR, filename);
@@ -72,18 +101,7 @@ export async function getMasterFile(
   name: keyof MasterDataCollection,
 ): Promise<Record<string, Record<string, unknown>>> {
   assertDev();
-  const fileMap: Record<keyof MasterDataCollection, string> = {
-    areas: 'areas.json',
-    enemies: 'enemies.json',
-    stages: 'stages.json',
-    jobs: 'jobs.json',
-    skills: 'skills.json',
-    items: 'items.json',
-    materials: 'materials.json',
-    monsters: 'monsters.json',
-    demonForms: 'demonForms.json',
-  };
-  return readMasterJson(fileMap[name]);
+  return readMasterJson(MASTER_FILE_MAP[name]);
 }
 
 // ---------------------------------------------------------------------------
@@ -171,19 +189,22 @@ export async function auditMasterData(
   // ---------------------------------------------------------------------------
   // 1. ID integrity: each entry's `id` field must match its key (when present)
   // ---------------------------------------------------------------------------
-  const scopesWithId: [string, Record<string, Record<string, unknown>>][] = [
+  const scopesWithId: [string, Record<string, Record<string, unknown>>, { allowKeyOnly?: boolean }?][] = [
     ['areas', data.areas],
     ['enemies', data.enemies],
     ['stages', data.stages],
     ['skills', data.skills],
     ['items', data.items],
     ['materials', data.materials],
+    ['monsters', data.monsters, { allowKeyOnly: true }],
   ];
 
-  for (const [scope, collection] of scopesWithId) {
+  for (const [scope, collection, options] of scopesWithId) {
     for (const [key, entry] of Object.entries(collection)) {
       const idField = entry['id'];
-      if (idField === undefined) {
+      if (idField === undefined && options?.allowKeyOnly) {
+        findings.push({ level: 'WARN', scope, id: key, message: `"id" フィールドが存在しません（キーIDとして監査）。` });
+      } else if (idField === undefined) {
         findings.push({ level: 'WARN', scope, id: key, message: `"id" フィールドが存在しません。` });
       } else if (idField !== key) {
         findings.push({
@@ -420,23 +441,55 @@ export async function auditMasterData(
   // 4. Drop table reference: dropTable[].itemId must exist in items or materials
   // ---------------------------------------------------------------------------
   const allDroppable = new Set([...itemIds, ...materialIds]);
+  const auditDropReference = (
+    scope: string,
+    id: string,
+    fieldPath: string,
+    drop: Record<string, unknown>,
+  ) => {
+    const dropType = getString(drop, 'type');
+    const iid = getString(drop, 'itemId');
+    if (dropType === 'RESIDUE') {
+      if (iid) {
+        findings.push({ level: 'WARN', scope, id, message: `${fieldPath} は RESIDUE のため itemId は無視されます。` });
+      }
+      return;
+    }
+    if (!iid) {
+      findings.push({ level: 'WARN', scope, id, message: `${fieldPath}.itemId が空です。` });
+      return;
+    }
+    if (dropType === 'MATERIAL') {
+      if (!materialIds.has(iid)) {
+        findings.push({ level: 'FAIL', scope, id, message: `${fieldPath} の MATERIAL itemId "${iid}" が materials.json に存在しません。` });
+      } else {
+        findings.push({ level: 'PASS', scope, id, message: `素材ドロップ参照 "${iid}" OK` });
+      }
+      return;
+    }
+    if (dropType === 'WEAPON' || dropType === 'CONSUMABLE') {
+      const item = data.items[iid];
+      if (!itemIds.has(iid) || !item) {
+        findings.push({ level: 'FAIL', scope, id, message: `${fieldPath} の ${dropType} itemId "${iid}" が items.json に存在しません。` });
+      } else if (dropType === 'CONSUMABLE' && getString(item, 'type') !== 'CONSUMABLE') {
+        findings.push({ level: 'FAIL', scope, id, message: `${fieldPath} の itemId "${iid}" は CONSUMABLE ではありません。` });
+      } else if (dropType === 'WEAPON' && getString(item, 'type') !== 'WEAPON') {
+        findings.push({ level: 'FAIL', scope, id, message: `${fieldPath} の itemId "${iid}" は WEAPON ではありません。` });
+      } else {
+        findings.push({ level: 'PASS', scope, id, message: `アイテムドロップ参照 "${iid}" OK` });
+      }
+      return;
+    }
+    if (!allDroppable.has(iid)) {
+      findings.push({ level: 'FAIL', scope, id, message: `${fieldPath} の itemId "${iid}" が items.json / materials.json のどちらにも存在しません。` });
+    } else {
+      findings.push({ level: 'WARN', scope, id, message: `${fieldPath} の type "${dropType}" は監査対象外ですが参照 "${iid}" は存在します。` });
+    }
+  };
 
   for (const [enemyKey, enemy] of Object.entries(data.enemies)) {
     const drops = getArray(enemy, 'dropTable');
-    for (const drop of drops) {
-      const iid = getString(drop, 'itemId');
-      if (!iid) continue; // RESIDUE type has no itemId
-      if (!allDroppable.has(iid)) {
-        findings.push({
-          level: 'FAIL',
-          scope: 'enemies',
-          id: enemyKey,
-          message: `dropTable の itemId "${iid}" が items.json / materials.json のどちらにも存在しません。`,
-        });
-      } else {
-        findings.push({ level: 'PASS', scope: 'enemies', id: enemyKey, message: `ドロップ参照 "${iid}" OK` });
-      }
-    }
+    drops.forEach((drop, index) => auditDropReference('enemies', enemyKey, `dropTable[${index}]`, drop));
   }
 
   // Stage drop tables
@@ -444,20 +497,7 @@ export async function auditMasterData(
     const rewards = stage['rewards'] as Record<string, unknown> | undefined;
     if (!rewards) continue;
     const drops = getArray(rewards, 'dropTable');
-    for (const drop of drops) {
-      const iid = getString(drop, 'itemId');
-      if (!iid) continue;
-      if (!allDroppable.has(iid)) {
-        findings.push({
-          level: 'FAIL',
-          scope: 'stages',
-          id: stageKey,
-          message: `rewards.dropTable の itemId "${iid}" が items.json / materials.json のどちらにも存在しません。`,
-        });
-      } else {
-        findings.push({ level: 'PASS', scope: 'stages', id: stageKey, message: `ドロップ参照 "${iid}" OK` });
-      }
-    }
+    drops.forEach((drop, index) => auditDropReference('stages', stageKey, `rewards.dropTable[${index}]`, drop));
   }
 
   // ---------------------------------------------------------------------------
@@ -723,22 +763,11 @@ async function saveEntryImpl(
   data: Record<string, unknown>,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const fileMap: Record<keyof MasterDataCollection, string> = {
-      areas: 'areas.json',
-      enemies: 'enemies.json',
-      stages: 'stages.json',
-      jobs: 'jobs.json',
-      skills: 'skills.json',
-      items: 'items.json',
-      materials: 'materials.json',
-      monsters: 'monsters.json',
-      demonForms: 'demonForms.json',
-    };
-    const filePath = path.join(MASTER_DIR, fileMap[fileKey]);
+    const filePath = path.join(MASTER_DIR, MASTER_FILE_MAP[fileKey]);
     const raw = fs.readFileSync(filePath, 'utf-8');
     const collection = JSON.parse(raw) as Record<string, Record<string, unknown>>;
     collection[entryKey] = data;
-    fs.writeFileSync(filePath, JSON.stringify(collection, null, 2), 'utf-8');
+    writeJsonAtomic(filePath, collection);
     return { success: true };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) };
@@ -755,22 +784,11 @@ async function deleteEntryImpl(
   entryKey: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const fileMap: Record<keyof MasterDataCollection, string> = {
-      areas: 'areas.json',
-      enemies: 'enemies.json',
-      stages: 'stages.json',
-      jobs: 'jobs.json',
-      skills: 'skills.json',
-      items: 'items.json',
-      materials: 'materials.json',
-      monsters: 'monsters.json',
-      demonForms: 'demonForms.json',
-    };
-    const filePath = path.join(MASTER_DIR, fileMap[fileKey]);
+    const filePath = path.join(MASTER_DIR, MASTER_FILE_MAP[fileKey]);
     const raw = fs.readFileSync(filePath, 'utf-8');
     const collection = JSON.parse(raw) as Record<string, Record<string, unknown>>;
     delete collection[entryKey];
-    fs.writeFileSync(filePath, JSON.stringify(collection, null, 2), 'utf-8');
+    writeJsonAtomic(filePath, collection);
     return { success: true };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) };
@@ -804,7 +822,7 @@ function readStoryScenesFile(fileName: string): StoryScenesFile {
 
 function writeStoryScenesFile(fileName: string, data: StoryScenesFile): void {
   const sorted = { scenes: sortStoryScenes(data.scenes) };
-  fs.writeFileSync(getStoryFilePath(fileName), JSON.stringify(sorted, null, 2), 'utf-8');
+  writeJsonAtomic(getStoryFilePath(fileName), sorted);
 }
 
 function findStorySceneLocation(id: string): StorySceneLocation | null {
@@ -930,11 +948,35 @@ export async function saveStoryCharacter(
 ): Promise<{ success: boolean; error?: string }> {
   assertDev();
   try {
+    const id = normalizeManagedId(char.id, 'キャラクターID');
     const filePath = path.join(STORY_DIR, 'characters.json');
     const raw = fs.readFileSync(filePath, 'utf-8');
     const data = JSON.parse(raw) as Record<string, StoryCharacter>;
-    data[char.id] = char;
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    data[id] = { ...char, id };
+    writeJsonAtomic(filePath, data);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function deleteStoryCharacter(
+  id: string,
+): Promise<{ success: boolean; error?: string }> {
+  assertDev();
+  try {
+    const normalizedId = normalizeManagedId(id, 'キャラクターID');
+    if (normalizedId === 'narrator') {
+      throw new Error('narrator は削除できません。');
+    }
+    const filePath = path.join(STORY_DIR, 'characters.json');
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw) as Record<string, StoryCharacter>;
+    if (!data[normalizedId]) {
+      throw new Error(`キャラクター "${normalizedId}" が存在しません。`);
+    }
+    delete data[normalizedId];
+    writeJsonAtomic(filePath, data);
     return { success: true };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : String(e) };

@@ -603,6 +603,45 @@ export async function fixAuditFindingAction(
   return { ...result, scope, entityId, targetFindings };
 }
 
+export type ApplyAuditFixResult = {
+  success: boolean;
+  snapshotId: string | null;
+  error?: string;
+};
+
+export async function applyAuditFixAction(
+  scope: string,
+  entityId: string,
+  patched: Record<string, unknown>,
+): Promise<ApplyAuditFixResult> {
+  assertDev();
+  const fileKey = FILE_LABEL[scope];
+  if (!fileKey) {
+    return { success: false, snapshotId: null, error: `未対応の scope: ${scope}` };
+  }
+
+  const all = (await getAllMasterData()) as unknown as MasterData;
+  const entities = (all[fileKey] ?? {}) as Record<string, Record<string, unknown>>;
+  let snapshotId: string | null = null;
+  try {
+    const meta = writeSnapshot(SNAPSHOT_DIR, fileKey, entities, `audit-fix: ${scope}/${entityId}`);
+    snapshotId = meta.id;
+    pruneSnapshots(SNAPSHOT_DIR, fileKey, SNAPSHOT_KEEP);
+  } catch (e) {
+    return {
+      success: false,
+      snapshotId: null,
+      error: `スナップショット作成に失敗しました: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+
+  const result = await saveEntry(fileKey as never, entityId, patched);
+  if (!result.success) {
+    return { success: false, snapshotId, error: result.error ?? '保存に失敗しました' };
+  }
+  return { success: true, snapshotId };
+}
+
 /** 監査全体の FAIL を (scope,id) 単位でグルーピングして返す（バッチUI用）。 */
 export async function getAuditFailGroupsAction(): Promise<{ scope: string; id: string; count: number }[]> {
   assertDev();
