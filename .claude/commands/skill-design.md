@@ -61,12 +61,15 @@
 
 ## Step 4: jobs.json に追加
 
-`src/data/master/jobs.json` の該当 `jobId` の `skills` 配列に新スキルIDを追加する:
+`src/data/master/jobs.json` の該当ジョブ（キー = jobId、オブジェクト内に `id` フィールドはない）の
+`skills` 配列に習得レベル付きで追加する（**文字列ではなく `{ level, skillId }` オブジェクト**）:
 
 ```json
-{
-  "id": "<jobId>",
-  "skills": ["existing_skill_1", "existing_skill_2", "<新スキルID>"]
+"<jobId>": {
+  "skills": [
+    { "level": 1, "skillId": "existing_skill_1" },
+    { "level": <習得レベル>, "skillId": "<新スキルID>" }
+  ]
 }
 ```
 

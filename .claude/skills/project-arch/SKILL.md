@@ -13,184 +13,218 @@ src/
     page.tsx          ← SPA エントリ。currentTab で画面切り替え
     layout.tsx        ← viewport 設定 (maximumScale:1, viewportFit:cover)、フォント定義
     globals.css       ← Gothic-Morphism グローバル CSS
-    actions.ts        ← Server Actions
+    actions.ts        ← Server Actions（auth() 必須、ステージトークン検証あり）
+    api/              ← API Routes（NextAuth 等）
+    admin/            ← 管理画面（adminGuard.ts でガード。enemies/skills/jobs/stages/
+                         monsters/items/materials/areas/demon-forms/story/agents/
+                         simulator/audit の各サブページ + admin/actions.ts）
   components/
-    battle/           BattleCanvas.tsx (Pixi.js), ResultScreen.tsx, AppraisalCertificate.tsx
-    character/        EquipmentManager.tsx (未使用 — LegionHub が EQUIP タブを担当)
-    home/             HomeHero.tsx
-    layout/           ResponsiveFrame.tsx, BottomNavBar.tsx, MobileHeader.tsx, DashboardFrame.tsx
-    legion/           LegionHub.tsx (軍団編成 + 8スロット装備 + 深淵残滓管理 — 1342行の巨大コンポーネント)
-    map/              AreaMap.tsx, MapCanvas.tsx (Pixi.js)
-    necro/            NecroLab.tsx, ShardEquipModal.tsx, MonsterViewer.tsx,
-                      SoulSlotRing.tsx, useNecroLabPixi.ts, useGothicSound.ts, useResidueEnhancePixi.ts
-    ui/               ArmySlot, CapsuleStatBar, FuchsiaButton, GameFrame, GrimoireLog, NecroLog
-  logic/
-    BattleEngine.ts   ← 純粋クラス。React/Zustand 依存なし
-    GameManager.ts    ← ゲームループ全体。Prisma 使用。サーバーサイドのみ
+    admin/     AdminNav, *List.tsx (各マスター一覧), AI*DraftPanel.tsx (AI草案),
+               AuditPanel, BulkChangePanel, SimulatorClient, forms/
+    auth/      AuthGate, AuthPanel, CharacterCreation, ReloginModal, LoadingScreen
+    battle/    BattleCanvas.tsx (SVG + Framer Motion。PixiJS 不使用), ResultScreen.tsx,
+               AppraisalCertificate.tsx
+    character/ EquipmentManager.tsx（未使用 — LegionHub が EQUIP タブを担当）
+    home/      HomeHero.tsx
+    job/       JobChangeScreen.tsx
+    layout/    ResponsiveFrame.tsx, BottomNavBar.tsx, MobileHeader.tsx, DashboardFrame.tsx
+    legion/    LegionHub.tsx（軍団編成 + 装備管理の巨大コンポーネント）
+    map/       AreaMap.tsx, MapCanvas.tsx (PixiJS — Pixi 使用箇所はここと necro の hooks)
+    necro/     NecroLab.tsx, ShardEquipModal.tsx, MonsterViewer.tsx, SoulSlotRing.tsx,
+               useNecroLabPixi.ts, useGothicSound.ts, useResidueEnhancePixi.ts
+    social/    WorldLogPanel.tsx (Pusher ワールドログ)
+    story/     StoryOrchestrator, DialogueScene, MonologueOverlay, ChapterTitleCard,
+               EnvironmentCaption, CharacterPortrait, TypewriterText, StoryArchive
+    tutorial/  TutorialOrchestrator, SpotlightOverlay, BubbleHint, TutorialBanner
+    ui/        ArmySlot, CapsuleStatBar, FuchsiaButton, GameFrame, GrimoireLog, NecroLog
+  logic/       ← 純粋ロジック層（React 非依存・全モジュールに .test.ts ペアあり）
+    BattleEngine.ts          ← ターン制バトルの中核クラス
+    BattleDamage.ts          ← BattleEngine / BattleCanvas 共通のダメージ計算式
+    BattleFlowSystem.ts, TurnOrderSystem.ts (spd→行動値), EnergySystem.ts
+    StatusAilmentSystem.ts, TribeSynergySystem.ts, DemonizationSystem.ts
+    BossGimmickSystem.ts, AreaGimmickSystem.ts, MonsterAttackSystem.ts
+    NecromanceCaptureSystem.ts, PlayerDefeat.ts
+    StatSystem.ts (calculateCharacterStatProfile), JobSystem.ts,
+    JobGrowthSystem.ts, JobBaseStatsInterpolation.ts, ExperienceSystem.ts
+    WeaponSystem.ts, WeaponPassive.ts, ResidueScore.ts, AbyssalResidueUnlockSystem.ts
+    DropPolicySystem.ts, DungeonSystem.ts, StageAreaLinkSystem.ts, WorldMapSystem.ts
+    GameManager.ts           ← ゲームループ全体。Prisma 使用。サーバーサイドのみ
+    BalanceConfig.ts
   services/
     MasterDataService.ts  ← シングルトン。src/data/master/*.json を読む
-    JobService.ts, NecroService.ts, RewardService.ts
+    JobService.ts, NecroService.ts, RewardService.ts, AuthService.ts,
+    SessionSecurityService.ts, RateLimitService.ts, RankingService.ts (Upstash),
+    WorldEventService.ts (Pusher), AudioService.ts
   store/
-    useGameStore.ts   ← Zustand。全クライアント実行時状態
+    useGameStore.ts      ← Zustand。全クライアント実行時状態
+    useStoryStore.ts, useTutorialStore.ts, useAudioStore.ts
+  hooks/
+    useAuthFlow, useBGM, useSoundEffects, useRanking, useWorldLog,
+    useStoryTrigger, useTutorialTrigger
+  lib/agent/   ← 管理画面 AI エージェント（LangGraph + Gemini。設計書 100〜107）
+    enemyAgent/skillAgent/jobAgent/stageAgent/monsterAgent/weaponAgent/
+    materialAgent/areaAgent/demonAgent/storyAgent.ts + 各 *Balance.ts (決定論的ゲート)
+    auditFixAgent.ts + auditFix/, bulkAgent.ts + bulk/, simEvalAgent.ts + sim/,
+    story/ (storyContext, storyValidator), gemini.ts, knownFields.ts, thinkingBudget.ts
   types/
-    game.ts           ← 全型定義の正典。GDD リファレンス注釈付き
-  data/master/
-    jobs.json, monsters.json, items.json, stages.json, skills.json
+    game.ts           ← 全型定義の正典（serverGame.ts はサーバー受け渡し用）
+  data/
+    master/   areas, demonForms, enemies, items, jobs, materials, monsters,
+              skills, stages の 9 JSON
+    story/    ch1_scenes.json, prologue_scenes.json, characters.json, packs.ts
+    tutorial/ phases.ts
 ```
 
 ## ナビゲーション
 
 ```typescript
 // currentTab の値と対応コンポーネント
-type Tab = 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'LOGS'
+type Tab = 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'LOGS' | 'JOB'
 
 // MAP と BATTLE は全画面オーバーレイ (position:absolute, inset:0, z:9999)
 // それ以外は ResponsiveFrame 内にレンダリング
+// BattleCanvas は next/dynamic + ssr:false でロード
 
 // 新タブ追加手順:
-// 1. useGameStore.ts の型に追加
+// 1. useGameStore.ts の currentTab 型に追加
 // 2. BottomNavBar.tsx の TABS 配列に追加
 // 3. page.tsx の if/switch に追加
 ```
 
-## Zustand ストア
+## Zustand ストア (useGameStore.ts)
 
 ```typescript
-// useGameStore.ts — 状態の全リスト
 const {
+  // --- 永続データ ---
   player,                  // CharacterData | null
-  necroStatus,             // NecroStatus | null — { level, rank, maxCost, baseStatsBonus }
+  necroStatus,             // NecroStatus | null — { level, rank, maxCost, baseStatsBonus, exp }
   party,                   // (MonsterData | null)[] — 常に 3 スロット
   inventoryMonsters,       // MonsterData[]
   soulShards,              // SoulShardData[]
-  inventoryItems,          // ItemData[]
+  inventoryItems,          // ItemData[] — 武器 + CONSUMABLE（quantity でスタック）
   abyssalResidues,         // AbyssalResidueData[] — level 1-20
-  equippedResidueSlots,    // (AbyssalResidueData | null)[] — 3スロット
+  equippedResidueSlots,    // (AbyssalResidueData | null)[] — 5スロット
   residueMaterials,        // ResidueMatData[]
-  demonGauge,              // number 0-100
-  isDemonMode,             // boolean
-  currentTab,              // Tab
+  weaponMaterials,         // WeaponMaterialData[] — IDEA_COMMON/SR/SSR, ABYSSAL_OBSIDIAN
+  transmutationPoints,     // number
+  isServerBacked,          // boolean — loadFromServer() 後 true
+
+  // --- バトルランタイム ---
+  monsterCurrentHp,        // Record<string, number>
   battleLogs,              // string[] — 最大50件
   actionTrigger,           // { type: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL', skillId? } | null
 
-  // アクション
-  setCurrentTab,
-  updatePartySlot,         // (index: 0|1|2, monster: MonsterData|null) => void
-  equipResidueToSlot,      // (slotIndex: number, residue: AbyssalResidueData|null) => void
-  upgradeResidue,          // (residueId: string, matIds: string[]) => void
-  addBattleLog,
-  toggleDemonMode,
-  fillDemonGauge,          // (amount: number) => void
-  equipItem,               // (slot: keyof EquipmentSlots, item: ItemData) => void
-  equipShard,              // (monsterId: string, shardId: string) => void
+  // --- 魔神化 ---
+  demonGauge,              // number 0-100
+  isDemonMode,             // boolean
+  demonActionsRemaining,   // number — DEMON_ACTION_LIMIT から減算
+  demonUltimateUsed,       // boolean
+  demonFormJobId,          // string | null — demonForms.json のキー
+  demonEffectBFlag,        // string | null — onAttackEffect
+  demonRiskType,           // DemonRiskType
+  demonRiskValue,          // number
+
+  // --- UI ---
+  currentTab,              // Tab
+  equippingMonsterId,      // string | null — モーダル制御
+
+  // --- 主要アクション ---
+  setCurrentTab, updatePartySlot, swapPartySlots, removeMonster,
+  equipItem, unequipItem, equipShard, addSoulShard,
+  equipResidueToSlot, upgradeResidue,
+  rankUpWeapon, reforgeWeapon, dismantleWeapon,        // 武器: 共鳴/打ち直し/分解
+  updateHP, updateEnergy, updateEnergyBy, restoreEnergy,
+  addExp, addGold, addClearedStage, changeJob,
+  consumeInventoryItem, addInventoryItems,
+  fillDemonGauge, startDemonMode, consumeDemonAction, endDemonMode, toggleDemonMode,
+  damageMonster, resetMonsterHp,
+  addBattleLog, clearBattleLogs, setActionTrigger,
+  initialize,              // ローカル開発用モックデータ投入（DB 不要）
+  loadFromServer,          // ServerGameData → ストア反映 (isServerBacked: true)
+  clearServerData,
 } = useGameStore();
 ```
+
+ストーリー進行は `useStoryStore.ts`、チュートリアルは `useTutorialStore.ts`、
+音声は `useAudioStore.ts` に分離されている。
 
 ## 主要型 (src/types/game.ts)
 
 ```typescript
-BaseStats: { hp, mp, atk, def, matk, mdef, agi, luck, tec: number }
+Tribe = 'UNDEAD' | 'DEMON' | 'BEAST' | 'HUMANOID' | 'DRAGON' | 'ORC'
+ElementType = 'FIRE' | 'WATER' | 'THUNDER' | 'EARTH' | 'WIND' | 'ICE' | 'LIGHT' | 'DARK' | 'NONE'
+EnemyTier = 'MINION' | 'ELITE' | 'BOSS'
+AilmentType = 'BLEED' | 'POISON' | 'BURN' | 'FREEZE' | 'PARALYSIS' | 'WEAKEN'
+
+// 8種ステータス
+BaseStats: { hp, atk, def, spd, critRate, critDmg, effectHit, effectRes: number }
+// spd: 行動値 = 10000/spd。critRate 基礎5.0、critDmg 基礎150.0
 
 CharacterData: {
   id, name, currentJobId, category: ClassCategory,
-  stats: BaseStats, passives: PassiveBonuses,
-  equipment: EquipmentSlots,   // 8スロット: weapon/sub/head/body/arms/legs/acc1/acc2
+  baseStats?, stats: BaseStats, passives: PassiveBonuses,
+  equipment: EquipmentSlots,        // weapon + 7 slots (weapon のみ有効)
   baseResistances: Resistances,
-  jobs: UserJobState[], isAwakened: boolean, clearedStages: string[]
+  jobs: UserJobState[], isAwakened: boolean, clearedStages: string[], gold: number,
+  necroLevel?, necroBaseStatsBonus?,
+  currentEnergy, maxEnergy: number, // Energy リソース（魔神化ゲージとは別）
+  elementDmgBoosts: Partial<Record<ElementType, number>>
 }
 
 MonsterData: {
-  id, name, tribe: Tribe, cost: number,
-  stats: BaseStats, resistances: Resistances,
-  equippedShardId?: string, spiritCore?: SpiritCoreData
-}
-// ※ MonsterData に emoji や element フィールドはない
-
-ItemData: {
-  id, name, type: 'WEAPON'|'SUB'|'HEAD'|'BODY'|'ARMS'|'LEGS'|'ACC1'|'ACC2',
-  rarity: 'COMMON'|'UNIQUE'|'HIDDEN_UNIQUE',
-  stats: Partial<BaseStats>, resistances?: Resistances,
-  isUnique: boolean, discovererId?, discovererName?, serialNo?, discoveredAt?,
-  subOptions?: SubOption[], specialEffect?: string
-}
-
-SoulShardData: {
-  id, originMonsterName: string,
-  effect: { atkBonus: number, matkBonus: number, specialAbility?: string }
-}
-
-AbyssalResidueData: {
-  id, name, itemId: string,
-  rarity: 'COMMON'|'RARE'|'EPIC',
-  mainStat: { type: string, value: number },
-  subOptions: SubOption[],
-  level: number,  // 1-20
-  exp: number, maxExp: number
-}
-
-ResidueMatData: {
-  id, name, quantity: number, expValue: number,
-  rarity: 'COMMON'|'RARE'|'EPIC'
-}
-
-SpiritCoreData: {
-  id, name, element?: ElementType, skillChangeId?: string, atkMultiplier: number
+  id, masterId?, name, tribe: Tribe, cost: number,
+  stats: BaseStats, resistances: Resistances, skillIds?: string[],
+  equipment?: EquipmentSlots,                        // weapon スロットのみ使用
+  equippedResidues?: (AbyssalResidueData | null)[],  // 5 slots
+  equippedShardId?: string, spiritCore?: SpiritCoreData,
+  // バトルランタイム専用 (DB 非保存):
+  tier?, weaknesses?, shieldHp?, maxShieldHp?, statusEffects?, gimmicks?
 }
 
 SkillData: {
-  id, name, mpCost, power: number,
+  id, name, mpCost, power: number,   // mpCost は旧名のままマスター互換維持
   type: 'PHYSICAL'|'MAGICAL'|'HEAL',
-  element?: ElementType, attackType?: SkillAttackType,
+  element?, attackType?: SkillAttackType,
   targetType?: 'SINGLE'|'ALL_ENEMIES'|'SELF'|'ALLY',
-  effectKey?: string, description: string
+  isUltimate?: boolean,              // true → maxEnergy 全消費
+  ailments?, effectKey?, description
 }
 
-ElementType: 'FIRE'|'WATER'|'THUNDER'|'EARTH'|'WIND'|'LIGHT'|'DARK'|'ICE'|'NONE'
-Tribe: 'UNDEAD'|'DEMON'|'BEAST'|'HUMANOID'
-ClassCategory: 'PHYSICAL'|'MAGICAL'
+SoulShardData: { id, originMonsterName, effect: { atkBonus, elementDmgBoost, specialAbility? } }
+AbyssalResidueData: { id, name, itemId, rarity, mainStat, subOptions, level(1-20), exp, maxExp }
+SpiritCoreData: { id, name, element?, skillChangeId?, atkMultiplier }
+NecroStatus: { level(1-99), rank(1-10), maxCost, baseStatsBonus, exp }
+ItemData(武器): { weaponRarity: R|SR|SSR|UR, archetype: LOW|MID|HIGH|MYTHIC,
+                  rank(共鳴0-5), ilv(1-90), passiveA/B: WeaponPassive }
 ```
 
-## ダメージ計算式 (BattleEngine.ts)
+## ダメージ計算式 (BattleEngine.calculateDamage / BattleDamage.ts)
 
 ```
-baseDamage = stat² / (stat + counterStat)
-  物理: ATK vs DEF
-  魔法: MATK vs MDEF
-
-finalDamage = baseDamage × powerMultiplier × elementMultiplier × (1 + TEC/100)
-critMultiplier = 1.5 + TEC/200  (LUCK% でクリット判定)
-elementMultiplier = 1 - (resistance / 100)  (resistance < 0 → 弱点)
+damage  = atk × powerMultiplier
+damage *= 1 - def / (def + 200)                          // 防御軽減 (HSR簡易版)
+damage *= 1 + elementBoostPct/100 + synergyElementPct/100 // 属性ダメージ加成
+damage *= 1 - resistance/100                              // 耐性 (<0 = 弱点)
+if (crit) damage *= 1 + (critDmg + synergyCritDmg) / 100  // 会心
+finalDamage = max(1, floor(damage))
 ```
 
 ## MasterDataService
 
 ```typescript
 // シングルトンパターン — 常にこれを使う (new しない)
-const masterData = MasterDataService.getInstance();
-const monsters = masterData.getMonsters();
-const jobs = masterData.getJobs();
-const items = masterData.getItems();
-const stages = masterData.getStages();
-const skills = masterData.getSkills();
+const master = MasterDataService.getInstance();
+master.getAllJobs() / getAllMonsters() / getAllEnemies() / getAllItems() /
+       getAllStages() / getAllAreas() / getAllSkills() / getAllDemonForms() /
+       getAllMaterials()
+master.getJob(id) / getEnemy(id) / getDemonForm(jobId) ... // 単体取得も同名規則
 ```
 
-## Pixi.js パターン
+## 描画レイヤー
 
-```typescript
-const canvasRef = useRef<HTMLCanvasElement>(null);
-
-useEffect(() => {
-  if (!canvasRef.current) return;
-  const app = new Application();
-  app.init({ canvas: canvasRef.current, ... }).then(() => {
-    // setup
-  });
-  return () => { app.destroy(); };  // クリーンアップ必須
-}, []);
-
-// page.tsx でのロード
-const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas'), { ssr: false });
-```
+- **BattleCanvas.tsx**: SVG + Framer Motion（PixiJS 不使用）。マスター JSON を直接 import。
+- **MapCanvas.tsx / necro の use*Pixi.ts**: PixiJS。60fps 維持 — レンダーループ内で重い JS を避ける。
+- PixiJS コンポーネントは `next/dynamic` + `ssr: false` でロードする。
 
 ## コンポーネントテンプレート
 
@@ -235,9 +269,10 @@ export function NewScreen() {
 ## 規約
 
 - UI テキスト: 直接的な日本語動詞 — 装備, 強化, 攻撃, 術, 魔神化
-- パーティは常に 3 スロット `(MonsterData | null)[]`
-- コスト検証: `NecroStatus.maxCost` に対して検証してから編成
-- GDD 参照: コメントに `GDD-003` 等を記載 (docs/requirements.md)
+- パーティ = アルド (CharacterData) + モンスター 3 スロット `(MonsterData | null)[]`
+- コスト検証: `necroStatus.maxCost` に対して検証してから編成
 - `MasterDataService.getInstance()` — new しない
-- Pixi.js は 60fps 維持 — レンダーループ内で重い JS を実行しない
+- コード変更後は必ず `npx tsc --noEmit`
 - **モックなし**: テストでは実ロジックを呼ぶ (モック/本番の乖離でバグを見逃した経緯あり)
+- タスク管理: `docs/progress/CH1_TODO.md`（作業中）/ `DONE.md` / `DEFERRED.md` / `TECH_DEBT.md`
+- 設計書の早引きは `docs/設計書/00_INDEX.md`

@@ -1,59 +1,40 @@
-BUGS_AND_SECURITY.md に記載のバグを修正します: $ARGUMENTS
+docs/progress/TECH_DEBT.md に記載の技術的負債・バグを修正します: $ARGUMENTS
 
 ## 引数の解釈
 
 | 引数 | 動作 |
 |------|------|
-| `BUG-X` または `SEC-X` | そのIDのバグを修正 |
-| (なし) | BUGS_AND_SECURITY.md を読んで未対応の最優先バグを提案 |
+| `C-X` / `M-X` / `L-X` / `NC-X` / `NM-X` / `NL-X` | その ID の項目を修正 |
+| (なし) | TECH_DEBT.md を読んで未完了（✅なし）の最優先項目を提案 |
+
+優先度は見出し順: 🔴 Critical (C-X, NC-X) → 🟡 Medium (M-X, NM-X) → 🟢 Low (L-X, NL-X)。
 
 ## 手順
 
-### Step 1: バグ情報の確認
+### Step 1: 項目の確認
 
-```bash
-cat docs/progress/BUGS_AND_SECURITY.md | grep -A 5 "$ARGUMENTS"
-```
+1. `docs/progress/TECH_DEBT.md` を読み、対象 ID のセクションを特定する
+   （見出しに ✅ が付いている項目は完了済み）。
+2. 各項目には **問題 / 対応方針 / 関連ファイル** が記載されている。
+3. 項目内に設計書（`docs/設計書/NN_*.md`）への参照がある場合はそれも読む。
+   設計書の早引きは `docs/設計書/00_INDEX.md`。
 
-1. `docs/progress/BUGS_AND_SECURITY.md` を読む
-2. 対応する設計書を特定する（BUGS_AND_SECURITY.md の「設計書」列を参照）
+### Step 2: 関連ファイルの調査
 
-設計書のパスパターン:
-```
-BUG-2  → docs/設計書/66_BUG2_状態異常DoT最大HP参照設計.md
-BUG-4  → docs/設計書/56_BUG4_残滓強化素材スタック消費設計.md
-BUG-5  → docs/設計書/57_BUG5_BURN免疫チェック設計.md
-BUG-6  → docs/設計書/58_BUG6_敵HPランタイム分離設計.md
-BUG-7  → docs/設計書/59_BUG7_getMutableStats型安全化設計.md
-BUG-8  → docs/設計書/60_BUG8_状態異常行動スキップターン進行設計.md
-BUG-9  → docs/設計書/61_BUG9_NecroStatus_expテストモック整合設計.md
-BUG-10 → docs/設計書/62_BUG10_軍団追撃ターゲット分散設計.md
-PERF-1 → docs/設計書/63_PERF1_残滓シャッフルFisherYates設計.md
-SEC-2  → docs/設計書/52_SEC2_fetchPlayerAction_IDOR設計.md
-SEC-3  → docs/設計書/53_SEC3_GameManager_updateParty永続化設計.md
-SEC-4  → docs/設計書/54_SEC4_暗号論的ID生成設計.md
-SEC-5  → docs/設計書/55_SEC5_ドロップ率ボーナスcritRate分離設計.md
-SEC-6  → docs/設計書/67_SEC6_JWTセッション失効設計.md
-SEC-8  → docs/設計書/68_SEC8_ステージ開始トークン設計.md
-```
-
-### Step 2: 設計書を読む
-
-特定した設計書を Read して以下を把握する:
-- 問題の根本原因
-- 変更が必要なファイル一覧
-- 具体的な修正内容（コードスニペットがある場合は参照）
-- テスト方針
+「関連ファイル」に列挙されたファイルを Read し、以下を把握する:
+- 問題の根本原因（記載の行番号は古い可能性があるため grep で再特定する）
+- 変更が必要な範囲
+- 既存テストの有無
 
 ### Step 3: 実装
 
-設計書の仕様に従って実装する。
-設計書にコードスニペットがある場合はそれを参考に、なければ設計書の意図を解釈して実装する。
+「対応方針」に従って実装する。
 
 **実装時の原則:**
-- 設計書の変更範囲を超えないこと（スコープクリープ禁止）
+- 対応方針の範囲を超えないこと（スコープクリープ禁止）
 - `npx tsc --noEmit` が通ること
 - 既存テストを壊さないこと
+- ロジック変更は `src/logic/` の対応する `.test.ts` にテストを追加する（モック禁止 — 実ロジックを呼ぶ）
 
 ### Step 4: テスト実行
 
@@ -61,26 +42,23 @@ SEC-8  → docs/設計書/68_SEC8_ステージ開始トークン設計.md
 npm test -- --passWithNoTests 2>&1 | tail -30
 ```
 
-設計書の「テスト方針」セクションに記載のテストケースがある場合は、それに対応するテストを追加する。
-
 ### Step 5: 型チェック
 
 ```bash
 npx tsc --noEmit
 ```
 
-### Step 6: BUGS_AND_SECURITY.md の更新
+### Step 6: TECH_DEBT.md の更新
 
-`docs/progress/BUGS_AND_SECURITY.md` の該当エントリを更新する:
-- ステータスを「✅ 完了」に変更
-- 完了日（今日の日付）を記入
-- 変更ファイルを記録
+該当エントリを更新する（ファイル先頭の運用ルールに従う）:
+- 見出しに ✅ と完了日を付ける（例: `### ✅ NM-3. ...（2026-06-12 完了）`）
+- 「完了内容」セクションを追記（変更ファイル・テスト結果）
+- 完了した項目は `docs/progress/DONE.md` へアーカイブする
 
 ### Step 7: 完了報告
 
-以下の形式で報告する:
 ```
-## <BUG-X/SEC-X> 修正完了
+## <ID> 修正完了
 
 ### 変更ファイル
 - <ファイルパス:行番号> — <変更内容>

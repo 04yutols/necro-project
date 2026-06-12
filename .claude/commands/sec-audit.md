@@ -36,13 +36,15 @@ grep -n "findFirst\|findUnique\|findMany\|update\|delete" src/app/actions.ts | h
 ## Step 4: ステージトークン（SEC-8）チェック
 
 ```bash
-grep -n "processStageResultAction\|tokenId\|consumeStageToken\|stageToken" src/app/actions.ts
+grep -n "processStageResultAction\|stageAttemptId\|consumeStageAttempt" src/app/actions.ts
 ```
 
 チェック:
-- [ ] `processStageResultAction` が `tokenId` パラメータを受け取っているか
-- [ ] `consumeStageToken()` による検証があるか
-- [ ] tokenId なしで報酬が取得できる経路がないか（Phase 2 以降）
+- [ ] `processStageResultAction` が `stageAttemptId` を受け取っているか（`readStageAttemptArgs`）
+- [ ] トランザクション内で `consumeStageAttempt()` による検証があるか
+- [ ] stageAttemptId なしで報酬が取得できる経路がないか
+
+設計書: `docs/設計書/68_SEC8_ステージ開始トークン設計.md`
 
 ## Step 5: ドロップ率操作チェック（SEC-5）
 
