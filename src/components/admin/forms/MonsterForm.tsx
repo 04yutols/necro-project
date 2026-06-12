@@ -48,6 +48,7 @@ function formToJson(form: MonsterFormState): Record<string, unknown> {
     if (v !== 0) resistancesCleaned[k] = v;
   }
   return {
+    id: form.id,
     name: form.name,
     tribe: form.tribe,
     cost: form.cost,

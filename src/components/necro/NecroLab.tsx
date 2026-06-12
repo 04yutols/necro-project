@@ -37,6 +37,29 @@ const STAT_LABEL: Record<string, string> = {
   'VOID_DMG_BOOST': 'ALL DMG',
 };
 
+type ActionToast = { kind: 'success' | 'error'; text: string } | null;
+
+function LabToast({ toast }: { toast: ActionToast }) {
+  if (!toast) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className="pointer-events-none absolute left-4 right-4 top-[72px] z-50 rounded-lg px-4 py-3 text-center text-[12px] font-black tracking-[0.08em]"
+      style={{
+        background: toast.kind === 'success' ? 'rgba(34,197,94,0.14)' : 'rgba(139,0,0,0.22)',
+        border: `1px solid ${toast.kind === 'success' ? 'rgba(34,197,94,0.34)' : 'rgba(220,38,38,0.42)'}`,
+        color: toast.kind === 'success' ? '#86efac' : '#FFB4B4',
+        boxShadow: '0 14px 34px rgba(0,0,0,0.38)',
+        fontFamily: "'Noto Sans JP', sans-serif",
+      }}
+    >
+      {toast.text}
+    </motion.div>
+  );
+}
+
 function formatStat(type: string, value: number): string {
   return formatOptionValue(type, value);
 }
@@ -792,6 +815,17 @@ export default function NecroLab() {
   const [activeTab, setActiveTab] = useState<'EQUIP' | 'ENHANCE'>('EQUIP');
   const [selectedId, setSelectedId] = useState<string | null>(abyssalResidues[0]?.id ?? null);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
+  const [toast, setToast] = useState<ActionToast>(null);
+
+  const showToast = useCallback((next: NonNullable<ActionToast>) => {
+    setToast(next);
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   if (!necroStatus) return (
     <div className="flex items-center justify-center h-full">
@@ -820,14 +854,19 @@ export default function NecroLab() {
     sound.playEquip();
     equipResidueToSlot(target, residue);
     setActiveSlot(null);
+    showToast({ kind: 'success', text: '残滓を装備しました' });
     if (!player || !canPersistToServer()) return;
     try {
       const { equipResidueAction } = await import('../../app/actions');
       const result = await equipResidueAction(player.id, target, residue.id);
-      if (result.success) loadFromServer(result.data);
-      else console.error(result.error);
+      if (result.success) {
+        loadFromServer(result.data);
+        showToast({ kind: 'success', text: '装備を保存しました' });
+      } else {
+        showToast({ kind: 'error', text: result.error ?? '装備の保存に失敗しました' });
+      }
     } catch (error) {
-      console.error(error);
+      showToast({ kind: 'error', text: error instanceof Error ? error.message : '装備の保存に失敗しました' });
     }
   };
 
@@ -847,6 +886,9 @@ export default function NecroLab() {
         className="absolute inset-0 z-0 pointer-events-none"
         style={{ opacity: 0.4 }}
       />
+      <AnimatePresence>
+        <LabToast toast={toast} />
+      </AnimatePresence>
       {/* Corner glows */}
       <div className="absolute top-0 left-0 w-40 h-40 pointer-events-none z-0"
         style={{ background: 'radial-gradient(circle at 0% 0%, rgba(160,50,255,0.15) 0%, transparent 70%)' }} />

@@ -1,15 +1,19 @@
 'use client';
 
-export type DropEntry = {
-  type: string;
-  itemId?: string;
+import {
+  DROP_ROLL_MODE,
+  formatDropRate,
+  normalizeDropRate,
+  summarizeDropTable,
+} from '@/logic/DropPolicySystem';
+import type { DropEntry as GameDropEntry } from '@/types/game';
+
+export type DropEntry = GameDropEntry & {
+  type: NonNullable<GameDropEntry['type']>;
   rarity: string;
-  rate: number;
-  isHidden?: boolean;
-  quantity?: number;
 };
 
-const DROP_TYPES = ['WEAPON', 'MATERIAL', 'RESIDUE', 'CONSUMABLE'];
+const DROP_TYPES: DropEntry['type'][] = ['WEAPON', 'MATERIAL', 'RESIDUE', 'CONSUMABLE'];
 const RARITIES = ['COMMON', 'R', 'SR', 'SSR', 'RARE', 'EPIC', 'LEGENDARY'];
 
 const inputStyle: React.CSSProperties = {
@@ -36,8 +40,13 @@ type Props = {
 };
 
 export default function DropTableEditor({ value, onChange, itemIds, materialIds }: Props) {
+  const summary = summarizeDropTable(value);
+
   function update(idx: number, patch: Partial<DropEntry>) {
-    const next = value.map((e, i) => (i === idx ? { ...e, ...patch } : e));
+    const normalizedPatch = patch.rate === undefined
+      ? patch
+      : { ...patch, rate: normalizeDropRate(patch.rate) };
+    const next = value.map((e, i) => (i === idx ? { ...e, ...normalizedPatch } : e));
     onChange(next);
   }
 
@@ -65,7 +74,7 @@ export default function DropTableEditor({ value, onChange, itemIds, materialIds 
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '100px 1fr 80px 80px 60px 32px',
+              gridTemplateColumns: '100px 1fr 80px 96px 60px 32px',
               gap: 6,
               paddingBottom: 4,
               borderBottom: '1px solid rgba(139,0,255,0.1)',
@@ -83,14 +92,14 @@ export default function DropTableEditor({ value, onChange, itemIds, materialIds 
               key={idx}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '100px 1fr 80px 80px 60px 32px',
+              gridTemplateColumns: '100px 1fr 80px 96px 60px 32px',
                 gap: 6,
                 alignItems: 'center',
               }}
             >
               <select
                 value={entry.type}
-                onChange={(e) => update(idx, { type: e.target.value, itemId: '' })}
+                onChange={(e) => update(idx, { type: e.target.value as DropEntry['type'], itemId: '' })}
                 style={selectStyle}
               >
                 {DROP_TYPES.map((t) => (
@@ -123,15 +132,20 @@ export default function DropTableEditor({ value, onChange, itemIds, materialIds 
                 ))}
               </select>
 
-              <input
-                type="number"
-                value={entry.rate}
-                onChange={(e) => update(idx, { rate: parseFloat(e.target.value) || 0 })}
-                min={0}
-                max={1}
-                step={0.01}
-                style={inputStyle}
-              />
+              <div style={{ display: 'grid', gap: 3 }}>
+                <input
+                  type="number"
+                  value={entry.rate}
+                  onChange={(e) => update(idx, { rate: Number.parseFloat(e.target.value) || 0 })}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  style={inputStyle}
+                />
+                <span style={{ color: '#A5A9B4', fontSize: 10, fontFamily: 'Space Grotesk, sans-serif' }}>
+                  {formatDropRate(entry.rate)}
+                </span>
+              </div>
 
               <input
                 type="checkbox"
@@ -160,6 +174,32 @@ export default function DropTableEditor({ value, onChange, itemIds, materialIds 
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {value.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 8,
+            alignItems: 'center',
+            marginBottom: 12,
+            padding: '8px 10px',
+            background: 'rgba(139,0,255,0.06)',
+            border: '1px solid rgba(139,0,255,0.16)',
+            borderRadius: 6,
+            color: '#A5A9B4',
+            fontSize: 11,
+            fontFamily: 'Space Grotesk, sans-serif',
+          }}
+        >
+          <strong style={{ color: '#D4AF37', fontSize: 11 }}>
+            {DROP_ROLL_MODE === 'MULTI_ROLL' ? '複数抽選' : '単一抽選'}
+          </strong>
+          <span>期待値 {formatDropRate(summary.expectedDrops)}</span>
+          <span>表示分 {formatDropRate(summary.visibleExpectedDrops)}</span>
+          {summary.hiddenCount > 0 && <span>非表示 {summary.hiddenCount}件</span>}
         </div>
       )}
 

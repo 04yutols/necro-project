@@ -135,7 +135,7 @@ type BattleAvState = {
 
 const INIT_ENEMIES: EnemyState[] = [
   { id: 0, name: '霊体騎士', nameEn: 'WRAITH KNIGHT', hp: 340, maxHp: 340, atk: 85,  color: '#06b6d4', pos: 'left',   size: 0.78, targeted: false },
-  { id: 1, name: '骨巨人',   nameEn: 'BONE GIANT',    hp: 580, maxHp: 580, atk: 120, color: '#8A2BE2', pos: 'center', size: 0.88, targeted: true  },
+  { id: 1, name: '骨巨人',   nameEn: 'BONE GIANT',    hp: 580, maxHp: 580, atk: 120, color: '#8B00FF', pos: 'center', size: 0.88, targeted: true  },
   { id: 2, name: '死骨竜',   nameEn: 'UNDEAD WYRM',   hp: 420, maxHp: 420, atk: 100, color: '#ef4444', pos: 'right',  size: 0.80, targeted: false },
 ];
 
@@ -316,7 +316,7 @@ function toEnemyState(enemy: EnemyData, index: number, count: number): EnemyStat
     resistances: { ...enemy.resistances },
     effectHit: enemy.stats.effectHit,
     effectRes: enemy.stats.effectRes,
-    color: enemy.battle?.color ?? (enemy.tier === 'BOSS' ? '#ef4444' : '#8A2BE2'),
+    color: enemy.battle?.color ?? (enemy.tier === 'BOSS' ? '#ef4444' : '#8B00FF'),
     pos: positions[index] ?? 'center',
     size: enemy.battle?.size ?? (enemy.tier === 'BOSS' ? 0.98 : enemy.tier === 'ELITE' ? 0.88 : 0.74),
     tier: enemy.tier,
@@ -1116,7 +1116,7 @@ function TurnOrderStrip({ order }: { order: TurnOrderEntry[] }) {
         fontWeight: 800,
         letterSpacing: '0.12em',
         lineHeight: 1.25,
-        color: '#6b5f7a',
+        color: '#A5A9B4',
       }}>
         TURN
         <div style={{ color: '#BC00FB' }}>ORDER</div>
@@ -1164,7 +1164,7 @@ function TurnOrderStrip({ order }: { order: TurnOrderEntry[] }) {
             }}>
               {label}
             </div>
-            <div style={{ fontFamily: 'monospace', fontSize: 7, lineHeight: 1, color: isCurrent ? color : '#6b5f7a' }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 7, lineHeight: 1, color: isCurrent ? color : '#A5A9B4' }}>
               {isCurrent ? '▶ ' : ''}{Math.round(actor.currentAv)}
             </div>
           </div>
@@ -1273,7 +1273,7 @@ function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShak
         <path d="M0 200 Q100 185 200 195 Q300 205 393 190 L393 260 L0 260Z" fill="#0a0520" opacity="0.8"/>
         <path d="M0 210 Q100 198 200 205 Q300 212 393 200 L393 260 L0 260Z" fill="#07031a" opacity="0.9"/>
         <path d="M80 212 Q120 208 160 210 Q200 212 240 208 Q280 205 320 210"
-          stroke={demonized ? demonColor : '#8A2BE2'} strokeWidth="1" strokeOpacity="0.3" fill="none"/>
+          stroke={demonized ? demonColor : '#8B00FF'} strokeWidth="1" strokeOpacity="0.3" fill="none"/>
         {[[30,180],[90,160],[150,175],[230,155],[300,165],[360,172]].map(([x,y],i) => (
           <polygon key={i} points={`${x},${y} ${x-35},210 ${x+35},210`} fill="#0d0520" opacity={0.6+i*0.05}/>
         ))}
@@ -1284,7 +1284,7 @@ function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShak
           <ellipse cx="196" cy="260" rx="180" ry="60" fill={demonColor} opacity="0.10"/>
         )}
         {[...Array(10)].map((_,i) => (
-          <circle key={i} cx={30+i*38} cy={205+Math.sin(i)*5} r={1.5} fill={demonized ? demonColor : '#8A2BE2'} opacity="0.5"/>
+          <circle key={i} cx={30+i*38} cy={205+Math.sin(i)*5} r={1.5} fill={demonized ? demonColor : '#8B00FF'} opacity="0.5"/>
         ))}
       </svg>
 
@@ -1341,7 +1341,7 @@ function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShak
             {/* Enemy name */}
             <div style={{
               textAlign: 'center', fontFamily: "'Cinzel', serif", fontSize: 8.5, fontWeight: 600,
-              color: enemy.targeted ? enemy.color : '#6b5f7a',
+              color: enemy.targeted ? enemy.color : '#A5A9B4',
               letterSpacing: '0.06em',
               textShadow: enemy.targeted ? `0 0 8px ${enemy.color}` : 'none',
               transition: 'color 0.2s',
@@ -1390,7 +1390,7 @@ function BattleLog({ lines }: { lines: string[] }) {
       {lines.slice(-3).map((line, i) => (
         <div key={i} style={{
           fontFamily: "'Inter', sans-serif", fontSize: 10, lineHeight: 1.4,
-          color: i === lines.slice(-3).length - 1 ? '#e2d8f0' : '#6b5f7a',
+          color: i === lines.slice(-3).length - 1 ? '#e2d8f0' : '#A5A9B4',
           animation: i === lines.slice(-3).length - 1 ? 'logFade 0.3s ease-out' : 'none',
         }}>{line}</div>
       ))}
@@ -1422,7 +1422,7 @@ function FormationBadge({ badge, active }: { badge: FormationBadgeMeta; active: 
       color: active ? '#f8f3ff' : '#655974',
       flexShrink: 0,
     }}>
-      <span style={{ color: active ? badge.color : '#4a3a5a', fontSize: 10, lineHeight: 1 }}>{badge.icon}</span>
+      <span style={{ color: active ? badge.color : '#6d5f7a', fontSize: 10, lineHeight: 1 }}>{badge.icon}</span>
       <span style={{
         fontFamily: "'Noto Sans JP', sans-serif",
         fontSize: 9,
@@ -1475,15 +1475,15 @@ function PartyStatusBar({ party, demonized, playerStatusEffects }: { party: Batt
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
             boxShadow: member.active ? `0 0 10px ${member.color}60` : 'none',
           }}>{member.icon}</div>
-          <div style={{ width: 52, flexShrink: 0, fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600, color: member.active ? '#f0ebff' : '#6b5f7a' }}>
+          <div style={{ width: 52, flexShrink: 0, fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600, color: member.active ? '#f0ebff' : '#A5A9B4' }}>
             {member.name}
           </div>
           {member.formation && <FormationBadge badge={member.formation} active={member.hp > 0}/>}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#6b5f7a' }}>HP</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#A5A9B4' }}>HP</div>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: '#f87171' }}>
-                {member.hp}<span style={{ color: '#4a3a5a', fontSize: 8 }}>/{member.maxHp}</span>
+                {member.hp}<span style={{ color: '#6d5f7a', fontSize: 8 }}>/{member.maxHp}</span>
               </div>
             </div>
             <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
@@ -1497,7 +1497,7 @@ function PartyStatusBar({ party, demonized, playerStatusEffects }: { party: Batt
           </div>
           <div data-testid={member.active ? 'player-mp' : undefined} style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#6b5f7a' }}>MP</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#A5A9B4' }}>MP</div>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: '#60a5fa' }}>{member.mp}</div>
             </div>
             <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
@@ -1529,28 +1529,28 @@ function SoulGauge({ value, demonized, demonColor, actionsRemaining }: { value: 
     }}>
       <div style={{
         fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
-        color: demonized ? demonColor : '#8A2BE2', letterSpacing: '0.1em', flexShrink: 0,
-        textShadow: full || demonized ? `0 0 8px ${demonized ? demonColor : '#8A2BE2'}` : 'none',
+        color: demonized ? demonColor : '#D4AF37', letterSpacing: '0.1em', flexShrink: 0,
+        textShadow: full || demonized ? `0 0 8px ${demonized ? demonColor : '#8B00FF'}` : 'none',
       }}>{demonized ? '☠ DEMON' : '☠ SOUL'}</div>
       <div style={{
         flex: 1, height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden',
-        border: `1px solid ${full || demonized ? (demonized ? demonColor + '66' : '#8A2BE260') : 'rgba(255,255,255,0.08)'}`,
-        boxShadow: full || demonized ? `0 0 12px ${demonized ? demonColor + '80' : '#8A2BE280'}` : 'none',
+        border: `1px solid ${full || demonized ? (demonized ? demonColor + '66' : '#8B00FF60') : 'rgba(255,255,255,0.08)'}`,
+        boxShadow: full || demonized ? `0 0 12px ${demonized ? demonColor + '80' : '#8B00FF80'}` : 'none',
       }}>
         <div style={{
           width: `${pct}%`, height: '100%', borderRadius: 4,
           backgroundImage: demonized
             ? `linear-gradient(90deg,#1f0307,${demonColor},#fca5a5)`
-            : 'linear-gradient(90deg,#4a0e8a,#8A2BE2,#c084fc,#8A2BE2)',
+            : 'linear-gradient(90deg,#4a0e8a,#8B00FF,#c084fc,#8B00FF)',
           backgroundSize: '200% 100%',
           animation: full || demonized ? 'soulFill 1.5s linear infinite' : 'none',
-          boxShadow: full || demonized ? `0 0 10px ${demonized ? demonColor : '#8A2BE2'}` : 'none',
+          boxShadow: full || demonized ? `0 0 10px ${demonized ? demonColor : '#8B00FF'}` : 'none',
           transition: 'width 0.6s ease',
         }}/>
       </div>
       <div style={{
         fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
-        color: full || demonized ? (demonized ? demonColor : '#c084fc') : '#4a3a5a', flexShrink: 0,
+        color: full || demonized ? (demonized ? demonColor : '#c084fc') : '#6d5f7a', flexShrink: 0,
       }}>{demonized ? `${actionsRemaining}ACT` : full ? 'MAX' : `${Math.round(pct)}%`}</div>
     </div>
   );
@@ -1651,7 +1651,7 @@ function DemonStatusRibbon({ form, actionsRemaining, ultimateUsed, ultimateName,
           fontFamily: "'Noto Sans JP', sans-serif",
           fontSize: 11,
           fontWeight: 900,
-          color: canUseUltimate ? '#fff7fb' : '#6b5f7a',
+          color: canUseUltimate ? '#fff7fb' : '#A5A9B4',
           lineHeight: 1,
         }}>
           <span style={{ color }}>☠</span>
@@ -1666,7 +1666,7 @@ function DemonStatusRibbon({ form, actionsRemaining, ultimateUsed, ultimateName,
           fontFamily: "'Cinzel', serif",
           fontSize: 8,
           fontWeight: 800,
-          color: canUseUltimate ? color : '#4a3a5a',
+          color: canUseUltimate ? color : '#6d5f7a',
           textAlign: 'center',
           lineHeight: 1.15,
         }}>
@@ -1739,7 +1739,7 @@ function SkillButton({ skill, mp, onClick, demonized }: {
       boxShadow: canUse ? `0 0 12px ${elementStyle.soft}` : 'none',
     }}>
       <div style={{ fontSize: 22, filter: canUse ? `drop-shadow(0 0 8px ${elementStyle.color})` : 'none' }}>{skill.icon}</div>
-      <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700, color: canUse ? '#f0ebff' : '#4a3a5a', textAlign: 'center', lineHeight: 1.2 }}>{skill.name}</div>
+      <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700, color: canUse ? '#f0ebff' : '#6d5f7a', textAlign: 'center', lineHeight: 1.2 }}>{skill.name}</div>
       <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: canUse ? '#60a5fa' : '#2a1a3a', display: 'flex', alignItems: 'center', gap: 2 }}>
         {skill.cost ? <span style={{ color: demonized ? '#ef4444' : '#60a5fa' }}>{skill.cost}</span> : `MP ${skill.mp ?? 0}`}
       </div>
@@ -1772,12 +1772,12 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
       <button type="button" onClick={onAuto} style={{
         minHeight: 38,
         padding: '0 12px', borderRadius: 10,
-        background: auto ? 'rgba(138,43,226,0.3)' : 'rgba(255,255,255,0.05)',
-        border: `1px solid ${auto ? '#8A2BE280' : 'rgba(255,255,255,0.08)'}`,
+        background: auto ? 'rgba(139,0,255,0.28)' : 'rgba(255,255,255,0.05)',
+        border: `1px solid ${auto ? '#8B00FF80' : 'rgba(255,255,255,0.08)'}`,
         fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
-        color: auto ? '#c084fc' : '#6b5f7a',
+        color: auto ? '#E9D5FF' : '#A5A9B4',
         cursor: 'pointer', letterSpacing: '0.06em',
-        boxShadow: auto ? '0 0 10px rgba(138,43,226,0.3)' : 'none',
+        boxShadow: auto ? '0 0 10px rgba(139,0,255,0.28)' : 'none',
         transition: 'all 0.2s ease',
       }}>AUTO {auto ? 'ON' : 'OFF'}</button>
       <div style={{
@@ -1802,10 +1802,10 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
                 minWidth: 42,
                 padding: '0 7px',
                 borderRadius: 9,
-                background: active ? 'linear-gradient(135deg, rgba(138,43,226,0.35), rgba(192,132,252,0.16))' : 'transparent',
+                background: active ? 'linear-gradient(135deg, rgba(139,0,255,0.34), rgba(212,175,55,0.12))' : 'transparent',
                 border: `1px solid ${active ? '#c084fc70' : 'transparent'}`,
-                boxShadow: active ? '0 0 12px rgba(138,43,226,0.28)' : 'none',
-                color: active ? '#f0ebff' : '#7f7194',
+                boxShadow: active ? '0 0 12px rgba(139,0,255,0.26)' : 'none',
+                color: active ? '#f0ebff' : '#A5A9B4',
                 fontFamily: "'Cinzel', serif",
                 fontSize: 10,
                 fontWeight: 900,
@@ -1825,10 +1825,10 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
         background: canEscape ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.03)',
         border: `1px solid ${canEscape ? '#ef444440' : 'rgba(255,255,255,0.05)'}`,
         fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
-        color: canEscape ? '#f87171' : '#2a1a3a',
+        color: canEscape ? '#fca5a5' : '#6d5f7a',
         cursor: canEscape ? 'pointer' : 'default',
         opacity: canEscape ? 1 : 0.4, letterSpacing: '0.06em',
-      }}>逃走</button>
+      }}>撤退</button>
     </div>
   );
 }
@@ -1879,6 +1879,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
   const [skillEffect, setSkillEffect] = useState<ActiveSkillEffect | null>(null);
   const [demonBurst, setDemonBurst] = useState<DemonBurstState | null>(null);
   const [turnOrderPreview, setTurnOrderPreview] = useState<TurnOrderEntry[]>([]);
+  const [showRetreatConfirm, setShowRetreatConfirm] = useState(false);
 
   const [showResult, setShowResult] = useState(false);
   const [battleResult, setBattleResult] = useState<{
@@ -1915,7 +1916,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
       id: 'player', name: player?.name ?? '骸骨騎士', icon: '💀',
       hp: playerHp, maxHp: playerMaxHp,
       mp: player?.currentEnergy ?? 0, maxMp: player?.maxEnergy ?? 100,
-      color: '#8A2BE2', active: phase === 'playerTurn',
+      color: '#8B00FF', active: phase === 'playerTurn',
     },
     ...party.slice(0, 3).map((m, i): BattlePartyMember => m ? {
       id: m.id, name: m.name, icon: m.tribe === 'UNDEAD' ? '🧟' : '👻',
@@ -1925,7 +1926,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
       formation: FORMATION_BADGES[i],
     } : {
       id: `slot_${i}`, name: `使役魔${i+1}`, icon: '💀',
-      hp: 0, maxHp: 100, mp: 0, maxMp: 100, color: '#4a3a5a', active: false,
+      hp: 0, maxHp: 100, mp: 0, maxMp: 100, color: '#6d5f7a', active: false,
       formation: FORMATION_BADGES[i],
     }),
   ];
@@ -2265,6 +2266,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     setDemonUltimateUsed(false);
     setPlayerStatusEffects([]);
     setAuto(false);
+    setShowRetreatConfirm(false);
     setDemonBurst(null);
     setSkillEffect(null);
     setFlashColor(null);
@@ -3197,6 +3199,14 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     setEnemies(prev => prev.map(e => ({ ...e, targeted: e.id === eid })));
   }
 
+  function confirmRetreat() {
+    setShowRetreatConfirm(false);
+    setAuto(false);
+    addLog('撤退した。報酬は獲得できません。');
+    restoreEnergy();
+    onEnd();
+  }
+
   // Auto battle
   useEffect(() => {
     console.log('[AUTO effect]', { auto, phase, speedMs });
@@ -3249,9 +3259,9 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
           </div>
           <div style={{
             fontFamily: "'Cinzel', serif", fontSize: 11, fontWeight: 700,
-            color: demonized ? demonColor : '#8A2BE2',
+            color: demonized ? demonColor : '#D4AF37',
             letterSpacing: '0.12em',
-            textShadow: demonized ? `0 0 12px ${demonColor}` : '0 0 8px #8A2BE2',
+            textShadow: demonized ? `0 0 12px ${demonColor}` : '0 0 8px #8B00FF',
             transition: 'all 0.5s ease',
           }}>{demonized ? `☠ ${demonForm.formName}` : currentWave.isBoss ? `⚠ ${currentWave.title} BOSS` : `${currentWave.title} — ${currentWave.label}/${battleWaves.length}`}</div>
           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: phaseMeta.color, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -3324,7 +3334,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
         {phase === 'skillMenu' ? (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600, color: demonized ? '#ef4444' : '#8A2BE2', letterSpacing: '0.1em' }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600, color: demonized ? '#ef4444' : '#D4AF37', letterSpacing: '0.1em' }}>
                 {demonized ? '魔神化スキル選択' : 'スキル選択'}
               </div>
               <div onClick={() => setBattlePhase('playerTurn')} style={{
@@ -3424,13 +3434,13 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
                 id="tut-attack-btn"
                 icon={demonized ? demonForm.visual?.icon ?? '☠' : '⚔'} label={demonized ? '魔撃' : '攻撃'}
                 sublabel={demonized ? 'DEMON' : 'ATTACK'}
-                enabled={phase === 'playerTurn'} color={demonized ? demonColor : '#8A2BE2'}
+                enabled={phase === 'playerTurn'} color={demonized ? demonColor : '#8B00FF'}
                 demonized={demonized} onClick={handleAttack}/>
               <CommandButton
                 id="tut-skill-btn"
                 icon={demonized ? '✦' : '🔮'} label="スキル"
                 sublabel={demonized ? 'DISTORT' : 'SKILL'}
-                enabled={phase === 'playerTurn'} color={demonized ? demonColor : '#8A2BE2'}
+                enabled={phase === 'playerTurn'} color={demonized ? demonColor : '#8B00FF'}
                 demonized={demonized} onClick={() => setBattlePhase('skillMenu')}/>
               <CommandButton
                 icon="🧪" label="道具" sublabel="ITEM"
@@ -3456,8 +3466,87 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
         auto={auto} speed={speed}
         onAuto={() => setAuto(a => !a)}
         onSpeedChange={setSpeed}
-        onEscape={() => { addLog('逃走した。'); restoreEnergy(); onEnd(); }}
+        onEscape={() => { setAuto(false); setShowRetreatConfirm(true); }}
         canEscape={true}/>
+
+      {showRetreatConfirm && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="battle-retreat-title"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 60,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 18,
+            background: 'rgba(0,0,0,0.68)',
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          <div
+            style={{
+              width: 'min(360px, 100%)',
+              borderRadius: 14,
+              border: '1px solid rgba(239,68,68,0.42)',
+              background: 'linear-gradient(180deg, rgba(16,6,22,0.98), rgba(5,2,12,0.98))',
+              boxShadow: '0 24px 70px rgba(0,0,0,0.72), 0 0 24px rgba(239,68,68,0.16)',
+              padding: 16,
+              color: '#F0EAFF',
+            }}
+          >
+            <h2
+              id="battle-retreat-title"
+              style={{
+                margin: 0,
+                fontFamily: "'Cinzel', serif",
+                fontSize: 17,
+                fontWeight: 900,
+                letterSpacing: '0.08em',
+              }}
+            >
+              戦闘から撤退しますか
+            </h2>
+            <p style={{ margin: '10px 0 16px', color: '#A5A9B4', fontSize: 12, lineHeight: 1.7 }}>
+              現在の戦闘を中断してマップへ戻ります。経験値・ゴールド・ドロップは獲得しません。
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setShowRetreatConfirm(false)}
+                style={{
+                  minHeight: 44,
+                  borderRadius: 10,
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  background: 'rgba(255,255,255,0.045)',
+                  color: '#F0EAFF',
+                  fontWeight: 900,
+                  fontSize: 12,
+                }}
+              >
+                続行
+              </button>
+              <button
+                type="button"
+                onClick={confirmRetreat}
+                style={{
+                  minHeight: 44,
+                  borderRadius: 10,
+                  border: '1px solid rgba(239,68,68,0.52)',
+                  background: 'rgba(239,68,68,0.16)',
+                  color: '#fca5a5',
+                  fontWeight: 900,
+                  fontSize: 12,
+                }}
+              >
+                撤退
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {phase === 'waveTransition' && (
         <div
@@ -3469,7 +3558,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
             alignItems: 'center',
             justifyContent: 'center',
             pointerEvents: 'none',
-            background: 'radial-gradient(ellipse at center, rgba(138,43,226,0.22), transparent 56%)',
+            background: 'radial-gradient(ellipse at center, rgba(139,0,255,0.22), transparent 56%)',
             animation: 'fadeIn 0.18s ease-out',
           }}
         >

@@ -139,7 +139,8 @@ function routeAfterValidate(state: State): 'regenerate' | typeof END {
   return 'regenerate';
 }
 
-const graph = new StateGraph(StateAnnotation)
+function createGraph() {
+  return new StateGraph(StateAnnotation)
   .addNode('generate', generateDraftNode)
   .addNode('validate', validateNode)
   .addEdge(START, 'generate')
@@ -149,6 +150,14 @@ const graph = new StateGraph(StateAnnotation)
     [END]: END,
   })
   .compile();
+}
+
+let graph: ReturnType<typeof createGraph> | null = null;
+
+function getGraph(): ReturnType<typeof createGraph> {
+  graph ??= createGraph();
+  return graph;
+}
 
 export async function runMaterialAgent(input: MaterialAgentInput): Promise<MaterialAgentResult> {
   const balanceCtx: MaterialBalanceContext = {
@@ -161,7 +170,7 @@ export async function runMaterialAgent(input: MaterialAgentInput): Promise<Mater
     ? `${input.rarity} の既存 expValue は ${bands.min}〜${bands.max}。同程度に収める。`
     : `${input.rarity} の既存データが無いため、下位レアリティより明確に高い値にする。`;
 
-  const final = await graph.invoke({
+  const final = await getGraph().invoke({
     requirements: input.requirements,
     rarity: input.rarity,
     balanceCtx,

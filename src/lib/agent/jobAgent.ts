@@ -172,7 +172,8 @@ function routeAfterValidate(state: State): 'regenerate' | typeof END {
   return 'regenerate';
 }
 
-const graph = new StateGraph(StateAnnotation)
+function createGraph() {
+  return new StateGraph(StateAnnotation)
   .addNode('generate', generateDraftNode)
   .addNode('validate', validateNode)
   .addEdge(START, 'generate')
@@ -182,6 +183,14 @@ const graph = new StateGraph(StateAnnotation)
     [END]: END,
   })
   .compile();
+}
+
+let graph: ReturnType<typeof createGraph> | null = null;
+
+function getGraph(): ReturnType<typeof createGraph> {
+  graph ??= createGraph();
+  return graph;
+}
 
 export async function runJobAgent(input: JobAgentInput): Promise<JobAgentResult> {
   const skillMeta: Record<string, { type?: string; element?: string }> = {};
@@ -194,7 +203,7 @@ export async function runJobAgent(input: JobAgentInput): Promise<JobAgentResult>
     skillMeta,
   };
 
-  const final = await graph.invoke({
+  const final = await getGraph().invoke({
     requirements: input.requirements,
     tier: input.tier,
     skills: input.skills,

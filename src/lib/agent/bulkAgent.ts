@@ -114,7 +114,8 @@ function routeAfterGenerate(state: State): 'regenerate' | typeof END {
   return 'regenerate';
 }
 
-const graph = new StateGraph(StateAnnotation)
+function createGraph() {
+  return new StateGraph(StateAnnotation)
   .addNode('generate', generateNode)
   .addEdge(START, 'generate')
   .addConditionalEdges('generate', routeAfterGenerate, {
@@ -122,9 +123,17 @@ const graph = new StateGraph(StateAnnotation)
     [END]: END,
   })
   .compile();
+}
+
+let graph: ReturnType<typeof createGraph> | null = null;
+
+function getGraph(): ReturnType<typeof createGraph> {
+  graph ??= createGraph();
+  return graph;
+}
 
 export async function runBulkAgent(input: BulkAgentInput): Promise<BulkAgentResult> {
-  const final = await graph.invoke({
+  const final = await getGraph().invoke({
     instruction: input.instruction,
     fieldHints: input.fieldHints,
     maxAttempts: input.maxAttempts ?? 3,

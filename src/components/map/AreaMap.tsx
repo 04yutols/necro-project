@@ -57,7 +57,7 @@ const ELEMENT_COLOR: Record<ElementType, string> = {
   WIND: '#7dd3fc',
   ICE: '#93c5fd',
   LIGHT: '#fde68a',
-  DARK: '#8A2BE2',
+  DARK: '#8B00FF',
   NONE: '#a5a9b4',
 };
 
@@ -85,7 +85,7 @@ const WORLD_VIEWBOX = { width: 375, height: 620 };
 function getStageColor(stage: StageData) {
   if (stage.nodeType === 'SAFE') return '#a5a9b4';
   if (stage.nodeType === 'BOSS') return '#ef4444';
-  return ELEMENT_COLOR[stage.element] ?? '#8A2BE2';
+  return ELEMENT_COLOR[stage.element] ?? '#8B00FF';
 }
 
 function getStateLabel(state: StageProgressState) {
@@ -139,7 +139,7 @@ function TerrainLayer() {
       {[[80,376], [92,362], [70,358], [111,344], [95,333], [72,329], [121,319], [105,305]].map(([x, y], i) => (
         <g key={`grave-${i}`} opacity="0.78">
           <path d={`M${x - 5} ${y} L${x - 4} ${y - 12} Q${x} ${y - 18} ${x + 4} ${y - 12} L${x + 5} ${y}Z`} fill="#171221" stroke="#463353" strokeWidth="0.8" />
-          <line x1={x - 3} y1={y - 6} x2={x + 3} y2={y - 6} stroke="#6b5f7a" strokeWidth="0.5" opacity="0.4" />
+          <line x1={x - 3} y1={y - 6} x2={x + 3} y2={y - 6} stroke="#A5A9B4" strokeWidth="0.5" opacity="0.4" />
         </g>
       ))}
       {[[248,112], [259,105], [270,113], [238,96], [283,98]].map(([x, y], i) => (
@@ -176,7 +176,7 @@ function ParticleLayer() {
             width: 1.6 + (i % 3),
             height: 1.6 + (i % 3),
             borderRadius: '50%',
-            background: i % 4 === 0 ? '#ef4444' : i % 3 === 0 ? '#8A2BE2' : '#c084fc',
+            background: i % 4 === 0 ? '#ef4444' : i % 3 === 0 ? '#8B00FF' : '#c084fc',
             opacity: 0.65,
             animation: `particleRise ${3 + (i % 4)}s ease-out infinite`,
             animationDelay: `${(i * 0.31) % 4}s`,
@@ -357,7 +357,7 @@ function HeaderStat({ label, value, icon }: { label: string; value: string; icon
     }}>
       <div style={{ color: '#c084fc', flexShrink: 0 }}>{icon}</div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 7, color: '#6b5f7a', letterSpacing: '0.13em', fontWeight: 800 }}>{label}</div>
+        <div style={{ fontSize: 7, color: '#A5A9B4', letterSpacing: '0.13em', fontWeight: 800 }}>{label}</div>
         <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, color: '#f0ebff', fontWeight: 800, whiteSpace: 'nowrap' }}>{value}</div>
       </div>
     </div>
@@ -407,7 +407,7 @@ function WorldTerrainLayer() {
           cx={(i * 43 + 18) % WORLD_VIEWBOX.width}
           cy={(i * 67 + 24) % WORLD_VIEWBOX.height}
           r={0.7 + (i % 3) * 0.42}
-          fill={i % 4 === 0 ? '#8A2BE2' : '#fff'}
+          fill={i % 4 === 0 ? '#8B00FF' : '#fff'}
           opacity={0.08 + (i % 6) * 0.032}
         />
       ))}
@@ -653,7 +653,7 @@ function WavePreview({ stage }: { stage: StageData }) {
       <div style={panelTitleStyle}>WAVE STRUCTURE</div>
       <div style={{ display: 'grid', gap: 7 }}>
         {waves.map(wave => {
-          const color = wave.role === 'BOSS' ? '#ef4444' : wave.role === 'ELITE' ? '#f59e0b' : wave.role === 'SHIELD' ? '#38bdf8' : '#8A2BE2';
+          const color = wave.role === 'BOSS' ? '#ef4444' : wave.role === 'ELITE' ? '#f59e0b' : wave.role === 'SHIELD' ? '#38bdf8' : '#8B00FF';
           return (
             <div key={wave.label} style={{
               display: 'grid',
@@ -678,7 +678,7 @@ function WavePreview({ stage }: { stage: StageData }) {
                     </span>
                   ))}
                 </div>
-                <div style={{ marginTop: 2, fontSize: 8.5, color: '#6b5f7a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wave.intent}</div>
+                <div style={{ marginTop: 2, fontSize: 8.5, color: '#A5A9B4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wave.intent}</div>
               </div>
             </div>
           );
@@ -700,7 +700,7 @@ const panelTitleStyle: CSSProperties = {
   fontFamily: "'Cinzel', serif",
   fontSize: 8,
   fontWeight: 900,
-  color: '#8A2BE2',
+  color: '#D4AF37',
   letterSpacing: '0.13em',
   marginBottom: 7,
 };
@@ -711,7 +711,7 @@ function WeaknessPreview({ stage }: { stage: StageData }) {
     <div style={infoPanelStyle}>
       <div style={panelTitleStyle}>WEAKNESS</div>
       {weaknesses.length === 0 ? (
-        <div style={{ fontSize: 10, color: '#6b5f7a' }}>なし</div>
+        <div style={{ fontSize: 10, color: '#A5A9B4' }}>なし</div>
       ) : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {weaknesses.map(element => (
@@ -743,7 +743,7 @@ function DropPreview({ stage }: { stage: StageData }) {
       <div style={panelTitleStyle}>DROPS</div>
       <div style={{ display: 'grid', gap: 6 }}>
         {visibleDrops.length === 0 ? (
-          <div style={{ fontSize: 10, color: '#6b5f7a' }}>報酬なし</div>
+          <div style={{ fontSize: 10, color: '#A5A9B4' }}>報酬なし</div>
         ) : visibleDrops.map(drop => {
           const rarity = drop.rarity ?? 'COMMON';
           const color = RARITY_COLOR[rarity] ?? '#a5a9b4';
@@ -854,7 +854,7 @@ function DetailSheet({
                 fontWeight: 900,
               }}>{getStateLabel(state)}</span>
               {stage.nodeType !== 'SAFE' && (
-                <span style={{ fontSize: 8, color: '#6b5f7a', fontWeight: 800 }}>3 WAVE / STAMINA FREE</span>
+                <span style={{ fontSize: 8, color: '#A5A9B4', fontWeight: 800 }}>3 WAVE / STAMINA FREE</span>
               )}
             </div>
             <div style={{
@@ -1058,10 +1058,10 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
   if (!isMounted || !player) return null;
 
   const partyDisplay = [
-    { icon: '☠', name: player.name, color: '#8A2BE2' },
+    { icon: '☠', name: player.name, color: '#8B00FF' },
     ...party.slice(0, 2).map((monster, i) => monster
       ? { icon: monster.tribe === 'DEMON' ? '◆' : '☾', name: monster.name, color: ['#22c55e', '#38bdf8'][i] }
-      : { icon: '+', name: '未配置', color: '#4a3a5a' }
+      : { icon: '+', name: '未配置', color: '#6d5f7a' }
     ),
   ];
 
@@ -1142,13 +1142,13 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                 <ChevronLeft size={15} />
                 ホーム
               </button>
-              <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#8A2BE2', letterSpacing: '0.18em' }}>LAYER 1 / WORLD MAP</div>
+              <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#D4AF37', letterSpacing: '0.18em' }}>LAYER 1 / WORLD MAP</div>
               <div style={{
                 fontFamily: "'Cinzel', serif",
                 fontSize: 'clamp(19px, 5.5vw, 25px)',
                 fontWeight: 900,
                 letterSpacing: '0.04em',
-                textShadow: '0 0 20px rgba(138,43,226,0.58)',
+                textShadow: '0 0 20px rgba(139,0,255,0.58)',
                 lineHeight: 1.1,
               }}>ワールドマップ</div>
             </div>
@@ -1182,14 +1182,14 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
               backdropFilter: 'blur(14px)',
             }}>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#8A2BE2', fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 900, letterSpacing: '0.14em' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#D4AF37', fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 900, letterSpacing: '0.14em' }}>
                   <Castle size={14} />
                   CURRENT FRONT
                 </div>
                 <div style={{ marginTop: 3, color: '#f0ebff', fontFamily: "'Cinzel', serif", fontSize: 14, fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {currentWorldArea?.nameJa ?? '未選択'}
                 </div>
-                <div style={{ marginTop: 2, color: '#6b5f7a', fontSize: 9 }}>
+                <div style={{ marginTop: 2, color: '#A5A9B4', fontSize: 9 }}>
                   Layer 1で領域を選び、Layer 2のエリアマップへ進む
                 </div>
               </div>
@@ -1201,8 +1201,8 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   minHeight: 44,
                   padding: '0 15px',
                   borderRadius: 12,
-                  border: '1px solid rgba(138,43,226,0.68)',
-                  background: 'linear-gradient(135deg, rgba(138,43,226,0.42), rgba(6,3,16,0.92))',
+                  border: '1px solid rgba(139,0,255,0.68)',
+                  background: 'linear-gradient(135deg, rgba(139,0,255,0.42), rgba(6,3,16,0.92))',
                   color: '#f0ebff',
                   fontFamily: "'Cinzel', serif",
                   fontSize: 11,
@@ -1211,7 +1211,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 7,
-                  boxShadow: '0 0 18px rgba(138,43,226,0.32)',
+                  boxShadow: '0 0 18px rgba(139,0,255,0.32)',
                 }}
               >
                 <MapPin size={15} />
@@ -1347,13 +1347,13 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
               <ChevronLeft size={15} />
               ワールド
             </button>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#8A2BE2', letterSpacing: '0.18em' }}>LAYER 2 / AREA MAP</div>
+            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#D4AF37', letterSpacing: '0.18em' }}>LAYER 2 / AREA MAP</div>
             <div style={{
               fontFamily: "'Cinzel', serif",
               fontSize: 'clamp(18px, 5vw, 23px)',
               fontWeight: 900,
               letterSpacing: '0.04em',
-              textShadow: '0 0 20px rgba(138,43,226,0.58)',
+              textShadow: '0 0 20px rgba(139,0,255,0.58)',
               lineHeight: 1.1,
             }}>{selectedWorldArea?.nameJa ?? 'エリアマップ'}</div>
           </div>
@@ -1410,8 +1410,8 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                 minHeight: 44,
                 padding: '0 15px',
                 borderRadius: 12,
-                border: '1px solid rgba(138,43,226,0.68)',
-                background: 'linear-gradient(135deg, rgba(138,43,226,0.42), rgba(6,3,16,0.92))',
+                border: '1px solid rgba(139,0,255,0.68)',
+                background: 'linear-gradient(135deg, rgba(139,0,255,0.42), rgba(6,3,16,0.92))',
                 color: '#f0ebff',
                 fontFamily: "'Cinzel', serif",
                 fontSize: 11,
@@ -1420,7 +1420,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 7,
-                boxShadow: '0 0 18px rgba(138,43,226,0.32)',
+                boxShadow: '0 0 18px rgba(139,0,255,0.32)',
               }}
             >
               <MapPin size={15} />

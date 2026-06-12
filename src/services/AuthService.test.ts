@@ -1,4 +1,8 @@
-import { validatePassword } from './AuthService';
+import bcrypt from 'bcryptjs';
+import { prisma } from '@/lib/prisma';
+import { changePasswordForUser, validatePassword } from './AuthService';
+
+jest.setTimeout(30000);
 
 describe('validatePassword', () => {
   describe('合格ケース', () => {
@@ -66,5 +70,72 @@ describe('validatePassword', () => {
     test('合格時はnullを返す（エラーなし）', () => {
       expect(validatePassword('CodexPass123')).toBeNull();
     });
+  });
+});
+
+describe('changePasswordForUser', () => {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const email = `codex-pass-${suffix}@example.test`;
+  let userId = '';
+
+  beforeAll(async () => {
+    const passwordHash = await bcrypt.hash('CurrentPass123', 12);
+    const user = await prisma.user.create({
+      data: {
+        email,
+        displayName: 'PASS',
+        name: 'PASS',
+        passwordHash,
+      },
+      select: { id: true },
+    });
+    userId = user.id;
+  });
+
+  afterAll(async () => {
+    await prisma.user.deleteMany({ where: { email } });
+  });
+
+  test('rejects wrong current password without invalidating sessions', async () => {
+    const before = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { sessionVersion: true },
+    });
+
+    const result = await changePasswordForUser({
+      userId,
+      currentPassword: 'WrongPass123',
+      newPassword: 'NextPass1234',
+    });
+
+    const after = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { sessionVersion: true },
+    });
+    expect(result.success).toBe(false);
+    expect(after.sessionVersion).toBe(before.sessionVersion);
+  });
+
+  test('updates password hash and increments sessionVersion in one flow', async () => {
+    const before = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { passwordHash: true, sessionVersion: true },
+    });
+
+    const result = await changePasswordForUser({
+      userId,
+      currentPassword: 'CurrentPass123',
+      newPassword: 'NextPass1234',
+    });
+
+    const after = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { passwordHash: true, sessionVersion: true },
+    });
+    expect(result).toEqual({ success: true });
+    await expect(bcrypt.compare('NextPass1234', after.passwordHash ?? '')).resolves.toBe(true);
+    await expect(bcrypt.compare('CurrentPass123', after.passwordHash ?? '')).resolves.toBe(false);
+    expect(after.passwordHash).not.toBe(before.passwordHash);
+    expect(after.sessionVersion).toBe(before.sessionVersion + 1);
   });
 });

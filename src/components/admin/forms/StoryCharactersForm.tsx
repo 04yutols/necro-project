@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { saveStoryCharacter } from '@/app/admin/actions';
+import { deleteStoryCharacter, saveStoryCharacter } from '@/app/admin/actions';
 import FormField from './shared/FormField';
 import type { StoryCharacter } from '@/types/story';
 
@@ -16,18 +16,23 @@ const inputStyle: React.CSSProperties = {
 function CharacterCard({
   character,
   onSaved,
+  onDeleted,
 }: {
   character: StoryCharacter;
   onSaved: (c: StoryCharacter) => void;
+  onDeleted: (id: string) => void;
 }) {
   const [form, setForm] = useState<StoryCharacter>(character);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [expressionInput, setExpressionInput] = useState(character.expressions.join(', '));
 
   function update<K extends keyof StoryCharacter>(key: K, val: StoryCharacter[K]) {
     setForm((f) => ({ ...f, [key]: val }));
     setSaved(false);
+    setError(null);
   }
 
   async function handleSave() {
@@ -37,13 +42,28 @@ function CharacterCard({
       .filter(Boolean);
     const updated = { ...form, expressions };
     setSaving(true);
+    setError(null);
     const res = await saveStoryCharacter(updated);
     setSaving(false);
     if (res.success) {
       setSaved(true);
       onSaved(updated);
     } else {
-      alert(`保存に失敗しました: ${res.error}`);
+      setError(res.error ?? '保存に失敗しました');
+    }
+  }
+
+  async function handleDelete() {
+    if (isNarrator) return;
+    if (!window.confirm(`${form.nameJa || form.id} を削除しますか？`)) return;
+    setDeleting(true);
+    setError(null);
+    const res = await deleteStoryCharacter(form.id);
+    setDeleting(false);
+    if (res.success) {
+      onDeleted(form.id);
+    } else {
+      setError(res.error ?? '削除に失敗しました');
     }
   }
 
@@ -78,7 +98,7 @@ function CharacterCard({
         </div>
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || deleting}
           style={{
             height: 38, padding: '0 22px', borderRadius: 8,
             background: saved
@@ -94,10 +114,33 @@ function CharacterCard({
         >
           {saving ? '保存中…' : saved ? '保存済み ✓' : '保存'}
         </button>
+        {!isNarrator && (
+          <button
+            onClick={handleDelete}
+            disabled={saving || deleting}
+            style={{
+              height: 38, padding: '0 14px', borderRadius: 8,
+              background: 'rgba(127,29,29,0.22)',
+              border: '1px solid rgba(220,38,38,0.4)',
+              color: '#fca5a5',
+              cursor: saving || deleting ? 'not-allowed' : 'pointer',
+              fontSize: 12, fontWeight: 700,
+              fontFamily: 'Space Grotesk, sans-serif',
+              opacity: saving || deleting ? 0.7 : 1,
+            }}
+          >
+            {deleting ? '削除中…' : '削除'}
+          </button>
+        )}
       </div>
 
       {/* Body */}
       <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {error && (
+          <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(127,29,29,0.22)', border: '1px solid rgba(220,38,38,0.35)', color: '#fca5a5', fontSize: 12 }}>
+            {error}
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <FormField label="日本語名 (nameJa)">
             <input
@@ -219,6 +262,14 @@ export default function StoryCharactersForm({
     setChars((prev) => ({ ...prev, [updated.id]: updated }));
   }
 
+  function handleDeleted(id: string) {
+    setChars((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
   const entries = Object.values(chars).sort((a, b) => {
     if (a.id === 'narrator') return 1;
     if (b.id === 'narrator') return -1;
@@ -258,6 +309,7 @@ export default function StoryCharactersForm({
             key={char.id}
             character={char}
             onSaved={handleSaved}
+            onDeleted={handleDeleted}
           />
         ))}
       </div>

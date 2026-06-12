@@ -1,127 +1,206 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { ArrowRight, Sparkles, X } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
-import { MonsterData, SoulShardData } from '../../types/game';
-import { Sparkles, X, ArrowRight } from 'lucide-react';
+import type { MonsterData, SoulShardData } from '../../types/game';
 
 interface ShardEquipModalProps {
   monster: MonsterData;
   onClose: () => void;
 }
 
+type Feedback = { kind: 'success' | 'error'; text: string } | null;
+
 export default function ShardEquipModal({ monster, onClose }: ShardEquipModalProps) {
   const { soulShards, equipShard } = useGameStore();
   const [selectedShard, setSelectedShard] = useState<SoulShardData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
 
-  const currentShard = soulShards.find(s => s.id === monster.equippedShardId);
-  const currentAtk = monster.stats.atk + (currentShard?.effect.atkBonus || 0);
+  const currentShard = soulShards.find((s) => s.id === monster.equippedShardId);
+  const currentAtk = monster.stats.atk + (currentShard?.effect.atkBonus ?? 0);
+  const previewAtk = selectedShard ? monster.stats.atk + selectedShard.effect.atkBonus : currentAtk;
+  const delta = selectedShard ? selectedShard.effect.atkBonus - (currentShard?.effect.atkBonus ?? 0) : 0;
+  const selectedIsCurrent = Boolean(selectedShard && currentShard?.id === selectedShard.id);
+
+  const shardRows = useMemo(
+    () => [...soulShards].sort((a, b) => b.effect.atkBonus - a.effect.atkBonus),
+    [soulShards],
+  );
 
   const handleEquip = async () => {
-    if (!selectedShard) return;
+    if (!selectedShard || selectedIsCurrent) return;
     setIsProcessing(true);
+    setFeedback(null);
     try {
       equipShard(monster.id, selectedShard.id);
-      onClose();
+      setFeedback({ kind: 'success', text: '魂の欠片を装備しました' });
+      window.setTimeout(onClose, 180);
     } catch (e) {
-      console.error(e);
+      setFeedback({
+        kind: 'error',
+        text: e instanceof Error ? e.message : '装備に失敗しました',
+      });
     } finally {
       setIsProcessing(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="bg-dark border-2 border-necro w-full max-w-lg rounded-xl shadow-[0_0_50px_rgba(0,0,0,1)] overflow-hidden font-mono text-gray-300 relative z-[101]">
-        <header className="p-4 border-b border-necro/30 flex justify-between items-center bg-black/20">
-          <h2 className="text-xl font-bold text-necro uppercase flex items-center gap-2">
-            <Sparkles size={20} /> 魂の欠片 装備
-          </h2>
-          <button onClick={onClose} className="hover:text-white transition-colors">
-            <X size={24} />
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/85 p-4 backdrop-blur-md"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shard-equip-title"
+    >
+      <div className="gothic-panel relative z-[101] w-full max-w-lg overflow-hidden rounded-lg text-[#F0EAFF] shadow-[0_24px_70px_rgba(0,0,0,0.72)]">
+        <header className="relative flex items-center justify-between border-b border-white/10 bg-black/20 px-4 py-3">
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-[10px] font-black tracking-[0.18em] text-[#D4AF37]">
+              <Sparkles size={14} />
+              SOUL SHARD
+            </div>
+            <h2 id="shard-equip-title" className="m-0 font-cinzel text-lg font-black tracking-[0.08em]">
+              魂の欠片 装備
+            </h2>
+          </div>
+          <button
+            type="button"
+            aria-label="閉じる"
+            onClick={onClose}
+            className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-[#A5A9B4] transition-colors hover:text-[#F0EAFF]"
+          >
+            <X size={18} />
           </button>
         </header>
 
-        <div className="p-6 space-y-6">
-          {/* 対象モンスター情報 */}
-          <div className="bg-necro/10 p-4 rounded border border-necro/30 flex justify-between items-center">
-            <div>
-              <div className="text-xs text-necro mb-1 uppercase font-bold">Target Monster</div>
-              <div className="text-lg font-bold text-white">{monster.name}</div>
+        <div className="relative space-y-5 p-4">
+          <section className="rounded-lg border border-[#8B00FF33] bg-[#0A0612]/85 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="mb-1 text-[10px] font-black tracking-[0.16em] text-[#A5A9B4]">対象</div>
+                <div className="truncate font-cinzel text-lg font-black">{monster.name}</div>
+                <div className="mt-1 text-[11px] text-[#8b7da8]">
+                  {currentShard ? `${currentShard.originMonsterName}の欠片を装備中` : '未装備'}
+                </div>
+              </div>
+              <div className="shrink-0 text-right">
+                <div className="text-[10px] font-black tracking-[0.16em] text-[#A5A9B4]">ATK</div>
+                <div className="font-cinzel text-2xl font-black text-[#D4AF37]">{currentAtk}</div>
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-xs text-gray-500 mb-1 uppercase">Current ATK</div>
-              <div className="text-xl font-bold">{currentAtk}</div>
-            </div>
-          </div>
+          </section>
 
-          {/* 欠片リスト */}
-          <div>
-            <h3 className="text-sm font-bold mb-3 text-gray-400 uppercase">Available Soul Shards</h3>
-            <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-              {soulShards.length === 0 ? (
-                <div className="text-center py-8 text-gray-600 border border-dashed border-gray-800 rounded px-4">
-                  <p className="italic mb-2">No shards available.</p>
-                  <p className="text-[10px] uppercase">モンスターを「魂石化」して欠片を生成してください。</p>
+          <section>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="m-0 text-[11px] font-black tracking-[0.18em] text-[#A5A9B4]">装備候補</h3>
+              <span className="text-[10px] font-bold text-[#8b7da8]">{shardRows.length} 個</span>
+            </div>
+
+            <div className="custom-scrollbar grid max-h-52 grid-cols-1 gap-2 overflow-y-auto pr-1">
+              {shardRows.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-white/12 bg-white/[0.025] px-4 py-8 text-center">
+                  <p className="m-0 text-sm font-bold text-[#A5A9B4]">魂の欠片がありません</p>
+                  <p className="m-0 mt-2 text-[11px] leading-5 text-[#8b7da8]">
+                    モンスターを魂石化すると、ここに装備候補が並びます。
+                  </p>
                 </div>
               ) : (
-                soulShards.map((shard) => (
-                  <button
-                    key={shard.id}
-                    onClick={() => setSelectedShard(shard)}
-                    className={`w-full p-3 rounded border text-left transition-all ${
-                      selectedShard?.id === shard.id
-                        ? 'border-necro bg-necro/20 ring-1 ring-necro'
-                        : 'border-gray-800 bg-black/40 hover:border-necro/50'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div className="font-bold text-white text-sm">{shard.originMonsterName}の欠片</div>
-                      <div className="text-necro text-xs font-bold">ATK +{shard.effect.atkBonus}</div>
-                    </div>
-                  </button>
-                ))
+                shardRows.map((shard) => {
+                  const selected = selectedShard?.id === shard.id;
+                  const equipped = currentShard?.id === shard.id;
+                  return (
+                    <button
+                      key={shard.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedShard(shard);
+                        setFeedback(null);
+                      }}
+                      className="w-full rounded-lg border p-3 text-left transition-all"
+                      style={{
+                        background: selected ? 'rgba(139,0,255,0.16)' : 'rgba(0,0,0,0.32)',
+                        borderColor: selected ? 'rgba(212,175,55,0.55)' : 'rgba(255,255,255,0.09)',
+                        boxShadow: selected ? '0 0 18px rgba(139,0,255,0.22)' : 'none',
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-black text-[#F0EAFF]">
+                            {shard.originMonsterName}の欠片
+                          </div>
+                          {equipped && <div className="mt-1 text-[10px] font-bold text-[#D4AF37]">装備中</div>}
+                        </div>
+                        <div className="shrink-0 font-cinzel text-sm font-black text-[#D4AF37]">
+                          ATK +{shard.effect.atkBonus}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </div>
-          </div>
+          </section>
 
-          {/* プレビュー領域 */}
           {selectedShard && (
-            <div className="bg-fuchsia/10 p-4 rounded border border-fuchsia/30 animate-in fade-in slide-in-from-top-2 duration-300">
-              <h3 className="text-xs font-bold mb-3 text-fuchsia uppercase tracking-widest text-center">Status Preview</h3>
-              <div className="flex justify-around items-center">
+            <section className="rounded-lg border border-[#D4AF3744] bg-[#D4AF37]/[0.06] p-4">
+              <div className="mb-3 text-center text-[10px] font-black tracking-[0.18em] text-[#D4AF37]">
+                装備プレビュー
+              </div>
+              <div className="flex items-center justify-center gap-5">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-white">{currentAtk}</div>
-                  <div className="text-[10px] text-gray-500 uppercase mt-1">Current</div>
+                  <div className="font-cinzel text-2xl font-black">{currentAtk}</div>
+                  <div className="mt-1 text-[10px] text-[#8b7da8]">現在</div>
                 </div>
-                <ArrowRight className="text-fuchsia animate-pulse" />
+                <ArrowRight className="text-[#D4AF37]" size={20} />
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]">
-                    {monster.stats.atk + selectedShard.effect.atkBonus}
+                  <div className="font-cinzel text-3xl font-black text-[#86efac] drop-shadow-[0_0_8px_rgba(74,222,128,0.45)]">
+                    {previewAtk}
                   </div>
-                  <div className="text-[10px] text-green-500 uppercase font-bold mt-1">
-                    After ({selectedShard.effect.atkBonus >= (currentShard?.effect.atkBonus || 0) ? '+' : ''}{selectedShard.effect.atkBonus - (currentShard?.effect.atkBonus || 0)})
+                  <div className="mt-1 text-[10px] font-black text-[#86efac]">
+                    {delta >= 0 ? '+' : ''}{delta}
                   </div>
                 </div>
               </div>
+            </section>
+          )}
+
+          {feedback && (
+            <div
+              className="rounded-lg border px-3 py-2 text-sm"
+              style={{
+                background: feedback.kind === 'success' ? 'rgba(34,197,94,0.10)' : 'rgba(139,0,0,0.18)',
+                borderColor: feedback.kind === 'success' ? 'rgba(34,197,94,0.28)' : 'rgba(220,38,38,0.34)',
+                color: feedback.kind === 'success' ? '#86efac' : '#FFB4B4',
+              }}
+            >
+              {feedback.text}
             </div>
           )}
         </div>
 
-        <footer className="p-4 bg-black/40 border-t border-necro/30 flex gap-3">
+        <footer className="relative flex gap-3 border-t border-white/10 bg-black/30 p-4">
           <button
+            type="button"
             onClick={onClose}
-            className="flex-1 py-3 border border-gray-700 hover:bg-gray-800 transition-colors font-bold rounded"
+            className="min-h-12 flex-1 rounded-lg border border-white/12 bg-white/[0.035] text-sm font-black tracking-[0.12em] text-[#A5A9B4]"
           >
-            CANCEL
+            閉じる
           </button>
           <button
-            disabled={!selectedShard || isProcessing}
+            type="button"
+            disabled={!selectedShard || selectedIsCurrent || isProcessing}
             onClick={handleEquip}
-            className="flex-[2] py-3 bg-necro hover:bg-purple-700 disabled:opacity-50 disabled:grayscale transition-all font-bold rounded shadow-[0_0_15px_rgba(168,85,247,0.3)] text-white"
+            className="min-h-12 flex-[2] rounded-lg border text-sm font-black tracking-[0.12em] transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
+            style={{
+              background: 'linear-gradient(135deg, rgba(139,0,255,0.42), rgba(212,175,55,0.14))',
+              borderColor: 'rgba(139,0,255,0.58)',
+              color: '#F0EAFF',
+              boxShadow: '0 0 20px rgba(139,0,255,0.25)',
+            }}
           >
-            {isProcessing ? 'EQUIPPING...' : 'EQUIP SHARD'}
+            {isProcessing ? '装備中' : selectedIsCurrent ? '装備中' : '装備'}
           </button>
         </footer>
       </div>

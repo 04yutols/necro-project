@@ -66,8 +66,9 @@ src/components/
   map/       AreaMap.tsx, MapCanvas.tsx (PixiJS)
   necro/     NecroLab.tsx, ShardEquipModal.tsx, MonsterViewer.tsx
   ui/        ArmySlot, CapsuleStatBar, GameFrame, NecroLog, FuchsiaButton
-  story/     DialogueScene.tsx, MonologueOverlay.tsx, ChapterTitleCard.tsx  ← Phase B 実装予定
-  tutorial/  SpotlightOverlay.tsx, BubbleHint.tsx  ← Phase B 実装予定
+  story/     DialogueScene.tsx, MonologueOverlay.tsx, ChapterTitleCard.tsx, StoryArchive.tsx
+  tutorial/  TutorialOverlay.tsx, SpotlightOverlay.tsx, BubbleHint.tsx, TutorialBanner.tsx
+  store/     useStoryStore.ts, useTutorialStore.ts (story/tutorial runtime state)
 ```
 
 ## Stats System

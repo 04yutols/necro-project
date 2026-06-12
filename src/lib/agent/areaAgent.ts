@@ -139,7 +139,8 @@ function routeAfterValidate(state: State): 'regenerate' | typeof END {
   return 'regenerate';
 }
 
-const graph = new StateGraph(StateAnnotation)
+function createGraph() {
+  return new StateGraph(StateAnnotation)
   .addNode('generate', generateDraftNode)
   .addNode('validate', validateNode)
   .addEdge(START, 'generate')
@@ -149,6 +150,14 @@ const graph = new StateGraph(StateAnnotation)
     [END]: END,
   })
   .compile();
+}
+
+let graph: ReturnType<typeof createGraph> | null = null;
+
+function getGraph(): ReturnType<typeof createGraph> {
+  graph ??= createGraph();
+  return graph;
+}
 
 export async function runAreaAgent(input: AreaAgentInput): Promise<AreaAgentResult> {
   const balanceCtx: AreaBalanceContext = {
@@ -164,7 +173,7 @@ export async function runAreaAgent(input: AreaAgentInput): Promise<AreaAgentResu
   const usedIds = Object.keys(input.existingAreas).join(', ') || '（なし）';
   const slotHint = `既存ID: ${usedIds}。次章なら chapter ${maxChapter + 1} / area ${maxChapter + 1}（sortOrder ${suggestedSortOrder(maxChapter + 1, maxChapter + 1)}）などが空いています。要件に合うスロットを選んでください。`;
 
-  const final = await graph.invoke({
+  const final = await getGraph().invoke({
     requirements: input.requirements,
     balanceCtx,
     slotHint,

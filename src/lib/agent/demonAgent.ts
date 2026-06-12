@@ -182,7 +182,8 @@ function routeAfterValidate(state: State): 'regenerate' | typeof END {
   return 'regenerate';
 }
 
-const graph = new StateGraph(StateAnnotation)
+function createGraph() {
+  return new StateGraph(StateAnnotation)
   .addNode('generate', generateDraftNode)
   .addNode('validate', validateNode)
   .addEdge(START, 'generate')
@@ -192,6 +193,14 @@ const graph = new StateGraph(StateAnnotation)
     [END]: END,
   })
   .compile();
+}
+
+let graph: ReturnType<typeof createGraph> | null = null;
+
+function getGraph(): ReturnType<typeof createGraph> {
+  graph ??= createGraph();
+  return graph;
+}
 
 export async function runDemonAgent(input: DemonAgentInput): Promise<DemonAgentResult> {
   const balanceCtx: DemonBalanceContext = {
@@ -200,7 +209,7 @@ export async function runDemonAgent(input: DemonAgentInput): Promise<DemonAgentR
     owner: input.owner,
   };
 
-  const final = await graph.invoke({
+  const final = await getGraph().invoke({
     requirements: input.requirements,
     owner: input.owner,
     balanceCtx,

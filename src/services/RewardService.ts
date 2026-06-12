@@ -1,4 +1,5 @@
 import { getStageDropTableForResidueUnlock } from '../logic/AbyssalResidueUnlockSystem';
+import { normalizeDropRate } from '../logic/DropPolicySystem';
 import { rollStageNecromance } from '../logic/NecromanceCaptureSystem';
 import { CharacterData, ItemData, AbyssalResidueData, ResidueMatData, MonsterData, DropEntry, StageData } from '../types/game';
 import { MasterDataService } from './MasterDataService';
@@ -85,10 +86,6 @@ function rollValue(range: [number, number], rng: () => number): number {
   return parseFloat((range[0] + rng() * (range[1] - range[0])).toFixed(1));
 }
 
-function clampDropRate(rate: number): number {
-  return Math.max(0, Math.min(1, rate));
-}
-
 function secureUuid(): string {
   if (globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
@@ -173,7 +170,7 @@ export class RewardService {
 
     for (const entry of dropTable) {
       const roll = rng();
-      const adjustedRate = clampDropRate(entry.rate * multiplier);
+      const adjustedRate = normalizeDropRate(entry.rate * multiplier);
       if (roll >= adjustedRate) continue;
 
       switch (entry.type) {

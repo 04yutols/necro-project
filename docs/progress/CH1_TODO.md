@@ -113,6 +113,8 @@
   - 根拠: `CH1_CLEAR` は `area1_node3` の `STAGE_CLEAR` で発火し、完了時に `CH1_CLEARED` をセットする。
 - [x] バトル中に魔神化が発動・3ターン継続・自動終了する
   - 根拠: `DemonizationSystem.test.ts` で満タン発動、`DEMON_ACTION_LIMIT`、3行動後の自動解除を確認済み。`BattleCanvas` でも同一制御を使用。
+- [x] 初期ステータスが `09_ステータスシステム.md` の HSR 8統計方針と一致する
+  - 根拠: `jobs.json baseStatsByLevel` → `getJobBaseStatsAtLevel` → `loadCharacterForUser` / `useGameStore.initialize` の導出経路で hp/atk/def/spd/critRate/critDmg/effectHit/effectRes を使用。旧 MATK/MDEF/TEC/LUCK は初期表示・戦闘導出から除外済み。
 - [x] ドロップ報酬（武器/残滓/モンスター）が正しくインベントリに入る
   - 根拠: `RewardService.test.ts` で武器/残滓/素材/hidden UR抽選を確認。`BattleCanvas` のリザルト処理で `addInventoryItems` / `addAbyssalResidues` / `addResidueMaterials` に反映。
   - 注意: 現行第1章の dropTable には MONSTER エントリなし。ボス霊核はリザルト表示のみ。

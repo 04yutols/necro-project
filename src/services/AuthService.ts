@@ -20,6 +20,12 @@ export interface CreateCredentialsUserResult {
   error?: string;
 }
 
+export interface ChangePasswordInput {
+  userId: string;
+  currentPassword: string;
+  newPassword: string;
+}
+
 export async function createCredentialsUser(
   input: CreateCredentialsUserInput,
 ): Promise<CreateCredentialsUserResult> {
@@ -49,6 +55,54 @@ export async function createCredentialsUser(
   const passwordHash = await bcrypt.hash(password, 12);
   await prisma.user.create({
     data: { email, passwordHash, displayName, name: displayName },
+  });
+
+  return { success: true };
+}
+
+export async function changePasswordForUser(
+  input: ChangePasswordInput,
+): Promise<CreateCredentialsUserResult> {
+  const userId = input.userId.trim();
+  const currentPassword = input.currentPassword;
+  const newPassword = input.newPassword;
+
+  if (!userId || !currentPassword || !newPassword) {
+    return { success: false, error: '全ての項目を入力してください' };
+  }
+
+  const passwordError = validatePassword(newPassword);
+  if (passwordError) {
+    return { success: false, error: passwordError };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, passwordHash: true },
+  });
+  if (!user?.passwordHash) {
+    return { success: false, error: 'パスワード変更できるアカウントが見つかりません' };
+  }
+
+  const currentOk = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!currentOk) {
+    return { success: false, error: '現在のパスワードが違います' };
+  }
+
+  const sameAsCurrent = await bcrypt.compare(newPassword, user.passwordHash);
+  if (sameAsCurrent) {
+    return { success: false, error: '現在とは異なるパスワードを指定してください' };
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        sessionVersion: { increment: 1 },
+      },
+    });
   });
 
   return { success: true };

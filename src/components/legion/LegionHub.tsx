@@ -356,12 +356,16 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
 }) {
   const isSelected = selected === slot.id;
   return (
-    <div
-      onClick={() => !slot.locked && onSelect(isSelected ? null : slot.id)}
+    <button
+      type="button"
+      disabled={slot.locked}
+      aria-label={slot.locked ? `${slot.label} 未解放` : `${slot.label} ${slot.sublabel}`}
+      onClick={() => onSelect(isSelected ? null : slot.id)}
       style={{
         animation: `slotReveal 0.4s ease-out ${delay}s both`,
         cursor: slot.locked ? 'default' : 'pointer',
         display: 'flex', alignItems: 'center', gap: 8,
+        width: '100%',
         padding: '8px 10px',
         background: isSelected
           ? `linear-gradient(135deg, ${color}25, ${color}15)`
@@ -375,6 +379,8 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
         backdropFilter: 'blur(8px)',
         position: 'relative', overflow: 'hidden',
         opacity: slot.locked ? 0.35 : 1,
+        appearance: 'none',
+        textAlign: 'left',
       }}
     >
       {isSelected && (
@@ -414,7 +420,7 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: `${color}30` }} />
         </div>
       )}
-    </div>
+    </button>
   );
 }
 
@@ -1290,7 +1296,10 @@ function WeaponEnhancementPanel({ weapon, materials, color, onRankUp, onReforge 
   const targetIlv = getNextReforgeTargetIlv(weapon);
 
   return (
-    <div className="absolute inset-0 flex flex-col overflow-y-auto custom-scrollbar px-3 pt-1 pb-3 gap-3" style={{ width: '100%' }}>
+    <div
+      className="relative flex-1 min-h-0 flex flex-col overflow-y-auto custom-scrollbar px-3 pt-1 pb-24 gap-3"
+      style={{ width: '100%', scrollPaddingBlock: '76px 112px' }}
+    >
       <WeaponDetailPanel weapon={weapon} equipped={weapon} player={null} residues={[]} color={color} onEquip={() => {}} />
       <div className="grid grid-cols-2 gap-2 shrink-0">
         <div className="gothic-panel rounded-2xl p-3">
@@ -1320,7 +1329,7 @@ function WeaponEnhancementPanel({ weapon, materials, color, onRankUp, onReforge 
               {targetIlv ? reforgeCosts.map((cost) => `${cost.name} ${materialQty(materials, cost.type)}/${cost.quantity}`).join(' / ') : '最大ILv'}
             </div>
           </div>
-          <button onClick={() => onReforge(weapon)} disabled={!canReforge} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canReforge ? 'linear-gradient(135deg, rgba(212,175,55,0.26), rgba(20,5,35,0.9))' : 'rgba(255,255,255,0.04)', border: `1px solid ${canReforge ? 'rgba(212,175,55,0.62)' : 'rgba(255,255,255,0.08)'}`, color: canReforge ? '#D4AF37' : '#5d5368', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, fontWeight: 900 }}>{targetIlv ? `打ち直し ILv.${targetIlv}` : '最大ILv'}</button>
+          <button onClick={() => onReforge(weapon)} disabled={!canReforge} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canReforge ? 'linear-gradient(135deg, rgba(212,175,55,0.26), rgba(20,5,35,0.9))' : 'rgba(255,255,255,0.04)', border: `1px solid ${canReforge ? 'rgba(212,175,55,0.62)' : 'rgba(255,255,255,0.08)'}`, color: canReforge ? '#D4AF37' : '#5d5368', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, fontWeight: 900, scrollMarginBlock: '76px 112px' }}>{targetIlv ? `打ち直し ILv.${targetIlv}` : '最大ILv'}</button>
         </div>
       </div>
     </div>
@@ -2226,6 +2235,28 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
 ────────────────────────────────────────── */
 type GearSlotType = 'WEAPON' | 'RESIDUE';
 interface GearCtx { mk: MemberKey; slotType: GearSlotType; slotIndex: number }
+type GearToast = { kind: 'success' | 'error'; text: string } | null;
+
+function GearActionToast({ toast }: { toast: GearToast }) {
+  if (!toast) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className="pointer-events-none absolute left-3 right-3 top-[calc(env(safe-area-inset-top,0px)+52px)] z-50 rounded-xl px-3 py-2.5 text-center text-[11px] font-black tracking-[0.08em]"
+      style={{
+        background: toast.kind === 'success' ? 'rgba(34,197,94,0.14)' : 'rgba(139,0,0,0.24)',
+        border: `1px solid ${toast.kind === 'success' ? 'rgba(34,197,94,0.34)' : 'rgba(220,38,38,0.42)'}`,
+        color: toast.kind === 'success' ? '#86efac' : '#FFB4B4',
+        boxShadow: '0 14px 34px rgba(0,0,0,0.42)',
+        fontFamily: "'Noto Sans JP', sans-serif",
+      }}
+    >
+      {toast.text}
+    </motion.div>
+  );
+}
 
 function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResidues, residueMaterials, weaponMaterials, inventoryItems, transmutationPoints, isResidueUnlocked, onBack }: {
   gearCtx: GearCtx; player: CharacterData | null; party: (MonsterData | null)[];
@@ -2247,6 +2278,17 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   const [selectedMatIds, setSelectedMatIds] = useState<Set<string>>(new Set());
   const [enhanceResult, setEnhanceResult] = useState<ResidueEnhanceResult | null>(null);
   const [weaponMutationPending, setWeaponMutationPending] = useState(false);
+  const [toast, setToast] = useState<GearToast>(null);
+
+  const showToast = useCallback((next: NonNullable<GearToast>) => {
+    setToast(next);
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   const isResidueSlot = gearCtx.slotType === 'RESIDUE';
   const activeResidueSlotId: ResidueSlotId = RESIDUE_SLOT_ORDER[activeResidueSlotIndex] ?? 'chest';
@@ -2299,14 +2341,19 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     if (!selectedResidue) return;
     sound.playEquip(); haptic([8, 4, 14]);
     equipResidueToSlot(activeResidueSlotIndex, selectedResidue);
+    showToast({ kind: 'success', text: '残滓を装備しました' });
     if (!player || !canPersistToServer()) return;
     try {
       const { equipResidueAction } = await import('../../app/actions');
       const result = await equipResidueAction(player.id, activeResidueSlotIndex, selectedResidue.id);
-      if (result.success) loadFromServer(result.data);
-      else console.error(result.error);
+      if (result.success) {
+        loadFromServer(result.data);
+        showToast({ kind: 'success', text: '装備を保存しました' });
+      } else {
+        showToast({ kind: 'error', text: result.error ?? '装備の保存に失敗しました' });
+      }
     } catch (error) {
-      console.error(error);
+      showToast({ kind: 'error', text: error instanceof Error ? error.message : '装備の保存に失敗しました' });
     }
   };
 
@@ -2314,14 +2361,19 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     if (!player) return;
     sound.playEquip(); haptic([8, 4, 14]);
     equipItem('weapon', item);
+    showToast({ kind: 'success', text: '武器を装備しました' });
     if (!canPersistToServer()) return;
     try {
       const { equipItemAction } = await import('../../app/actions');
       const result = await equipItemAction(player.id, 'weapon', item.id);
-      if (result.success) loadFromServer(result.data);
-      else console.error(result.error);
+      if (result.success) {
+        loadFromServer(result.data);
+        showToast({ kind: 'success', text: '武器装備を保存しました' });
+      } else {
+        showToast({ kind: 'error', text: result.error ?? '武器装備の保存に失敗しました' });
+      }
     } catch (error) {
-      console.error(error);
+      showToast({ kind: 'error', text: error instanceof Error ? error.message : '武器装備の保存に失敗しました' });
     }
   };
 
@@ -2330,16 +2382,21 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     sound.playEquip(); haptic([8, 4, 18]);
     if (!player || !canPersistToServer()) {
       rankUpWeapon(item.id);
+      showToast({ kind: 'success', text: '武器を強化しました' });
       return;
     }
     setWeaponMutationPending(true);
     try {
       const { rankUpWeaponAction } = await import('../../app/actions');
       const result = await rankUpWeaponAction(player.id, item.id);
-      if (result.success) loadFromServer(result.data);
-      else console.error(result.error);
+      if (result.success) {
+        loadFromServer(result.data);
+        showToast({ kind: 'success', text: '武器を強化しました' });
+      } else {
+        showToast({ kind: 'error', text: result.error ?? '武器強化に失敗しました' });
+      }
     } catch (error) {
-      console.error(error);
+      showToast({ kind: 'error', text: error instanceof Error ? error.message : '武器強化に失敗しました' });
     } finally {
       setWeaponMutationPending(false);
     }
@@ -2350,16 +2407,21 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     sound.playEquip(); haptic([10, 6, 20]);
     if (!player || !canPersistToServer()) {
       reforgeWeapon(item.id);
+      showToast({ kind: 'success', text: '武器を打ち直しました' });
       return;
     }
     setWeaponMutationPending(true);
     try {
       const { reforgeWeaponAction } = await import('../../app/actions');
       const result = await reforgeWeaponAction(player.id, item.id);
-      if (result.success) loadFromServer(result.data);
-      else console.error(result.error);
+      if (result.success) {
+        loadFromServer(result.data);
+        showToast({ kind: 'success', text: '武器を打ち直しました' });
+      } else {
+        showToast({ kind: 'error', text: result.error ?? '打ち直しに失敗しました' });
+      }
     } catch (error) {
-      console.error(error);
+      showToast({ kind: 'error', text: error instanceof Error ? error.message : '打ち直しに失敗しました' });
     } finally {
       setWeaponMutationPending(false);
     }
@@ -2371,6 +2433,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     if (!player || !canPersistToServer()) {
       dismantleWeapon(item.id);
       setSelectedItemId(null);
+      showToast({ kind: 'success', text: '武器を分解しました' });
       return;
     }
     setWeaponMutationPending(true);
@@ -2380,11 +2443,12 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
       if (result.success) {
         loadFromServer(result.data);
         setSelectedItemId(null);
+        showToast({ kind: 'success', text: '武器を分解しました' });
       } else {
-        console.error(result.error);
+        showToast({ kind: 'error', text: result.error ?? '武器分解に失敗しました' });
       }
     } catch (error) {
-      console.error(error);
+      showToast({ kind: 'error', text: error instanceof Error ? error.message : '武器分解に失敗しました' });
     } finally {
       setWeaponMutationPending(false);
     }
@@ -2461,6 +2525,9 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
         margin: '0 auto',
       }}
     >
+      <AnimatePresence>
+        <GearActionToast toast={toast} />
+      </AnimatePresence>
       {/* Navbar */}
       <div
         className="shrink-0 flex items-center gap-2 px-3 relative z-10"
@@ -2503,8 +2570,8 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
       <div className="flex-1 min-h-0 relative mt-2" style={{ width: '100%', alignSelf: 'stretch' }}>
         <AnimatePresence mode="wait">
           {tab === 'EQUIP' ? (
-            <motion.div key="equip" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.16 }} className="absolute inset-0" style={{ position: 'absolute', inset: 0, width: '100%' }}>
-              <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ width: '100%' }}>
+            <motion.div key="equip" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.16 }} className="absolute inset-0 pointer-events-none" style={{ position: 'absolute', inset: 0, width: '100%' }}>
+              <div className="absolute inset-0 flex flex-col overflow-hidden pointer-events-auto" style={{ width: '100%' }}>
               {isResidueSlot ? (
                 <>
                   <ResidueSlotRail
@@ -2580,8 +2647,8 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
               onDismantle={handleDismantleWeapon}
             />
           ) : (
-            <motion.div key="enhance" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.16 }} className="absolute inset-0" style={{ position: 'absolute', inset: 0, width: '100%' }}>
-              <div className="absolute inset-0 flex flex-col overflow-hidden px-3 pt-1 pb-3 gap-2" style={{ width: '100%' }}>
+            <motion.div key="enhance" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.16 }} className="absolute inset-0 pointer-events-none" style={{ position: 'absolute', inset: 0, width: '100%' }}>
+              <div className="absolute inset-0 flex flex-col overflow-hidden px-3 pt-1 pb-3 gap-2 pointer-events-auto" style={{ width: '100%' }}>
               {isResidueSlot ? (
                 <>
                   {/* Residue selector for enhance */}

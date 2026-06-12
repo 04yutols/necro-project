@@ -9,19 +9,13 @@
  */
 
 import { useEffect, useState } from 'react';
-import { fixAuditFindingAction, type FixAuditActionResult } from '@/app/admin/agents/actions';
-import { saveEntry } from '@/app/admin/actions';
+import { applyAuditFixAction, fixAuditFindingAction, type FixAuditActionResult } from '@/app/admin/agents/actions';
 
 type Props = {
   scope: string;
   entityId: string;
   onClose: () => void;
   onApplied: () => void;
-};
-
-const FILE_KEY: Record<string, string> = {
-  areas: 'areas', enemies: 'enemies', stages: 'stages', jobs: 'jobs',
-  skills: 'skills', items: 'items', materials: 'materials', monsters: 'monsters', demonForms: 'demonForms',
 };
 
 export default function AuditFixModal({ scope, entityId, onClose, onApplied }: Props) {
@@ -51,8 +45,7 @@ export default function AuditFixModal({ scope, entityId, onClose, onApplied }: P
     if (!result?.patched) return;
     setSaving(true);
     try {
-      const fileKey = FILE_KEY[scope];
-      const r = await saveEntry(fileKey as never, entityId, result.patched);
+      const r = await applyAuditFixAction(scope, entityId, result.patched);
       if (r.success) onApplied();
       else setError(r.error ?? '保存に失敗しました');
     } catch (e) {

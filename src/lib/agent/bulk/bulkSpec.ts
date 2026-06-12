@@ -63,6 +63,8 @@ export function validateBulkSpec(raw: unknown): SpecValidationResult {
   const filter: Condition[] = [];
   if (!Array.isArray(raw.filter)) {
     fail('filter', 'filter は配列である必要があります（無条件全件なら []）。');
+  } else if (raw.filter.length === 0) {
+    warn('filter', 'filter が空です。全件変更になるため、適用前に対象件数を確認してください。');
   } else {
     raw.filter.forEach((c, i) => {
       if (!isRecord(c)) {

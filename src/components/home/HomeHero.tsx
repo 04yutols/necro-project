@@ -12,9 +12,9 @@ const THEME = {
   primary: '#BC00FB',
   primaryBg: 'rgba(188,0,251,0.15)',
   primaryBorder: 'rgba(188,0,251,0.5)',
-  secondary: '#00FFFF',
-  secondaryBg: 'rgba(0,255,255,0.15)',
-  secondaryBorder: 'rgba(0,255,255,0.5)',
+  secondary: '#D4AF37',
+  secondaryBg: 'rgba(212,175,55,0.15)',
+  secondaryBorder: 'rgba(212,175,55,0.5)',
   tertiary: '#FF6B9B',
   tertiaryBg: 'rgba(255,107,155,0.15)',
   tertiaryBorder: 'rgba(255,107,155,0.5)',
@@ -74,7 +74,7 @@ export function HomeHero() {
       glow: residueUnlocked ? '0 0 20px rgba(255,107,155,0.3)' : 'none',
       locked: !residueUnlocked,
     },
-    { id: 'EQUIP', label: '装備・編成', sub: 'ARMORY & LEGION', icon: Sword, color: THEME.secondary, border: THEME.secondaryBorder, bg: THEME.secondaryBg, glow: '0 0 20px rgba(0,255,255,0.3)' },
+    { id: 'EQUIP', label: '装備・編成', sub: 'ARMORY & LEGION', icon: Sword, color: THEME.secondary, border: THEME.secondaryBorder, bg: THEME.secondaryBg, glow: '0 0 20px rgba(212,175,55,0.22)' },
     { id: 'LOGS', label: '兵歴記録', sub: 'SYSTEM LOGS', icon: Terminal, color: THEME.gray, border: THEME.grayBorder, bg: THEME.grayBg, glow: '0 0 10px rgba(255,255,255,0.1)' },
   ] as const;
 
@@ -105,9 +105,9 @@ export function HomeHero() {
             <div style={{
               fontFamily: "'Cinzel Decorative', serif",
               fontSize: 8,
-              color: '#8A2BE2',
+              color: '#8B00FF',
               letterSpacing: '0.2em',
-              textShadow: '0 0 10px rgba(138,43,226,0.7)',
+              textShadow: '0 0 10px rgba(139,0,255,0.7)',
             }}>
               NECROMANCE BRAVE
             </div>
@@ -179,12 +179,12 @@ export function HomeHero() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '200px' }}>
                 <span style={{ fontSize: '22px', color: '#FFF', letterSpacing: '0.1em', lineHeight: 1 }}>{player.name}</span>
                 <div style={{ display: 'grid', gridTemplateColumns: '75px 1fr', gap: '4px', alignItems: 'baseline' }}>
-                  <span style={{ color: '#888' }}>現在の職業：</span>
+                  <span style={{ color: '#A5A9B4' }}>現在の職業：</span>
                   <div>
                     <span style={{ color: THEME.primary, display: 'inline-block', width: '70px', letterSpacing: '0.05em' }}>{player.currentJobId.toUpperCase()}</span>
                     <span style={{ color: '#FFF' }}>Lv. {currentJob.level}</span>
                   </div>
-                  <span style={{ color: '#888' }}>死霊術：</span>
+                  <span style={{ color: '#A5A9B4' }}>死霊術：</span>
                   <div>
                     <span style={{ color: THEME.tertiary, display: 'inline-block', width: '70px', letterSpacing: '0.05em' }}>RANK {necroStatus?.rank || 1}</span>
                     <span style={{ color: '#FFF' }}>Lv. {necroLevel}</span>
@@ -196,15 +196,15 @@ export function HomeHero() {
             {/* HP/MP Box */}
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '16px', padding: '12px 16px', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '16px', border: '1px solid #222', marginTop: '4px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                <span style={{ color: '#888', fontSize: '11px' }}>HP</span>
+                <span style={{ color: '#A5A9B4', fontSize: '11px' }}>HP</span>
                 <span style={{ color: '#FF4D4D', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(255,77,77,0.3)', lineHeight: 1 }}>
-                  {player.stats.hp} <span style={{ color: '#555', fontSize: '14px' }}>/ {(player.stats as any).maxHp ?? player.stats.hp}</span>
+                  {player.stats.hp} <span style={{ color: '#8b7da8', fontSize: '14px' }}>/ {(player.stats as any).maxHp ?? player.stats.hp}</span>
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                <span style={{ color: '#888', fontSize: '11px' }}>MP</span>
+                <span style={{ color: '#A5A9B4', fontSize: '11px' }}>MP</span>
                 <span style={{ color: '#4A90E2', fontFamily: 'system-ui, sans-serif', fontSize: '18px', textShadow: '0 0 10px rgba(74,144,226,0.3)', lineHeight: 1 }}>
-                  {player.currentEnergy} <span style={{ color: '#555', fontSize: '14px' }}>/ {player.maxEnergy}</span>
+                  {player.currentEnergy} <span style={{ color: '#8b7da8', fontSize: '14px' }}>/ {player.maxEnergy}</span>
                 </span>
               </div>
             </div>
@@ -214,24 +214,24 @@ export function HomeHero() {
               <div style={{ display: 'flex', alignItems: 'center' }}>
                  <span style={{ color: THEME.primary, width: '85px', flexShrink: 0, textAlign: 'right', paddingRight: '8px' }}>JOB-EXP:</span>
                  <ExpBar percent={jobExpPercent} color={THEME.primary} />
-                 <span style={{ color: '#666', width: '85px', flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap' }}>あと {jobExpRemain.toLocaleString()}</span>
+                 <span style={{ color: '#8b7da8', width: '85px', flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap' }}>あと {jobExpRemain.toLocaleString()}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                  <span style={{ color: THEME.tertiary, width: '85px', flexShrink: 0, textAlign: 'right', paddingRight: '8px' }}>NECRO-EXP:</span>
                  <ExpBar percent={necroExpPercent} color={THEME.tertiary} />
-                 <span style={{ color: '#666', width: '85px', flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap' }}>あと {necroExpRemain.toLocaleString()}</span>
+                 <span style={{ color: '#8b7da8', width: '85px', flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap' }}>あと {necroExpRemain.toLocaleString()}</span>
               </div>
             </div>
 
             {/* Gold & Cost Box */}
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '16px', padding: '12px 16px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '16px', border: '1px solid #222', marginTop: '8px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                <span style={{ color: '#888', fontSize: '11px' }}>所持金</span>
+                <span style={{ color: '#A5A9B4', fontSize: '11px' }}>所持金</span>
                 <span style={{ color: '#FCD34D', fontSize: '16px', letterSpacing: '0.05em' }}>{goldAmount.toLocaleString()}G</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                <span style={{ color: '#888', fontSize: '11px' }}>軍団コスト</span>
-                <span style={{ color: '#FFF', fontSize: '16px' }}>{currentCost} <span style={{ color: '#555', fontSize: '13px' }}>/ {maxCost}</span></span>
+                <span style={{ color: '#A5A9B4', fontSize: '11px' }}>軍団コスト</span>
+                <span style={{ color: '#FFF', fontSize: '16px' }}>{currentCost} <span style={{ color: '#8b7da8', fontSize: '13px' }}>/ {maxCost}</span></span>
               </div>
             </div>
 
@@ -282,8 +282,8 @@ export function HomeHero() {
           </motion.div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px' }}>
-            <Activity size={16} color={THEME.secondary} opacity={0.8} />
-            <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#888', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0 }}>
+              <Activity size={16} color={THEME.secondary} opacity={0.8} />
+            <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#A5A9B4', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0 }}>
               作戦司令室
             </h3>
           </div>
@@ -354,11 +354,11 @@ export function HomeHero() {
           <div style={{
             width: 42, height: 42, borderRadius: '50%',
             background: 'linear-gradient(135deg, #1a0a2e, #0d0520)',
-            border: '2px solid #8A2BE260',
+            border: '2px solid #8B00FF60',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
             animation: 'nGlow 3s ease-in-out infinite',
-            boxShadow: '0 0 10px #8A2BE260',
+            boxShadow: '0 0 10px #8B00FF60',
             flexShrink: 0,
           }}>
             <span style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: '16px', fontWeight: 700, color: '#c084fc' }}>N</span>
@@ -369,12 +369,12 @@ export function HomeHero() {
             onClick={() => setCurrentTab('MAP')}
             style={{
               padding: '8px 16px',
-              background: 'linear-gradient(135deg, rgba(138,43,226,0.25), rgba(88,28,135,0.15))',
-              border: '1px solid rgba(138,43,226,0.45)',
+              background: 'linear-gradient(135deg, rgba(139,0,255,0.25), rgba(88,28,135,0.15))',
+              border: '1px solid rgba(139,0,255,0.45)',
               borderRadius: '12px',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 6,
-              boxShadow: '0 0 12px rgba(138,43,226,0.2)',
+              boxShadow: '0 0 12px rgba(139,0,255,0.2)',
             }}
           >
             <span style={{ fontSize: 12 }}>⚡</span>
