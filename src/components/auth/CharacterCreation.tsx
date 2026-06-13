@@ -118,7 +118,7 @@ export function CharacterCreation({ initialName, onCreated }: CharacterCreationP
               <Sparkles size={20} />
             </div>
             <div>
-              <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 20, fontWeight: 800, letterSpacing: '0.06em', lineHeight: 1.1 }}>
+              <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 20, fontWeight: 800, letterSpacing: '0.06em', lineHeight: 1.1 }}>
                 魂を宿す職業を選べ
               </div>
               <div style={{ color: 'rgba(220,210,240,0.62)', fontSize: 11, marginTop: 4 }}>
@@ -197,7 +197,7 @@ export function CharacterCreation({ initialName, onCreated }: CharacterCreationP
                       border: `1px solid ${job.style.color}55`,
                       background: job.style.soft,
                       color: job.style.color,
-                      fontFamily: "'Cinzel Decorative', serif",
+                      fontFamily: "var(--font-cinzel-decorative), serif",
                       fontWeight: 900,
                     }}>
                       {job.data.nameEn?.slice(0, 1) ?? job.id.slice(0, 1).toUpperCase()}

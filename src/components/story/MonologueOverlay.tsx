@@ -108,7 +108,7 @@ export function MonologueOverlay({ scene, onDone }: Props) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
         style={{
-          fontFamily: "'Noto Sans JP', sans-serif",
+          fontFamily: "var(--font-noto-sans-jp), sans-serif",
           fontSize: 16,
           lineHeight: 2.0,
           color: '#F0EAFF',
@@ -131,7 +131,7 @@ export function MonologueOverlay({ scene, onDone }: Props) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4 }}
           style={{
-            fontFamily: "'IM Fell English', serif",
+            fontFamily: "var(--font-im-fell-english), serif",
             fontSize: 11,
             fontStyle: 'italic',
             color: 'rgba(160,145,200,0.5)',

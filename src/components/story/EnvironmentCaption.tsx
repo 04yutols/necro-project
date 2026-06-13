@@ -44,7 +44,7 @@ export function EnvironmentCaption({ scene, onDone }: Props) {
     >
       <p
         style={{
-          fontFamily: "'Noto Sans JP', sans-serif",
+          fontFamily: "var(--font-noto-sans-jp), sans-serif",
           fontSize: 12,
           color: 'rgba(200,190,230,0.88)',
           lineHeight: 1.85,

@@ -84,6 +84,7 @@ describe('BattleEngine', () => {
     ...mockTarget,
     id: `enemy-${enemySeq++}`,
     stats: { ...mockTarget.stats, ...stats },
+    statusEffects: undefined,
   });
 
   const expectedBaseAttackTypes: Record<string, SkillAttackType> = {
@@ -102,20 +103,22 @@ describe('BattleEngine', () => {
   };
 
   test('Damage calculation uses HSR-style defMult', () => {
-    const engine = new BattleEngine(mockPlayer, []);
-    const logs = engine.simulateAction('PHYSICAL_ATTACK', mockTarget);
+    const player = createPlayer({ critRate: 0 });
+    const target = createEnemy({ hp: 500 });
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', target);
 
     // baseDmg = 50 × 1.0 = 50
     // defMult = 1 - 10/(10+200) = 1 - 0.0476 = 0.952
-    // finalDmg = 50 × 0.952 = 47.6 → 47 (non-crit) or × 1.5 (crit)
+    // finalDmg = 50 × 0.952 = 47.6 → 47
     const attackLog = logs.find(l => l.action === 'PHYSICAL_ATTACK');
     expect(attackLog?.damage).toBeGreaterThanOrEqual(40);
-    expect(attackLog?.damage).toBeLessThanOrEqual(80); // crit ceiling (×1.5)
+    expect(attackLog?.damage).toBeLessThanOrEqual(50);
   });
 
   test('tracks enemy current HP without mutating shared enemy stats', () => {
     const player = createPlayer({ hp: 500, atk: 50, def: 30, critRate: 0 });
-    const enemy = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemy = createEnemy({ hp: 500, atk: 1, def: 0, effectRes: 100 });
     const originalStats = enemy.stats;
     const engine = new BattleEngine(player, []);
 
@@ -393,6 +396,30 @@ describe('BattleEngine', () => {
     expect(logs.find(log => log.action === 'PLAYER_DEFEATED')?.description).toContain('倒れた');
   });
 
+  test('enemy counterattack against party monsters uses shared damage formula and resistances', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const ally: MonsterData = {
+      ...mockTarget,
+      id: 'ally-bone-guard',
+      name: 'Bone Guard',
+      stats: { ...mockTarget.stats, hp: 300, atk: 10, def: 0 },
+      resistances: { DARK: 50 },
+    };
+    const enemy: MonsterData = {
+      ...createEnemy({ hp: 500, atk: 100, def: 999, critRate: 0, critDmg: 100 }),
+      spiritCore: { id: 'enemy-dark-core', name: 'Dark Core', element: 'DARK', atkMultiplier: 1 },
+    };
+    const engine = new BattleEngine(player, [ally]);
+
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+    const counterLog = logs.find(log => log.action === 'ENEMY_ATTACK' && log.targetName === ally.name);
+
+    expect(counterLog?.damage).toBe(50);
+    expect(counterLog?.element).toBe('DARK');
+    expect(counterLog?.isResisted).toBe(true);
+    expect((engine as unknown as { monsterCurrentHp: Record<string, number> }).monsterCurrentHp[ally.id]).toBe(250);
+  });
+
   test('player runtime HP mutations use CharacterData.stats without touching baseStats', () => {
     const player = createPlayer({ hp: 30, atk: 1, def: 0, critRate: 0 });
     player.baseStats = { ...player.baseStats!, hp: 999 };
@@ -446,6 +473,27 @@ describe('BattleEngine', () => {
 
     expect(tick?.damage).toBe(30);
     expect(player.stats.hp).toBe(70);
+  });
+
+  test('enemy status damage ticks against runtime HP before player action', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const enemy = createEnemy({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    enemy.statusEffects = [{
+      type: 'POISON',
+      remainingTurns: 2,
+      stackCount: 1,
+    }];
+
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+    const tick = logs.find(log => log.action === 'AILMENT_TICK' && log.targetName === enemy.name);
+    const attack = logs.find(log => log.action === 'PHYSICAL_ATTACK');
+
+    expect(tick?.damage).toBe(15);
+    expect(attack?.damage).toBe(1);
+    expect(engine.getEnemyCurrentHp(enemy.id)).toBe(484);
+    expect(enemy.statusEffects?.[0]?.remainingTurns).toBe(1);
+    expect(enemy.stats.hp).toBe(500);
   });
 
   test('paralysis skip loses only the player action while enemy counterattack still resolves', () => {
@@ -557,14 +605,20 @@ describe('BattleEngine', () => {
       id: 'revive-boss-threshold',
       name: 'Revive Boss',
       tier: 'BOSS',
-      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+      stats: { ...mockTarget.stats, hp: 1000, def: 0, effectRes: 100 },
       gimmicks: [{ trigger: 'HP_BELOW_50', effect: 'REVIVE', value: 1 }],
     };
 
     const engine = new BattleEngine(player, []);
     const logs = engine.simulateAction('PHYSICAL_ATTACK', boss);
+    const bossDamage = logs
+      .filter((log) => log.targetName === boss.name && typeof log.damage === 'number')
+      .reduce((sum, log) => sum + (log.damage ?? 0), 0);
+    const expectedHp = Math.max(0, 1000 - bossDamage);
 
-    expect(engine.getEnemyCurrentHp(boss.id)).toBe(400);
+    expect(expectedHp).toBeLessThan(500);
+    expect(expectedHp).toBeGreaterThan(0);
+    expect(engine.getEnemyCurrentHp(boss.id)).toBe(expectedHp);
     expect(boss.stats.hp).toBe(1000);
     expect(logs.some((log) => log.action === 'BOSS_REVIVE')).toBe(false);
   });

@@ -39,3 +39,6 @@ jobs:
       # テストの非破壊性を機械的に担保（ユニットがマスターデータを書き換えていないこと）
       - name: Master data must be untouched
         run: git diff --exit-code --stat src/data/master
+
+      - name: Master data audit
+        run: npm run data:audit

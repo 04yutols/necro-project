@@ -904,7 +904,7 @@ export default function ResultScreen({
           style={{ padding: 'max(18px, env(safe-area-inset-top, 18px)) 16px max(18px, env(safe-area-inset-bottom, 18px))' }}
         >
           <div style={{ textAlign: 'center', animation: 'resultSlideIn 0.45s ease-out both' }}>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: '#8A2BE2', letterSpacing: '0.25em', marginBottom: 5 }}>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 9, color: '#8A2BE2', letterSpacing: '0.25em', marginBottom: 5 }}>
               BATTLE COMPLETE
             </div>
             <div
@@ -1123,7 +1123,7 @@ export default function ResultScreen({
                 <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, fontWeight: 700, color: '#ef4444', letterSpacing: '0.18em' }}>
                   BATTLE LOST
                 </div>
-                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 13, color: 'rgba(240,234,255,0.72)', lineHeight: 1.7 }}>
+                <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 13, color: 'rgba(240,234,255,0.72)', lineHeight: 1.7 }}>
                   骸骨騎士は倒れた。<br />
                   報酬は得られなかった。
                 </div>
@@ -1159,7 +1159,7 @@ export default function ResultScreen({
           style={{ padding: 'max(18px, env(safe-area-inset-top, 18px)) 16px max(18px, env(safe-area-inset-bottom, 18px))' }}
         >
           <div style={{ textAlign: 'center', animation: 'resultSlideIn 0.42s ease-out both' }}>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: '#BC00FB', letterSpacing: '0.25em', marginBottom: 6 }}>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 9, color: '#BC00FB', letterSpacing: '0.25em', marginBottom: 6 }}>
               NECROMANCE
             </div>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 26, fontWeight: 900, color: '#F0EAFF', textShadow: '0 0 24px rgba(188,0,251,0.52)' }}>
@@ -1252,7 +1252,7 @@ export default function ResultScreen({
           style={{ padding: 'max(14px, env(safe-area-inset-top, 14px)) 14px max(14px, env(safe-area-inset-bottom, 14px))' }}
         >
           <div className="shrink-0 relative" style={{ textAlign: 'center', animation: 'resultSlideIn 0.32s ease-out both' }}>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: currentStyle.color, letterSpacing: '0.24em' }}>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 9, color: currentStyle.color, letterSpacing: '0.24em' }}>
               APPRAISAL
             </div>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 900, color: '#F0EAFF', marginTop: 5 }}>

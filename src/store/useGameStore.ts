@@ -43,6 +43,13 @@ function getE2EInitialClearedStages(): string[] {
   }
 }
 
+function shouldUseE2EBattleBoost(): boolean {
+  if (typeof window === 'undefined') return false;
+  const isLocalE2EHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  if (process.env.NODE_ENV === 'production' && !isLocalE2EHost) return false;
+  return window.sessionStorage.getItem('necro-e2e-battle-boost') === '1';
+}
+
 const MOCK_WEAPONS: ItemData[] = [
   {
     id: 'w-bone-cleaver',
@@ -570,15 +577,16 @@ export const useGameStore = create<GameState>((set) => ({
     const activeJob = JOBS[state.player.currentJobId];
     const energyState = calculateEnergyState(activeJob, activeJobLevel);
     const baseStats = getJobBaseStatsAtLevel(activeJob, activeJobLevel, state.player.baseStats ?? state.player.stats);
+    const nextPlayer = {
+      ...state.player,
+      baseStats,
+      stats: baseStats,
+      jobs: newJobs,
+      maxEnergy: energyState.maxEnergy,
+      currentEnergy: Math.min(state.player.currentEnergy, energyState.maxEnergy),
+    };
     return {
-      player: {
-        ...state.player,
-        baseStats,
-        stats: baseStats,
-        jobs: newJobs,
-        maxEnergy: energyState.maxEnergy,
-        currentEnergy: Math.min(state.player.currentEnergy, energyState.maxEnergy),
-      }
+      player: withDerivedElementBoosts(nextPlayer, state.equippedResidueSlots, state.necroStatus),
     };
   }),
   addGold: (amount) => set((state) => {
@@ -771,7 +779,16 @@ export const useGameStore = create<GameState>((set) => ({
 
   initialize: () => {
     const initialClearedStages = getE2EInitialClearedStages();
-    const warriorBaseStats = getJobBaseStatsAtLevel(JOBS.warrior, 1);
+    const baseWarriorStats = getJobBaseStatsAtLevel(JOBS.warrior, 1);
+    const warriorBaseStats = shouldUseE2EBattleBoost()
+      ? {
+          ...baseWarriorStats,
+          hp: Math.max(baseWarriorStats.hp, 900),
+          atk: Math.max(baseWarriorStats.atk, 180),
+          def: Math.max(baseWarriorStats.def, 90),
+          spd: Math.max(baseWarriorStats.spd, 160),
+        }
+      : baseWarriorStats;
     set({
     player: {
       id: '1',

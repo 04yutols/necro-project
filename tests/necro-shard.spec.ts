@@ -6,8 +6,8 @@ test.describe('Necro Lab residue UX', () => {
 
   test('locks the residue lab before chapter 2 progression', async ({ page }) => {
     await prepareE2EPage(page);
-    await expect(page.locator('[role="button"]').filter({ hasText: '深淵の残滓' })).toBeVisible();
-    await expect(page.locator('[role="button"]').filter({ hasText: 'CHAPTER 2で解放' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /深淵の残滓/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /CHAPTER 2で解放/ })).toBeVisible();
   });
 
   test('shows residue slots, residue inventory, and enhancement flow entry points after chapter 2 unlock', async ({ page }) => {

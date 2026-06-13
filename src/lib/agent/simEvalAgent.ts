@@ -68,10 +68,11 @@ ${input.designContext}
 - recommendations の target は上記4種のみ。`;
 }
 
-function coerceEvaluation(raw: unknown): SimEvaluation | null {
+export function coerceEvaluation(raw: unknown): SimEvaluation | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const r = raw as Record<string, unknown>;
-  const verdict = typeof r.verdict === 'string' && VALID_VERDICTS.includes(r.verdict) ? (r.verdict as SimEvaluation['verdict']) : 'BALANCED';
+  if (typeof r.verdict !== 'string' || !VALID_VERDICTS.includes(r.verdict)) return null;
+  const verdict = r.verdict as SimEvaluation['verdict'];
   const rationale = typeof r.rationale === 'string' ? r.rationale : '';
   const recs: Recommendation[] = Array.isArray(r.recommendations)
     ? r.recommendations

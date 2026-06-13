@@ -86,10 +86,10 @@ export function AuthGate({ onAuthenticated }: AuthGateProps) {
                 <Cloud size={22} />
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 19, fontWeight: 800, letterSpacing: '0.04em', lineHeight: 1.1 }}>
+                <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 19, fontWeight: 800, letterSpacing: '0.04em', lineHeight: 1.1 }}>
                   NECROMANCE BRAVE
                 </div>
-                <div style={{ fontSize: 11, color: 'rgba(220,210,240,0.62)', fontFamily: "'Noto Sans JP', sans-serif", marginTop: 5 }}>
+                <div style={{ fontSize: 11, color: 'rgba(220,210,240,0.62)', fontFamily: "var(--font-noto-sans-jp), sans-serif", marginTop: 5 }}>
                   クラウドセーブに接続
                 </div>
               </div>

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight, Sparkles, X } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import type { MonsterData, SoulShardData } from '../../types/game';
 
 interface ShardEquipModalProps {
@@ -17,6 +18,7 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
   const [selectedShard, setSelectedShard] = useState<SoulShardData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const dialogRef = useFocusTrap<HTMLDivElement>(true, onClose);
 
   const currentShard = soulShards.find((s) => s.id === monster.equippedShardId);
   const currentAtk = monster.stats.atk + (currentShard?.effect.atkBonus ?? 0);
@@ -53,6 +55,8 @@ export default function ShardEquipModal({ monster, onClose }: ShardEquipModalPro
       role="dialog"
       aria-modal="true"
       aria-labelledby="shard-equip-title"
+      ref={dialogRef}
+      tabIndex={-1}
     >
       <div className="gothic-panel relative z-[101] w-full max-w-lg overflow-hidden rounded-lg text-[#F0EAFF] shadow-[0_24px_70px_rgba(0,0,0,0.72)]">
         <header className="relative flex items-center justify-between border-b border-white/10 bg-black/20 px-4 py-3">

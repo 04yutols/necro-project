@@ -46,7 +46,7 @@ export function TutorialBanner() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 14, color: '#fff' }}>✦</span>
             <p style={{
-              fontFamily: "'Noto Sans JP', sans-serif",
+              fontFamily: "var(--font-noto-sans-jp), sans-serif",
               fontSize: 13,
               color: '#fff',
               fontWeight: 'bold',

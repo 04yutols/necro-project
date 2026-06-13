@@ -239,7 +239,7 @@ export function AuthPanel() {
           <span style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', color: status === 'authenticated' ? '#D4AF37' : '#A5A9B4' }}>
             {label}
           </span>
-          <span style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, fontWeight: 700, color: '#F0EAFF' }}>
+          <span style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, fontWeight: 700, color: '#F0EAFF' }}>
             {helperText}
           </span>
         </button>
@@ -334,11 +334,11 @@ export function AuthPanel() {
                       : mode === 'login'
                         ? <ShieldCheck size={18} color="#D4AF37" />
                         : <UserPlus size={18} color="#D4AF37" />}
-                    <span style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 18, fontWeight: 800, letterSpacing: '0.04em', color: '#F0EAFF' }}>
+                    <span style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 18, fontWeight: 800, letterSpacing: '0.04em', color: '#F0EAFF' }}>
                       {mode === 'password' ? 'パスワード変更' : mode === 'login' ? 'ログイン' : '登録'}
                     </span>
                   </div>
-                  <p style={{ margin: 0, fontSize: 11, lineHeight: 1.7, color: 'rgba(220,210,240,0.68)', fontFamily: "'Noto Sans JP', sans-serif" }}>
+                  <p style={{ margin: 0, fontSize: 11, lineHeight: 1.7, color: 'rgba(220,210,240,0.68)', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>
                     {mode === 'password'
                       ? '変更後は他の端末を含む全セッションが失効します。'
                       : 'クラウドセーブ、ランキング、世界ログを有効化します。'}
@@ -381,7 +381,7 @@ export function AuthPanel() {
                           border: mode === tabMode ? '1px solid rgba(139,0,255,0.56)' : '1px solid rgba(255,255,255,0.08)',
                           background: mode === tabMode ? 'rgba(139,0,255,0.18)' : 'rgba(255,255,255,0.035)',
                           color: mode === tabMode ? '#E9D5FF' : '#8b7da8',
-                          fontFamily: "'Noto Sans JP', sans-serif",
+                          fontFamily: "var(--font-noto-sans-jp), sans-serif",
                           fontSize: 12,
                           fontWeight: 900,
                           letterSpacing: '0.08em',
@@ -474,7 +474,7 @@ export function AuthPanel() {
                   padding: '10px 12px',
                   fontSize: 12,
                   lineHeight: 1.55,
-                  fontFamily: "'Noto Sans JP', sans-serif",
+                  fontFamily: "var(--font-noto-sans-jp), sans-serif",
                 }}>
                   {message}
                 </div>

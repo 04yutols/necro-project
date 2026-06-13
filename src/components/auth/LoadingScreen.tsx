@@ -57,7 +57,7 @@ export function LoadingScreen({
           >
             <Cloud size={25} />
           </div>
-          <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 18, fontWeight: 800, letterSpacing: '0.08em' }}>
+          <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 18, fontWeight: 800, letterSpacing: '0.08em' }}>
             {label}
           </div>
           <div style={{ marginTop: 8, color: 'rgba(220,210,240,0.66)', fontSize: 12, lineHeight: 1.7 }}>

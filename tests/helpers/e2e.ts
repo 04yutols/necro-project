@@ -69,6 +69,7 @@ export async function prepareE2EPage(page: Page, options: PrepareE2EPageOptions 
 
     window.sessionStorage.clear();
     window.sessionStorage.setItem('necro-e2e-cleared-stages', JSON.stringify(clearedStages));
+    window.sessionStorage.setItem('necro-e2e-battle-boost', '1');
   }, {
     storyScenes: VIEWED_STORY_SCENES,
     tutorialPhases: COMPLETED_TUTORIAL_PHASES,
@@ -81,7 +82,7 @@ export async function prepareE2EPage(page: Page, options: PrepareE2EPageOptions 
 }
 
 export async function openHomeSection(page: Page, label: string) {
-  const section = page.locator('[role="button"]').filter({ hasText: label }).first();
+  const section = page.getByRole('button').filter({ hasText: label }).first();
   await expect(section).toBeVisible({ timeout: 10000 });
   await section.click();
 }

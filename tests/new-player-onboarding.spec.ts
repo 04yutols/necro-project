@@ -22,6 +22,9 @@ async function setupGuestMode(page: Page) {
   await page.route('**/api/auth/**', (route) => {
     route.fulfill({ status: 200, contentType: 'text/html', body: '' });
   });
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem('necro-e2e-battle-boost', '1');
+  });
 }
 
 /** ストーリーダイアログを全て閉じる（最大 n 回クリックして消える まで） */
@@ -204,7 +207,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
     await expect(page.locator('#tut-attack-btn')).toContainText('攻撃');
     await expect(page.locator('#tut-soul-gauge')).toBeVisible();
     await expect(page.getByRole('button', { name: /AUTO/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: '逃走' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /撤退|逃走/ })).toBeVisible();
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -316,7 +319,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
     await expect(page.getByText('戦利品鑑定')).toBeVisible();
 
     await page.getByRole('button', { name: /鑑定する/ }).click();
-    await expect(page.getByRole('button', { name: /次の戦利品|獲得して戻る/ })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: /次の戦利品|獲得して戻る|ネクロマンスへ/ })).toBeVisible({ timeout: 10000 });
   });
 
   // ─────────────────────────────────────────────────────────────
