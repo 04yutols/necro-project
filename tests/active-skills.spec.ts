@@ -38,7 +38,7 @@ test.describe('Battle command UX', () => {
     await expect(page.locator('#tut-soul-gauge')).toBeVisible();
     await expect(page.getByRole('button', { name: /AUTO OFF/ })).toBeVisible();
     await expect(page.getByRole('button', { name: '×3' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '逃走' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /撤退|逃走/ })).toBeVisible();
 
     const battleLog = page.getByTestId('battle-log');
     await battleLog.evaluate((element) => {
@@ -73,7 +73,7 @@ test.describe('Battle command UX', () => {
     await page.getByText('渾身斬り').click();
     await expect(playerMp).toContainText('95');
 
-    await page.getByRole('button', { name: '逃走' }).click();
+    await page.getByRole('button', { name: /撤退|逃走/ }).click();
     await expect(page.getByText('LAYER 1 / WORLD MAP')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: /領域選択/ }).click({ force: true });
     await page.getByRole('button', { name: /エリアマップへ|再訪する/ }).click({ force: true });

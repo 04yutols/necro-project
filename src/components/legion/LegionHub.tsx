@@ -481,7 +481,7 @@ function StatusRow({ statKey, total, profile, color }: {
           <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, color: '#F0EAFF', letterSpacing: '0.08em', fontWeight: 800 }}>
             {meta.label}
           </div>
-          <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 9, color: '#7f7193', marginTop: 1 }}>
+          <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 9, color: '#7f7193', marginTop: 1 }}>
             {meta.labelJa}
           </div>
         </div>
@@ -525,7 +525,7 @@ function ElementBoostGrid({ boosts }: { boosts: StatBreakdown['elementDmgBoosts'
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: '#F0EAFF', letterSpacing: '0.06em' }}>{meta.label}</div>
-                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 9, color: meta.color }}>{meta.labelJa}属性</div>
+                <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 9, color: meta.color }}>{meta.labelJa}属性</div>
               </div>
               <div style={{ fontFamily: 'monospace', fontSize: 12, color: value > 0 ? meta.color : '#51415f', fontWeight: 900, whiteSpace: 'nowrap' }}>
                 {value.toFixed(1)}%
@@ -572,7 +572,7 @@ function StatusDetailSheet({ open, name, subtitle, stats, profile, currentEnergy
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color, letterSpacing: '0.18em', textShadow: `0 0 10px ${color}` }}>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 9, color, letterSpacing: '0.18em', textShadow: `0 0 10px ${color}` }}>
               STATUS ARCHIVE
             </div>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 20, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.05em', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -703,7 +703,7 @@ function ResidueSlotRail({ slots, activeIndex, onSelect, color }: {
                 minWidth: 0,
               }}
             >
-              <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, color: active ? color : rarityColor, fontWeight: 900 }}>{meta.icon}</span>
+              <span style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 12, color: active ? color : rarityColor, fontWeight: 900 }}>{meta.icon}</span>
               <span style={{ fontFamily: 'monospace', fontSize: 7, color: active ? '#F0EAFF' : 'rgba(198,184,238,0.62)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
                 {meta.nameJa.replace('の', '')}
               </span>
@@ -809,7 +809,7 @@ function ResidueDetailPanel({ residue, equipped, color, onEquip, equipDisabled }
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <span style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', serif", fontSize: 12, fontWeight: 900, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{residue.name}</span>
+              <span style={{ color: '#F0EAFF', fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 12, fontWeight: 900, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{residue.name}</span>
               <span style={{ color: rarityColor, background: `${rarityColor}1A`, border: `1px solid ${rarityColor}44`, borderRadius: 999, padding: '2px 6px', fontFamily: 'monospace', fontSize: 8, fontWeight: 900, flexShrink: 0 }}>{residue.rarity}</span>
             </div>
             <div className="flex items-center gap-2 mt-1.5">
@@ -845,7 +845,7 @@ function ResidueDetailPanel({ residue, equipped, color, onEquip, equipDisabled }
               background: equipDisabled ? 'rgba(255,255,255,0.04)' : `linear-gradient(135deg, ${rarityColor}35, rgba(12,5,28,0.9))`,
               border: `1.5px solid ${equipDisabled ? 'rgba(255,255,255,0.08)' : rarityColor + '77'}`,
               color: equipDisabled ? '#5d5368' : rarityColor,
-              fontFamily: "'Noto Sans JP', sans-serif",
+              fontFamily: "var(--font-noto-sans-jp), sans-serif",
               fontSize: 12,
               fontWeight: 900,
               boxShadow: equipDisabled ? 'none' : `0 0 12px ${rarityColor}24`,
@@ -874,8 +874,8 @@ function TransmutationPanel({ activeSlotIndex, points, color }: {
             <Recycle size={22} style={{ color }} />
           </div>
           <div className="flex-1 min-w-0">
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 10, color: '#F0EAFF', letterSpacing: '0.12em', fontWeight: 900 }}>SOUL TRANSMUTATION</div>
-            <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#8b7da8', marginTop: 3 }}>不要な残滓を錬成ポイントへ変換し、部位と主効果を指定する救済導線。</div>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 10, color: '#F0EAFF', letterSpacing: '0.12em', fontWeight: 900 }}>SOUL TRANSMUTATION</div>
+            <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, color: '#8b7da8', marginTop: 3 }}>不要な残滓を錬成ポイントへ変換し、部位と主効果を指定する救済導線。</div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>POINTS</div>
@@ -906,7 +906,7 @@ function TransmutationPanel({ activeSlotIndex, points, color }: {
                   border: `1px solid ${selected ? color + '66' : affordable ? 'rgba(212,175,55,0.26)' : 'rgba(255,255,255,0.06)'}`,
                 }}
               >
-                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, color: selected ? color : '#bfaee2', fontWeight: 900 }}>{meta.icon}</div>
+                <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 12, color: selected ? color : '#bfaee2', fontWeight: 900 }}>{meta.icon}</div>
                 <div style={{ fontFamily: 'monospace', fontSize: 7, color: '#8b7da8', marginTop: 3, minHeight: 18 }}>{meta.role}</div>
                 <div style={{ fontFamily: 'monospace', fontSize: 9, color: affordable ? '#D4AF37' : '#5a4f66', fontWeight: 900 }}>{meta.cost}</div>
               </div>
@@ -919,7 +919,7 @@ function TransmutationPanel({ activeSlotIndex, points, color }: {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 13, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.08em' }}>{activeMeta.nameEn}</div>
-            <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color }}>{activeMeta.nameJa} / {activeMeta.role}</div>
+            <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, color }}>{activeMeta.nameJa} / {activeMeta.role}</div>
           </div>
           <div style={{ flexShrink: 0, borderRadius: 999, padding: '5px 9px', background: points >= activeMeta.cost ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${points >= activeMeta.cost ? 'rgba(212,175,55,0.36)' : 'rgba(255,255,255,0.07)'}`, color: points >= activeMeta.cost ? '#D4AF37' : '#6a5f76', fontFamily: 'monospace', fontSize: 10, fontWeight: 900 }}>
             {points >= activeMeta.cost ? '製造可能' : 'ポイント不足'}
@@ -934,7 +934,7 @@ function TransmutationPanel({ activeSlotIndex, points, color }: {
           ].map(([label, value]) => (
             <div key={label} style={{ borderRadius: 12, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.06)', padding: '9px 10px' }}>
               <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>{label}</div>
-              <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 11, color: '#F0EAFF', fontWeight: 800, marginTop: 3 }}>{value}</div>
+              <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 11, color: '#F0EAFF', fontWeight: 800, marginTop: 3 }}>{value}</div>
             </div>
           ))}
         </div>
@@ -949,7 +949,7 @@ function TransmutationPanel({ activeSlotIndex, points, color }: {
             background: points >= activeMeta.cost ? 'linear-gradient(135deg, rgba(212,175,55,0.28), rgba(139,0,255,0.18))' : 'rgba(255,255,255,0.035)',
             border: `1.5px solid ${points >= activeMeta.cost ? 'rgba(212,175,55,0.52)' : 'rgba(255,255,255,0.07)'}`,
             color: points >= activeMeta.cost ? '#D4AF37' : '#5f5369',
-            fontFamily: "'Noto Sans JP', sans-serif",
+            fontFamily: "var(--font-noto-sans-jp), sans-serif",
             fontSize: 13,
             fontWeight: 900,
             letterSpacing: '0.18em',
@@ -1069,7 +1069,7 @@ function WeaponGridCard({ item, isSelected, isEquipped, onSelect }: { item: Item
       <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `radial-gradient(circle at 35% 25%, ${color}34, rgba(0,0,0,0.82))`, border: `1px solid ${color}55`, boxShadow: `0 0 12px ${color}22` }}>
         <Swords size={18} style={{ color }} />
       </div>
-      <span className="text-[10px] font-black text-center leading-tight max-w-full px-1" style={{ color: '#EDE8FF', fontFamily: "'Noto Sans JP', sans-serif", display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: 26 }}>{item.name}</span>
+      <span className="text-[10px] font-black text-center leading-tight max-w-full px-1" style={{ color: '#EDE8FF', fontFamily: "var(--font-noto-sans-jp), sans-serif", display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: 26 }}>{item.name}</span>
       <div className="flex items-center gap-1">
         <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: `${color}22`, border: `1px solid ${color}44`, color, fontFamily: 'monospace' }}>{rarity}</span>
         <span className="text-[9px] font-black" style={{ color: '#8b7da8', fontFamily: 'monospace' }}>R{getWeaponRank(item)}</span>
@@ -1087,10 +1087,10 @@ function WeaponPassiveLine({ passive, rank, color }: { passive: ItemData['passiv
   return (
     <div style={{ borderRadius: 11, border: `1px solid ${color}24`, background: 'rgba(0,0,0,0.24)', padding: '8px 9px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#F0EAFF', fontWeight: 900 }}>{passive.nameJa}</span>
+        <span style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, color: '#F0EAFF', fontWeight: 900 }}>{passive.nameJa}</span>
         {passive.systemTag && <span style={{ fontFamily: 'monospace', fontSize: 7, color, border: `1px solid ${color}44`, borderRadius: 999, padding: '1px 5px', flexShrink: 0 }}>{passive.systemTag}</span>}
       </div>
-      <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 9, color: 'rgba(202,190,235,0.72)', marginTop: 4, lineHeight: 1.45 }}>{describeWeaponPassive(passive, rank)}</div>
+      <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 9, color: 'rgba(202,190,235,0.72)', marginTop: 4, lineHeight: 1.45 }}>{describeWeaponPassive(passive, rank)}</div>
     </div>
   );
 }
@@ -1104,7 +1104,7 @@ function WeaponRankPreview({ weapon, rank, color }: { weapon: ItemData; rank: nu
     <div style={{ borderRadius: 13, border: `1px solid ${color}28`, background: 'linear-gradient(135deg, rgba(255,255,255,0.045), rgba(0,0,0,0.22))', padding: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
         <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 900, letterSpacing: '0.14em', color }}>RANK PREVIEW</span>
-        <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 9, fontWeight: 800, color: 'rgba(202,190,235,0.68)' }}>魂の共鳴で効果量が上昇</span>
+        <span style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 9, fontWeight: 800, color: 'rgba(202,190,235,0.68)' }}>魂の共鳴で効果量が上昇</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${previewRanks.length}, minmax(0, 1fr))`, gap: 7 }}>
         {previewRanks.map((previewRank) => {
@@ -1130,8 +1130,8 @@ function WeaponRankPreview({ weapon, rank, color }: { weapon: ItemData; rank: nu
               <div style={{ display: 'grid', gap: 5 }}>
                 {passives.map((passive) => (
                   <div key={`${previewRank}-${passive.nameJa}`} style={{ minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 8, color: '#F0EAFF', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{passive.nameJa}</div>
-                    <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 8, color: 'rgba(202,190,235,0.62)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 8, color: '#F0EAFF', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{passive.nameJa}</div>
+                    <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 8, color: 'rgba(202,190,235,0.62)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {describeWeaponPassive(passive, previewRank)}
                     </div>
                   </div>
@@ -1190,7 +1190,7 @@ function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip 
           </motion.div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <span style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', serif", fontSize: 12, fontWeight: 900, lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weapon.name}</span>
+              <span style={{ color: '#F0EAFF', fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 12, fontWeight: 900, lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weapon.name}</span>
               <span style={{ color: rarityColor, background: `${rarityColor}1A`, border: `1px solid ${rarityColor}44`, borderRadius: 999, padding: '2px 6px', fontFamily: 'monospace', fontSize: 8, fontWeight: 900, flexShrink: 0 }}>{rarity}</span>
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-1.5">
@@ -1227,7 +1227,7 @@ function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip 
         <div style={{ borderRadius: 11, border: `1px solid ${rarityColor}24`, background: 'rgba(0,0,0,0.24)', padding: '8px 9px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
             <span style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>SUB OPTIONS</span>
-            <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 8, color: rarityColor, fontWeight: 900 }}>
+            <span style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 8, color: rarityColor, fontWeight: 900 }}>
               {subOptionRule.optionCount}枠 / 20ILvごとに強化
             </span>
           </div>
@@ -1237,8 +1237,8 @@ function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip 
               return (
                 <div key={option.type} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                    <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#F0EAFF', fontWeight: 800 }}>{getOptionLabel(option.type)}</span>
-                    {isElement && <span style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 7, color: '#D4AF37', border: '1px solid rgba(212,175,55,0.42)', borderRadius: 999, padding: '1px 5px', flexShrink: 0 }}>属性特化</span>}
+                    <span style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, color: '#F0EAFF', fontWeight: 800 }}>{getOptionLabel(option.type)}</span>
+                    {isElement && <span style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 7, color: '#D4AF37', border: '1px solid rgba(212,175,55,0.42)', borderRadius: 999, padding: '1px 5px', flexShrink: 0 }}>属性特化</span>}
                   </div>
                   <span style={{ fontFamily: 'monospace', fontSize: 10, color: rarityColor, fontWeight: 900, flexShrink: 0 }}>+{formatOptionValue(option.type, option.value)}</span>
                 </div>
@@ -1264,7 +1264,7 @@ function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip 
             background: isEquipped ? 'rgba(255,255,255,0.04)' : `linear-gradient(135deg, ${rarityColor}34, rgba(12,5,28,0.92))`,
             border: `1.5px solid ${isEquipped ? 'rgba(255,255,255,0.08)' : rarityColor + '77'}`,
             color: isEquipped ? '#5d5368' : rarityColor,
-            fontFamily: "'Noto Sans JP', sans-serif",
+            fontFamily: "var(--font-noto-sans-jp), sans-serif",
             fontSize: 13,
             fontWeight: 900,
             letterSpacing: '0.18em',
@@ -1307,14 +1307,14 @@ function WeaponEnhancementPanel({ weapon, materials, color, onRankUp, onReforge 
             <span style={{ fontFamily: 'monospace', fontSize: 10, color: rarityColor, fontWeight: 900, letterSpacing: '0.12em' }}>魂の共鳴</span>
             <span style={{ fontFamily: "'Cinzel', serif", fontSize: 18, color: rarityColor, fontWeight: 900 }}>R{getWeaponRank(weapon)}/5</span>
           </div>
-          <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#bcaee4', lineHeight: 1.5, minHeight: 46 }}>パッシブ効果量をランクVで2倍まで引き上げる。</div>
+          <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, color: '#bcaee4', lineHeight: 1.5, minHeight: 46 }}>パッシブ効果量をランクVで2倍まで引き上げる。</div>
           <div style={{ borderRadius: 10, background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.06)', padding: '8px', marginTop: 8 }}>
             <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>必要素材</div>
             <div style={{ fontFamily: 'monospace', fontSize: 11, color: rankCost ? rarityColor : '#6a5f76', fontWeight: 900, marginTop: 3 }}>
               {rankCost ? `${rankCost.name} ${materialQty(materials, rankCost.type)}/${rankCost.quantity}` : '最大共鳴'}
             </div>
           </div>
-          <button onClick={() => onRankUp(weapon)} disabled={!canRankUp} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canRankUp ? `linear-gradient(135deg, ${rarityColor}30, rgba(20,5,35,0.9))` : 'rgba(255,255,255,0.04)', border: `1px solid ${canRankUp ? rarityColor + '66' : 'rgba(255,255,255,0.08)'}`, color: canRankUp ? rarityColor : '#5d5368', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, fontWeight: 900 }}>共鳴</button>
+          <button onClick={() => onRankUp(weapon)} disabled={!canRankUp} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canRankUp ? `linear-gradient(135deg, ${rarityColor}30, rgba(20,5,35,0.9))` : 'rgba(255,255,255,0.04)', border: `1px solid ${canRankUp ? rarityColor + '66' : 'rgba(255,255,255,0.08)'}`, color: canRankUp ? rarityColor : '#5d5368', fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 12, fontWeight: 900 }}>共鳴</button>
         </div>
 
         <div className="gothic-panel rounded-2xl p-3">
@@ -1322,14 +1322,14 @@ function WeaponEnhancementPanel({ weapon, materials, color, onRankUp, onReforge 
             <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#D4AF37', fontWeight: 900, letterSpacing: '0.12em' }}>打ち直し</span>
             <span style={{ fontFamily: "'Cinzel', serif", fontSize: 18, color: '#D4AF37', fontWeight: 900 }}>ILv.{getWeaponIlv(weapon)}</span>
           </div>
-          <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#bcaee4', lineHeight: 1.5, minHeight: 46 }}>ILvを1上げてATKを必ず強化。サブステは20ILvごとに伸び、SSRとURは属性枠も育つ。</div>
+          <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, color: '#bcaee4', lineHeight: 1.5, minHeight: 46 }}>ILvを1上げてATKを必ず強化。サブステは20ILvごとに伸び、SSRとURは属性枠も育つ。</div>
           <div style={{ borderRadius: 10, background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.06)', padding: '8px', marginTop: 8 }}>
             <div style={{ fontFamily: 'monospace', fontSize: 8, color: '#7f7193' }}>必要素材</div>
             <div style={{ fontFamily: 'monospace', fontSize: 11, color: targetIlv ? '#D4AF37' : '#6a5f76', fontWeight: 900, marginTop: 3, lineHeight: 1.45 }}>
               {targetIlv ? reforgeCosts.map((cost) => `${cost.name} ${materialQty(materials, cost.type)}/${cost.quantity}`).join(' / ') : '最大ILv'}
             </div>
           </div>
-          <button onClick={() => onReforge(weapon)} disabled={!canReforge} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canReforge ? 'linear-gradient(135deg, rgba(212,175,55,0.26), rgba(20,5,35,0.9))' : 'rgba(255,255,255,0.04)', border: `1px solid ${canReforge ? 'rgba(212,175,55,0.62)' : 'rgba(255,255,255,0.08)'}`, color: canReforge ? '#D4AF37' : '#5d5368', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, fontWeight: 900, scrollMarginBlock: '76px 112px' }}>{targetIlv ? `打ち直し ILv.${targetIlv}` : '最大ILv'}</button>
+          <button onClick={() => onReforge(weapon)} disabled={!canReforge} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canReforge ? 'linear-gradient(135deg, rgba(212,175,55,0.26), rgba(20,5,35,0.9))' : 'rgba(255,255,255,0.04)', border: `1px solid ${canReforge ? 'rgba(212,175,55,0.62)' : 'rgba(255,255,255,0.08)'}`, color: canReforge ? '#D4AF37' : '#5d5368', fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 12, fontWeight: 900, scrollMarginBlock: '76px 112px' }}>{targetIlv ? `打ち直し ILv.${targetIlv}` : '最大ILv'}</button>
         </div>
       </div>
     </div>
@@ -1357,21 +1357,21 @@ function WeaponDismantlePanel({ weapon, equipped, materials, color, onDismantle 
             <Recycle size={24} style={{ color: rarityColor }} />
           </div>
           <div className="flex-1 min-w-0">
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 12, color: '#F0EAFF', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weapon.name}</div>
-            <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 10, color: '#9b8abc', marginTop: 4 }}>不要な武器を魂のイデアへ変換する。URは怨念が固定化しているため分解不可。</div>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 12, color: '#F0EAFF', fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weapon.name}</div>
+            <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, color: '#9b8abc', marginTop: 4 }}>不要な武器を魂のイデアへ変換する。URは怨念が固定化しているため分解不可。</div>
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginTop: 12 }}>
           {rewards.length === 0 ? (
-            <div style={{ borderRadius: 12, background: 'rgba(255,34,77,0.08)', border: '1px solid rgba(255,34,77,0.22)', padding: 10, color: '#ff8ba1', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 11, fontWeight: 800 }}>この武器は分解できません</div>
+            <div style={{ borderRadius: 12, background: 'rgba(255,34,77,0.08)', border: '1px solid rgba(255,34,77,0.22)', padding: 10, color: '#ff8ba1', fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 11, fontWeight: 800 }}>この武器は分解できません</div>
           ) : rewards.map((reward) => (
             <div key={reward.type} style={{ borderRadius: 12, background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.06)', padding: 10, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ color: '#F0EAFF', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 11, fontWeight: 900 }}>{reward.name}</span>
+              <span style={{ color: '#F0EAFF', fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 11, fontWeight: 900 }}>{reward.name}</span>
               <span style={{ color: rarityColor, fontFamily: 'monospace', fontSize: 11, fontWeight: 900 }}>{materialQty(materials, reward.type)} → {materialQty(materials, reward.type) + reward.quantity}</span>
             </div>
           ))}
         </div>
-        <button onClick={() => onDismantle(weapon)} disabled={blocked} style={{ width: '100%', minHeight: 44, marginTop: 12, borderRadius: 14, background: blocked ? 'rgba(255,255,255,0.04)' : 'linear-gradient(135deg, rgba(255,34,77,0.28), rgba(20,5,35,0.92))', border: `1.5px solid ${blocked ? 'rgba(255,255,255,0.08)' : 'rgba(255,34,77,0.58)'}`, color: blocked ? '#5d5368' : '#ff8ba1', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 13, fontWeight: 900, letterSpacing: '0.16em' }}>
+        <button onClick={() => onDismantle(weapon)} disabled={blocked} style={{ width: '100%', minHeight: 44, marginTop: 12, borderRadius: 14, background: blocked ? 'rgba(255,255,255,0.04)' : 'linear-gradient(135deg, rgba(255,34,77,0.28), rgba(20,5,35,0.92))', border: `1.5px solid ${blocked ? 'rgba(255,255,255,0.08)' : 'rgba(255,34,77,0.58)'}`, color: blocked ? '#5d5368' : '#ff8ba1', fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 13, fontWeight: 900, letterSpacing: '0.16em' }}>
           {equipped?.id === weapon.id ? '装備中は分解不可' : rewards.length === 0 ? '分解不可' : '分解'}
         </button>
       </div>
@@ -1556,7 +1556,7 @@ function ResidueEnhanceResultModal({ result, onClose }: { result: ResidueEnhance
           >
             {result.levelledUp ? <Crown size={36} style={{ color }} /> : <Sparkles size={34} style={{ color }} />}
           </motion.div>
-          <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color, fontWeight: 900, letterSpacing: '0.2em' }}>
+          <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 9, color, fontWeight: 900, letterSpacing: '0.2em' }}>
             SOUL INFUSION
           </div>
           <div style={{ marginTop: 5, fontFamily: "'Cinzel', serif", fontSize: 24, color: '#F0EAFF', fontWeight: 900, textShadow: `0 0 18px ${color}55` }}>
@@ -1610,7 +1610,7 @@ function ResidueEnhanceResultModal({ result, onClose }: { result: ResidueEnhance
               border: `1.5px solid ${color}66`,
               background: `linear-gradient(135deg, ${color}28, rgba(10,3,24,0.92))`,
               color: '#F0EAFF',
-              fontFamily: "'Noto Sans JP', sans-serif",
+              fontFamily: "var(--font-noto-sans-jp), sans-serif",
               fontSize: 13,
               fontWeight: 900,
               letterSpacing: '0.18em',
@@ -1835,7 +1835,7 @@ function PortraitCard({
         <div className="shrink-0 px-2.5 pt-2 pb-2.5 relative" style={{ background: `linear-gradient(0deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.2) 100%)`, borderTop: `1px solid ${color}1A` }}>
           {mk === 'PLAYER' && <span className="absolute top-2 left-2 text-[7px] font-black px-1.5 py-0.5 rounded" style={{ background: `${color}28`, border: `1px solid ${color}44`, color, fontFamily: 'monospace' }}>MAIN</span>}
           <div className="flex items-center justify-between mt-3 mb-1.5">
-            <span className="text-[12px] font-black truncate max-w-[58%] leading-tight" style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', serif", textShadow: `0 0 8px ${color}55` }}>{info.name}</span>
+            <span className="text-[12px] font-black truncate max-w-[58%] leading-tight" style={{ color: '#F0EAFF', fontFamily: "var(--font-cinzel-decorative), serif", textShadow: `0 0 8px ${color}55` }}>{info.name}</span>
             <span className="text-[9px] font-black px-1.5 py-0.5 rounded shrink-0" style={{ background: `${color}20`, border: `1px solid ${color}3A`, color, fontFamily: 'monospace' }}>
               {info.lvl !== null ? `Lv.${info.lvl}` : info.cost !== null ? `C${info.cost}` : '—'}
             </span>
@@ -1998,7 +1998,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
           flexDirection: 'column',
           overflow: 'hidden',
           background: '#03010B',
-          fontFamily: "'Inter', sans-serif",
+          fontFamily: "var(--font-inter), sans-serif",
         }}
         data-demon={isDemonMode ? 'true' : 'false'}
       >
@@ -2023,7 +2023,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
               alignSelf: 'flex-start',
               padding: '0 0 6px',
               color: '#8b7da8',
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: "var(--font-inter), sans-serif",
               fontSize: 11,
               background: 'transparent',
               border: 0,
@@ -2033,19 +2033,19 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
             <Home size={13} />
             <span>ホーム</span>
           </button>
-          <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color, letterSpacing: '0.18em', textTransform: 'uppercase', textShadow: `0 0 10px ${color}` }}>統合詳細ハブ</div>
+          <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 9, color, letterSpacing: '0.18em', textTransform: 'uppercase', textShadow: `0 0 10px ${color}` }}>統合詳細ハブ</div>
           <div style={{ fontFamily: "'Cinzel', serif", fontSize: 16, fontWeight: 700, color: '#f5f0ff', letterSpacing: '0.04em', lineHeight: 1.1, textShadow: `0 0 20px ${color}60`, whiteSpace: 'nowrap' }}>
             {info.nameEn}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: accent, border: `1px solid ${accent}50`, padding: '1px 6px', borderRadius: 3, background: `${accent}10`, flexShrink: 0 }}>{info.rank}</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', whiteSpace: 'nowrap' }}>{conf.label} · {info.isPlayer ? '主人公' : '軍団員'}</div>
+            <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#8b7da8', whiteSpace: 'nowrap' }}>{conf.label} · {info.isPlayer ? '主人公' : '軍団員'}</div>
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#6b5f7a' }}>LEVEL</div>
+          <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#6b5f7a' }}>LEVEL</div>
           <div style={{ fontFamily: "'Cinzel', serif", fontSize: 24, fontWeight: 700, color, lineHeight: 1, textShadow: `0 0 16px ${color}` }}>{info.lvl ?? info.cost ?? '?'}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#4a3a5a' }}>/ {maxLvl}</div>
+          <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 8, color: '#4a3a5a' }}>/ {maxLvl}</div>
           <div style={{ width: 50, height: 3, background: '#1a1228', borderRadius: 2, marginTop: 4, marginLeft: 'auto' }}>
             <div style={{ width: `${xpPct}%`, height: '100%', borderRadius: 2, background: `linear-gradient(90deg, ${color}, ${accent})`, boxShadow: `0 0 6px ${color}` }} />
           </div>
@@ -2221,7 +2221,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
           {/* Formation button */}
           <button type="button" onClick={() => { haptic(5); onBack(); }} style={{ padding: '8px 12px', background: `linear-gradient(135deg, ${color}30, ${color}15)`, border: `1px solid ${color}60`, borderRadius: 10, cursor: 'pointer', boxShadow: `0 0 12px ${color}30`, flexShrink: 0, transition: 'all 0.2s ease' }}>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 700, color, letterSpacing: '0.05em', textAlign: 'center' }}>編成</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 7, color: accent + '80', textAlign: 'center', marginTop: 1 }}>Formation</div>
+            <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 7, color: accent + '80', textAlign: 'center', marginTop: 1 }}>Formation</div>
           </button>
         </div>
       </div>
@@ -2250,7 +2250,7 @@ function GearActionToast({ toast }: { toast: GearToast }) {
         border: `1px solid ${toast.kind === 'success' ? 'rgba(34,197,94,0.34)' : 'rgba(220,38,38,0.42)'}`,
         color: toast.kind === 'success' ? '#86efac' : '#FFB4B4',
         boxShadow: '0 14px 34px rgba(0,0,0,0.42)',
-        fontFamily: "'Noto Sans JP', sans-serif",
+        fontFamily: "var(--font-noto-sans-jp), sans-serif",
       }}
     >
       {toast.text}
@@ -2492,8 +2492,8 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center" style={{ background: 'linear-gradient(180deg, #050115 0%, #07021A 100%)' }}>
           <div style={{ width: 52, height: 52, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139,43,226,0.14)', border: '1px solid rgba(139,43,226,0.36)', color: '#B09FF8', fontSize: 22 }}>🔒</div>
           <div>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", color: '#F0EAFF', fontSize: 15, fontWeight: 900, letterSpacing: '0.08em' }}>深淵の残滓</div>
-            <div style={{ marginTop: 8, color: '#8b7da8', fontFamily: "'Noto Sans JP', sans-serif", fontSize: 12, lineHeight: 1.7 }}>第2章到達後にチュートリアルと一緒に解放されます。</div>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", color: '#F0EAFF', fontSize: 15, fontWeight: 900, letterSpacing: '0.08em' }}>深淵の残滓</div>
+            <div style={{ marginTop: 8, color: '#8b7da8', fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 12, lineHeight: 1.7 }}>第2章到達後にチュートリアルと一緒に解放されます。</div>
           </div>
           <button type="button" onClick={onBack} className="min-h-11 rounded-xl px-6 text-[11px] font-black tracking-[0.14em]" style={{ border: `1px solid ${color}40`, background: `${color}18`, color }}>
             DETAILへ戻る
@@ -2859,7 +2859,7 @@ function SynergyPanel({ synergy }: { synergy: ActiveSynergy }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
             <span style={{
-              fontSize: 12, fontFamily: "'Cinzel Decorative', serif", fontWeight: 900,
+              fontSize: 12, fontFamily: "var(--font-cinzel-decorative), serif", fontWeight: 900,
               color: synergy.color, textShadow: `0 0 10px ${synergy.color}88`,
               letterSpacing: '0.05em',
             }}>
@@ -3053,7 +3053,7 @@ function CostIndicator({ totalCost, maxCost, feedbackKey, feedbackMessage }: { t
               background: 'rgba(8,3,20,0.96)',
               border: `1px solid ${isOver || feedbackMessage ? 'rgba(255,68,68,0.38)' : 'rgba(139,0,255,0.34)'}`,
               color: isOver || feedbackMessage ? '#FF9A9A' : 'rgba(220,210,240,0.88)',
-              fontFamily: "'Noto Sans JP', sans-serif",
+              fontFamily: "var(--font-noto-sans-jp), sans-serif",
               fontSize: 10,
               lineHeight: 1.55,
               boxShadow: '0 12px 28px rgba(0,0,0,0.52)',
@@ -3212,7 +3212,7 @@ function MonsterRosterCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="truncate text-[15px] font-black" style={{ color: '#F0EAFF', fontFamily: "'Noto Sans JP', sans-serif" }}>{monster.name}</span>
+            <span className="truncate text-[15px] font-black" style={{ color: '#F0EAFF', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>{monster.name}</span>
             {alreadyInParty && (
               <span className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black" style={{ color: POSITION_META[inPartyIndex].color, background: `${POSITION_META[inPartyIndex].color}1A`, border: `1px solid ${POSITION_META[inPartyIndex].color}44`, fontFamily: 'monospace' }}>
                 {POSITION_META[inPartyIndex].short}
@@ -3321,7 +3321,7 @@ function MonsterDetailPage({
             <div className="text-[11px] font-black tracking-[0.18em]" style={{ color: position.color, fontFamily: 'monospace' }}>
               {position.short} / MONSTER DETAIL
             </div>
-            <div className="truncate text-[28px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', 'Noto Sans JP', serif", letterSpacing: '0.08em', textShadow: `0 0 18px ${conf.glow}` }}>
+            <div className="truncate text-[28px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "var(--font-cinzel-decorative), var(--font-noto-sans-jp), serif", letterSpacing: '0.08em', textShadow: `0 0 18px ${conf.glow}` }}>
               {monster.name}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] font-black" style={{ fontFamily: 'monospace' }}>
@@ -3364,7 +3364,7 @@ function MonsterDetailPage({
 
             <div className="w-full rounded-2xl p-4" style={{ background: 'rgba(4,2,16,0.72)', border: '1px solid rgba(139,0,255,0.22)' }}>
               <div className="text-[11px] font-black tracking-[0.18em] mb-3" style={{ color: '#E090FF', fontFamily: "'Cinzel', serif" }}>COMBAT PROFILE</div>
-              <div className="grid gap-2.5 text-[12px]" style={{ color: 'rgba(220,210,240,0.86)', fontFamily: "'Noto Sans JP', sans-serif" }}>
+              <div className="grid gap-2.5 text-[12px]" style={{ color: 'rgba(220,210,240,0.86)', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>
                 <div className="flex justify-between gap-3"><span style={{ color: '#6b5f7a' }}>配置先</span><span style={{ color: position.color, fontFamily: 'monospace', fontWeight: 900 }}>{position.label}</span></div>
                 <div className="flex justify-between gap-3"><span style={{ color: '#6b5f7a' }}>弱点</span><span>{weaknessLabel}</span></div>
                 <div className="flex justify-between gap-3"><span style={{ color: '#6b5f7a' }}>現在コスト</span><span style={{ fontFamily: 'monospace', color: '#D4AF37' }}>{totalCost}/{maxCost}</span></div>
@@ -3394,7 +3394,7 @@ function MonsterDetailPage({
             {monster.spiritCore && (
               <div className="w-full rounded-2xl p-4" style={{ background: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.25)' }}>
                 <div className="text-[11px] font-black tracking-[0.18em] mb-2" style={{ color: '#D4AF37', fontFamily: "'Cinzel', serif" }}>SPIRIT CORE</div>
-                <div className="text-[14px] font-black" style={{ color: '#F0EAFF', fontFamily: "'Noto Sans JP', sans-serif" }}>{monster.spiritCore.name}</div>
+                <div className="text-[14px] font-black" style={{ color: '#F0EAFF', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>{monster.spiritCore.name}</div>
                 <div className="mt-1 text-[11px]" style={{ color: 'rgba(220,210,240,0.72)', fontFamily: 'monospace' }}>ATK x{monster.spiritCore.atkMultiplier}</div>
               </div>
             )}
@@ -3415,7 +3415,7 @@ function MonsterDetailPage({
             background: costBlocked ? 'rgba(255,68,68,0.11)' : 'linear-gradient(135deg, rgba(139,0,255,0.36), rgba(139,0,255,0.16))',
             border: `1px solid ${costBlocked ? 'rgba(255,68,68,0.42)' : 'rgba(139,0,255,0.58)'}`,
             color: costBlocked ? '#FF8A8A' : '#F0EAFF',
-            fontFamily: "'Noto Sans JP', sans-serif",
+            fontFamily: "var(--font-noto-sans-jp), sans-serif",
             boxShadow: costBlocked ? 'none' : '0 0 20px rgba(139,0,255,0.22)',
           }}
         >
@@ -3622,7 +3622,7 @@ function MonsterPickerSheet({
                     <div className="text-[10px] font-black tracking-[0.18em]" style={{ color: position.color, fontFamily: 'monospace' }}>
                       {position.short} / HATE {position.hate}
                     </div>
-                    <div className="truncate text-[18px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', 'Noto Sans JP', serif", letterSpacing: '0.08em' }}>
+                    <div className="truncate text-[18px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "var(--font-cinzel-decorative), var(--font-noto-sans-jp), serif", letterSpacing: '0.08em' }}>
                       魔物選択
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-[10px] font-bold" style={{ color: 'rgba(190,176,230,0.66)', fontFamily: 'monospace' }}>
@@ -3818,7 +3818,7 @@ function MonsterPickerPage({
                 <div className="text-[11px] font-black tracking-[0.18em]" style={{ color: position.color, fontFamily: 'monospace' }}>
                   {position.short} / HATE {position.hate}
                 </div>
-                <div className="truncate text-[28px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "'Cinzel Decorative', 'Noto Sans JP', serif", letterSpacing: '0.08em', textShadow: '0 0 18px rgba(139,0,255,0.38)' }}>
+                <div className="truncate text-[28px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "var(--font-cinzel-decorative), var(--font-noto-sans-jp), serif", letterSpacing: '0.08em', textShadow: '0 0 18px rgba(139,0,255,0.38)' }}>
                   魔物選択
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] font-black" style={{ color: 'rgba(190,176,230,0.72)', fontFamily: 'monospace' }}>
@@ -4101,7 +4101,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
               <Home size={12} />
               <span>ホーム</span>
             </button>
-            <div className="text-[22px] font-black tracking-[0.3em] leading-tight" style={{ color: '#E090FF', fontFamily: "'Cinzel Decorative', serif", textShadow: '0 0 18px rgba(196,28,250,0.58)' }}>LEGION</div>
+            <div className="text-[22px] font-black tracking-[0.3em] leading-tight" style={{ color: '#E090FF', fontFamily: "var(--font-cinzel-decorative), serif", textShadow: '0 0 18px rgba(196,28,250,0.58)' }}>LEGION</div>
             <div className="text-[11px] font-bold tracking-[0.2em] mt-0.5" style={{ color: 'rgba(182,165,232,0.52)', fontFamily: 'monospace' }}>ARMY FORMATION</div>
           </div>
           <div className="flex flex-col items-end gap-1.5">
@@ -4134,7 +4134,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
             style={{ background: 'transparent', border: 0, padding: 0 }}
           >
             <div className="text-[10px] font-black tracking-[0.18em]" style={{ color: selectedPosition.color, fontFamily: 'monospace' }}>{selectedPosition.short} / HATE {selectedPosition.hate}</div>
-            <div className="truncate text-[13px] font-black" style={{ color: 'rgba(240,234,255,0.9)', fontFamily: "'Noto Sans JP', sans-serif" }}>
+            <div className="truncate text-[13px] font-black" style={{ color: 'rgba(240,234,255,0.9)', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>
               {party[selectedSlotIndex]?.name ?? '空き枠'}
             </div>
           </button>

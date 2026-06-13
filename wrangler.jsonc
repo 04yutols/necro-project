@@ -21,8 +21,7 @@
   },
   "observability": {
     "enabled": true
-  },
-  "vars": {
-    "AUTH_URL": "https://necro-project.pages.dev"
   }
+  // AUTH_URL is environment-specific. Configure it with Cloudflare dashboard vars
+  // or `wrangler secret put AUTH_URL` instead of committing a production URL here.
 }

@@ -258,7 +258,7 @@ export function SpotlightOverlay({ step, onNext, onSkip, canSkip, zBase = 9500 }
                 {step.title}
               </p>
               <p style={{
-                fontFamily: "'Noto Sans JP', sans-serif",
+                fontFamily: "var(--font-noto-sans-jp), sans-serif",
                 fontSize: 12,
                 color: 'rgba(220,210,240,0.9)',
                 lineHeight: 1.75,

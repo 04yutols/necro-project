@@ -158,6 +158,8 @@ export class BattleEngine {
       }
     }
 
+    this.processEnemyRuntimeStatuses(turnEnemies);
+
     // 3. プレイヤー行動 (GDD-003)
     if (!playerActionSkipped) {
       this.processPlayerAction(actionType, target, skillId, turnEnemies);
@@ -194,6 +196,7 @@ export class BattleEngine {
 
     const turnEnemies = this.resolveEnemyCandidates(target, enemyCandidates);
     this.activeEnemyCandidates = turnEnemies;
+    this.processEnemyRuntimeStatuses(turnEnemies);
     this.processMonsterAction(monster, target, turnEnemies);
     this.processEnemyCounterAttack(target);
     if (this.isPlayerDefeated()) return this.logs;
@@ -644,14 +647,18 @@ export class BattleEngine {
     const monsterTarget = this.selectEnemyTarget();
 
     if (monsterTarget) {
-      const rawDmg = Math.max(1, Math.floor(
-        enemy.stats.atk * (1 - monsterTarget.stats.def / (monsterTarget.stats.def + 200))
-      ));
+      const element = this.getEnemyAttackElement(enemy);
+      const result = calculateBattleDamage({
+        attackerStats: enemy.stats,
+        defenderStats: monsterTarget.stats,
+        defenderResistances: monsterTarget.resistances,
+        element,
+      });
       const sb = this.synergyBonus;
       const absorbed = sb.absorbDmgPct
-        ? Math.floor(rawDmg * sb.absorbDmgPct / 100)
+        ? Math.floor(result.damage * sb.absorbDmgPct / 100)
         : 0;
-      const finalDmg = Math.max(1, rawDmg - absorbed);
+      const finalDmg = Math.max(1, result.damage - absorbed);
 
       this.monsterCurrentHp[monsterTarget.id] = Math.max(
         0,
@@ -664,7 +671,18 @@ export class BattleEngine {
         ? `${enemy.name}の攻撃！ ${monsterTarget.name}は倒れた！`
         : `${enemy.name}の攻撃！ ${monsterTarget.name}に${finalDmg}ダメージ${absorbed > 0 ? `（${absorbed}吸収）` : ''}。`;
 
-      this.addLog('ENEMY_ATTACK', enemy.name, monsterTarget.name, desc, finalDmg);
+      this.addLog(
+        'ENEMY_ATTACK',
+        enemy.name,
+        monsterTarget.name,
+        desc,
+        finalDmg,
+        result.isCritical,
+        result.isWeakness,
+        result.isResisted,
+        element,
+        'STRIKE',
+      );
     } else {
       // モンスター全滅 → アルドが直接受ける
       const playerProfile = calculateCharacterStatProfile(player);
@@ -682,6 +700,10 @@ export class BattleEngine {
         rawDmg);
       this.recordPlayerDefeat(enemy.name, `${player.name}は倒れた。`);
     }
+  }
+
+  private getEnemyAttackElement(enemy: MonsterData): ElementType {
+    return enemy.spiritCore?.element ?? 'NONE';
   }
 
   /**
@@ -1081,7 +1103,32 @@ export class BattleEngine {
         targetStats.hp = Math.max(0, targetStats.hp - result.totalDamage);
       }
     }
-    result.ticks.forEach(tick => {
+    this.logStatusTicks(targetName, result.ticks);
+    if (isPlayer) {
+      this.recordPlayerDefeat('STATUS', `${targetName}は状態異常に蝕まれて倒れた。`);
+    }
+    return { effects: result.effects, skipAction: result.skipAction };
+  }
+
+  private processEnemyRuntimeStatuses(enemies: MonsterData[]): void {
+    const seen = new Set<string>();
+    for (const enemy of enemies) {
+      if (seen.has(enemy.id)) continue;
+      seen.add(enemy.id);
+      if (!enemy.statusEffects || enemy.statusEffects.length === 0) continue;
+      if (this.getEnemyRuntimeHp(enemy) <= 0) continue;
+
+      const result = processStatusEffects(enemy.statusEffects, { maxHp: this.getEnemyMaxHp(enemy) });
+      enemy.statusEffects = result.effects;
+      if (result.totalDamage > 0) {
+        this.applyDamageToEnemy(enemy, result.totalDamage);
+      }
+      this.logStatusTicks(enemy.name, result.ticks);
+    }
+  }
+
+  private logStatusTicks(targetName: string, ticks: ReturnType<typeof processStatusEffects>['ticks']): void {
+    ticks.forEach(tick => {
       if (tick.damage) {
         this.addLog(
           'AILMENT_TICK',
@@ -1104,10 +1151,6 @@ export class BattleEngine {
         this.addLog('AILMENT_CLEAR', targetName, targetName, `${targetName}の${this.getAilmentLabel(tick.type)}が解除された。`, undefined, false, false, false, 'NONE', 'MAGIC', { ailmentClearedBy: 'TURN_END' });
       }
     });
-    if (isPlayer) {
-      this.recordPlayerDefeat('STATUS', `${targetName}は状態異常に蝕まれて倒れた。`);
-    }
-    return { effects: result.effects, skipAction: result.skipAction };
   }
 
   public calculateAVDelay(baseAVDelay: number, targetEffectRes: number): number {

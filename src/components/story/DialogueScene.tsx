@@ -167,7 +167,7 @@ export function DialogueScene({ scene, onDone, onSkip }: Props) {
           <div style={{ minWidth: 0 }}>
             <div style={{
               color: '#8B00FF',
-              fontFamily: "'Cinzel Decorative', serif",
+              fontFamily: "var(--font-cinzel-decorative), serif",
               fontSize: 9,
               fontWeight: 700,
               letterSpacing: '0.16em',
@@ -308,7 +308,7 @@ export function DialogueScene({ scene, onDone, onSkip }: Props) {
                 alignItems: 'center',
                 gap: 10,
                 color: character?.color ?? '#8B8370',
-                fontFamily: "'Cinzel Decorative', 'Noto Sans JP', serif",
+                fontFamily: "var(--font-cinzel-decorative), var(--font-noto-sans-jp), serif",
                 fontSize: 13,
                 fontWeight: 900,
                 letterSpacing: '0.08em',
@@ -326,7 +326,7 @@ export function DialogueScene({ scene, onDone, onSkip }: Props) {
                 flex: 1,
                 minHeight: 0,
                 color: '#F0EAFF',
-                fontFamily: "'Noto Sans JP', sans-serif",
+                fontFamily: "var(--font-noto-sans-jp), sans-serif",
                 fontSize: 'clamp(14px, 3.8vw, 17px)',
                 lineHeight: 1.72,
                 fontWeight: 600,
@@ -347,7 +347,7 @@ export function DialogueScene({ scene, onDone, onSkip }: Props) {
                   style={{
                     marginTop: 8,
                     color: 'rgba(160,145,200,0.58)',
-                    fontFamily: "'IM Fell English', serif",
+                    fontFamily: "var(--font-im-fell-english), serif",
                     fontSize: 11,
                     fontStyle: 'italic',
                     lineHeight: 1.42,

@@ -25,7 +25,7 @@ export function StoryArchive() {
         alignItems: 'center',
         gap: 9,
         color: '#8B00FF',
-        fontFamily: "'Cinzel Decorative', serif",
+        fontFamily: "var(--font-cinzel-decorative), serif",
         fontSize: 10,
         fontWeight: 900,
         letterSpacing: '0.14em',
@@ -65,7 +65,7 @@ export function StoryArchive() {
                 <div style={{
                   marginTop: 4,
                   color: '#f0eaff',
-                  fontFamily: "'Noto Sans JP', sans-serif",
+                  fontFamily: "var(--font-noto-sans-jp), sans-serif",
                   fontSize: 14,
                   fontWeight: 900,
                   overflow: 'hidden',
@@ -78,7 +78,7 @@ export function StoryArchive() {
                   <div style={{
                     marginTop: 2,
                     color: 'rgba(160,145,200,0.58)',
-                    fontFamily: "'IM Fell English', serif",
+                    fontFamily: "var(--font-im-fell-english), serif",
                     fontSize: 10,
                     fontStyle: 'italic',
                     overflow: 'hidden',

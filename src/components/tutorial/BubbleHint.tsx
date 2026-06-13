@@ -137,7 +137,7 @@ export function BubbleHint({ hint }: Props) {
             {hint.title}
           </p>
           <p style={{
-            fontFamily: "'Noto Sans JP', sans-serif",
+            fontFamily: "var(--font-noto-sans-jp), sans-serif",
             fontSize: 11,
             color: 'rgba(210,200,235,0.88)',
             lineHeight: 1.7,

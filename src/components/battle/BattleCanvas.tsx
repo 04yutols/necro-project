@@ -13,6 +13,7 @@ import demonFormsData from '../../data/master/demonForms.json';
 import { getBaseAttackType, getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
 import { startTutorialBattlePhase } from '../../hooks/useTutorialTrigger';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { RewardService, type StageDropResult } from '../../services/RewardService';
 import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/StatSystem';
 import { calculateBattleDamage, calculateIncomingEnemyDamage, type BattleDamageResult } from '../../logic/BattleDamage';
@@ -1082,10 +1083,10 @@ function DemonizeBurstOverlay({ burst }: { burst: DemonBurstState | null }) {
         textShadow: `0 0 18px ${color}, 0 0 34px rgba(255,255,255,0.36)`,
         animation: 'demonTitleReveal 1.18s ease-out 0.42s both',
       }}>
-        <div style={{ fontFamily: "'Cinzel Decorative', 'Noto Sans JP', serif", fontSize: 'clamp(18px, 6vw, 28px)', fontWeight: 900 }}>
+        <div style={{ fontFamily: "var(--font-cinzel-decorative), var(--font-noto-sans-jp), serif", fontSize: 'clamp(18px, 6vw, 28px)', fontWeight: 900 }}>
           {burst.form.visual?.icon ?? '☠'} 魔神化
         </div>
-        <div style={{ marginTop: 5, fontFamily: "'Noto Sans JP', sans-serif", fontSize: 'clamp(12px, 3.5vw, 15px)', fontWeight: 900, color }}>
+        <div style={{ marginTop: 5, fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 'clamp(12px, 3.5vw, 15px)', fontWeight: 900, color }}>
           {burst.form.formName}
         </div>
       </div>
@@ -1155,7 +1156,7 @@ function TurnOrderStrip({ order }: { order: TurnOrderEntry[] }) {
             }}
           >
             <div style={{
-              fontFamily: "'Noto Sans JP', sans-serif",
+              fontFamily: "var(--font-noto-sans-jp), sans-serif",
               fontSize: isCurrent ? 14 : 12,
               fontWeight: 900,
               lineHeight: 1,
@@ -1210,7 +1211,7 @@ function StatusBadgeList({ effects, pulse }: { effects?: StatusEffect[]; pulse?:
             border: `1px solid ${ui.color}88`,
             boxShadow: pulse === effect.type ? `0 0 12px ${ui.color}` : `0 0 7px ${ui.color}44`,
             color: '#fff',
-            fontFamily: "'Noto Sans JP', sans-serif",
+            fontFamily: "var(--font-noto-sans-jp), sans-serif",
             fontSize: 8,
             fontWeight: 900,
             lineHeight: 1,
@@ -1389,7 +1390,7 @@ function BattleLog({ lines }: { lines: string[] }) {
     }}>
       {lines.slice(-3).map((line, i) => (
         <div key={i} style={{
-          fontFamily: "'Inter', sans-serif", fontSize: 10, lineHeight: 1.4,
+          fontFamily: "var(--font-inter), sans-serif", fontSize: 10, lineHeight: 1.4,
           color: i === lines.slice(-3).length - 1 ? '#e2d8f0' : '#A5A9B4',
           animation: i === lines.slice(-3).length - 1 ? 'logFade 0.3s ease-out' : 'none',
         }}>{line}</div>
@@ -1424,7 +1425,7 @@ function FormationBadge({ badge, active }: { badge: FormationBadgeMeta; active: 
     }}>
       <span style={{ color: active ? badge.color : '#6d5f7a', fontSize: 10, lineHeight: 1 }}>{badge.icon}</span>
       <span style={{
-        fontFamily: "'Noto Sans JP', sans-serif",
+        fontFamily: "var(--font-noto-sans-jp), sans-serif",
         fontSize: 9,
         fontWeight: 900,
         lineHeight: 1,
@@ -1461,7 +1462,7 @@ function PartyStatusBar({ party, demonized, playerStatusEffects }: { party: Batt
                     color: '#fff',
                     boxShadow: `0 0 8px ${ui.color}55`,
                     fontSize: 7,
-                    fontFamily: "'Noto Sans JP', sans-serif",
+                    fontFamily: "var(--font-noto-sans-jp), sans-serif",
                     fontWeight: 900,
                   }}>{ui.icon}</div>
                 );
@@ -1481,7 +1482,7 @@ function PartyStatusBar({ party, demonized, playerStatusEffects }: { party: Batt
           {member.formation && <FormationBadge badge={member.formation} active={member.hp > 0}/>}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#A5A9B4' }}>HP</div>
+              <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 8, color: '#A5A9B4' }}>HP</div>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: '#f87171' }}>
                 {member.hp}<span style={{ color: '#6d5f7a', fontSize: 8 }}>/{member.maxHp}</span>
               </div>
@@ -1497,7 +1498,7 @@ function PartyStatusBar({ party, demonized, playerStatusEffects }: { party: Batt
           </div>
           <div data-testid={member.active ? 'player-mp' : undefined} style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: '#A5A9B4' }}>MP</div>
+              <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 8, color: '#A5A9B4' }}>MP</div>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: '#60a5fa' }}>{member.mp}</div>
             </div>
             <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
@@ -1608,7 +1609,7 @@ function DemonStatusRibbon({ form, actionsRemaining, ultimateUsed, ultimateName,
         </div>
         <div style={{
           marginTop: 2,
-          fontFamily: "'Inter', sans-serif",
+          fontFamily: "var(--font-inter), sans-serif",
           fontSize: 8,
           color: '#b9a8c8',
           whiteSpace: 'nowrap',
@@ -1648,7 +1649,7 @@ function DemonStatusRibbon({ form, actionsRemaining, ultimateUsed, ultimateName,
           gap: 4,
           width: '100%',
           minWidth: 0,
-          fontFamily: "'Noto Sans JP', sans-serif",
+          fontFamily: "var(--font-noto-sans-jp), sans-serif",
           fontSize: 11,
           fontWeight: 900,
           color: canUseUltimate ? '#fff7fb' : '#A5A9B4',
@@ -1712,7 +1713,7 @@ function CommandButton({ label, sublabel, icon, enabled, color, onClick, glow, d
       )}
       <div style={{ fontSize: 20 }}>{icon}</div>
       <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, fontWeight: 700, color: enabled ? '#f0ebff' : `${color}70`, letterSpacing: '0.04em', lineHeight: 1, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
-      {sublabel && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: enabled ? color + '90' : `${color}45`, letterSpacing: '0.08em', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sublabel}</div>}
+      {sublabel && <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 8, color: enabled ? color + '90' : `${color}45`, letterSpacing: '0.08em', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sublabel}</div>}
     </div>
   );
 }
@@ -1740,7 +1741,7 @@ function SkillButton({ skill, mp, onClick, demonized }: {
     }}>
       <div style={{ fontSize: 22, filter: canUse ? `drop-shadow(0 0 8px ${elementStyle.color})` : 'none' }}>{skill.icon}</div>
       <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700, color: canUse ? '#f0ebff' : '#6d5f7a', textAlign: 'center', lineHeight: 1.2 }}>{skill.name}</div>
-      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: canUse ? '#60a5fa' : '#2a1a3a', display: 'flex', alignItems: 'center', gap: 2 }}>
+      <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 8, color: canUse ? '#60a5fa' : '#2a1a3a', display: 'flex', alignItems: 'center', gap: 2 }}>
         {skill.cost ? <span style={{ color: demonized ? '#ef4444' : '#60a5fa' }}>{skill.cost}</span> : `MP ${skill.mp ?? 0}`}
       </div>
       <div style={{
@@ -1880,6 +1881,8 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
   const [demonBurst, setDemonBurst] = useState<DemonBurstState | null>(null);
   const [turnOrderPreview, setTurnOrderPreview] = useState<TurnOrderEntry[]>([]);
   const [showRetreatConfirm, setShowRetreatConfirm] = useState(false);
+  const closeRetreatConfirm = useCallback(() => setShowRetreatConfirm(false), []);
+  const retreatDialogRef = useFocusTrap<HTMLDivElement>(showRetreatConfirm, closeRetreatConfirm);
 
   const [showResult, setShowResult] = useState(false);
   const [battleResult, setBattleResult] = useState<{
@@ -3242,7 +3245,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
       width: '100%', height: '100%',
       display: 'flex', flexDirection: 'column',
       background: '#06050f', position: 'relative', overflow: 'hidden',
-      fontFamily: "'Inter', sans-serif",
+      fontFamily: "var(--font-inter), sans-serif",
     }} data-demon={demonized ? 'true' : 'false'}>
 
       {/* ── TOP HUD ── */}
@@ -3253,7 +3256,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
         zIndex: 10,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: "'Inter', sans-serif", fontSize: 10, color: '#8b7da8' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: "var(--font-inter), sans-serif", fontSize: 10, color: '#8b7da8' }}>
             <span style={{ fontSize: 13 }}>‹</span>
             <span>マップ</span>
           </div>
@@ -3264,7 +3267,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
             textShadow: demonized ? `0 0 12px ${demonColor}` : '0 0 8px #8B00FF',
             transition: 'all 0.5s ease',
           }}>{demonized ? `☠ ${demonForm.formName}` : currentWave.isBoss ? `⚠ ${currentWave.title} BOSS` : `${currentWave.title} — ${currentWave.label}/${battleWaves.length}`}</div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: phaseMeta.color, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: phaseMeta.color, display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 5, height: 5, borderRadius: '50%', background: phaseMeta.color }}/>
             {phaseMeta.label}
           </div>
@@ -3280,7 +3283,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
             background: `linear-gradient(135deg, ${areaGimmickMeta.soft}, rgba(5,1,12,0.78))`,
             color: '#f8f3ff',
             boxShadow: `0 0 12px ${areaGimmickMeta.color}33`,
-            fontFamily: "'Noto Sans JP', sans-serif",
+            fontFamily: "var(--font-noto-sans-jp), sans-serif",
             fontSize: 9,
             fontWeight: 900,
             lineHeight: 1.2,
@@ -3340,7 +3343,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
               <div onClick={() => setBattlePhase('playerTurn')} style={{
                 padding: '3px 10px', borderRadius: 6,
                 background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer',
+                fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer',
               }}>← 戻る</div>
             </div>
             <div className="safe-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
@@ -3350,7 +3353,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
                   demonized={demonized}/>
               ))}
             </div>
-            <div style={{ marginTop: 8, padding: '6px 10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', lineHeight: 1.5 }}>
+            <div style={{ marginTop: 8, padding: '6px 10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#8b7da8', lineHeight: 1.5 }}>
               スキルを選択してください。長押しで詳細確認。
             </div>
           </div>
@@ -3358,7 +3361,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600, color: '#f59e0b', letterSpacing: '0.1em' }}>道具選択</div>
-              <div onClick={() => setBattlePhase('playerTurn')} style={{ padding: '3px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer' }}>← 戻る</div>
+              <div onClick={() => setBattlePhase('playerTurn')} style={{ padding: '3px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer' }}>← 戻る</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {battleItems.length > 0 ? battleItems.map(item => (
@@ -3377,9 +3380,9 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
                   <div style={{ fontSize: 18 }}>{item.icon ?? '🧪'}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: '#f0ebff' }}>{item.name}</div>
-                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8' }}>{getBattleItemDescription(item)}</div>
+                    <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#8b7da8' }}>{getBattleItemDescription(item)}</div>
                   </div>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#d8b4fe' }}>×{item.quantity}</div>
+                  <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#d8b4fe' }}>×{item.quantity}</div>
                 </button>
               )) : (
                 <div style={{
@@ -3387,7 +3390,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
                   borderRadius: 10,
                   border: '1px dashed rgba(255,255,255,0.12)',
                   background: 'rgba(255,255,255,0.025)',
-                  fontFamily: "'Inter', sans-serif",
+                  fontFamily: "var(--font-inter), sans-serif",
                   fontSize: 10,
                   color: '#8b7da8',
                 }}>
@@ -3402,7 +3405,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, color: '#06b6d4', letterSpacing: '0.1em' }}>
                 命令 / {activeMonster?.name ?? '使役魔'}
               </div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, color: '#8b7da8' }}>
+              <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#8b7da8' }}>
                 対象を選択して攻撃
               </div>
             </div>
@@ -3474,6 +3477,8 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
           role="dialog"
           aria-modal="true"
           aria-labelledby="battle-retreat-title"
+          ref={retreatDialogRef}
+          tabIndex={-1}
           style={{
             position: 'absolute',
             inset: 0,

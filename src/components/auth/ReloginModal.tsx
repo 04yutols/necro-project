@@ -84,7 +84,7 @@ export function ReloginModal({ open, onRecovered }: ReloginModalProps) {
                 <KeyRound size={22} />
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 17, fontWeight: 800, letterSpacing: '0.06em' }}>
+                <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 17, fontWeight: 800, letterSpacing: '0.06em' }}>
                   SESSION EXPIRED
                 </div>
                 <div style={{ color: 'rgba(220,210,240,0.68)', fontSize: 12, lineHeight: 1.55, marginTop: 4 }}>

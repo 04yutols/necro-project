@@ -52,7 +52,7 @@ function LabToast({ toast }: { toast: ActionToast }) {
         border: `1px solid ${toast.kind === 'success' ? 'rgba(34,197,94,0.34)' : 'rgba(220,38,38,0.42)'}`,
         color: toast.kind === 'success' ? '#86efac' : '#FFB4B4',
         boxShadow: '0 14px 34px rgba(0,0,0,0.38)',
-        fontFamily: "'Noto Sans JP', sans-serif",
+        fontFamily: "var(--font-noto-sans-jp), sans-serif",
       }}
     >
       {toast.text}
@@ -233,7 +233,7 @@ function ResidueDetailStrip({ residue, isEquipped, onEquip }: StripProps) {
           <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
             <div className="flex items-center gap-1.5">
               <span className="text-[12px] font-black truncate leading-tight"
-                style={{ color: '#EDE8FF', fontFamily: "'Cinzel Decorative', serif" }}>
+                style={{ color: '#EDE8FF', fontFamily: "var(--font-cinzel-decorative), serif" }}>
                 {residue.name}
               </span>
               <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0"
@@ -919,7 +919,7 @@ export default function NecroLab() {
           className="text-[14px] font-black tracking-[0.3em] uppercase"
           style={{
             color: '#E080FF',
-            fontFamily: "'Cinzel Decorative', serif",
+            fontFamily: "var(--font-cinzel-decorative), serif",
             textShadow: '0 0 16px rgba(204,34,255,0.65)',
           }}
         >

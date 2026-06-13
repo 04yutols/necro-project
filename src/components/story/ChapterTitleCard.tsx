@@ -66,7 +66,7 @@ export function ChapterTitleCard({ scene, onDone }: Props) {
       {/* 章タイトル */}
       <div
         style={{
-          fontFamily: "'Cinzel Decorative', serif",
+          fontFamily: "var(--font-cinzel-decorative), serif",
           fontSize: 28,
           color: '#F0EAFF',
           letterSpacing: '0.4em',
@@ -94,7 +94,7 @@ export function ChapterTitleCard({ scene, onDone }: Props) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 1.6 }}
           style={{
-            fontFamily: "'IM Fell English', serif",
+            fontFamily: "var(--font-im-fell-english), serif",
             fontSize: 12,
             fontStyle: 'italic',
             color: 'rgba(160,145,200,0.6)',
@@ -113,7 +113,7 @@ export function ChapterTitleCard({ scene, onDone }: Props) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 1.8 }}
           style={{
-            fontFamily: "'Noto Sans JP', sans-serif",
+            fontFamily: "var(--font-noto-sans-jp), sans-serif",
             fontSize: 12,
             color: 'rgba(200,190,230,0.75)',
             lineHeight: 1.9,

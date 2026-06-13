@@ -479,7 +479,7 @@ function WorldAreaNode({
         x={area.position.x}
         y={area.position.y + size + 30}
         textAnchor="middle"
-        fontFamily="'Noto Sans JP', sans-serif"
+        fontFamily="var(--font-noto-sans-jp), sans-serif"
         fontSize="10"
         fontWeight="800"
         fill={locked ? '#51445c' : color}
@@ -1000,7 +1000,7 @@ function FogRevealOverlay({ stage, onDone }: { stage: StageData; onDone: () => v
         }}
       >
         <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color, fontWeight: 900, letterSpacing: '0.16em' }}>FOG CLEARED</div>
-        <div style={{ marginTop: 4, fontFamily: "'Noto Sans JP', sans-serif", fontSize: 15, color: '#f0ebff', fontWeight: 900 }}>{stage.nameJa}</div>
+        <div style={{ marginTop: 4, fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 15, color: '#f0ebff', fontWeight: 900 }}>{stage.nameJa}</div>
         <div style={{ marginTop: 3, fontSize: 10, color: '#a89ec8' }}>新たな深淵の迷宮ノードが解放された</div>
       </div>
     </div>
@@ -1071,7 +1071,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
         position: 'absolute',
         inset: 0,
         background: '#05030f',
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "var(--font-inter), sans-serif",
         overflow: 'hidden',
         color: '#f0ebff',
       }}>
@@ -1142,7 +1142,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                 <ChevronLeft size={15} />
                 ホーム
               </button>
-              <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#D4AF37', letterSpacing: '0.18em' }}>LAYER 1 / WORLD MAP</div>
+              <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 8, color: '#D4AF37', letterSpacing: '0.18em' }}>LAYER 1 / WORLD MAP</div>
               <div style={{
                 fontFamily: "'Cinzel', serif",
                 fontSize: 'clamp(19px, 5.5vw, 25px)',
@@ -1256,7 +1256,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
       position: 'absolute',
       inset: 0,
       background: '#05030f',
-      fontFamily: "'Inter', sans-serif",
+      fontFamily: "var(--font-inter), sans-serif",
       overflow: 'hidden',
       color: '#f0ebff',
     }}>
@@ -1347,7 +1347,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
               <ChevronLeft size={15} />
               ワールド
             </button>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#D4AF37', letterSpacing: '0.18em' }}>LAYER 2 / AREA MAP</div>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 8, color: '#D4AF37', letterSpacing: '0.18em' }}>LAYER 2 / AREA MAP</div>
             <div style={{
               fontFamily: "'Cinzel', serif",
               fontSize: 'clamp(18px, 5vw, 23px)',

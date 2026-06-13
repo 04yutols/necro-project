@@ -1,6 +1,6 @@
 # Necromance Brave — 設計書インデックス
 
-> 最終更新: 2026-06-12
+> 最終更新: 2026-06-13
 > AIエージェントの新セッション開始時はまずこのファイルを読む。
 
 ## プロジェクト概要
@@ -80,6 +80,7 @@
 | Phase 0 リリースブロッカー（ステージ開始証跡、ランキング上限、奥義、DEF軽減、自傷、BottomNav）を知りたい | [109_Phase0リリースブロッカー改善設計.md](109_Phase0リリースブロッカー改善設計.md) |
 | Phase 1 本番投入前必須（rate limit、admin防御、iOS分離、ENRAGE、WeaponPassive、運用）を知りたい | [110_Phase1本番投入前必須改善設計.md](110_Phase1本番投入前必須改善設計.md) |
 | Phase 2 品質向上（Gothic-Morphism、装備UX、ドロップ方式、パスワード変更、admin atomic write、Agent lazy init）を知りたい | [111_Phase2品質向上改善設計.md](111_Phase2品質向上改善設計.md) |
+| Phase 3 AAA品質ギャップ継続（方向付き遷移、next/font、focus trap、敵DoT/共通ダメージ、CI監査）を知りたい | [112_Phase3AAA品質ギャップ継続改善設計.md](112_Phase3AAA品質ギャップ継続改善設計.md) |
 | `GameManager.updateParty` のDB保存・所有魔物検証を知りたい | [53_SEC3_GameManager_updateParty永続化設計.md](53_SEC3_GameManager_updateParty永続化設計.md) |
 | 報酬インスタンスIDの暗号論的生成・SEC-4対応を知りたい | [54_SEC4_暗号論的ID生成設計.md](54_SEC4_暗号論的ID生成設計.md) |
 | `critRate` とドロップ率ボーナスの分離・SEC-5対応を知りたい | [55_SEC5_ドロップ率ボーナスcritRate分離設計.md](55_SEC5_ドロップ率ボーナスcritRate分離設計.md) |
@@ -128,10 +129,13 @@ src/logic/GameManager.ts        — ゲームループ（サーバーサイド�
 src/store/useGameStore.ts       — Zustand 全クライアント状態
 src/services/MasterDataService.ts — シングルトン、JSON読み込み
 src/app/page.tsx                — SPA エントリ、タブルーティング
+src/lib/motion.ts               — 画面遷移・spring 定数
+src/hooks/useFocusTrap.ts       — モーダル focus trap / Escape / Tab 循環
 src/components/legion/LegionHub.tsx   — EQUIP画面・武器/5部位残滓ロードアウト
 src/logic/WeaponSystem.ts       — 武器基礎ATK・共鳴・打ち直し・分解計算
 src/logic/ResidueScore.ts       — 深淵の残滓スコア・5部位メタデータ
 src/logic/DropPolicySystem.ts   — ドロップ MULTI_ROLL 正本・rate正規化・期待値表示
+src/lib/agent/simEvalAgent.ts   — Agent E シミュレーション評価・verdict 正規化
 src/services/RankingService.ts  — StageRecord / PlayerStats ランキング集計
 src/services/WorldEventService.ts — WorldLog 永続化・Pusher配信
 src/components/battle/BattleCanvas.tsx — バトル画面（PixiJS）

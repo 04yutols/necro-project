@@ -175,7 +175,7 @@ export function MonsterViewer({ monster, pixiHandle, viewerRef }: MonsterViewerP
                 className="text-base font-cinzel font-black tracking-wider"
                 style={{
                   color: '#E8E0FF',
-                  fontFamily: "'Cinzel Decorative', serif",
+                  fontFamily: "var(--font-cinzel-decorative), serif",
                   textShadow: `0 0 12px ${tribeColor}88`,
                 }}
               >

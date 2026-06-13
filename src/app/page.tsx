@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
@@ -32,6 +32,7 @@ import { LoadingScreen } from '../components/auth/LoadingScreen';
 import { ReloginModal } from '../components/auth/ReloginModal';
 import { Home as HomeIcon, Lock } from 'lucide-react';
 import { isAbyssalResidueUnlocked } from '../logic/AbyssalResidueUnlockSystem';
+import { MOTION, fullscreenScreenVariants, getNavigationDirection, tabScreenVariants } from '../lib/motion';
 
 function isNextClientRuntime() {
   return typeof window !== 'undefined'
@@ -68,7 +69,7 @@ function AbyssalResidueLockedScreen({ onBack, onMap }: { onBack: () => void; onM
         <div style={{ width: 48, height: 48, borderRadius: 14, margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139,43,226,0.16)', border: '1px solid rgba(139,43,226,0.38)', color: '#B09FF8' }}>
           <Lock size={21} />
         </div>
-        <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 16, fontWeight: 900, letterSpacing: '0.08em' }}>深淵の残滓</div>
+        <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 16, fontWeight: 900, letterSpacing: '0.08em' }}>深淵の残滓</div>
         <p style={{ margin: '10px 0 16px', color: '#A5A9B4', fontSize: 12, lineHeight: 1.8 }}>
           第2章到達後にチュートリアルと一緒に解放されます。
         </p>
@@ -83,6 +84,16 @@ function AbyssalResidueLockedScreen({ onBack, onMap }: { onBack: () => void; onM
       </div>
     </div>
   );
+}
+
+function useTabTransitionDirection(currentTab: string): -1 | 0 | 1 {
+  const previousTabRef = useRef(currentTab);
+  const directionRef = useRef<-1 | 0 | 1>(0);
+  if (previousTabRef.current !== currentTab) {
+    directionRef.current = getNavigationDirection(previousTabRef.current, currentTab);
+    previousTabRef.current = currentTab;
+  }
+  return directionRef.current;
 }
 
 function GameContent() {
@@ -109,6 +120,15 @@ function GameContent() {
     activeStageId,
     storyActive: Boolean(activeStoryScene || storyQueueLength > 0),
   });
+  const tabDirection = useTabTransitionDirection(currentTab);
+  const tabMotionProps = {
+    custom: tabDirection,
+    variants: tabScreenVariants,
+    initial: 'enter',
+    animate: 'center',
+    exit: 'exit',
+    transition: MOTION.spring.standard,
+  } as const;
 
   const equippingMonster = equippingMonsterId ? inventoryMonsters.find(m => m.id === equippingMonsterId) : null;
 
@@ -160,7 +180,7 @@ function GameContent() {
           color: '#F0EAFF',
           boxShadow: '0 24px 70px rgba(0,0,0,0.65)',
         }}>
-          <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 18, fontWeight: 800, marginBottom: 8 }}>SYNC ERROR</div>
+          <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 18, fontWeight: 800, marginBottom: 8 }}>SYNC ERROR</div>
           <p style={{ margin: '0 0 14px', color: '#A5A9B4', fontSize: 12, lineHeight: 1.7 }}>{authFlow.error}</p>
           <button
             type="button"
@@ -202,13 +222,13 @@ function GameContent() {
     switch (currentTab) {
       case 'HOME':
         return (
-          <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+          <motion.div key="home" {...tabMotionProps} className="w-full h-full">
             <HomeHero />
           </motion.div>
         );
       case 'MAP':
         return (
-          <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+          <motion.div key="map" {...tabMotionProps} className="w-full h-full">
             <AreaMap onStartStage={(stageId) => {
               void requestStageStart(stageId);
             }} />
@@ -216,7 +236,7 @@ function GameContent() {
         );
       case 'BATTLE':
         return (
-          <motion.div key="no-battle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col items-center justify-center bg-[#050505] text-[#A5A9B4]">
+          <motion.div key="no-battle" {...tabMotionProps} className="w-full h-full flex flex-col items-center justify-center bg-[#050505] text-[#A5A9B4]">
             <div className="text-center">
               <p className="mb-4 font-mono text-sm tracking-widest uppercase">No Active Battle</p>
               <button
@@ -230,32 +250,32 @@ function GameContent() {
         );
       case 'EQUIP':
         return (
-          <motion.div key="equip" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+          <motion.div key="equip" {...tabMotionProps} className="w-full h-full">
             <LegionHub />
           </motion.div>
         );
       case 'JOB':
         return (
-          <motion.div key="job" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+          <motion.div key="job" {...tabMotionProps} className="w-full h-full">
             <JobChangeScreen />
           </motion.div>
         );
       case 'LAB':
         if (!isAbyssalResidueUnlocked(player.clearedStages)) {
           return (
-            <motion.div key="lab-locked" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+            <motion.div key="lab-locked" {...tabMotionProps} className="w-full h-full">
               <AbyssalResidueLockedScreen onBack={() => setCurrentTab('HOME')} onMap={() => setCurrentTab('MAP')} />
             </motion.div>
           );
         }
         return (
-          <motion.div key="lab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+          <motion.div key="lab" {...tabMotionProps} className="w-full h-full">
             <NecroLab />
           </motion.div>
         );
       case 'LOGS':
         return (
-          <motion.div key="logs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full flex flex-col p-2 pt-4">
+          <motion.div key="logs" {...tabMotionProps} className="w-full h-full flex flex-col p-2 pt-4">
             <div className="flex items-center justify-between gap-2 mb-3">
               <button
                 onClick={() => setCurrentTab('HOME')}
@@ -288,7 +308,7 @@ function GameContent() {
         );
       default:
         return (
-          <motion.div key="home-default" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+          <motion.div key="home-default" {...tabMotionProps} className="w-full h-full">
             <HomeHero />
           </motion.div>
         );
@@ -325,7 +345,11 @@ function GameContent() {
           ) : currentTab === 'MAP' ? (
             <motion.div
               key="map-fullscreen"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              variants={fullscreenScreenVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: MOTION.duration.normal, ease: 'easeOut' }}
               style={{ position: 'absolute', inset: 0, zIndex: 9999 }}
             >
               <AreaMap onStartStage={(stageId) => {

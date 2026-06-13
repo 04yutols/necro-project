@@ -75,7 +75,7 @@ export function GrimoireLog({ logs }: GrimoireLogProps) {
               }}
               style={{
                 transformOrigin: 'top center',
-                fontFamily: isLatest ? "'IM Fell English', serif" : 'inherit',
+                fontFamily: isLatest ? "var(--font-im-fell-english), serif" : 'inherit',
               }}
               className={`
                 relative flex items-start gap-2 px-2.5 py-1 rounded-lg

@@ -111,7 +111,7 @@ function JobSigil({ jobId, size = 140 }: { jobId: string; size?: number }) {
         style={{
           position: 'relative',
           zIndex: 1,
-          fontFamily: "'Cinzel Decorative', serif",
+          fontFamily: "var(--font-cinzel-decorative), serif",
           fontSize: size * 0.26,
           color: '#F0EAFF',
           textShadow: `0 0 18px ${style.color}, 0 0 34px ${style.glow}`,
@@ -241,7 +241,7 @@ export default function JobChangeScreen() {
               <ChevronLeft size={18} />
             </button>
             <div style={{ minWidth: 0, textAlign: 'center' }}>
-              <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#8B00FF', letterSpacing: '0.18em' }}>
+              <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 8, color: '#8B00FF', letterSpacing: '0.18em' }}>
                 UMBRAL RITE-HALL
               </div>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 18, color: '#F0EAFF', fontWeight: 800, letterSpacing: '0.06em' }}>
@@ -334,7 +334,7 @@ export default function JobChangeScreen() {
                       </span>
                     )}
                   </div>
-                  <h2 className="job-change-screen__title" style={{ margin: 0, fontFamily: "'Cinzel Decorative', serif", fontSize: 24, color: '#F0EAFF', letterSpacing: '0.04em', lineHeight: 1.05, overflowWrap: 'anywhere' }}>
+                  <h2 className="job-change-screen__title" style={{ margin: 0, fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 24, color: '#F0EAFF', letterSpacing: '0.04em', lineHeight: 1.05, overflowWrap: 'anywhere' }}>
                     {selectedJob.displayName ?? selectedJob.name}
                   </h2>
                   <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, color: selectedStyle.color, letterSpacing: '0.12em', marginTop: 4, lineHeight: 1.35, overflowWrap: 'anywhere' }}>

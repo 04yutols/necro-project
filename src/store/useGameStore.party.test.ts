@@ -16,6 +16,17 @@ const RESIDUE_FIXTURE = {
   exp: 0,
   maxExp: 800,
 };
+const ELEMENT_RESIDUE_FIXTURE = {
+  id: 'r-dark',
+  name: '暗黒の帯',
+  itemId: 'waist',
+  rarity: 'RARE' as const,
+  mainStat: { type: 'DARK_DMG_BOOST', value: 12 },
+  subOptions: [{ type: 'ATK%', value: 4 }],
+  level: 1,
+  exp: 0,
+  maxExp: 800,
+};
 
 function unlockResidueFixture() {
   const state = useGameStore.getState();
@@ -93,6 +104,22 @@ describe('useGameStore party formation actions', () => {
     expect(warrior?.exp).toBe(10);
     expect(warrior?.level).toBe(2);
     expect(player?.maxEnergy).toBe(expectedEnergy.maxEnergy);
+  });
+
+  test('addExp refreshes derived element boosts after level recalculation', () => {
+    const state = useGameStore.getState();
+    useGameStore.getState().setPlayer({
+      ...state.player!,
+      clearedStages: ['area1_node3'],
+    });
+    useGameStore.getState().setAbyssalResidues([ELEMENT_RESIDUE_FIXTURE]);
+    useGameStore.getState().equipResidueToSlot(3, ELEMENT_RESIDUE_FIXTURE);
+
+    expect(useGameStore.getState().player?.elementDmgBoosts.DARK).toBe(12);
+
+    useGameStore.getState().addExp(10);
+
+    expect(useGameStore.getState().player?.elementDmgBoosts.DARK).toBe(12);
   });
 
   test('restoreEnergy fills MP to the current maximum after battle', () => {
