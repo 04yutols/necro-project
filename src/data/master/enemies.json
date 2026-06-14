@@ -7,8 +7,8 @@
     "tier": "MINION",
     "tribe": "UNDEAD",
     "stats": {
-      "hp": 15,
-      "atk": 4,
+      "hp": 10,
+      "atk": 2,
       "def": 3,
       "spd": 70,
       "critRate": 0,
@@ -23,6 +23,24 @@
     "weaknesses": [
       "LIGHT"
     ],
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 15,
+        "atk": 4,
+        "def": 3,
+        "spd": 70,
+        "critRate": 0,
+        "critDmg": 150,
+        "effectHit": 0,
+        "effectRes": 0
+      },
+      "allyMaxEnergy": 36,
+      "skillIds": [
+        "skill_necromancer_1"
+      ]
+    },
     "dropTable": [
       {
         "type": "WEAPON",
@@ -42,24 +60,7 @@
       "sprite": "WRAITH",
       "size": 0.72
     },
-    "description": "WAVE1の露払い。通常攻撃3回、スキル2回ほどで倒せる導入敵。",
-    "necromance": {
-      "captureRate": 0.12,
-      "allyCost": 1,
-      "allyStats": {
-        "hp": 15,
-        "atk": 4,
-        "def": 3,
-        "spd": 70,
-        "critRate": 0,
-        "critDmg": 150,
-        "effectHit": 0,
-        "effectRes": 0
-      },
-      "skillIds": [
-        "skill_necromancer_1"
-      ]
-    }
+    "description": "WAVE1の露払い。通常攻撃3回、スキル2回ほどで倒せる導入敵。"
   },
   "rot_hound": {
     "id": "rot_hound",
@@ -69,10 +70,10 @@
     "tier": "MINION",
     "tribe": "BEAST",
     "stats": {
-      "hp": 14,
-      "atk": 5,
+      "hp": 12,
+      "atk": 2,
       "def": 2,
-      "spd": 110,
+      "spd": 70,
       "critRate": 0,
       "critDmg": 150,
       "effectHit": 0,
@@ -86,6 +87,24 @@
       "FIRE",
       "ICE"
     ],
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 14,
+        "atk": 5,
+        "def": 2,
+        "spd": 110,
+        "critRate": 0,
+        "critDmg": 150,
+        "effectHit": 0,
+        "effectRes": 0
+      },
+      "allyMaxEnergy": 18,
+      "skillIds": [
+        "skill_rogue_1"
+      ]
+    },
     "dropTable": [
       {
         "type": "WEAPON",
@@ -105,22 +124,7 @@
       "sprite": "WRAITH",
       "size": 0.68
     },
-    "description": "速度が高い小型魔物。先行で小ダメージを与え、行動順の存在を体験させる。",
-    "necromance": {
-      "captureRate": 0.12,
-      "allyCost": 1,
-      "allyStats": {
-        "hp": 14,
-        "atk": 5,
-        "def": 2,
-        "spd": 110,
-        "critRate": 0,
-        "critDmg": 150,
-        "effectHit": 0,
-        "effectRes": 0
-      },
-      "skillIds": []
-    }
+    "description": "速度が高い小型魔物。先行で小ダメージを与え、行動順の存在を体験させる。"
   },
   "hollow_handmaid": {
     "id": "hollow_handmaid",
@@ -130,8 +134,8 @@
     "tier": "MINION",
     "tribe": "HUMANOID",
     "stats": {
-      "hp": 42,
-      "atk": 7,
+      "hp": 15,
+      "atk": 3,
       "def": 5,
       "spd": 76,
       "critRate": 3,
@@ -140,8 +144,8 @@
       "effectRes": 5
     },
     "resistances": {
-      "EARTH": 25,
       "THUNDER": -20,
+      "EARTH": 25,
       "WIND": -15,
       "LIGHT": 10
     },
@@ -149,6 +153,24 @@
       "THUNDER",
       "WIND"
     ],
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 42,
+        "atk": 7,
+        "def": 5,
+        "spd": 76,
+        "critRate": 3,
+        "critDmg": 150,
+        "effectHit": 12,
+        "effectRes": 5
+      },
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_darkpriest_1"
+      ]
+    },
     "dropTable": [
       {
         "type": "WEAPON",
@@ -168,22 +190,7 @@
       "sprite": "WRAITH",
       "size": 0.7
     },
-    "description": "node2 初登場。高effectHitで毒を刺しやすく、雷・風スキルの使用を促す。",
-    "necromance": {
-      "captureRate": 0.12,
-      "allyCost": 1,
-      "allyStats": {
-        "hp": 42,
-        "atk": 7,
-        "def": 5,
-        "spd": 76,
-        "critRate": 3,
-        "critDmg": 150,
-        "effectHit": 12,
-        "effectRes": 5
-      },
-      "skillIds": []
-    }
+    "description": "node2 初登場。高effectHitで毒を刺しやすく、雷・風スキルの使用を促す。"
   },
   "earthbound_grudge": {
     "id": "earthbound_grudge",
@@ -242,7 +249,10 @@
         "effectHit": 10,
         "effectRes": 0
       },
-      "skillIds": []
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_darkpriest_curse_bind"
+      ]
     }
   },
   "bloodmire_leech": {
@@ -305,7 +315,10 @@
         "effectHit": 0,
         "effectRes": 5
       },
-      "skillIds": []
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_darkpriest_1"
+      ]
     }
   },
   "abyss_warden": {
@@ -316,8 +329,8 @@
     "tier": "ELITE",
     "tribe": "UNDEAD",
     "stats": {
-      "hp": 36,
-      "atk": 5,
+      "hp": 30,
+      "atk": 4,
       "def": 5,
       "spd": 75,
       "critRate": 0,
@@ -326,30 +339,16 @@
       "effectRes": 20
     },
     "resistances": {
+      "FIRE": -10,
       "LIGHT": -30,
-      "DARK": 20,
-      "FIRE": -10
+      "DARK": 20
     },
     "weaknesses": [
-      "LIGHT",
-      "FIRE"
+      "FIRE",
+      "LIGHT"
     ],
     "shieldHp": 18,
     "maxShieldHp": 18,
-    "dropTable": [
-      {
-        "type": "WEAPON",
-        "itemId": "bleed_reaver",
-        "rarity": "SR",
-        "rate": 0.145
-      }
-    ],
-    "battle": {
-      "color": "#38bdf8",
-      "sprite": "GIANT",
-      "size": 0.86
-    },
-    "description": "霊的防壁を持つWAVE2の看守。通常攻撃4回で防壁破壊を学ばせる。",
     "necromance": {
       "captureRate": 0.04,
       "allyCost": 2,
@@ -363,8 +362,25 @@
         "effectHit": 10,
         "effectRes": 20
       },
-      "skillIds": []
-    }
+      "allyMaxEnergy": 40,
+      "skillIds": [
+        "skill_necromancer_grave_command"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bleed_reaver",
+        "rarity": "SR",
+        "rate": 0.145
+      }
+    ],
+    "battle": {
+      "color": "#38bdf8",
+      "sprite": "GIANT",
+      "size": 0.86
+    },
+    "description": "霊的防壁を持つWAVE2の看守。通常攻撃4回で防壁破壊を学ばせる。"
   },
   "grave_knight": {
     "id": "grave_knight",
@@ -417,7 +433,10 @@
         "effectHit": 0,
         "effectRes": 10
       },
-      "skillIds": []
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_darkknight_shadow_edge"
+      ]
     }
   },
   "bone_colossus": {
@@ -476,7 +495,10 @@
         "effectHit": 4,
         "effectRes": 20
       },
-      "skillIds": []
+      "allyMaxEnergy": 34,
+      "skillIds": [
+        "skill_berserker_earth_breaker"
+      ]
     }
   },
   "ossuary_wyrm_lord": {
@@ -565,7 +587,11 @@
         "effectHit": 0,
         "effectRes": 30
       },
-      "skillIds": []
+      "allyMaxEnergy": 50,
+      "skillIds": [
+        "skill_necromancer_grave_command",
+        "skill_necromancer_1"
+      ]
     }
   },
   "blood_mire_queen": {
@@ -649,7 +675,11 @@
         "effectHit": 18,
         "effectRes": 28
       },
-      "skillIds": []
+      "allyMaxEnergy": 54,
+      "skillIds": [
+        "skill_warlock_abyss_hex",
+        "skill_darkpriest_1"
+      ]
     }
   }
 }

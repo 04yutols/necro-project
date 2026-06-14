@@ -38,7 +38,7 @@ export const KNOWN_TOP_LEVEL_FIELDS: Record<string, readonly string[]> = {
     'id', 'name', 'tribe', 'cost', 'stats', 'resistances',
     // 実行時 MonsterData の正当なオプション（マスター雛形には通常無いが許容）
     'masterId', 'skillIds', 'tier', 'weaknesses', 'equipment', 'equippedResidues', 'equippedShardId',
-    'spiritCore', 'elementDmgBoosts',
+    'spiritCore', 'elementDmgBoosts', 'currentEnergy', 'maxEnergy',
   ],
   demonForms: ['jobId', 'formName', 'tier', 'concept', 'effectA', 'effectB', 'ultimateSkill', 'visual'],
   areas: ['id', 'chapter', 'area', 'nameJa', 'nameEn', 'description', 'color', 'position', 'sortOrder'],

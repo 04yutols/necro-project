@@ -1,4 +1,5 @@
 import type { BaseStats, EnemyData, EnemyTier, MonsterData, StageData } from '../types/game';
+import { resolveNecromanceMaxEnergy } from './MonsterEnergySystem';
 
 export const NECROMANCE_RATE_BY_TIER: Record<EnemyTier, number> = {
   MINION: 0.12,
@@ -95,6 +96,7 @@ export function getStageNecromanceCandidateEnemyIds(stage: Pick<StageData, 'wave
 }
 
 export function createNecromancedMonster(enemy: EnemyData, idFactory: (enemyId: string) => string = createNecromancedMonsterId): MonsterData {
+  const maxEnergy = resolveNecromanceMaxEnergy(enemy);
   return {
     id: idFactory(enemy.id),
     masterId: enemy.id,
@@ -104,6 +106,8 @@ export function createNecromancedMonster(enemy: EnemyData, idFactory: (enemyId: 
     stats: resolveAllyStats(enemy),
     resistances: { ...enemy.resistances },
     skillIds: [...(enemy.necromance?.skillIds ?? [])],
+    currentEnergy: maxEnergy,
+    maxEnergy,
     tier: enemy.tier,
     weaknesses: [...(enemy.weaknesses ?? [])],
   };

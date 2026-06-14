@@ -16,6 +16,15 @@ describe('BattleFlowSystem', () => {
     })).toBe(true);
   });
 
+  test('accepts a monster skill action only from monsterSkillMenu', () => {
+    expect(canStartPlayerAction({
+      phase: 'monsterSkillMenu',
+      requiredPhase: 'monsterSkillMenu',
+      actionLocked: false,
+      waveResolving: false,
+    })).toBe(true);
+  });
+
   test.each([
     {
       label: 'already locked',

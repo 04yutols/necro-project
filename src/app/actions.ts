@@ -12,6 +12,7 @@ import { JobService } from '@/services/JobService';
 import { NecroService } from '@/services/NecroService';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
 import { calculateEnergyState } from '@/logic/EnergySystem';
+import { hydrateMonsterEnergy } from '@/logic/MonsterEnergySystem';
 import { levelFromTotalExp } from '@/logic/ExperienceSystem';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
 import { isAbyssalResidueUnlocked } from '@/logic/AbyssalResidueUnlockSystem';
@@ -336,7 +337,7 @@ function toSoulShardData(row: {
 }
 
 function toMonsterData(row: any): MonsterData {
-  return {
+  return hydrateMonsterEnergy({
     id: row.id,
     masterId: row.masterId ?? undefined,
     name: row.name,
@@ -347,7 +348,9 @@ function toMonsterData(row: any): MonsterData {
     skillIds: Array.isArray(row.skillIds) ? row.skillIds.filter((id: unknown): id is string => typeof id === 'string') : [],
     equippedShardId: row.soulShardId ?? undefined,
     spiritCore: toSpiritCoreData(row.spiritCore),
-  };
+    currentEnergy: row.currentEnergy ?? undefined,
+    maxEnergy: row.maxEnergy ?? undefined,
+  });
 }
 
 function getJobData(jobId: string): JobData {
@@ -950,6 +953,8 @@ export async function processStageResultForUser(
           critDmg: monster.stats.critDmg,
           effectHit: monster.stats.effectHit,
           effectRes: monster.stats.effectRes,
+          currentEnergy: monster.currentEnergy,
+          maxEnergy: monster.maxEnergy,
           resistances: (monster.resistances ?? {}) as Prisma.InputJsonValue,
           skillIds: (monster.skillIds ?? []) as Prisma.InputJsonValue,
         },

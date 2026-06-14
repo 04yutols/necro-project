@@ -3,7 +3,7 @@
 import React from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { motion } from 'framer-motion';
-import { Map, Skull, Sword, Terminal, ChevronRight, Activity, Swords, Settings, Sparkles, Lock, HeartPulse, ShieldCheck, Gauge, Target, type LucideIcon } from 'lucide-react';
+import { Map, Skull, Sword, Terminal, Activity, Settings, Sparkles, Lock, HeartPulse, ShieldCheck, Gauge, Target, type LucideIcon } from 'lucide-react';
 import { AuthPanel } from '../auth/AuthPanel';
 import { getJobLevelProgress } from '../../logic/ExperienceSystem';
 import { isAbyssalResidueUnlocked } from '../../logic/AbyssalResidueUnlockSystem';
@@ -305,50 +305,8 @@ export function HomeHero() {
 
         {/* Primary Actions Grid */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* FORMATION hero button */}
-          <motion.button
-            type="button"
-            aria-label="軍団編成へ移動"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={MOTION.spring.standard}
-            onClick={() => setCurrentTab('EQUIP')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '14px',
-              minHeight: 72, padding: '0 18px', borderRadius: 16,
-              background: 'linear-gradient(135deg, rgba(140,0,230,0.35), rgba(180,0,80,0.22))',
-              border: '1px solid rgba(204,34,255,0.6)',
-              boxShadow: '0 0 28px rgba(188,0,251,0.35), inset 0 0 30px rgba(0,0,0,0.4)',
-              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-              position: 'relative', width: '100%', textAlign: 'left', appearance: 'none', fontFamily: 'inherit',
-            }}
-          >
-            <div style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none', borderRadius: 16, overflow: 'hidden',
-              backgroundImage: 'linear-gradient(90deg, transparent, rgba(188,0,251,0.1), transparent)',
-              backgroundSize: '200% 100%',
-              animation: 'shimmer 2.5s infinite',
-            }}/>
-            <div style={{
-              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-              background: 'rgba(140,0,230,0.3)', border: '1px solid rgba(204,34,255,0.5)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E080FF',
-            }}>
-              <Swords size={22} strokeWidth={2} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 18, fontWeight: 900, color: '#F4EEFF', letterSpacing: '0.08em', fontFamily: "var(--font-cinzel-decorative), serif", textShadow: '0 0 14px rgba(204,34,255,0.6)' }}>
-                軍団編成
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 900, color: 'rgba(204,80,255,0.75)', letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 2 }}>
-                ARMY FORMATION
-              </div>
-            </div>
-            <ChevronRight size={20} style={{ color: 'rgba(204,80,255,0.7)', flexShrink: 0 }} />
-          </motion.button>
-
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px' }}>
-              <Activity size={16} color={THEME.secondary} opacity={0.8} />
+            <Activity size={16} color={THEME.secondary} opacity={0.8} />
             <h3 style={{ fontSize: '12px', fontWeight: 900, color: '#A5A9B4', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0 }}>
               作戦司令室
             </h3>

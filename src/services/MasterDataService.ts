@@ -18,9 +18,10 @@ import type {
   SkillData,
   StageData,
 } from '../types/game';
+import { hydrateMonsterEnergy } from '../logic/MonsterEnergySystem';
 
 type MasterRecord<T> = Record<string, T>;
-type MonsterMasterEntry = Omit<MonsterData, 'id'> & Partial<Pick<MonsterData, 'id'>>;
+type MonsterMasterEntry = Omit<MonsterData, 'id' | 'currentEnergy' | 'maxEnergy'> & Partial<Pick<MonsterData, 'id' | 'currentEnergy' | 'maxEnergy'>>;
 
 const JOBS = jobs as unknown as MasterRecord<JobData>;
 const MONSTERS = monsters as unknown as MasterRecord<MonsterMasterEntry>;
@@ -33,7 +34,7 @@ const SKILLS = skills as unknown as MasterRecord<SkillData>;
 const DEMON_FORMS = demonForms as unknown as MasterRecord<DemonFormData>;
 
 function withMonsterId(id: string, monster: MonsterMasterEntry): MonsterData {
-  return { ...monster, id: monster.id ?? id };
+  return hydrateMonsterEnergy({ ...monster, id: monster.id ?? id });
 }
 
 export class MasterDataService {

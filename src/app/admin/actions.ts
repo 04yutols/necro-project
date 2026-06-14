@@ -130,7 +130,8 @@ const WEAPON_SUBOPTION_RULES: Record<string, { optionCount: number; elementDamag
   SSR: { optionCount: 2, elementDamageOptionCount: 1 },
   UR: { optionCount: 2, elementDamageOptionCount: 1 },
 };
-const JOB_STAT_KEYS = ['hp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
+const JOB_STAT_KEYS = ['hp', 'mp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
+const JOB_POSITIVE_STAT_KEYS = new Set(['hp', 'mp', 'atk', 'spd']);
 
 function isElementDamageSubOption(option: Record<string, unknown>): boolean {
   return /^(FIRE|WATER|THUNDER|EARTH|WIND|ICE|LIGHT|DARK)_DMG_BOOST$/.test(getString(option, 'type'));
@@ -401,12 +402,17 @@ export async function auditMasterData(
         const value = stats[statKey];
         if (typeof value !== 'number' || !Number.isFinite(value)) {
           findings.push({ level: 'FAIL', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.${statKey} は数値である必要があります。` });
+        } else if (JOB_POSITIVE_STAT_KEYS.has(statKey) && value <= 0) {
+          findings.push({ level: 'FAIL', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.${statKey} は 1 以上である必要があります。` });
         } else if (value < 0) {
           findings.push({ level: 'FAIL', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.${statKey} は 0 以上である必要があります。` });
         }
       }
       if (previous && typeof stats.hp === 'number' && typeof previous.hp === 'number' && stats.hp < previous.hp) {
         findings.push({ level: 'WARN', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.hp が前レベルより低下しています。` });
+      }
+      if (previous && typeof stats.mp === 'number' && typeof previous.mp === 'number' && stats.mp < previous.mp) {
+        findings.push({ level: 'WARN', scope: 'jobs', id: jobKey, message: `baseStatsByLevel.${level}.mp が前レベルより低下しています。` });
       }
       previous = stats;
     }

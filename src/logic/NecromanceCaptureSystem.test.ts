@@ -118,6 +118,7 @@ describe('NecromanceCaptureSystem', () => {
         captureRate: 0.25,
         allyCost: 5,
         allyStats: { hp: 44, atk: 9, def: 8, spd: 77, critRate: 3, critDmg: 160, effectHit: 6, effectRes: 4 },
+        allyMaxEnergy: 44,
         skillIds: ['skill_necromancer_grave_command'],
       },
     };
@@ -130,6 +131,8 @@ describe('NecromanceCaptureSystem', () => {
       masterId: 'elite_a',
       cost: 5,
       skillIds: ['skill_necromancer_grave_command'],
+      currentEnergy: 44,
+      maxEnergy: 44,
       stats: customEnemy.necromance?.allyStats,
     });
   });

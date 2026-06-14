@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { calculateBattleDamage } from '@/logic/BattleDamage';
 import { INITIAL_PLAYER_BASE_STATS } from '@/logic/BalanceConfig';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
-import type { ElementType, BaseStats } from '@/types/game';
+import type { ElementType, BaseStats, JobBaseStatsByLevel } from '@/types/game';
 import SimEvalCard from './SimEvalCard';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -12,7 +12,7 @@ import SimEvalCard from './SimEvalCard';
 type JobEntry = {
   displayName: string;
   statModifiers?: Record<string, number>;
-  baseStatsByLevel?: Record<string, BaseStats>;
+  baseStatsByLevel?: JobBaseStatsByLevel;
   levelBonuses?: Record<string, Record<string, number>>;
   skills?: { level: number; skillId: string }[];
 };

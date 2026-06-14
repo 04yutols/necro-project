@@ -20,7 +20,10 @@
       "baseGold": 0,
       "dropTable": []
     },
-    "position": { "x": 188, "y": 508 }
+    "position": {
+      "x": 188,
+      "y": 508
+    }
   },
   "area1_node1": {
     "id": "area1_node1",
@@ -41,19 +44,28 @@
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["grave_soldier", "rot_hound"],
+        "enemyIds": [
+          "grave_soldier",
+          "rot_hound"
+        ],
         "intent": "ミニオンで通常攻撃と魂ゲージ回収を体験させる。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
-        "enemyIds": ["abyss_warden"],
+        "enemyIds": [
+          "grave_soldier",
+          "rot_hound",
+          "hollow_handmaid"
+        ],
         "intent": "弱点属性で霊的防壁を割る最初のチュートリアル。"
       },
       {
         "label": "WAVE 3",
         "role": "ELITE",
-        "enemyIds": ["grave_soldier", "grave_knight"],
+        "enemyIds": [
+          "abyss_warden"
+        ],
         "intent": "章ボスへの足がかり。騎士長との戦いでスキルの使いどころを学ぶ。"
       }
     ],
@@ -61,12 +73,30 @@
       "baseExp": 12,
       "baseGold": 1180,
       "dropTable": [
-      { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.55 },
-      { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.12 },
-      { "type": "CONSUMABLE", "itemId": "underworld_potion", "quantity": 1, "rate": 0.85 }
+        {
+          "type": "WEAPON",
+          "itemId": "bone_cleaver",
+          "rarity": "R",
+          "rate": 0.55
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.12
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "underworld_potion",
+          "quantity": 1,
+          "rate": 0.85
+        }
       ]
     },
-    "position": { "x": 188, "y": 422 }
+    "position": {
+      "x": 188,
+      "y": 422
+    }
   },
   "area1_node2": {
     "id": "area1_node2",
@@ -82,24 +112,33 @@
     "description": "王城の地下に残る処刑場。骨巨人の高耐久と霊的防壁が、属性スキルの選択を要求する。",
     "waveCount": 3,
     "areaGimmick": "NONE",
-    "unlockRequires": ["area1_node1"],
+    "unlockRequires": [
+      "area1_node1"
+    ],
     "waves": [
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["hollow_handmaid", "grave_soldier"],
+        "enemyIds": [
+          "hollow_handmaid",
+          "grave_soldier"
+        ],
         "intent": "HUMANOID初登場。高effectHitの脅威を感じつつ、雷・風スキルを使う場面。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
-        "enemyIds": ["bone_colossus"],
+        "enemyIds": [
+          "bone_colossus"
+        ],
         "intent": "光・土弱点の防壁を割り、ブレイク後の火力集中を促す。"
       },
       {
         "label": "WAVE 3",
         "role": "BOSS",
-        "enemyIds": ["ossuary_wyrm_lord"],
+        "enemyIds": [
+          "ossuary_wyrm_lord"
+        ],
         "intent": "竜王の怒りギミックを体験する。"
       }
     ],
@@ -107,13 +146,36 @@
       "baseExp": 16,
       "baseGold": 1460,
       "dropTable": [
-      { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.45 },
-      { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.145 },
-      { "type": "CONSUMABLE", "itemId": "underworld_potion", "quantity": 1, "rate": 0.7 },
-        { "type": "CONSUMABLE", "itemId": "ether_shard", "quantity": 1, "rate": 0.18 }
+        {
+          "type": "WEAPON",
+          "itemId": "bone_cleaver",
+          "rarity": "R",
+          "rate": 0.45
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.145
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "underworld_potion",
+          "quantity": 1,
+          "rate": 0.7
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "ether_shard",
+          "quantity": 1,
+          "rate": 0.18
+        }
       ]
     },
-    "position": { "x": 102, "y": 326 }
+    "position": {
+      "x": 102,
+      "y": 326
+    }
   },
   "area1_boss": {
     "id": "area1_boss",
@@ -129,24 +191,35 @@
     "description": "骸骨山脈の頂。死骨竜王オッサリウスが霊的防壁と怒りを纏い、隠しURの可能性を抱えて待つ。",
     "waveCount": 3,
     "areaGimmick": "NONE",
-    "unlockRequires": ["area1_node2"],
+    "unlockRequires": [
+      "area1_node2"
+    ],
     "waves": [
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["earthbound_grudge", "earthbound_grudge", "rot_hound"],
+        "enemyIds": [
+          "earthbound_grudge",
+          "earthbound_grudge",
+          "rot_hound"
+        ],
         "intent": "第1章初のICE弱点を持つ怨霊2体。低SPDで重いが、倒す間に魂ゲージを満タンにできる。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
-        "enemyIds": ["abyss_warden", "bone_colossus"],
+        "enemyIds": [
+          "abyss_warden",
+          "bone_colossus"
+        ],
         "intent": "複数弱点の精鋭を置き、編成の属性幅を確認する。"
       },
       {
         "label": "WAVE 3",
         "role": "BOSS",
-        "enemyIds": ["ossuary_wyrm_lord"],
+        "enemyIds": [
+          "ossuary_wyrm_lord"
+        ],
         "intent": "HP50%以下の怒りと霊的防壁を突破する章ボス戦。"
       }
     ],
@@ -154,15 +227,49 @@
       "baseExp": 24,
       "baseGold": 3600,
       "dropTable": [
-      { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.62 },
-      { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.18 },
-      { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.012 },
-      { "type": "CONSUMABLE", "itemId": "ether_shard", "quantity": 1, "rate": 0.22 },
-        { "type": "CONSUMABLE", "itemId": "soul_incense", "quantity": 1, "rate": 0.15 },
-        { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
+        {
+          "type": "WEAPON",
+          "itemId": "bone_cleaver",
+          "rarity": "R",
+          "rate": 0.62
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.18
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "spirit_silver_saber",
+          "rarity": "SSR",
+          "rate": 0.012
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "ether_shard",
+          "quantity": 1,
+          "rate": 0.22
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "soul_incense",
+          "quantity": 1,
+          "rate": 0.15
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "grudge_manifest",
+          "rarity": "UR",
+          "rate": 0.00008,
+          "isHidden": true
+        }
       ]
     },
-    "position": { "x": 246, "y": 265 },
+    "position": {
+      "x": 246,
+      "y": 265
+    },
     "isAreaBoss": true
   },
   "area1_node3": {
@@ -179,24 +286,33 @@
     "description": "竜骨祭壇の先に広がる赤黒い湿地。水・風弱点を持つ血沼の女王が、次章への門を閉ざす。",
     "waveCount": 3,
     "areaGimmick": "STATUS_AILMENT",
-    "unlockRequires": ["area1_boss"],
+    "unlockRequires": [
+      "area1_boss"
+    ],
     "waves": [
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["bloodmire_leech", "bloodmire_leech"],
+        "enemyIds": [
+          "bloodmire_leech",
+          "bloodmire_leech"
+        ],
         "intent": "高ATK・高SPDの蛭2体が先攻を取る。火・雷での迅速処理を促す圧力WAVEとして機能する。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
-        "enemyIds": ["abyss_warden"],
+        "enemyIds": [
+          "abyss_warden"
+        ],
         "intent": "雷・水弱点の防壁で属性スキルを再確認する。"
       },
       {
         "label": "WAVE 3",
         "role": "BOSS",
-        "enemyIds": ["blood_mire_queen"],
+        "enemyIds": [
+          "blood_mire_queen"
+        ],
         "intent": "水・風弱点のボス。防壁破壊時の増援ギミックを想定する。"
       }
     ],
@@ -204,14 +320,43 @@
       "baseExp": 30,
       "baseGold": 4200,
       "dropTable": [
-      { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.2 },
-      { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.014 },
-      { "type": "CONSUMABLE", "itemId": "ether_shard", "quantity": 1, "rate": 0.25 },
-        { "type": "CONSUMABLE", "itemId": "soul_incense", "quantity": 1, "rate": 0.18 },
-        { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.2
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "spirit_silver_saber",
+          "rarity": "SSR",
+          "rate": 0.014
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "ether_shard",
+          "quantity": 1,
+          "rate": 0.25
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "soul_incense",
+          "quantity": 1,
+          "rate": 0.18
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "grudge_manifest",
+          "rarity": "UR",
+          "rate": 0.00008,
+          "isHidden": true
+        }
       ]
     },
-    "position": { "x": 140, "y": 182 }
+    "position": {
+      "x": 140,
+      "y": 182
+    }
   },
   "area2_gate": {
     "id": "area2_gate",
@@ -227,24 +372,32 @@
     "description": "第二章の入り口。現行プロトタイプではロック表示のみを行い、後続エネミー追加時に解放する。",
     "waveCount": 3,
     "areaGimmick": "STATUS_AILMENT",
-    "unlockRequires": ["area1_node3"],
+    "unlockRequires": [
+      "area1_node3"
+    ],
     "waves": [
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["grave_soldier"],
+        "enemyIds": [
+          "grave_soldier"
+        ],
         "intent": "第二章用の仮データ。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
-        "enemyIds": ["bone_colossus"],
+        "enemyIds": [
+          "bone_colossus"
+        ],
         "intent": "第二章用の仮データ。"
       },
       {
         "label": "WAVE 3",
         "role": "BOSS",
-        "enemyIds": ["blood_mire_queen"],
+        "enemyIds": [
+          "blood_mire_queen"
+        ],
         "intent": "第二章用の仮データ。"
       }
     ],
@@ -252,11 +405,29 @@
       "baseExp": 38,
       "baseGold": 5200,
       "dropTable": [
-      { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.016 },
-      { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.6 },
-      { "type": "MATERIAL", "itemId": "ossuary_memory", "rarity": "RARE", "quantity": 2, "rate": 0.75 }
+        {
+          "type": "WEAPON",
+          "itemId": "spirit_silver_saber",
+          "rarity": "SSR",
+          "rate": 0.016
+        },
+        {
+          "type": "RESIDUE",
+          "rarity": "EPIC",
+          "rate": 0.6
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "rarity": "RARE",
+          "quantity": 2,
+          "rate": 0.75
+        }
       ]
     },
-    "position": { "x": 254, "y": 94 }
+    "position": {
+      "x": 254,
+      "y": 94
+    }
   }
 }

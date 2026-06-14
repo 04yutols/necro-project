@@ -61,6 +61,8 @@ describe('BattleEngine', () => {
       effectRes: 0,
     },
     resistances: {},
+    currentEnergy: 30,
+    maxEnergy: 30,
   };
 
   const createPlayer = (
@@ -783,6 +785,72 @@ describe('BattleEngine', () => {
     expect(baseDamage).toBe(40);
     expect(coreDamage).toBe(80);
     expect(coreLogs.find(log => log.action === 'MONSTER_ATTACK')?.description).toContain('怨霊の霊核');
+  });
+
+  test('commanded monster skill consumes MP and uses skill power, element, and log action', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const target = createEnemy({ hp: 500, atk: 1, def: 0, critRate: 0, effectRes: 100 });
+    target.resistances = { FIRE: -30 };
+    const caster = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    caster.id = 'ally-caster';
+    caster.name = 'Caster Ally';
+    caster.skillIds = ['skill_mage_1'];
+    caster.currentEnergy = 20;
+    caster.maxEnergy = 20;
+
+    const logs = new BattleEngine(player, [caster]).simulateMonsterAction(caster.id, target, [target], 'skill_mage_1');
+    const skillLog = logs.find(log => log.action === 'MONSTER_SKILL');
+
+    expect(skillLog).toMatchObject({
+      actorName: 'Caster Ally',
+      targetName: target.name,
+      element: 'FIRE',
+      attackType: 'MAGIC',
+    });
+    expect(skillLog?.damage).toBeGreaterThan(40);
+    expect(caster.currentEnergy).toBe(8);
+    expect(logs.some(log => log.action === 'MONSTER_ATTACK')).toBe(false);
+  });
+
+  test('commanded monster AoE skill damages all alive enemy candidates once', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const enemyA = createEnemy({ hp: 500, atk: 1, def: 0, critRate: 0, effectRes: 100 });
+    const enemyB = createEnemy({ hp: 500, atk: 1, def: 0, critRate: 0, effectRes: 100 });
+    const caster = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    enemyA.name = 'Enemy-A';
+    enemyB.name = 'Enemy-B';
+    caster.id = 'ally-aoe-caster';
+    caster.skillIds = ['skill_necromancer_grave_command'];
+    caster.currentEnergy = 30;
+    caster.maxEnergy = 30;
+
+    const logs = new BattleEngine(player, [caster]).simulateMonsterAction(
+      caster.id,
+      enemyA,
+      [enemyA, enemyB],
+      'skill_necromancer_grave_command',
+    );
+    const skillLogs = logs.filter(log => log.action === 'MONSTER_SKILL');
+
+    expect(skillLogs.map(log => log.targetName)).toEqual(['Enemy-A', 'Enemy-B']);
+    expect(caster.currentEnergy).toBe(10);
+  });
+
+  test('commanded monster skill with insufficient MP does not fall back to normal attack', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const target = createEnemy({ hp: 500, atk: 1, def: 0, critRate: 0 });
+    const caster = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    caster.id = 'ally-low-mp';
+    caster.skillIds = ['skill_mage_1'];
+    caster.currentEnergy = 3;
+    caster.maxEnergy = 20;
+
+    const logs = new BattleEngine(player, [caster]).simulateMonsterAction(caster.id, target, [target], 'skill_mage_1');
+
+    expect(logs.some(log => log.action === 'NO_ENERGY')).toBe(true);
+    expect(logs.some(log => log.action === 'MONSTER_ATTACK')).toBe(false);
+    expect(logs.some(log => log.action === 'MONSTER_SKILL')).toBe(false);
+    expect(caster.currentEnergy).toBe(3);
   });
 
   // ── WAVE 進行ロジック (L-2) ──────────────────────────────────────────────
