@@ -242,6 +242,7 @@ interface GameState {
   consumeInventoryItem: (itemId: string) => boolean;
   addAbyssalResidues: (residues: AbyssalResidueData[]) => void;
   addResidueMaterials: (mats: ResidueMatData[]) => void;
+  addWeaponMaterials: (mats: WeaponMaterialData[]) => void;
   equipResidueToSlot: (slotIndex: number, residue: AbyssalResidueData | null) => void;
   upgradeResidue: (residueId: string, matIds: string[]) => void;
   rankUpWeapon: (weaponId: string) => void;
@@ -454,6 +455,9 @@ export const useGameStore = create<GameState>((set) => ({
     if (!isAbyssalResidueUnlocked(state.player?.clearedStages)) return state;
     return { residueMaterials: [...state.residueMaterials, ...mats] };
   }),
+  addWeaponMaterials: (mats) => set((state) => ({
+    weaponMaterials: addWeaponMaterials(state.weaponMaterials, mats),
+  })),
   equipResidueToSlot: (slotIndex, residue) => set((state) => {
     if (residue && !isAbyssalResidueUnlocked(state.player?.clearedStages)) return state;
     if (residue && !isResidueSlotCompatible(residue, slotIndex)) return state;

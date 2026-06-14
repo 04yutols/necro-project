@@ -16,7 +16,6 @@ export function useTutorialTrigger() {
   const tutorialCompleted = useTutorialStore(s => s.tutorialCompleted);
 
   const clearedStages = useGameStore(s => s.player?.clearedStages ?? EMPTY_CLEARED_STAGES);
-  const monsterCount = useGameStore(s => s.inventoryMonsters.length);
   const isDemonMode = useGameStore(s => s.isDemonMode);
 
   // ストーリーフラグでプロローグ完了を検出
@@ -45,9 +44,9 @@ export function useTutorialTrigger() {
     //     BATTLE_BASICS は BattleCanvas 単独で管理する
     if (!lineDeathSeen) return;
 
-    // PHASE 2: バトル基礎後 + モンスター2体以上 → パーティ編成
+    // PHASE 2: area1_node1 初回クリア後 → パーティ編成
     if (
-      monsterCount >= 2 &&
+      clearedStages.includes('area1_node1') &&
       hasCompleted('BATTLE_BASICS') &&
       !hasCompleted('PARTY_FORMATION')
     ) {
@@ -55,37 +54,57 @@ export function useTutorialTrigger() {
       return;
     }
 
-    // PHASE 4: 編成理解後 + モンスター3体以上 → 職業転職
+    // PHASE 3: area1_node2 初回クリア後 → 武器装備
     if (
-      monsterCount >= 3 &&
+      clearedStages.includes('area1_node2') &&
       hasCompleted('PARTY_FORMATION') &&
+      !hasCompleted('WEAPON_EQUIP')
+    ) {
+      tryStartPhase('WEAPON_EQUIP');
+      return;
+    }
+
+    // PHASE 4: 武器装備後 → 職業転職
+    if (
+      clearedStages.includes('area1_node2') &&
+      hasCompleted('WEAPON_EQUIP') &&
       !hasCompleted('JOB_CHANGE')
     ) {
       tryStartPhase('JOB_CHANGE');
       return;
     }
 
-    // PHASE 5: 第2章導入到達 → 深淵の残滓
+    // PHASE 5: 第1章ボス撃破後 → 武器強化
     if (
-      isAbyssalResidueUnlocked(clearedStages) &&
+      clearedStages.includes('area1_boss') &&
       hasCompleted('JOB_CHANGE') &&
-      !hasCompleted('ABYSSAL_RESIDUE')
+      !hasCompleted('WEAPON_ENHANCE')
     ) {
-      tryStartPhase('ABYSSAL_RESIDUE');
+      tryStartPhase('WEAPON_ENHANCE');
       return;
     }
 
-    // PHASE 6: 第1章ボス撃破 → 魔神化
+    // PHASE 6: 武器強化後 → 魔神化
     if (
       clearedStages.includes('area1_boss') &&
-      hasCompleted('ABYSSAL_RESIDUE') &&
+      hasCompleted('WEAPON_ENHANCE') &&
       !hasCompleted('DEMONIZATION')
     ) {
       tryStartPhase('DEMONIZATION');
+      return;
+    }
+
+    // PHASE 7: 血沼の渡しクリア後 → 深淵の残滓
+    if (
+      isAbyssalResidueUnlocked(clearedStages) &&
+      hasCompleted('DEMONIZATION') &&
+      !hasCompleted('ABYSSAL_RESIDUE')
+    ) {
+      tryStartPhase('ABYSSAL_RESIDUE');
     }
   }, [
     tutorialHydrated, storyHydrated, tutorialCompleted,
-    lineDeathSeen, clearedStages, monsterCount, completedPhases,
+    lineDeathSeen, clearedStages, completedPhases,
   ]);
 
   // 魔神化ゲージ100%→発動時は DEMONIZATION フェーズのステップ2へジャンプ

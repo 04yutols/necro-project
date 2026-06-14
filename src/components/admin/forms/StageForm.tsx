@@ -67,6 +67,7 @@ type StageFormState = {
   baseExp: number;
   baseGold: number;
   dropTable: DropEntry[];
+  firstClearGuaranteed: DropEntry[];
 };
 
 function formToJson(form: StageFormState): Record<string, unknown> {
@@ -95,6 +96,7 @@ function formToJson(form: StageFormState): Record<string, unknown> {
       baseExp: form.baseExp,
       baseGold: form.baseGold,
       dropTable: form.dropTable,
+      ...(form.firstClearGuaranteed.length > 0 ? { firstClearGuaranteed: form.firstClearGuaranteed } : {}),
     },
     position: { x: form.positionX, y: form.positionY },
   };
@@ -129,6 +131,7 @@ function initForm(
       baseExp: 10,
       baseGold: 500,
       dropTable: [],
+      firstClearGuaranteed: [],
     };
   }
   const raw = data as Record<string, unknown>;
@@ -159,6 +162,7 @@ function initForm(
     baseExp: (rewards.baseExp as number) ?? 0,
     baseGold: (rewards.baseGold as number) ?? 0,
     dropTable: (rewards.dropTable as DropEntry[]) ?? [],
+    firstClearGuaranteed: (rewards.firstClearGuaranteed as DropEntry[]) ?? [],
   };
 }
 
@@ -571,6 +575,19 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
                   onChange={(entries) => updateField('dropTable', entries)}
                   itemIds={itemIds}
                   materialIds={materialIds}
+                  enemyIds={enemyData.map(enemy => enemy.id)}
+                  allowExtendedTypes
+                />
+              </div>
+              <div>
+                <p style={{ color: '#7878a8', fontSize: 11, marginBottom: 8, fontFamily: 'Space Grotesk, sans-serif' }}>初回確定報酬</p>
+                <DropTableEditor
+                  value={form.firstClearGuaranteed}
+                  onChange={(entries) => updateField('firstClearGuaranteed', entries)}
+                  itemIds={itemIds}
+                  materialIds={materialIds}
+                  enemyIds={enemyData.map(enemy => enemy.id)}
+                  allowExtendedTypes
                 />
               </div>
             </div>

@@ -1,7 +1,7 @@
 import { getStageDropTableForResidueUnlock } from '../logic/AbyssalResidueUnlockSystem';
 import { normalizeDropRate } from '../logic/DropPolicySystem';
-import { rollStageNecromance } from '../logic/NecromanceCaptureSystem';
-import { CharacterData, ItemData, AbyssalResidueData, ResidueMatData, MonsterData, DropEntry, StageData } from '../types/game';
+import { createNecromancedMonster, rollStageNecromance } from '../logic/NecromanceCaptureSystem';
+import { CharacterData, ItemData, AbyssalResidueData, ResidueMatData, MonsterData, DropEntry, StageData, WeaponMaterialData, WeaponMaterialType } from '../types/game';
 import { MasterDataService } from './MasterDataService';
 
 export interface StageDropResult {
@@ -9,11 +9,26 @@ export interface StageDropResult {
   consumables: ItemData[];
   residues:  AbyssalResidueData[];
   materials: ResidueMatData[];
+  weaponMaterials: WeaponMaterialData[];
   monsters:  MonsterData[];
 }
 
 const RESIDUE_SLOTS = ['head', 'arms', 'chest', 'waist', 'legs'] as const;
 type ResidueSlot = typeof RESIDUE_SLOTS[number];
+
+const WEAPON_MATERIAL_NAMES: Record<WeaponMaterialType, string> = {
+  IDEA_COMMON: '凡骨のイデア',
+  IDEA_SR: '業物のイデア',
+  IDEA_SSR: '英雄のイデア',
+  ABYSSAL_OBSIDIAN: '深淵の黒鋼',
+};
+
+const WEAPON_MATERIAL_TYPES = new Set<WeaponMaterialType>([
+  'IDEA_COMMON',
+  'IDEA_SR',
+  'IDEA_SSR',
+  'ABYSSAL_OBSIDIAN',
+]);
 
 interface StatRange { type: string; range: [number, number] }
 
@@ -109,6 +124,25 @@ function generateInstanceId(prefix: string): string {
   return `${prefix}_${secureUuid()}`;
 }
 
+function emptyStageDropResult(): StageDropResult {
+  return { weapons: [], consumables: [], residues: [], materials: [], weaponMaterials: [], monsters: [] };
+}
+
+function mergeDropResult(target: StageDropResult, source: StageDropResult): StageDropResult {
+  target.weapons.push(...source.weapons);
+  target.consumables.push(...source.consumables);
+  target.residues.push(...source.residues);
+  target.materials.push(...source.materials);
+  target.weaponMaterials.push(...source.weaponMaterials);
+  target.monsters.push(...source.monsters);
+  return target;
+}
+
+function resolveWeaponMaterialType(entry: DropEntry): WeaponMaterialType | null {
+  const type = entry.weaponMaterialType ?? entry.itemId;
+  return WEAPON_MATERIAL_TYPES.has(type as WeaponMaterialType) ? type as WeaponMaterialType : null;
+}
+
 export function shuffleFisherYates<T>(items: readonly T[], rng: () => number): T[] {
   const shuffled = [...items];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -159,76 +193,144 @@ export class RewardService {
     };
   }
 
+  private resolveDropEntry(
+    entry: DropEntry,
+    result: StageDropResult,
+    mds: MasterDataService,
+    rng: () => number,
+    ownedMonsterMasterIds: Set<string>,
+  ) {
+    switch (entry.type) {
+      case 'WEAPON': {
+        if (!entry.itemId) break;
+        const master = mds.getItem(entry.itemId);
+        if (!master) break;
+        result.weapons.push({
+          ...master,
+          id:   generateInstanceId(master.id),
+          rank: 0,
+        });
+        break;
+      }
+      case 'CONSUMABLE': {
+        if (!entry.itemId) break;
+        const master = mds.getItem(entry.itemId);
+        if (!master || master.type !== 'CONSUMABLE') break;
+        result.consumables.push({
+          ...master,
+          quantity: Math.max(1, entry.quantity ?? master.quantity ?? 1),
+        });
+        break;
+      }
+      case 'RESIDUE': {
+        const rarity = (entry.rarity ?? 'COMMON') as AbyssalResidueData['rarity'];
+        const quantity = Math.max(1, entry.quantity ?? 1);
+        for (let i = 0; i < quantity; i += 1) {
+          result.residues.push(RewardService.generateResidue(rarity, rng));
+        }
+        break;
+      }
+      case 'MATERIAL': {
+        if (!entry.itemId) break;
+        const mat = mds.getMaterial(entry.itemId);
+        if (mat) {
+          result.materials.push({
+            ...mat,
+            id: generateInstanceId(mat.id),
+            quantity: Math.max(1, entry.quantity ?? mat.quantity ?? 1),
+          });
+        }
+        break;
+      }
+      case 'WEAPON_MATERIAL': {
+        const type = resolveWeaponMaterialType(entry);
+        if (!type) break;
+        result.weaponMaterials.push({
+          type,
+          name: WEAPON_MATERIAL_NAMES[type],
+          quantity: Math.max(1, entry.quantity ?? 1),
+        });
+        break;
+      }
+      case 'MONSTER': {
+        if (!entry.monsterId) break;
+        if (ownedMonsterMasterIds.has(entry.monsterId)) break;
+        const enemy = mds.getEnemy(entry.monsterId);
+        if (!enemy) break;
+        const quantity = Math.max(1, entry.quantity ?? 1);
+        for (let i = 0; i < quantity; i += 1) {
+          if (ownedMonsterMasterIds.has(entry.monsterId)) break;
+          result.monsters.push(createNecromancedMonster(enemy));
+          ownedMonsterMasterIds.add(entry.monsterId);
+        }
+        break;
+      }
+    }
+  }
+
+  private processGuaranteedDropTable(
+    dropTable: DropEntry[],
+    ownedMonsterMasterIds: Set<string>,
+    rng: () => number,
+  ): StageDropResult {
+    const result = emptyStageDropResult();
+    const mds = MasterDataService.getInstance();
+
+    for (const entry of dropTable) {
+      this.resolveDropEntry(entry, result, mds, rng, ownedMonsterMasterIds);
+    }
+
+    return result;
+  }
+
   public processDropTable(
     dropTable: DropEntry[],
     discoveryBonusRate: number = 0,
     rng: () => number = Math.random,
+    ownedMonsterMasterIds: readonly (string | null | undefined)[] = [],
   ): StageDropResult {
-    const result: StageDropResult = { weapons: [], consumables: [], residues: [], materials: [], monsters: [] };
+    const result = emptyStageDropResult();
     const mds = MasterDataService.getInstance();
     const multiplier = 1 + discoveryBonusRate / 100;
+    const owned = new Set(ownedMonsterMasterIds.filter((id): id is string => Boolean(id)));
 
     for (const entry of dropTable) {
       const roll = rng();
       const adjustedRate = normalizeDropRate(entry.rate * multiplier);
       if (roll >= adjustedRate) continue;
 
-      switch (entry.type) {
-        case 'WEAPON': {
-          if (!entry.itemId) break;
-          const master = mds.getItem(entry.itemId);
-          if (!master) break;
-          result.weapons.push({
-            ...master,
-            id:   generateInstanceId(master.id),
-            rank: 0,
-          });
-          break;
-        }
-        case 'CONSUMABLE': {
-          if (!entry.itemId) break;
-          const master = mds.getItem(entry.itemId);
-          if (!master || master.type !== 'CONSUMABLE') break;
-          result.consumables.push({
-            ...master,
-            quantity: Math.max(1, entry.quantity ?? master.quantity ?? 1),
-          });
-          break;
-        }
-        case 'RESIDUE': {
-          const rarity = (entry.rarity ?? 'COMMON') as AbyssalResidueData['rarity'];
-          result.residues.push(RewardService.generateResidue(rarity, rng));
-          break;
-        }
-        case 'MATERIAL': {
-          if (!entry.itemId) break;
-          const mat = mds.getMaterial(entry.itemId);
-          if (mat) {
-            result.materials.push({
-              ...mat,
-              id: generateInstanceId(mat.id),
-              quantity: Math.max(1, entry.quantity ?? mat.quantity ?? 1),
-            });
-          }
-          break;
-        }
-        case 'MONSTER':
-          // 第1章ドロップテーブルには MONSTER エントリなし — 将来拡張用
-          break;
-      }
+      this.resolveDropEntry(entry, result, mds, rng, owned);
     }
 
     return result;
   }
 
   public processStageDropTable(
-    stage: Pick<StageData, 'chapter' | 'rewards'>,
+    stage: Pick<StageData, 'chapter' | 'rewards'> & { id?: string },
     clearedStages: readonly string[] = [],
     discoveryBonusRate: number = 0,
     rng: () => number = Math.random,
+    ownedMonsterMasterIds: readonly (string | null | undefined)[] = [],
   ): StageDropResult {
+    const owned = new Set(ownedMonsterMasterIds.filter((id): id is string => Boolean(id)));
+    const result = emptyStageDropResult();
+    const firstClearGuaranteed = stage.id && !clearedStages.includes(stage.id)
+      ? stage.rewards.firstClearGuaranteed ?? []
+      : [];
+    if (firstClearGuaranteed.length > 0) {
+      mergeDropResult(
+        result,
+        this.processGuaranteedDropTable(
+          firstClearGuaranteed.map(entry => ({ ...entry, rate: 1 })),
+          owned,
+          rng,
+        ),
+      );
+    }
+
     const dropTable = getStageDropTableForResidueUnlock(stage, clearedStages);
-    return this.processDropTable(dropTable, discoveryBonusRate, rng);
+    mergeDropResult(result, this.processDropTable(dropTable, discoveryBonusRate, rng, [...owned]));
+    return result;
   }
 
   public processStageNecromance(

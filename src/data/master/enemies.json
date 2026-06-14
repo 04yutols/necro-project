@@ -447,8 +447,8 @@
     "tier": "ELITE",
     "tribe": "UNDEAD",
     "stats": {
-      "hp": 72,
-      "atk": 9,
+      "hp": 50,
+      "atk": 7,
       "def": 9,
       "spd": 68,
       "critRate": 5,
@@ -457,31 +457,17 @@
       "effectRes": 20
     },
     "resistances": {
-      "LIGHT": -30,
       "EARTH": -20,
-      "DARK": 45,
-      "WIND": 10
+      "WIND": 10,
+      "LIGHT": -30,
+      "DARK": 45
     },
     "weaknesses": [
-      "LIGHT",
-      "EARTH"
+      "EARTH",
+      "LIGHT"
     ],
     "shieldHp": 24,
     "maxShieldHp": 24,
-    "dropTable": [
-      {
-        "type": "WEAPON",
-        "itemId": "bleed_reaver",
-        "rarity": "SR",
-        "rate": 0.12
-      }
-    ],
-    "battle": {
-      "color": "#a855f7",
-      "sprite": "GIANT",
-      "size": 0.9
-    },
-    "description": "高DEFの精鋭。防壁破壊後に一気に削ることを想定。",
     "necromance": {
       "captureRate": 0.04,
       "allyCost": 2,
@@ -495,11 +481,24 @@
         "effectHit": 4,
         "effectRes": 20
       },
-      "allyMaxEnergy": 34,
       "skillIds": [
         "skill_berserker_earth_breaker"
       ]
-    }
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bleed_reaver",
+        "rarity": "SR",
+        "rate": 0.12
+      }
+    ],
+    "battle": {
+      "color": "#a855f7",
+      "sprite": "GIANT",
+      "size": 0.9
+    },
+    "description": "高DEFの精鋭。防壁破壊後に一気に削ることを想定。"
   },
   "ossuary_wyrm_lord": {
     "id": "ossuary_wyrm_lord",

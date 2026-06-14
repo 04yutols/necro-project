@@ -132,6 +132,7 @@ const WEAPON_SUBOPTION_RULES: Record<string, { optionCount: number; elementDamag
 };
 const JOB_STAT_KEYS = ['hp', 'mp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
 const JOB_POSITIVE_STAT_KEYS = new Set(['hp', 'mp', 'atk', 'spd']);
+const WEAPON_MATERIAL_TYPES = new Set(['IDEA_COMMON', 'IDEA_SR', 'IDEA_SSR', 'ABYSSAL_OBSIDIAN']);
 
 function isElementDamageSubOption(option: Record<string, unknown>): boolean {
   return /^(FIRE|WATER|THUNDER|EARTH|WIND|ICE|LIGHT|DARK)_DMG_BOOST$/.test(getString(option, 'type'));
@@ -461,6 +462,28 @@ export async function auditMasterData(
       }
       return;
     }
+    if (dropType === 'MONSTER') {
+      const monsterId = getString(drop, 'monsterId');
+      if (!monsterId) {
+        findings.push({ level: 'WARN', scope, id, message: `${fieldPath}.monsterId が空です。` });
+      } else if (!enemyIds.has(monsterId)) {
+        findings.push({ level: 'FAIL', scope, id, message: `${fieldPath} の MONSTER monsterId "${monsterId}" が enemies.json に存在しません。` });
+      } else {
+        findings.push({ level: 'PASS', scope, id, message: `確定モンスター参照 "${monsterId}" OK` });
+      }
+      return;
+    }
+    if (dropType === 'WEAPON_MATERIAL') {
+      const materialType = getString(drop, 'weaponMaterialType') || iid;
+      if (!materialType) {
+        findings.push({ level: 'WARN', scope, id, message: `${fieldPath}.weaponMaterialType が空です。` });
+      } else if (!WEAPON_MATERIAL_TYPES.has(materialType)) {
+        findings.push({ level: 'FAIL', scope, id, message: `${fieldPath} の WEAPON_MATERIAL "${materialType}" は未定義です。` });
+      } else {
+        findings.push({ level: 'PASS', scope, id, message: `武器素材報酬 "${materialType}" OK` });
+      }
+      return;
+    }
     if (!iid) {
       findings.push({ level: 'WARN', scope, id, message: `${fieldPath}.itemId が空です。` });
       return;
@@ -504,6 +527,8 @@ export async function auditMasterData(
     if (!rewards) continue;
     const drops = getArray(rewards, 'dropTable');
     drops.forEach((drop, index) => auditDropReference('stages', stageKey, `rewards.dropTable[${index}]`, drop));
+    const firstClearDrops = getArray(rewards, 'firstClearGuaranteed');
+    firstClearDrops.forEach((drop, index) => auditDropReference('stages', stageKey, `rewards.firstClearGuaranteed[${index}]`, drop));
   }
 
   // ---------------------------------------------------------------------------
@@ -663,7 +688,10 @@ export async function getDependencies(
       }
       for (const [stageKey, stage] of Object.entries(data.stages)) {
         const rewards = (stage.rewards as Record<string, unknown>) ?? {};
-        const drops = (rewards.dropTable as Array<Record<string, unknown>>) ?? [];
+        const drops = [
+          ...((rewards.dropTable as Array<Record<string, unknown>>) ?? []),
+          ...((rewards.firstClearGuaranteed as Array<Record<string, unknown>>) ?? []),
+        ];
         for (const drop of drops) {
           if (drop.itemId === entryKey) {
             const rate = (drop.rate as number) ?? 0;

@@ -175,26 +175,25 @@ describe('GameManager.processStageResult', () => {
     const { character } = await createUserWithCharacter(email, 'SEC5', 10);
     const randomValues = [
       0.99, 0.99, 0.99, // stage drop table misses
-      0.0,              // grave_soldier necromance succeeds
-      0.99, 0.99, 0.99, // other stage enemies miss
+      0.99, 0.99,       // non-guaranteed necromance candidates miss
     ];
     const randomSpy = jest.spyOn(Math, 'random').mockImplementation(() => randomValues.shift() ?? 0.99);
 
     try {
       const result = await manager.processStageResult(character.id, 'area1_node1');
-      expect(result.rewards.monsters.map((monster: { masterId?: string }) => monster.masterId)).toEqual(['grave_soldier']);
+      expect(result.rewards.monsters.map((monster: { masterId?: string }) => monster.masterId)).toEqual(['grave_soldier', 'rot_hound']);
 
       const saved = await prisma.monster.findMany({
-        where: { characterId: character.id, masterId: 'grave_soldier' },
+        where: { characterId: character.id, masterId: { in: ['grave_soldier', 'rot_hound'] } },
+        orderBy: { masterId: 'asc' },
       });
-      expect(saved).toHaveLength(1);
-      expect(saved[0]).toMatchObject({
-        id: result.rewards.monsters[0].id,
+      expect(saved.map(monster => monster.masterId)).toEqual(['grave_soldier', 'rot_hound']);
+      expect(saved.find(monster => monster.masterId === 'grave_soldier')).toMatchObject({
         characterId: character.id,
         masterId: 'grave_soldier',
         name: '霊体騎士',
       });
-      expect(saved[0].skillIds).toEqual(['skill_necromancer_1']);
+      expect(saved.find(monster => monster.masterId === 'grave_soldier')?.skillIds).toEqual(['skill_necromancer_1']);
     } finally {
       randomSpy.mockRestore();
     }
@@ -205,9 +204,10 @@ describe('GameManager.processStageResult', () => {
       expect(second.rewards.monsters.some((monster: { masterId?: string }) => monster.masterId === 'grave_soldier')).toBe(false);
 
       const savedAfterSecond = await prisma.monster.findMany({
-        where: { characterId: character.id, masterId: 'grave_soldier' },
+        where: { characterId: character.id, masterId: { in: ['grave_soldier', 'rot_hound'] } },
       });
-      expect(savedAfterSecond).toHaveLength(1);
+      expect(savedAfterSecond.filter(monster => monster.masterId === 'grave_soldier')).toHaveLength(1);
+      expect(savedAfterSecond.filter(monster => monster.masterId === 'rot_hound')).toHaveLength(1);
     } finally {
       secondSpy.mockRestore();
     }

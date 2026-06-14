@@ -5,9 +5,11 @@ describe('tutorial phases', () => {
     expect(ALL_PHASES).toEqual([
       'BATTLE_BASICS',
       'PARTY_FORMATION',
+      'WEAPON_EQUIP',
       'JOB_CHANGE',
-      'ABYSSAL_RESIDUE',
+      'WEAPON_ENHANCE',
       'DEMONIZATION',
+      'ABYSSAL_RESIDUE',
     ]);
   });
 

@@ -530,16 +530,27 @@ function convertDropToResultItems(drop: StageDropResult, playerName?: string) {
     quantity: item.quantity ?? 1,
     flavor:   item.flavor,
   }));
-  return [...weapons, ...residues, ...consumables, ...materials];
+  const weaponMaterials = drop.weaponMaterials.map(m => ({
+    id:       m.type,
+    name:     m.name,
+    rarity:   'COMMON' as any,
+    icon:     '⬡',
+    isUnique: false,
+    quantity: m.quantity,
+  }));
+  return [...weapons, ...residues, ...consumables, ...materials, ...weaponMaterials];
 }
 
 function buildLocalStageResult(stage?: StageData, clearedStages: readonly string[] = []) {
+  const ownedMonsterMasterIds = getOwnedMonsterMasterIds(useGameStore.getState().inventoryMonsters);
   const dropResult = stage
-    ? REWARD_SERVICE.processStageDropTable(stage, clearedStages)
+    ? REWARD_SERVICE.processStageDropTable(stage, clearedStages, 0, Math.random, ownedMonsterMasterIds)
     : REWARD_SERVICE.processDropTable([]);
   if (stage) {
-    const ownedMonsterMasterIds = getOwnedMonsterMasterIds(useGameStore.getState().inventoryMonsters);
-    dropResult.monsters.push(...REWARD_SERVICE.processStageNecromance(stage, ownedMonsterMasterIds));
+    dropResult.monsters.push(...REWARD_SERVICE.processStageNecromance(
+      stage,
+      [...ownedMonsterMasterIds, ...dropResult.monsters.map(monster => monster.masterId ?? monster.id)],
+    ));
   }
   return {
     dropResult,
@@ -1864,7 +1875,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
   const {
     player, party, equippedResidueSlots, inventoryItems,
     addExp, addGold, addClearedStage, updateEnergy, updateEnergyBy, restoreEnergy,
-    addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials,
+    addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials, addWeaponMaterials,
     consumeInventoryItem,
   } = useGameStore();
   const sfx = useSoundEffects();
@@ -2377,6 +2388,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
         }).then(({ dropResult, expGain, goldGain }) => {
           // ローカル実行時のストア更新
           addInventoryItems([...dropResult.weapons, ...dropResult.consumables]);
+          addWeaponMaterials(dropResult.weaponMaterials);
           if (dropResult.monsters.length > 0) {
             const latestInventory = useGameStore.getState().inventoryMonsters;
             const owned = new Set(getOwnedMonsterMasterIds(latestInventory));
@@ -2390,11 +2402,11 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
               setInventoryMonsters([...latestInventory, ...newMonsters]);
             }
           }
-          addAbyssalResidues(dropResult.residues);
-          addResidueMaterials(dropResult.materials);
           addExp(expGain);
           addGold(goldGain);
           if (stageId) addClearedStage(stageId);
+          addAbyssalResidues(dropResult.residues);
+          addResidueMaterials(dropResult.materials);
           restoreEnergy();
 
           setBattleResult({
@@ -2441,7 +2453,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
         window.setTimeout(() => setFlashColor(null), 600);
       }
     }, battleDelay(1200, 520));
-  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials, battleDelay, battleWaves, player?.name, restoreEnergy, sfx, stageId]);
+  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials, addWeaponMaterials, battleDelay, battleWaves, player?.name, restoreEnergy, sfx, stageId]);
 
   function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
     const id = ++floatId;
