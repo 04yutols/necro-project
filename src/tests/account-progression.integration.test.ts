@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import jobsData from '../data/master/jobs.json';
+import { calculateEnergyState } from '../logic/EnergySystem';
 import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 import { RESIDUE_SLOT_ORDER } from '../logic/ResidueScore';
@@ -182,8 +183,9 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     if (!changedToMage.success) throw new Error(changedToMage.error);
     expect(changedToMage.data.player.currentJobId).toBe('mage');
     expect(changedToMage.data.player.jobs).toContainEqual({ jobId: 'mage', level: 1, exp: 0 });
-    expect(changedToMage.data.player.maxEnergy).toBe(80);
-    expect(changedToMage.data.player.currentEnergy).toBe(80);
+    const mageEnergy = calculateEnergyState(JOBS.mage, 1);
+    expect(changedToMage.data.player.maxEnergy).toBe(mageEnergy.maxEnergy);
+    expect(changedToMage.data.player.currentEnergy).toBe(mageEnergy.currentEnergy);
 
     const persistedMage = await prisma.character.findUnique({
       where: { id: created.data.player.id },

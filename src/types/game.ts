@@ -50,7 +50,10 @@ export interface JobUnlockRequirement {
   minLevel: number;
 }
 
-export type JobBaseStatsByLevel = Record<string, BaseStats>;
+export type JobBaseStats = BaseStats & {
+  mp: number; // 最大MP
+};
+export type JobBaseStatsByLevel = Record<string, JobBaseStats>;
 
 export interface JobData {
   id?: string;
@@ -73,7 +76,7 @@ export interface JobData {
     ultimateCost: number;  // 奥義コスト（未使用・将来用）
     spGrowthPerLevel: number; // レベルごとの最大MP成長値（互換フィールド名）
   };
-  // 主人公の装備なし職業基礎ステータス。キーは "1"〜"100"。
+  // 主人公の装備なし職業基礎ステータス。キーは "1"〜"100"。mp は最大MP。
   baseStatsByLevel?: JobBaseStatsByLevel;
   levelBonuses: Record<string, Partial<PassiveBonuses>>;
   skills: JobSkillUnlock[];
@@ -258,7 +261,7 @@ export interface CharacterData {
   statusEffects?: StatusEffect[];
   // MP（ランタイム状態 — DB非保存、魔神化ゲージとは別リソース）
   currentEnergy: number; // 現在MP（互換フィールド名）
-  maxEnergy:     number; // 最大MP：job.energyCurve.baseMaxEnergy + 成長値
+  maxEnergy:     number; // 最大MP：job.baseStatsByLevel[level].mp または energyCurve から導出
   // 属性ダメージ加成（装備・残滓から集計）
   elementDmgBoosts: Partial<Record<ElementType, number>>;
 }

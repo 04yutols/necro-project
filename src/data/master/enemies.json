@@ -7,8 +7,8 @@
     "tier": "MINION",
     "tribe": "UNDEAD",
     "stats": {
-      "hp": 15,
-      "atk": 4,
+      "hp": 10,
+      "atk": 2,
       "def": 3,
       "spd": 70,
       "critRate": 0,
@@ -23,6 +23,23 @@
     "weaknesses": [
       "LIGHT"
     ],
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 15,
+        "atk": 4,
+        "def": 3,
+        "spd": 70,
+        "critRate": 0,
+        "critDmg": 150,
+        "effectHit": 0,
+        "effectRes": 0
+      },
+      "skillIds": [
+        "skill_necromancer_1"
+      ]
+    },
     "dropTable": [
       {
         "type": "WEAPON",
@@ -42,24 +59,7 @@
       "sprite": "WRAITH",
       "size": 0.72
     },
-    "description": "WAVE1の露払い。通常攻撃3回、スキル2回ほどで倒せる導入敵。",
-    "necromance": {
-      "captureRate": 0.12,
-      "allyCost": 1,
-      "allyStats": {
-        "hp": 15,
-        "atk": 4,
-        "def": 3,
-        "spd": 70,
-        "critRate": 0,
-        "critDmg": 150,
-        "effectHit": 0,
-        "effectRes": 0
-      },
-      "skillIds": [
-        "skill_necromancer_1"
-      ]
-    }
+    "description": "WAVE1の露払い。通常攻撃3回、スキル2回ほどで倒せる導入敵。"
   },
   "rot_hound": {
     "id": "rot_hound",

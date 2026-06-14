@@ -95,6 +95,8 @@ interface DemonBurstState {
   form: DemonFormData;
 }
 
+type TransitionBanner = 'waveClear' | 'lose';
+
 interface FormationBadgeMeta {
   icon: string;
   label: string;
@@ -1881,6 +1883,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
   const [demonBurst, setDemonBurst] = useState<DemonBurstState | null>(null);
   const [turnOrderPreview, setTurnOrderPreview] = useState<TurnOrderEntry[]>([]);
   const [showRetreatConfirm, setShowRetreatConfirm] = useState(false);
+  const [transitionBanner, setTransitionBanner] = useState<TransitionBanner | null>(null);
   const closeRetreatConfirm = useCallback(() => setShowRetreatConfirm(false), []);
   const retreatDialogRef = useFocusTrap<HTMLDivElement>(showRetreatConfirm, closeRetreatConfirm);
 
@@ -2274,6 +2277,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     setSkillEffect(null);
     setFlashColor(null);
     setScreenShake(false);
+    setTransitionBanner(null);
     setShowResult(false);
     setBattleResult(null);
     setLog([
@@ -2309,6 +2313,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     };
 
     setBattlePhase('waveTransition');
+    setTransitionBanner('waveClear');
     playerActionLockRef.current = true;
     setSoul(prev => Math.min(100, prev + 18));
     sfx.waveClear(clearedWave.isBoss ? 'boss' : 'wave');
@@ -2386,6 +2391,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
       setEnemies(nextEnemies);
       waveResolvingRef.current = false;
       unlockPlayerAction();
+      setTransitionBanner(null);
       setBattlePhase('playerTurn');
       addLog(nextWave.isBoss ? `☠ BOSS登場！ ${nextWave.enemies[0].name} が現れた！` : `${nextWave.label} 開始！`);
       if (nextWave.isBoss) {
@@ -2744,8 +2750,10 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
 
   function triggerPlayerDefeat() {
     enemyTurnSerialRef.current += 1; // 進行中の敵アクションを全キャンセル
+    waveResolvingRef.current = true;
     setAuto(false);
     setBattlePhase('waveTransition'); // プレイヤー入力を無効化
+    setTransitionBanner('lose');
     playerActionLockRef.current = true;
     restoreEnergy();
     addLog('☠ 骸骨騎士は倒れた... バトル終了。');
@@ -3553,7 +3561,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
         </div>
       )}
 
-      {phase === 'waveTransition' && (
+      {phase === 'waveTransition' && transitionBanner && (
         <div
           style={{
             position: 'absolute',
@@ -3563,23 +3571,29 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
             alignItems: 'center',
             justifyContent: 'center',
             pointerEvents: 'none',
-            background: 'radial-gradient(ellipse at center, rgba(139,0,255,0.22), transparent 56%)',
+            background: transitionBanner === 'lose'
+              ? 'radial-gradient(ellipse at center, rgba(239,68,68,0.24), transparent 56%)'
+              : 'radial-gradient(ellipse at center, rgba(139,0,255,0.22), transparent 56%)',
             animation: 'fadeIn 0.18s ease-out',
           }}
         >
           <div style={{
             padding: '14px 24px',
             borderRadius: 14,
-            border: '1px solid rgba(188,0,251,0.6)',
+            border: transitionBanner === 'lose'
+              ? '1px solid rgba(239,68,68,0.62)'
+              : '1px solid rgba(188,0,251,0.6)',
             background: 'rgba(5,2,16,0.88)',
-            boxShadow: '0 0 28px rgba(188,0,251,0.34)',
-            color: '#f0ebff',
+            boxShadow: transitionBanner === 'lose'
+              ? '0 0 28px rgba(239,68,68,0.34)'
+              : '0 0 28px rgba(188,0,251,0.34)',
+            color: transitionBanner === 'lose' ? '#fecaca' : '#f0ebff',
             fontFamily: "'Cinzel', serif",
             fontSize: 16,
             fontWeight: 900,
             letterSpacing: '0.14em',
           }}>
-            WAVE CLEAR
+            {transitionBanner === 'lose' ? 'LOSE' : 'WAVE CLEAR'}
           </div>
         </div>
       )}

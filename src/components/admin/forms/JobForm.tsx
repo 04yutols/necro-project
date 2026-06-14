@@ -12,7 +12,7 @@ import ConfirmDialog from './shared/ConfirmDialog';
 import AIJobDraftPanel from '../AIJobDraftPanel';
 import DependenciesTab from './shared/DependenciesTab';
 import type { DependencyRef } from '@/app/admin/actions';
-import type { BaseStats, JobBaseStatsByLevel, SkillData } from '@/types/game';
+import type { JobBaseStats, JobBaseStatsByLevel, SkillData } from '@/types/game';
 import {
   JOB_BASE_STAT_KEYS,
   clampJobBaseStatValue,
@@ -43,7 +43,8 @@ const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' };
 const textareaStyle: React.CSSProperties = { ...inputStyle, height: undefined, resize: 'vertical', minHeight: 96 };
 
 const STAT_FIELDS = JOB_BASE_STAT_KEYS;
-const INTEGER_STAT_FIELDS = new Set<JobBaseStatKey>(['hp', 'atk', 'def', 'spd']);
+const STAT_MODIFIER_FIELDS = JOB_BASE_STAT_KEYS.filter((key) => key !== 'mp');
+const INTEGER_STAT_FIELDS = new Set<JobBaseStatKey>(['hp', 'mp', 'atk', 'def', 'spd']);
 
 type UnlockJob = { jobId: string; minLevel: number };
 type SkillSlot = { level: number; skillId: string };
@@ -101,9 +102,9 @@ function formToJson(form: JobFormState): Record<string, unknown> {
     statModifiers: form.statModifiers,
     baseStatsByLevel: form.baseStatsByLevel,
     energyCurve: {
-      baseMaxEnergy: form.baseMaxEnergy,
+      baseMaxEnergy: form.baseStatsByLevel['1']?.mp ?? form.baseMaxEnergy,
       ultimateCost: form.ultimateCost,
-      spGrowthPerLevel: form.spGrowthPerLevel,
+      spGrowthPerLevel: Number((((form.baseStatsByLevel['100']?.mp ?? form.baseMaxEnergy) - (form.baseStatsByLevel['1']?.mp ?? form.baseMaxEnergy)) / 99).toFixed(2)),
     },
     levelBonuses,
     skills: form.skills,
@@ -116,6 +117,7 @@ function buildDefaultBaseStatsByLevel(): BaseStatsByLevel {
     const x = level - 1;
     return [String(level), {
       hp: Math.round(30 + x * 1.2),
+      mp: Math.round(100 + x * 0.7),
       atk: Math.round(4 + x * 0.1),
       def: Math.round(4 + x * 0.1),
       spd: 100,
@@ -123,14 +125,21 @@ function buildDefaultBaseStatsByLevel(): BaseStatsByLevel {
       critDmg: 150,
       effectHit: 0,
       effectRes: 0,
-    } satisfies BaseStats];
+    } satisfies JobBaseStats];
   })) as BaseStatsByLevel;
 }
 
-function normalizeBaseStatsByLevel(value: unknown): BaseStatsByLevel {
+function getFallbackMpForLevel(level: number, energyCurve: Record<string, number>): number {
+  const base = Number.isFinite(energyCurve.baseMaxEnergy) ? energyCurve.baseMaxEnergy : 100;
+  const growth = Number.isFinite(energyCurve.spGrowthPerLevel) ? energyCurve.spGrowthPerLevel : 70 / 99;
+  return clampJobBaseStatValue('mp', base + growth * (level - 1));
+}
+
+function normalizeBaseStatsByLevel(value: unknown, energyCurve: Record<string, number> = {}): BaseStatsByLevel {
   const defaults = buildDefaultBaseStatsByLevel();
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return defaults;
-  const raw = value as Record<string, unknown>;
+  const raw = typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 
   return Object.fromEntries(Array.from({ length: 100 }, (_, index) => {
     const level = String(index + 1);
@@ -139,11 +148,13 @@ function normalizeBaseStatsByLevel(value: unknown): BaseStatsByLevel {
       ? rawStats as Record<string, unknown>
       : {};
     const normalizedStats = STAT_FIELDS.reduce((stats, key) => {
-      const fallback = defaults[level][key];
+      const fallback = key === 'mp'
+        ? getFallbackMpForLevel(index + 1, energyCurve)
+        : defaults[level][key];
       const parsed = typeof source[key] === 'number' ? source[key] : Number(source[key]);
       stats[key] = clampJobBaseStatValue(key, Number.isFinite(parsed) ? parsed : fallback);
       return stats;
-    }, {} as BaseStats);
+    }, {} as JobBaseStats);
     return [level, normalizedStats];
   })) as BaseStatsByLevel;
 }
@@ -168,7 +179,7 @@ function getSkillOptionsForValue(skillId: string): SkillOption[] {
 }
 
 function initForm(data: Record<string, unknown> | null): JobFormState {
-  const defaultStats = Object.fromEntries(STAT_FIELDS.map((k) => [k, 1.0]));
+  const defaultStats = Object.fromEntries(STAT_MODIFIER_FIELDS.map((k) => [k, 1.0]));
   if (!data) {
     return {
       name: '',
@@ -185,13 +196,17 @@ function initForm(data: Record<string, unknown> | null): JobFormState {
       baseStatsByLevel: buildDefaultBaseStatsByLevel(),
       baseMaxEnergy: 100,
       ultimateCost: 100,
-      spGrowthPerLevel: 1,
+      spGrowthPerLevel: 0.71,
       levelBonusesRaw: '{"10":{},"20":{},"30":{}}',
       skills: [],
     };
   }
   const raw = data as Record<string, unknown>;
   const energyCurve = (raw.energyCurve as Record<string, number>) ?? {};
+  const category = (raw.category as string) ?? 'PHYSICAL';
+  const baseStatsByLevel = normalizeBaseStatsByLevel(raw.baseStatsByLevel, energyCurve);
+  const level1MaxEnergy = baseStatsByLevel['1']?.mp ?? energyCurve.baseMaxEnergy ?? 100;
+  const level100MaxEnergy = baseStatsByLevel['100']?.mp ?? level1MaxEnergy;
   const unlockReq = (raw.unlockRequires as Record<string, unknown>) ?? {};
   const unlockJobs = (unlockReq.jobs as UnlockJob[]) ?? [];
   return {
@@ -200,16 +215,16 @@ function initForm(data: Record<string, unknown> | null): JobFormState {
     nameEn: (raw.nameEn as string) ?? '',
     title: (raw.title as string) ?? '',
     tier: (raw.tier as number) ?? 1,
-    category: (raw.category as string) ?? 'PHYSICAL',
+    category,
     baseAttackType: (raw.baseAttackType as string) ?? 'SLASH',
     role: (raw.role as string) ?? '',
     description: (raw.description as string) ?? '',
     unlockJobs,
     statModifiers: (raw.statModifiers as Record<string, number>) ?? defaultStats,
-    baseStatsByLevel: normalizeBaseStatsByLevel(raw.baseStatsByLevel),
-    baseMaxEnergy: energyCurve.baseMaxEnergy ?? 100,
+    baseStatsByLevel,
+    baseMaxEnergy: level1MaxEnergy,
     ultimateCost: energyCurve.ultimateCost ?? 100,
-    spGrowthPerLevel: energyCurve.spGrowthPerLevel ?? 1,
+    spGrowthPerLevel: Number(((level100MaxEnergy - level1MaxEnergy) / 99).toFixed(2)),
     levelBonusesRaw: JSON.stringify(raw.levelBonuses ?? { '10': {}, '20': {}, '30': {} }, null, 2),
     skills: (raw.skills as SkillSlot[]) ?? [],
   };
@@ -249,11 +264,21 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
         },
       };
 
+      const normalizedTable = safeLevel === 100
+        ? interpolateJobBaseStatColumn(nextBaseStatsByLevel, key, normalizedValue)
+        : nextBaseStatsByLevel;
+      const level1Mp = normalizedTable['1']?.mp ?? current.baseMaxEnergy;
+      const level100Mp = normalizedTable['100']?.mp ?? level1Mp;
+
       return {
         ...current,
-        baseStatsByLevel: safeLevel === 100
-          ? interpolateJobBaseStatColumn(nextBaseStatsByLevel, key, normalizedValue)
-          : nextBaseStatsByLevel,
+        baseStatsByLevel: normalizedTable,
+        ...(key === 'mp'
+          ? {
+              baseMaxEnergy: level1Mp,
+              spGrowthPerLevel: Number(((level100Mp - level1Mp) / 99).toFixed(2)),
+            }
+          : {}),
       };
     });
   }, []);
@@ -287,6 +312,37 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
         current.baseStatsByLevel['100'],
       ),
     }));
+  }, []);
+
+  const updateEnergyCurveDraft = useCallback((field: 'baseMaxEnergy' | 'ultimateCost' | 'spGrowthPerLevel', value: number) => {
+    setForm((current) => {
+      if (field === 'ultimateCost') return { ...current, ultimateCost: clampJobBaseStatValue('mp', value) };
+
+      const nextBase = field === 'baseMaxEnergy'
+        ? clampJobBaseStatValue('mp', value)
+        : current.baseMaxEnergy;
+      const nextGrowth = field === 'spGrowthPerLevel'
+        ? Math.max(0, Number.isFinite(value) ? Number(value.toFixed(2)) : 0)
+        : current.spGrowthPerLevel;
+      const nextFinal = clampJobBaseStatValue('mp', nextBase + nextGrowth * 99);
+      const withLevel1Mp: BaseStatsByLevel = {
+        ...current.baseStatsByLevel,
+        '1': {
+          ...current.baseStatsByLevel['1'],
+          mp: nextBase,
+        },
+      };
+      const nextBaseStatsByLevel = interpolateJobBaseStatColumn(withLevel1Mp, 'mp', nextFinal);
+      const level1Mp = nextBaseStatsByLevel['1']?.mp ?? nextBase;
+      const level100Mp = nextBaseStatsByLevel['100']?.mp ?? level1Mp;
+
+      return {
+        ...current,
+        baseStatsByLevel: nextBaseStatsByLevel,
+        baseMaxEnergy: level1Mp,
+        spGrowthPerLevel: Number(((level100Mp - level1Mp) / 99).toFixed(2)),
+      };
+    });
   }, []);
 
   function handleCopy() {
@@ -406,7 +462,7 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <p style={{ color: '#7878a8', fontSize: 11, fontFamily: 'Space Grotesk, sans-serif' }}>statModifiers（倍率：1.0 = 等倍）</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
-                {STAT_FIELDS.map((key) => (
+                {STAT_MODIFIER_FIELDS.map((key) => (
                   <FormField key={key} label={key}>
                     <input
                       type="number"
@@ -491,7 +547,7 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
               </div>
               <div style={{ overflowX: 'auto', maxHeight: 460, border: '1px solid rgba(139,0,255,0.18)', borderRadius: 6 }}>
                 <div style={{ minWidth: 920 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '56px repeat(8, minmax(86px, 1fr))', gap: 0, position: 'sticky', top: 0, background: '#101018', zIndex: 1, borderBottom: '1px solid rgba(139,0,255,0.22)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: `56px repeat(${STAT_FIELDS.length}, minmax(86px, 1fr))`, gap: 0, position: 'sticky', top: 0, background: '#101018', zIndex: 1, borderBottom: '1px solid rgba(139,0,255,0.22)' }}>
                     <span style={{ padding: '8px 10px', color: '#a78bfa', fontSize: 11, fontFamily: 'Space Grotesk, sans-serif' }}>Lv</span>
                     {STAT_FIELDS.map((key) => <span key={key} style={{ padding: '8px 6px', color: '#a78bfa', fontSize: 11, fontFamily: 'Space Grotesk, sans-serif' }}>{key}</span>)}
                   </div>
@@ -499,7 +555,7 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
                     const level = index + 1;
                     const stats = form.baseStatsByLevel[String(level)];
                     return (
-                      <div key={level} style={{ display: 'grid', gridTemplateColumns: '56px repeat(8, minmax(86px, 1fr))', gap: 0, borderBottom: '1px solid rgba(139,0,255,0.08)', background: selectedBaseStatsLevel === level ? 'rgba(139,0,255,0.12)' : 'transparent' }}>
+                      <div key={level} style={{ display: 'grid', gridTemplateColumns: `56px repeat(${STAT_FIELDS.length}, minmax(86px, 1fr))`, gap: 0, borderBottom: '1px solid rgba(139,0,255,0.08)', background: selectedBaseStatsLevel === level ? 'rgba(139,0,255,0.12)' : 'transparent' }}>
                         <button
                           type="button"
                           onClick={() => setSelectedBaseStatsLevel(level)}
@@ -543,9 +599,9 @@ export default function JobForm({ initialData, entryKey, isNew, dependencies = [
           {/* エナジー */}
           {activeTab === 'エナジー' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              <FormField label="baseMaxEnergy"><input type="number" value={form.baseMaxEnergy} onChange={(e) => updateField('baseMaxEnergy', parseInt(e.target.value) || 100)} style={inputStyle} /></FormField>
-              <FormField label="ultimateCost"><input type="number" value={form.ultimateCost} onChange={(e) => updateField('ultimateCost', parseInt(e.target.value) || 100)} style={inputStyle} /></FormField>
-              <FormField label="spGrowthPerLevel"><input type="number" value={form.spGrowthPerLevel} onChange={(e) => updateField('spGrowthPerLevel', parseInt(e.target.value) || 1)} style={inputStyle} /></FormField>
+              <FormField label="baseMaxEnergy (Lv1)"><input type="number" value={form.baseMaxEnergy} onChange={(e) => updateEnergyCurveDraft('baseMaxEnergy', parseFloat(e.target.value) || 100)} style={inputStyle} /></FormField>
+              <FormField label="ultimateCost"><input type="number" value={form.ultimateCost} onChange={(e) => updateEnergyCurveDraft('ultimateCost', parseFloat(e.target.value) || 100)} style={inputStyle} /></FormField>
+              <FormField label="spGrowthPerLevel (補完)"><input type="number" step={0.1} value={form.spGrowthPerLevel} onChange={(e) => updateEnergyCurveDraft('spGrowthPerLevel', parseFloat(e.target.value) || 0)} style={inputStyle} /></FormField>
             </div>
           )}
 

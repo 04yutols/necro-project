@@ -29,6 +29,18 @@ describe('JobGrowthSystem', () => {
         expect(stats.spd).toBeGreaterThan(0);
         expect(stats.critDmg).toBeGreaterThanOrEqual(0);
         expect(job.baseStatsByLevel?.[String(level)]).toBeTruthy();
+        expect(job.baseStatsByLevel?.[String(level)]?.mp).toBeGreaterThan(0);
+      }
+      void jobId;
+    });
+  });
+
+  test('all jobs define fixed base MP from Lv1 to Lv100', () => {
+    Object.entries(jobs).forEach(([jobId, job]) => {
+      for (let level = JOB_BASE_STATS_MIN_LEVEL; level <= JOB_BASE_STATS_MAX_LEVEL; level += 1) {
+        const value = job.baseStatsByLevel?.[String(level)]?.mp;
+        expect(typeof value).toBe('number');
+        expect(value).toBeGreaterThan(0);
       }
       void jobId;
     });
@@ -74,5 +86,16 @@ describe('JobGrowthSystem', () => {
         expect(scoreAtSamples(job)).toBeGreaterThan(tier1Average);
         void jobId;
       });
+  });
+
+  test('magical jobs have a larger max MP growth budget than physical jobs', () => {
+    const averageMpGrowth = (category: 'PHYSICAL' | 'MAGICAL') => {
+      const matchingJobs = Object.values(jobs).filter((job) => job.category === category);
+      return matchingJobs
+        .map((job) => (job.baseStatsByLevel?.['100']?.mp ?? 0) - (job.baseStatsByLevel?.['1']?.mp ?? 0))
+        .reduce((sum, growth, _, growths) => sum + growth / growths.length, 0);
+    };
+
+    expect(averageMpGrowth('MAGICAL')).toBeGreaterThan(averageMpGrowth('PHYSICAL'));
   });
 });

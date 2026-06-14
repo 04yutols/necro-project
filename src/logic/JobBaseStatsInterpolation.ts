@@ -1,9 +1,10 @@
-import type { BaseStats, JobBaseStatsByLevel } from '../types/game';
+import type { JobBaseStats, JobBaseStatsByLevel } from '../types/game';
 
-export type JobBaseStatKey = keyof BaseStats;
+export type JobBaseStatKey = keyof JobBaseStats;
 
 export const JOB_BASE_STAT_KEYS: JobBaseStatKey[] = [
   'hp',
+  'mp',
   'atk',
   'def',
   'spd',
@@ -16,10 +17,11 @@ export const JOB_BASE_STAT_KEYS: JobBaseStatKey[] = [
 export const JOB_BASE_STATS_INTERPOLATION_MIN_LEVEL = 1;
 export const JOB_BASE_STATS_INTERPOLATION_MAX_LEVEL = 100;
 
-const INTEGER_STAT_KEYS = new Set<JobBaseStatKey>(['hp', 'atk', 'def', 'spd']);
+const INTEGER_STAT_KEYS = new Set<JobBaseStatKey>(['hp', 'mp', 'atk', 'def', 'spd']);
 
-const FALLBACK_BASE_STATS: BaseStats = {
+const FALLBACK_BASE_STATS: JobBaseStats = {
   hp: 1,
+  mp: 100,
   atk: 1,
   def: 0,
   spd: 1,
@@ -35,7 +37,7 @@ export function clampJobBaseStatValue(key: JobBaseStatKey, value: number): numbe
     ? Math.round(finiteValue)
     : Number(finiteValue.toFixed(1));
 
-  if (key === 'hp' || key === 'atk' || key === 'spd') return Math.max(1, rounded);
+  if (key === 'hp' || key === 'mp' || key === 'atk' || key === 'spd') return Math.max(1, rounded);
   return Math.max(0, rounded);
 }
 
@@ -73,11 +75,11 @@ export function interpolateJobBaseStatValue(
   return clampJobBaseStatValue(key, start + (end - start) * ratio);
 }
 
-function normalizeLevelStats(stats: Partial<BaseStats> | undefined): BaseStats {
+function normalizeLevelStats(stats: Partial<JobBaseStats> | undefined): JobBaseStats {
   return JOB_BASE_STAT_KEYS.reduce((next, key) => {
     next[key] = clampJobBaseStatValue(key, stats?.[key] ?? FALLBACK_BASE_STATS[key]);
     return next;
-  }, {} as BaseStats);
+  }, {} as JobBaseStats);
 }
 
 export function interpolateJobBaseStatColumn(
@@ -102,7 +104,7 @@ export function interpolateJobBaseStatColumn(
 
 export function interpolateJobBaseStatsByFinalLevel(
   table: JobBaseStatsByLevel,
-  finalStats: Partial<BaseStats> | undefined = table[String(JOB_BASE_STATS_INTERPOLATION_MAX_LEVEL)],
+  finalStats: Partial<JobBaseStats> | undefined = table[String(JOB_BASE_STATS_INTERPOLATION_MAX_LEVEL)],
 ): JobBaseStatsByLevel {
   return JOB_BASE_STAT_KEYS.reduce((nextTable, key) => {
     const finalValue = finalStats?.[key]

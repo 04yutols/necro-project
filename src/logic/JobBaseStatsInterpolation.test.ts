@@ -12,6 +12,7 @@ function makeTable(): JobBaseStatsByLevel {
     const level = index + 1;
     return [String(level), {
       hp: 10,
+      mp: 100,
       atk: 5,
       def: 2,
       spd: 90,
@@ -59,6 +60,7 @@ describe('JobBaseStatsInterpolation', () => {
     const table = makeTable();
     table['100'] = {
       hp: 220,
+      mp: 250,
       atk: 45,
       def: 28,
       spd: 118,
@@ -80,6 +82,7 @@ describe('JobBaseStatsInterpolation', () => {
 
   test('clamps invalid and minimum-sensitive values consistently', () => {
     expect(clampJobBaseStatValue('hp', 0)).toBe(1);
+    expect(clampJobBaseStatValue('mp', 0)).toBe(1);
     expect(clampJobBaseStatValue('atk', 1.6)).toBe(2);
     expect(clampJobBaseStatValue('critRate', 1.234)).toBe(1.2);
     expect(clampJobBaseStatValue('critDmg', 50)).toBe(50);
