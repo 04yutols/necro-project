@@ -336,14 +336,19 @@ export interface MonsterData {
 }
 
 export interface DropEntry {
-  type?: 'WEAPON' | 'RESIDUE' | 'MATERIAL' | 'MONSTER' | 'CONSUMABLE';
+  type?: 'WEAPON' | 'RESIDUE' | 'MATERIAL' | 'MONSTER' | 'CONSUMABLE' | 'WEAPON_MATERIAL';
   itemId?: string;
   monsterId?: string;
+  weaponMaterialType?: WeaponMaterialType;
   rarity?: string;
   quantity?: number;
   rate: number;
   isHidden?: boolean;
 }
+
+export type GuaranteedDropEntry = Omit<DropEntry, 'rate'> & {
+  rate?: number;
+};
 
 export interface BossGimmick {
   trigger: 'HP_BELOW_50' | 'TURN_3' | 'ON_SHIELD_BREAK' | 'ON_REVIVE';
@@ -423,6 +428,7 @@ export interface StageData {
     baseExp: number;
     baseGold: number;
     dropTable: DropEntry[];
+    firstClearGuaranteed?: GuaranteedDropEntry[];
   };
   position: { x: number; y: number };
   isAreaBoss?: boolean;

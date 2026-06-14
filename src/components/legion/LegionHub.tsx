@@ -357,6 +357,7 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
   const isSelected = selected === slot.id;
   return (
     <button
+      id={slot.id === 'weapon' ? 'tut-weapon-slot' : undefined}
       type="button"
       disabled={slot.locked}
       aria-label={slot.locked ? `${slot.label} 未解放` : `${slot.label} ${slot.sublabel}`}
@@ -1175,7 +1176,7 @@ function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip 
   const isEquipped = equipped?.id === weapon.id;
 
   return (
-    <div className="gothic-panel rounded-2xl overflow-hidden relative shrink-0" style={{ minHeight: 218, borderColor: `${rarityColor}44` }}>
+    <div id="tut-weapon-slot" className="gothic-panel rounded-2xl overflow-hidden relative shrink-0" style={{ minHeight: 218, borderColor: `${rarityColor}44` }}>
       <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${rarityColor}, transparent)` }} />
       {rarity === 'UR' && <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 82% 18%, rgba(255,34,77,0.22), transparent 34%)' }} />}
       <div className="p-3 flex flex-col gap-3">
@@ -1254,6 +1255,7 @@ function WeaponDetailPanel({ weapon, equipped, player, residues, color, onEquip 
         <WeaponRankPreview weapon={weapon} rank={rank} color={rarityColor} />
 
         <motion.button
+          id="tut-weapon-equip-btn"
           type="button"
           onClick={() => onEquip(weapon)}
           whileTap={{ scale: 0.96 }}
@@ -1329,7 +1331,7 @@ function WeaponEnhancementPanel({ weapon, materials, color, onRankUp, onReforge 
               {targetIlv ? reforgeCosts.map((cost) => `${cost.name} ${materialQty(materials, cost.type)}/${cost.quantity}`).join(' / ') : '最大ILv'}
             </div>
           </div>
-          <button onClick={() => onReforge(weapon)} disabled={!canReforge} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canReforge ? 'linear-gradient(135deg, rgba(212,175,55,0.26), rgba(20,5,35,0.9))' : 'rgba(255,255,255,0.04)', border: `1px solid ${canReforge ? 'rgba(212,175,55,0.62)' : 'rgba(255,255,255,0.08)'}`, color: canReforge ? '#D4AF37' : '#5d5368', fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 12, fontWeight: 900, scrollMarginBlock: '76px 112px' }}>{targetIlv ? `打ち直し ILv.${targetIlv}` : '最大ILv'}</button>
+          <button id="tut-weapon-reforge-btn" onClick={() => onReforge(weapon)} disabled={!canReforge} style={{ width: '100%', minHeight: 40, marginTop: 10, borderRadius: 12, background: canReforge ? 'linear-gradient(135deg, rgba(212,175,55,0.26), rgba(20,5,35,0.9))' : 'rgba(255,255,255,0.04)', border: `1px solid ${canReforge ? 'rgba(212,175,55,0.62)' : 'rgba(255,255,255,0.08)'}`, color: canReforge ? '#D4AF37' : '#5d5368', fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 12, fontWeight: 900, scrollMarginBlock: '76px 112px' }}>{targetIlv ? `打ち直し ILv.${targetIlv}` : '最大ILv'}</button>
         </div>
       </div>
     </div>
@@ -2267,6 +2269,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   inventoryItems: ItemData[]; transmutationPoints: number; onBack: () => void;
 }) {
   const { equipResidueToSlot, upgradeResidue, equipItem, rankUpWeapon, reforgeWeapon, dismantleWeapon, loadFromServer, isServerBacked } = useGameStore();
+  const activeTutorialPhase = useTutorialStore(s => s.activePhase);
   const sound = useGothicSound();
   const sfx = useSoundEffects();
   const conf = getConf(gearCtx.mk, player, party);
@@ -2334,6 +2337,19 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     if (selectedItemId && filteredItems.some((item) => item.id === selectedItemId)) return;
     setSelectedItemId(info.weapon?.id ?? filteredItems[0]?.id ?? null);
   }, [filteredItems, info.weapon?.id, isResidueSlot, selectedItemId]);
+
+  useEffect(() => {
+    if (isResidueSlot) return;
+    if (activeTutorialPhase === 'WEAPON_EQUIP') {
+      setTab('EQUIP');
+      const unequipped = filteredItems.find(item => item.id !== info.weapon?.id);
+      setSelectedItemId(unequipped?.id ?? filteredItems[0]?.id ?? null);
+    }
+    if (activeTutorialPhase === 'WEAPON_ENHANCE') {
+      setTab('ENHANCE');
+      setSelectedItemId(info.weapon?.id ?? filteredItems[0]?.id ?? null);
+    }
+  }, [activeTutorialPhase, filteredItems, info.weapon?.id, isResidueSlot]);
 
   const canPersistToServer = () => isServerBacked;
 
@@ -2557,7 +2573,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
       {/* Tab switcher */}
       <div className="shrink-0 flex mx-3 mt-2.5 rounded-xl overflow-hidden" style={{ background: 'rgba(7,3,18,0.88)', border: `1px solid ${color}20` }}>
         {(isResidueSlot ? (['EQUIP', 'ENHANCE', 'TRANSMUTE'] as const) : (['EQUIP', 'ENHANCE', 'DISMANTLE'] as const)).map(t => (
-          <button key={t} onClick={() => { haptic(5); setTab(t); }}
+          <button key={t} id={!isResidueSlot && t === 'ENHANCE' ? 'tut-weapon-enhance-tab' : undefined} onClick={() => { haptic(5); setTab(t); }}
             className="flex-1 py-2.5 text-[12px] font-black tracking-[0.12em] relative transition-colors"
             style={{ color: tab === t ? '#F0EAFF' : 'rgba(185,165,230,0.36)', fontFamily: 'monospace', background: tab === t ? `linear-gradient(135deg, ${color}22, ${color}09)` : 'transparent' }}>
             {t === 'EQUIP' ? '装備' : t === 'ENHANCE' ? (isResidueSlot ? '強化' : '共鳴') : t === 'TRANSMUTE' ? '錬成' : '分解'}
@@ -4225,6 +4241,11 @@ export default function LegionHub() {
   useEffect(() => {
     if (activeTutorialPhase === 'PARTY_FORMATION') {
       setView('LIST');
+    }
+    if (activeTutorialPhase === 'WEAPON_EQUIP' || activeTutorialPhase === 'WEAPON_ENHANCE') {
+      setSelKey('PLAYER');
+      setGearCtx({ mk: 'PLAYER', slotType: 'WEAPON', slotIndex: 0 });
+      setView('GEAR');
     }
   }, [activeTutorialPhase]);
 

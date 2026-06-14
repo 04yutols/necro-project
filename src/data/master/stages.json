@@ -91,6 +91,20 @@
           "quantity": 1,
           "rate": 0.85
         }
+      ],
+      "firstClearGuaranteed": [
+        {
+          "type": "MONSTER",
+          "monsterId": "grave_soldier",
+          "quantity": 1,
+          "rate": 1
+        },
+        {
+          "type": "MONSTER",
+          "monsterId": "rot_hound",
+          "quantity": 1,
+          "rate": 1
+        }
       ]
     },
     "position": {
@@ -129,7 +143,9 @@
         "label": "WAVE 2",
         "role": "SHIELD",
         "enemyIds": [
-          "bone_colossus"
+          "hollow_handmaid",
+          "earthbound_grudge",
+          "rot_hound"
         ],
         "intent": "光・土弱点の防壁を割り、ブレイク後の火力集中を促す。"
       },
@@ -137,7 +153,7 @@
         "label": "WAVE 3",
         "role": "BOSS",
         "enemyIds": [
-          "ossuary_wyrm_lord"
+          "bone_colossus"
         ],
         "intent": "竜王の怒りギミックを体験する。"
       }
@@ -169,6 +185,15 @@
           "itemId": "ether_shard",
           "quantity": 1,
           "rate": 0.18
+        }
+      ],
+      "firstClearGuaranteed": [
+        {
+          "type": "WEAPON",
+          "itemId": "bone_cleaver",
+          "rarity": "R",
+          "quantity": 1,
+          "rate": 1
         }
       ]
     },
@@ -264,6 +289,14 @@
           "rate": 0.00008,
           "isHidden": true
         }
+      ],
+      "firstClearGuaranteed": [
+        {
+          "type": "WEAPON_MATERIAL",
+          "weaponMaterialType": "ABYSSAL_OBSIDIAN",
+          "quantity": 1,
+          "rate": 1
+        }
       ]
     },
     "position": {
@@ -350,6 +383,14 @@
           "rarity": "UR",
           "rate": 0.00008,
           "isHidden": true
+        }
+      ],
+      "firstClearGuaranteed": [
+        {
+          "type": "RESIDUE",
+          "rarity": "RARE",
+          "quantity": 1,
+          "rate": 1
         }
       ]
     },

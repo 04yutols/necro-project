@@ -167,8 +167,11 @@ export class GameManager {
     // 1. 経験値と報酬の計算
     const playerConverted = this.convertToCharacterData(char);
     const expGain = this.rewardService.calculateExp(stage.rewards.baseExp, playerConverted);
-    const rewards = this.rewardService.processStageDropTable(stage, char.clearedStages ?? []);
-    rewards.monsters.push(...this.rewardService.processStageNecromance(stage, ownedMonsterMasterIds));
+    const rewards = this.rewardService.processStageDropTable(stage, char.clearedStages ?? [], 0, Math.random, ownedMonsterMasterIds);
+    rewards.monsters.push(...this.rewardService.processStageNecromance(
+      stage,
+      [...ownedMonsterMasterIds, ...rewards.monsters.map(monster => monster.masterId ?? monster.id)],
+    ));
 
     // 2. DBへの反映 (トランザクション)
     await prisma.$transaction(async (tx: any) => {

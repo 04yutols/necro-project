@@ -14,7 +14,9 @@ export type DropEntry = GameDropEntry & {
 };
 
 const DROP_TYPES: DropEntry['type'][] = ['WEAPON', 'MATERIAL', 'RESIDUE', 'CONSUMABLE'];
+const EXTENDED_DROP_TYPES: DropEntry['type'][] = ['WEAPON', 'MATERIAL', 'WEAPON_MATERIAL', 'RESIDUE', 'CONSUMABLE', 'MONSTER'];
 const RARITIES = ['COMMON', 'R', 'SR', 'SSR', 'RARE', 'EPIC', 'LEGENDARY'];
+const WEAPON_MATERIAL_TYPES = ['IDEA_COMMON', 'IDEA_SR', 'IDEA_SSR', 'ABYSSAL_OBSIDIAN'];
 
 const inputStyle: React.CSSProperties = {
   background: '#1a1a24',
@@ -37,10 +39,13 @@ type Props = {
   onChange: (entries: DropEntry[]) => void;
   itemIds: string[];
   materialIds: string[];
+  enemyIds?: string[];
+  allowExtendedTypes?: boolean;
 };
 
-export default function DropTableEditor({ value, onChange, itemIds, materialIds }: Props) {
+export default function DropTableEditor({ value, onChange, itemIds, materialIds, enemyIds = [], allowExtendedTypes = false }: Props) {
   const summary = summarizeDropTable(value);
+  const dropTypes = allowExtendedTypes ? EXTENDED_DROP_TYPES : DROP_TYPES;
 
   function update(idx: number, patch: Partial<DropEntry>) {
     const normalizedPatch = patch.rate === undefined
@@ -61,7 +66,27 @@ export default function DropTableEditor({ value, onChange, itemIds, materialIds 
   function getItemOptions(type: string): string[] {
     if (type === 'WEAPON' || type === 'CONSUMABLE') return itemIds;
     if (type === 'MATERIAL') return materialIds;
+    if (type === 'WEAPON_MATERIAL') return WEAPON_MATERIAL_TYPES;
+    if (type === 'MONSTER') return enemyIds;
     return [];
+  }
+
+  function getReferenceValue(entry: DropEntry): string {
+    if (entry.type === 'MONSTER') return entry.monsterId ?? '';
+    if (entry.type === 'WEAPON_MATERIAL') return entry.weaponMaterialType ?? entry.itemId ?? '';
+    return entry.itemId ?? '';
+  }
+
+  function updateReference(idx: number, entry: DropEntry, value: string) {
+    if (entry.type === 'MONSTER') {
+      update(idx, { monsterId: value, itemId: '' });
+      return;
+    }
+    if (entry.type === 'WEAPON_MATERIAL') {
+      update(idx, { weaponMaterialType: value as DropEntry['weaponMaterialType'], itemId: '' });
+      return;
+    }
+    update(idx, { itemId: value });
   }
 
   return (
@@ -74,13 +99,13 @@ export default function DropTableEditor({ value, onChange, itemIds, materialIds 
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '100px 1fr 80px 96px 60px 32px',
+              gridTemplateColumns: '120px 1fr 80px 70px 96px 60px 32px',
               gap: 6,
               paddingBottom: 4,
               borderBottom: '1px solid rgba(139,0,255,0.1)',
             }}
           >
-            {['タイプ', 'itemId', 'レアリティ', '確率', '非表示', ''].map((h) => (
+            {['タイプ', '参照ID', 'レアリティ', '数量', '確率', '非表示', ''].map((h) => (
               <span key={h} style={{ color: '#7878a8', fontSize: 10, fontFamily: 'Space Grotesk, sans-serif' }}>
                 {h}
               </span>
@@ -92,17 +117,22 @@ export default function DropTableEditor({ value, onChange, itemIds, materialIds 
               key={idx}
               style={{
                 display: 'grid',
-              gridTemplateColumns: '100px 1fr 80px 96px 60px 32px',
+              gridTemplateColumns: '120px 1fr 80px 70px 96px 60px 32px',
                 gap: 6,
                 alignItems: 'center',
               }}
             >
               <select
                 value={entry.type}
-                onChange={(e) => update(idx, { type: e.target.value as DropEntry['type'], itemId: '' })}
+                onChange={(e) => update(idx, {
+                  type: e.target.value as DropEntry['type'],
+                  itemId: '',
+                  monsterId: '',
+                  weaponMaterialType: undefined,
+                })}
                 style={selectStyle}
               >
-                {DROP_TYPES.map((t) => (
+                {dropTypes.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
@@ -111,8 +141,8 @@ export default function DropTableEditor({ value, onChange, itemIds, materialIds 
                 <span style={{ color: '#7878a8', fontSize: 11, padding: '6px 8px' }}>（自動生成）</span>
               ) : (
                 <select
-                  value={entry.itemId ?? ''}
-                  onChange={(e) => update(idx, { itemId: e.target.value })}
+                  value={getReferenceValue(entry)}
+                  onChange={(e) => updateReference(idx, entry, e.target.value)}
                   style={selectStyle}
                 >
                   <option value="">-- 選択 --</option>
@@ -131,6 +161,15 @@ export default function DropTableEditor({ value, onChange, itemIds, materialIds 
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>
+
+              <input
+                type="number"
+                value={entry.quantity ?? 1}
+                onChange={(e) => update(idx, { quantity: Math.max(1, Number.parseInt(e.target.value, 10) || 1) })}
+                min={1}
+                step={1}
+                style={inputStyle}
+              />
 
               <div style={{ display: 'grid', gap: 3 }}>
                 <input

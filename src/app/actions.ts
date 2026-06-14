@@ -111,7 +111,7 @@ export type FetchPlayerActionResult =
   | { success: true; data: CharacterData };
 
 function emptyDrop(): StageDropResult {
-  return { weapons: [], consumables: [], residues: [], materials: [], monsters: [] };
+  return { weapons: [], consumables: [], residues: [], materials: [], weaponMaterials: [], monsters: [] };
 }
 
 const DISCOVERY_RARITIES = new Set<ItemData['rarity']>(['SSR', 'UR', 'LR', 'UNIQUE', 'HIDDEN_UNIQUE']);
@@ -796,8 +796,11 @@ export async function processStageResultForUser(
   })).map(monster => monster.masterId ?? monster.id);
 
   // ドロップ抽選（サーバー側で確定）
-  const dropResult = svc.processStageDropTable(stage, char.clearedStages ?? []);
-  dropResult.monsters.push(...svc.processStageNecromance(stage, ownedMonsterMasterIds));
+  const dropResult = svc.processStageDropTable(stage, char.clearedStages ?? [], 0, Math.random, ownedMonsterMasterIds);
+  dropResult.monsters.push(...svc.processStageNecromance(
+    stage,
+    [...ownedMonsterMasterIds, ...dropResult.monsters.map(monster => monster.masterId ?? monster.id)],
+  ));
   const bestResidueScore = Math.max(0, ...dropResult.residues.map(residue => calculateResidueScore(residue)));
   const playerName = getPlayerDisplayName(authorizedUser);
 
@@ -900,6 +903,22 @@ export async function processStageResultForUser(
           level:       residue.level,
           exp:         residue.exp,
           maxExp:      residue.maxExp,
+        },
+      });
+    }
+
+    for (const material of dropResult.weaponMaterials) {
+      await tx.weaponMaterial.upsert({
+        where: { userId_type: { userId, type: material.type } },
+        update: {
+          name: material.name,
+          quantity: { increment: material.quantity },
+        },
+        create: {
+          userId,
+          type: material.type,
+          name: material.name,
+          quantity: material.quantity,
         },
       });
     }

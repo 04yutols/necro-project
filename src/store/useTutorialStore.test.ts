@@ -22,7 +22,7 @@ describe('useTutorialStore', () => {
   test('starts a single phase and completes it step by step', () => {
     expect(useTutorialStore.getState().startPhase('BATTLE_BASICS')).toBe(true);
     expect(useTutorialStore.getState().activePhase).toBe('BATTLE_BASICS');
-    expect(useTutorialStore.getState().startPhase('NECRO_LAB')).toBe(false);
+    expect(useTutorialStore.getState().startPhase('WEAPON_EQUIP')).toBe(false);
 
     PHASE_STEPS.BATTLE_BASICS.forEach(() => {
       useTutorialStore.getState().nextStep();
@@ -34,13 +34,13 @@ describe('useTutorialStore', () => {
   });
 
   test('skipPhase records completion without duplicates', () => {
-    expect(useTutorialStore.getState().startPhase('NECRO_LAB')).toBe(true);
+    expect(useTutorialStore.getState().startPhase('WEAPON_EQUIP')).toBe(true);
     useTutorialStore.getState().skipPhase();
-    expect(useTutorialStore.getState().completedPhases).toEqual(['NECRO_LAB']);
+    expect(useTutorialStore.getState().completedPhases).toEqual(['WEAPON_EQUIP']);
 
-    expect(useTutorialStore.getState().startPhase('NECRO_LAB')).toBe(false);
+    expect(useTutorialStore.getState().startPhase('WEAPON_EQUIP')).toBe(false);
     useTutorialStore.getState().skipPhase();
-    expect(useTutorialStore.getState().completedPhases).toEqual(['NECRO_LAB']);
+    expect(useTutorialStore.getState().completedPhases).toEqual(['WEAPON_EQUIP']);
   });
 
   test('marks the tutorial complete after every phase is skipped', () => {

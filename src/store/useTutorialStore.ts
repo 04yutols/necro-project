@@ -138,7 +138,7 @@ export const useTutorialStore = create<TutorialState>()(
       setHasHydrated: (value) => set({ hasHydrated: value }),
     }),
     {
-      name: 'necro-tutorial-store-v1',
+      name: 'necro-tutorial-store-v2',
       storage: createJSONStorage(getTutorialStorage),
       partialize: s => ({
         completedPhases: s.completedPhases,

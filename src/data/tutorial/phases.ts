@@ -1,10 +1,11 @@
 export type TutorialPhase =
   | 'BATTLE_BASICS'
-  | 'NECRO_LAB'
   | 'PARTY_FORMATION'
+  | 'WEAPON_EQUIP'
   | 'JOB_CHANGE'
-  | 'ABYSSAL_RESIDUE'
-  | 'DEMONIZATION';
+  | 'WEAPON_ENHANCE'
+  | 'DEMONIZATION'
+  | 'ABYSSAL_RESIDUE';
 
 export interface TutorialStep {
   id: string;
@@ -44,33 +45,6 @@ export const PHASE_STEPS: Record<TutorialPhase, TutorialStep[]> = {
     },
   ],
 
-  NECRO_LAB: [
-    {
-      id: 'TUT_N_01',
-      targetId: 'tut-residue-slots',
-      title: '残滓スロット',
-      body: 'ここに「深淵の残滓」を装備してステータスを強化できる。3枠ある。',
-      position: 'below',
-      requiredTab: 'LAB',
-    },
-    {
-      id: 'TUT_N_02',
-      targetId: 'tut-residue-grid',
-      title: '残滓一覧',
-      body: '入手した残滓がここに並ぶ。タップして選択し、スロットにセットしよう。',
-      position: 'above',
-      requiredTab: 'LAB',
-    },
-    {
-      id: 'TUT_N_03',
-      targetId: 'tut-enhance-tab',
-      title: '強化タブ',
-      body: '素材を使って残滓をLv.20まで鍛えられる。メインステータスが大幅に上昇する。',
-      position: 'below',
-      requiredTab: 'LAB',
-    },
-  ],
-
   PARTY_FORMATION: [
     {
       id: 'TUT_L_01',
@@ -94,6 +68,25 @@ export const PHASE_STEPS: Record<TutorialPhase, TutorialStep[]> = {
       title: '種族シナジー',
       body: '同じ種族を揃えると強力なシナジー効果が発動する。積極的に狙おう！',
       position: 'below',
+      requiredTab: 'EQUIP',
+    },
+  ],
+
+  WEAPON_EQUIP: [
+    {
+      id: 'TUT_W_01',
+      targetId: 'tut-weapon-slot',
+      title: '武器',
+      body: 'ステージで得た武器はここから確認できる。装備するとアルドの攻撃力が伸びる。',
+      position: 'below',
+      requiredTab: 'EQUIP',
+    },
+    {
+      id: 'TUT_W_02',
+      targetId: 'tut-weapon-equip-btn',
+      title: '装備',
+      body: '新しい武器を選んで「装備」。性能差を見て、今の戦い方に合う刃を持とう。',
+      position: 'above',
       requiredTab: 'EQUIP',
     },
   ],
@@ -122,6 +115,25 @@ export const PHASE_STEPS: Record<TutorialPhase, TutorialStep[]> = {
       body: '「転職」ボタンで職業を変更。前職の経験は消えずに引き継がれる。',
       position: 'above',
       requiredTab: 'JOB',
+    },
+  ],
+
+  WEAPON_ENHANCE: [
+    {
+      id: 'TUT_H_01',
+      targetId: 'tut-weapon-enhance-tab',
+      title: '強化',
+      body: '武器は「共鳴」と「打ち直し」で鍛えられる。まず強化タブを開こう。',
+      position: 'below',
+      requiredTab: 'EQUIP',
+    },
+    {
+      id: 'TUT_H_02',
+      targetId: 'tut-weapon-reforge-btn',
+      title: '打ち直し',
+      body: '黒鋼を使ってILvを上げる。ATKが確実に伸び、節目ではサブステータスも強くなる。',
+      position: 'above',
+      requiredTab: 'EQUIP',
     },
   ],
 
@@ -175,17 +187,20 @@ export const PHASE_STEPS: Record<TutorialPhase, TutorialStep[]> = {
 export const ALL_PHASES: TutorialPhase[] = [
   'BATTLE_BASICS',
   'PARTY_FORMATION',
+  'WEAPON_EQUIP',
   'JOB_CHANGE',
-  'ABYSSAL_RESIDUE',
+  'WEAPON_ENHANCE',
   'DEMONIZATION',
+  'ABYSSAL_RESIDUE',
 ];
 
 /** 新機能解放バナーのラベル */
 export const BANNER_LABELS: Record<TutorialPhase, string> = {
   BATTLE_BASICS:   'バトル基礎が解放されました',
-  NECRO_LAB:       'ネクロラボが解放されました',
   PARTY_FORMATION: '軍団編成が解放されました',
+  WEAPON_EQUIP:    '武器の装備が解放されました',
   JOB_CHANGE:      '職業転職が解放されました',
+  WEAPON_ENHANCE:  '武器の強化が解放されました',
   ABYSSAL_RESIDUE: '深淵の残滓が解放されました',
   DEMONIZATION:    '魔神化システムが解放されました',
 };

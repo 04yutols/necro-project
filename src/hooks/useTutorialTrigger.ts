@@ -5,7 +5,11 @@ import { useGameStore } from '../store/useGameStore';
 import { useStoryStore } from '../store/useStoryStore';
 import { useTutorialStore } from '../store/useTutorialStore';
 import { ALL_PHASES, type TutorialPhase } from '../data/tutorial/phases';
-import { isAbyssalResidueUnlocked } from '../logic/AbyssalResidueUnlockSystem';
+import {
+  getTutorialPhaseAfterClear,
+  shouldEvaluateClearTutorialTrigger,
+  shouldStartBattleTutorial,
+} from '../data/tutorial/triggers';
 
 const EMPTY_CLEARED_STAGES: string[] = [];
 
@@ -16,15 +20,21 @@ export function useTutorialTrigger() {
   const tutorialCompleted = useTutorialStore(s => s.tutorialCompleted);
 
   const clearedStages = useGameStore(s => s.player?.clearedStages ?? EMPTY_CLEARED_STAGES);
-  const monsterCount = useGameStore(s => s.inventoryMonsters.length);
   const isDemonMode = useGameStore(s => s.isDemonMode);
+  const currentTab = useGameStore(s => s.currentTab);
 
   // ストーリーフラグでプロローグ完了を検出
   const lineDeathSeen = useStoryStore(s => s.storyFlags['LINE_DEATH_SEEN'] === true);
 
   useEffect(() => {
-    if (!tutorialHydrated || !storyHydrated) return;
-    if (tutorialCompleted) return;
+    if (!shouldEvaluateClearTutorialTrigger({
+      currentTab,
+      tutorialHydrated,
+      storyHydrated,
+      tutorialCompleted,
+    })) {
+      return;
+    }
 
     const { startPhase, enqueueBanner, completeTutorial } = useTutorialStore.getState();
     const hasCompleted = (phase: TutorialPhase) => completedPhases.includes(phase);
@@ -39,53 +49,16 @@ export function useTutorialTrigger() {
       return;
     }
 
-    // PHASE 1: プロローグ完了後（LINE_DEATH_SEEN）→ バトル基礎
-    // 注: ステップはバトル開始時に BattleCanvas → startTutorialBattlePhase() で発火
-    //     ここでは「フェーズ解放済みとして初期化」はしない
-    //     BATTLE_BASICS は BattleCanvas 単独で管理する
-    if (!lineDeathSeen) return;
+    const pendingPhase = getTutorialPhaseAfterClear({
+      clearedStages,
+      completedPhases,
+      storyFlags: { LINE_DEATH_SEEN: lineDeathSeen },
+    });
 
-    // PHASE 2: バトル基礎後 + モンスター2体以上 → パーティ編成
-    if (
-      monsterCount >= 2 &&
-      hasCompleted('BATTLE_BASICS') &&
-      !hasCompleted('PARTY_FORMATION')
-    ) {
-      tryStartPhase('PARTY_FORMATION');
-      return;
-    }
-
-    // PHASE 4: 編成理解後 + モンスター3体以上 → 職業転職
-    if (
-      monsterCount >= 3 &&
-      hasCompleted('PARTY_FORMATION') &&
-      !hasCompleted('JOB_CHANGE')
-    ) {
-      tryStartPhase('JOB_CHANGE');
-      return;
-    }
-
-    // PHASE 5: 第2章導入到達 → 深淵の残滓
-    if (
-      isAbyssalResidueUnlocked(clearedStages) &&
-      hasCompleted('JOB_CHANGE') &&
-      !hasCompleted('ABYSSAL_RESIDUE')
-    ) {
-      tryStartPhase('ABYSSAL_RESIDUE');
-      return;
-    }
-
-    // PHASE 6: 第1章ボス撃破 → 魔神化
-    if (
-      clearedStages.includes('area1_boss') &&
-      hasCompleted('ABYSSAL_RESIDUE') &&
-      !hasCompleted('DEMONIZATION')
-    ) {
-      tryStartPhase('DEMONIZATION');
-    }
+    if (pendingPhase) tryStartPhase(pendingPhase);
   }, [
     tutorialHydrated, storyHydrated, tutorialCompleted,
-    lineDeathSeen, clearedStages, monsterCount, completedPhases,
+    currentTab, lineDeathSeen, clearedStages, completedPhases,
   ]);
 
   // 魔神化ゲージ100%→発動時は DEMONIZATION フェーズのステップ2へジャンプ
@@ -102,15 +75,29 @@ export function useTutorialTrigger() {
  * バトル開始時に BattleCanvas から呼ぶ。
  * tutorial_battle_01 / 第1章初回ノード入場時に BATTLE_BASICS フェーズを発火する。
  */
-export function startTutorialBattlePhase(stageId: string) {
-  const tutorialStageIds = new Set(['tutorial_battle_01', 'area1_node1']);
-  if (!tutorialStageIds.has(stageId)) return;
-
-  const story = useStoryStore.getState();
-  if (!story.hasFlag('LINE_DEATH_SEEN')) return;
-
-  const { completedPhases, startPhase, enqueueBanner } = useTutorialStore.getState();
-  if (!completedPhases.includes('BATTLE_BASICS') && startPhase('BATTLE_BASICS')) {
-    enqueueBanner('BATTLE_BASICS');
+export function startTutorialBattlePhase(stageId: string | null | undefined): boolean {
+  const { completedPhases, activePhase, tutorialCompleted, startPhase, enqueueBanner } = useTutorialStore.getState();
+  if (!shouldStartBattleTutorial({ stageId, completedPhases, activePhase, tutorialCompleted })) {
+    return false;
   }
+
+  if (startPhase('BATTLE_BASICS')) {
+    enqueueBanner('BATTLE_BASICS');
+    return true;
+  }
+
+  return false;
+}
+
+export function useTutorialBattlePhase(stageId: string | null | undefined) {
+  const tutorialHydrated = useTutorialStore(s => s.hasHydrated);
+  const storyHydrated = useStoryStore(s => s.hasHydrated);
+  const completedPhases = useTutorialStore(s => s.completedPhases);
+  const activePhase = useTutorialStore(s => s.activePhase);
+  const tutorialCompleted = useTutorialStore(s => s.tutorialCompleted);
+
+  useEffect(() => {
+    if (!tutorialHydrated || !storyHydrated) return;
+    startTutorialBattlePhase(stageId);
+  }, [activePhase, completedPhases, stageId, storyHydrated, tutorialCompleted, tutorialHydrated]);
 }

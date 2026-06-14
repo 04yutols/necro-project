@@ -209,6 +209,65 @@ describe('RewardService.processDropTable', () => {
 });
 
 describe('RewardService.processStageDropTable', () => {
+  test('初回クリア時だけ firstClearGuaranteed の武器を確定付与する', () => {
+    const stage: Parameters<RewardService['processStageDropTable']>[0] = {
+      id: 'area1_node2',
+      chapter: 1,
+      rewards: {
+        baseExp: 0,
+        baseGold: 0,
+        dropTable: [],
+        firstClearGuaranteed: [
+          { type: 'WEAPON', itemId: 'bone_cleaver', rarity: 'R', rate: 1 },
+        ],
+      },
+    };
+
+    const first = svc.processStageDropTable(stage, [], 0, makeSeqRng([0.99]));
+    const repeat = svc.processStageDropTable(stage, ['area1_node2'], 0, makeSeqRng([0.0]));
+
+    expect(first.weapons).toHaveLength(1);
+    expect(first.weapons[0].name).toBe('骨砕きの短剣');
+    expect(repeat.weapons).toHaveLength(0);
+  });
+
+  test('firstClearGuaranteed の MONSTER は既所持 masterId をスキップする', () => {
+    const result = svc.processStageDropTable({
+      id: 'area1_node1',
+      chapter: 1,
+      rewards: {
+        baseExp: 0,
+        baseGold: 0,
+        dropTable: [],
+        firstClearGuaranteed: [
+          { type: 'MONSTER', monsterId: 'grave_soldier', rate: 1 },
+          { type: 'MONSTER', monsterId: 'rot_hound', rate: 1 },
+        ],
+      },
+    }, [], 0, makeSeqRng([0.0]), ['grave_soldier']);
+
+    expect(result.monsters.map(monster => monster.masterId)).toEqual(['rot_hound']);
+  });
+
+  test('firstClearGuaranteed の WEAPON_MATERIAL は weaponMaterials に入る', () => {
+    const result = svc.processStageDropTable({
+      id: 'area1_boss',
+      chapter: 1,
+      rewards: {
+        baseExp: 0,
+        baseGold: 0,
+        dropTable: [],
+        firstClearGuaranteed: [
+          { type: 'WEAPON_MATERIAL', weaponMaterialType: 'ABYSSAL_OBSIDIAN', quantity: 2, rate: 1 },
+        ],
+      },
+    }, [], 0, makeSeqRng([0.0]));
+
+    expect(result.weaponMaterials).toEqual([
+      { type: 'ABYSSAL_OBSIDIAN', name: '深淵の黒鋼', quantity: 2 },
+    ]);
+  });
+
   test('第1章ステージではRESIDUEがドロップテーブルにあっても生成しない', () => {
     const result = svc.processStageDropTable({
       chapter: 1,
