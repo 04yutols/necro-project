@@ -52,6 +52,7 @@ import {
   shouldTriggerBossGimmick,
 } from './BossGimmickSystem';
 import { calculateMonsterAttackProfile } from './MonsterAttackSystem';
+import { resolveMonsterCurrentEnergy, resolveMonsterMaxEnergy } from './MonsterEnergySystem';
 import { applyPlayerDamage as reducePlayerHp, isPlayerDead } from './PlayerDefeat';
 import { getBaseAttackType } from './JobSystem';
 
@@ -183,9 +184,20 @@ export class BattleEngine {
   public simulateMonsterAction(
     monsterId: string,
     target: MonsterData,
-    enemyCandidates?: MonsterData[],
+    enemyCandidatesOrSkillId?: MonsterData[] | string,
+    skillIdOrEnemyCandidates?: string | MonsterData[],
   ): BattleLog[] {
     this.logs = [];
+    const enemyCandidates = Array.isArray(enemyCandidatesOrSkillId)
+      ? enemyCandidatesOrSkillId
+      : Array.isArray(skillIdOrEnemyCandidates)
+        ? skillIdOrEnemyCandidates
+        : undefined;
+    const skillId = typeof enemyCandidatesOrSkillId === 'string'
+      ? enemyCandidatesOrSkillId
+      : typeof skillIdOrEnemyCandidates === 'string'
+        ? skillIdOrEnemyCandidates
+        : undefined;
     const monster = this.state.monsters.find(candidate => candidate?.id === monsterId) ?? null;
     if (!monster) return this.logs;
     if ((this.monsterCurrentHp[monster.id] ?? monster.stats.hp) <= 0) return this.logs;
@@ -197,7 +209,7 @@ export class BattleEngine {
     const turnEnemies = this.resolveEnemyCandidates(target, enemyCandidates);
     this.activeEnemyCandidates = turnEnemies;
     this.processEnemyRuntimeStatuses(turnEnemies);
-    this.processMonsterAction(monster, target, turnEnemies);
+    this.processMonsterAction(monster, target, turnEnemies, skillId);
     this.processEnemyCounterAttack(target);
     if (this.isPlayerDefeated()) return this.logs;
     this.updateState();
@@ -582,29 +594,172 @@ export class BattleEngine {
     }
   }
 
-  private processMonsterAction(monster: MonsterData, preferredTarget: MonsterData, enemyCandidates: MonsterData[] = [preferredTarget]): void {
+  private processMonsterAction(
+    monster: MonsterData,
+    preferredTarget: MonsterData,
+    enemyCandidates: MonsterData[] = [preferredTarget],
+    skillId?: string,
+  ): void {
     const { player } = this.state;
+    const skillData = skillId && monster.skillIds?.includes(skillId)
+      ? this.masterData.getSkill(skillId)
+      : undefined;
 
-    const target = this.selectFollowUpTarget(preferredTarget, enemyCandidates, 0);
-    if (!target) return;
+    if (skillId && !skillData) {
+      this.addLog('NO_SKILL', monster.name, preferredTarget.name, `${monster.name}はその術を扱えない。`);
+      return;
+    }
+
+    const currentEnergy = resolveMonsterCurrentEnergy(monster);
+    monster.currentEnergy = currentEnergy;
+    monster.maxEnergy = resolveMonsterMaxEnergy(monster);
+
+    if (skillData && currentEnergy < skillData.mpCost) {
+      this.addLog('NO_ENERGY', monster.name, preferredTarget.name, `${monster.name}のMPが不足しています！（必要: ${skillData.mpCost}）`);
+      return;
+    }
+
+    const attackTargets = skillData?.targetType === 'ALL_ENEMIES'
+      ? this.resolveMonsterActionTargets(preferredTarget, enemyCandidates)
+      : [this.selectFollowUpTarget(preferredTarget, enemyCandidates, 0)].filter((target): target is MonsterData => Boolean(target));
+    if (attackTargets.length === 0) return;
 
     const attackProfile = calculateMonsterAttackProfile(monster, { awakened: player.isAwakened });
-    const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(
-      attackProfile.stats,
-      {},
-      target.stats,
-      target.resistances,
-      1.0,
-      attackProfile.element,
+    const actionName = skillData?.name ?? '攻撃';
+    const actionElement = skillData?.element ?? attackProfile.element;
+    const attackType = skillData?.attackType ?? (skillData?.type === 'MAGICAL' ? 'MAGIC' : 'STRIKE');
+    const power = skillData?.power ?? 1.0;
+
+    if (skillData) {
+      monster.currentEnergy = Math.max(0, currentEnergy - skillData.mpCost);
+    }
+
+    for (const target of attackTargets) {
+      const { damage, isCritical, isWeakness, isResisted } = this.calculateDamage(
+        attackProfile.stats,
+        {},
+        target.stats,
+        target.resistances,
+        power,
+        actionElement,
+      );
+      const shieldResult = this.applySpiritualShield(target, damage, actionElement);
+
+      const hpChange = this.applyDamageToEnemy(target, shieldResult.damage);
+      this.checkBossGimmicks(target, hpChange.prevHpPct, hpChange.newHpPct);
+      const actualHpDamage = Math.max(0, hpChange.prevHp - hpChange.nextHp);
+
+      if (hpChange.nextHp <= 0) {
+        const reviveGimmick = findReviveGimmick(target.gimmicks, target.id, this.firedGimmicks);
+        if (reviveGimmick) {
+          this.firedGimmicks.add(bossGimmickKey(target.id, reviveGimmick));
+          this.applyBossGimmickEffect(target, reviveGimmick);
+        }
+      }
+
+      let desc = skillData
+        ? `${monster.name}の術「${actionName}」！`
+        : `${monster.name}へ攻撃命令！${attackProfile.spiritCoreName ? ` 霊核「${attackProfile.spiritCoreName}」が共鳴。` : ''}`;
+      if (skillData?.targetType === 'ALL_ENEMIES') desc += ` 敵全体を巻き込んだ。`;
+      if (isWeakness) desc += ` 弱点を突いた！`;
+      else if (isResisted) desc += ` 効果はいまひとつのようだ。`;
+      if (shieldResult.wasShielded) {
+        desc += shieldResult.didBreak
+          ? ` 霊魂砕きが発生し、防壁が崩壊した！`
+          : shieldResult.wasWeakShieldHit
+            ? ` 霊的防壁を削った。`
+            : ` 霊的防壁に阻まれた。`;
+      }
+
+      this.addLog(
+        skillData ? 'MONSTER_SKILL' : 'MONSTER_ATTACK',
+        monster.name,
+        target.name,
+        desc,
+        shieldResult.damage,
+        isCritical,
+        isWeakness,
+        isResisted,
+        actionElement,
+        attackType,
+      );
+      this.applyMonsterSkillSelfHeal(monster, skillData, actualHpDamage);
+      if (skillData) {
+        this.tryApplyMonsterActionAilment(monster, target, skillData, actionElement, attackType);
+      }
+    }
+  }
+
+  private resolveMonsterActionTargets(preferredTarget: MonsterData, enemyCandidates: MonsterData[]): MonsterData[] {
+    const aliveTargets = this.resolveEnemyCandidates(preferredTarget, enemyCandidates)
+      .filter(enemy => this.getEnemyRuntimeHp(enemy) > 0);
+    return aliveTargets.length > 0 ? aliveTargets : [preferredTarget];
+  }
+
+  private applyMonsterSkillSelfHeal(
+    monster: MonsterData,
+    skillData: SkillData | undefined,
+    damageDealt: number,
+  ): void {
+    const healSelfPct = skillData?.healSelfPct ?? 0;
+    if (healSelfPct <= 0 || damageDealt <= 0) return;
+
+    const healAmount = Math.floor(damageDealt * healSelfPct / 100);
+    if (healAmount <= 0) return;
+
+    const prevHp = this.monsterCurrentHp[monster.id] ?? monster.stats.hp;
+    const nextHp = Math.min(monster.stats.hp, prevHp + healAmount);
+    const actualHeal = nextHp - prevHp;
+    if (actualHeal <= 0) return;
+
+    this.monsterCurrentHp[monster.id] = nextHp;
+    this.state.monsterCurrentHp = this.monsterCurrentHp;
+    this.addLog('HEAL', monster.name, monster.name, `${skillData?.name ?? '吸収'}：HP +${actualHeal} 回復。`, actualHeal, false, false, false, 'NONE', 'HEAL');
+  }
+
+  private tryApplyMonsterActionAilment(
+    monster: MonsterData,
+    target: MonsterData,
+    skillData: SkillData,
+    element: ElementType,
+    attackType: SkillAttackType,
+  ): void {
+    const ailmentType = getSkillAilment(skillData);
+    if (!ailmentType) return;
+
+    const result = tryApplyAilment(
+      ailmentType,
+      {
+        atk: monster.stats.atk,
+        effectHit: monster.stats.effectHit + (this.synergyBonus.effectHitBonus ?? 0),
+      },
+      { effectRes: target.stats.effectRes },
+      target.statusEffects,
+      {
+        baseRate: skillData.ailmentBaseRate,
+        immune: false,
+        durationBonus: this.synergyBonus.ailmentDurationBonus,
+      },
     );
-    const shieldResult = this.applySpiritualShield(target, damage, attackProfile.element);
+    target.statusEffects = result.effects;
 
-    this.applyDamageToEnemy(target, shieldResult.damage);
-
-    const desc = shieldResult.wasShielded
-      ? `${monster.name}へ命令。霊的防壁に阻まれた。`
-      : `${monster.name}へ攻撃命令！${attackProfile.spiritCoreName ? ` 霊核「${attackProfile.spiritCoreName}」が共鳴。` : ''}`;
-    this.addLog('MONSTER_ATTACK', monster.name, target.name, desc, shieldResult.damage, isCritical, isWeakness, isResisted, attackProfile.element, 'STRIKE');
+    if (result.applied) {
+      this.addLog(
+        'AILMENT_APPLY',
+        monster.name,
+        target.name,
+        `${target.name}に${this.getAilmentLabel(ailmentType)}を付与した。`,
+        undefined,
+        false,
+        false,
+        false,
+        element,
+        attackType,
+        { ailmentApplied: ailmentType },
+      );
+    } else if (result.resisted) {
+      this.addLog('AILMENT_RESIST', target.name, target.name, `${target.name}は${this.getAilmentLabel(ailmentType)}を抵抗した。`, undefined, false, false, true, element, attackType);
+    }
   }
 
   private resolveEnemyCandidates(primaryTarget: MonsterData, enemyCandidates?: MonsterData[]): MonsterData[] {
@@ -853,6 +1008,8 @@ export class BattleEngine {
       tier: enemy.tier,
       stats: { ...enemy.stats },
       resistances: { ...enemy.resistances },
+      currentEnergy: 0,
+      maxEnergy: 0,
       weaknesses: [...enemy.weaknesses],
       shieldHp: enemy.shieldHp,
       maxShieldHp: enemy.maxShieldHp,

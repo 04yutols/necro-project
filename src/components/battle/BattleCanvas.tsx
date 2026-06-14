@@ -20,6 +20,8 @@ import { calculateBattleDamage, calculateIncomingEnemyDamage, type BattleDamageR
 import { calculateInitialEnergy } from '../../logic/EnergySystem';
 import { canStartPlayerAction, shouldInitializeBattle, type BattlePhase } from '../../logic/BattleFlowSystem';
 import { calculateMonsterAttackProfile } from '../../logic/MonsterAttackSystem';
+import { resolveMonsterCurrentEnergy, resolveMonsterMaxEnergy } from '../../logic/MonsterEnergySystem';
+import { pickMonsterAction } from '../../logic/MonsterSkillPolicy';
 import { getOwnedMonsterMasterIds } from '../../logic/NecromanceCaptureSystem';
 import { calculatePartyTribeSynergy } from '../../logic/TribeSynergySystem';
 import { applyAreaGimmickToPlayer, getAreaGimmickMeta, resolveStageAreaGimmick } from '../../logic/AreaGimmickSystem';
@@ -134,6 +136,11 @@ type BattleAvState = {
   player: number;
   allies: Record<string, number>;
   enemies: Record<number, number>;
+};
+
+type MonsterEnergyState = {
+  currentEnergy: number;
+  maxEnergy: number;
 };
 
 const INIT_ENEMIES: EnemyState[] = [
@@ -282,6 +289,21 @@ function toDemonUltimateSkill(form: DemonFormData): BattleSkill {
     element,
     attackType: form.ultimateSkill.damage.attackType ?? 'MAGIC',
   };
+}
+
+function getMonsterEnergyState(monster: MonsterData): MonsterEnergyState {
+  return {
+    currentEnergy: resolveMonsterCurrentEnergy(monster),
+    maxEnergy: resolveMonsterMaxEnergy(monster),
+  };
+}
+
+function buildMonsterEnergyState(monsters: (MonsterData | null)[]): Record<string, MonsterEnergyState> {
+  return Object.fromEntries(
+    monsters
+      .filter((monster): monster is MonsterData => Boolean(monster))
+      .map(monster => [monster.id, getMonsterEnergyState(monster)]),
+  );
 }
 
 const POSITIONS_BY_COUNT: Record<number, EnemyState['pos'][]> = {
@@ -1873,6 +1895,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
   const [demonUltimateUsed, setDemonUltimateUsed] = useState(false);
   const [playerStatusEffects, setPlayerStatusEffects] = useState<StatusEffect[]>([]);
   const [activeMonsterTurnId, setActiveMonsterTurnId] = useState<string | null>(null);
+  const [monsterEnergy, setMonsterEnergy] = useState<Record<string, MonsterEnergyState>>({});
   const [auto, setAuto] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [log, setLog] = useState([`戦闘開始！${battleWaves[0].title}へ侵攻する。`, `${battleWaves[0].label} 開始。骸骨騎士のターン。`]);
@@ -1924,16 +1947,22 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
       mp: player?.currentEnergy ?? 0, maxMp: player?.maxEnergy ?? 100,
       color: '#8B00FF', active: phase === 'playerTurn',
     },
-    ...party.slice(0, 3).map((m, i): BattlePartyMember => m ? {
-      id: m.id, name: m.name, icon: m.tribe === 'UNDEAD' ? '🧟' : '👻',
-      hp: m.stats?.hp ?? 580, maxHp: (m.stats as any)?.maxHp ?? m.stats?.hp ?? 580,
-      mp: 0, maxMp: 100,
-      color: ['#f97316','#06b6d4','#a78bfa'][i], active: activeMonsterTurnId === m.id,
-      formation: FORMATION_BADGES[i],
-    } : {
-      id: `slot_${i}`, name: `使役魔${i+1}`, icon: '💀',
-      hp: 0, maxHp: 100, mp: 0, maxMp: 100, color: '#6d5f7a', active: false,
-      formation: FORMATION_BADGES[i],
+    ...party.slice(0, 3).map((m, i): BattlePartyMember => {
+      if (!m) {
+        return {
+          id: `slot_${i}`, name: `使役魔${i+1}`, icon: '💀',
+          hp: 0, maxHp: 100, mp: 0, maxMp: 100, color: '#6d5f7a', active: false,
+          formation: FORMATION_BADGES[i],
+        };
+      }
+      const energy = monsterEnergy[m.id] ?? getMonsterEnergyState(m);
+      return {
+        id: m.id, name: m.name, icon: m.tribe === 'UNDEAD' ? '🧟' : '👻',
+        hp: m.stats?.hp ?? 580, maxHp: (m.stats as any)?.maxHp ?? m.stats?.hp ?? 580,
+        mp: energy.currentEnergy, maxMp: energy.maxEnergy,
+        color: ['#f97316','#06b6d4','#a78bfa'][i], active: activeMonsterTurnId === m.id,
+        formation: FORMATION_BADGES[i],
+      };
     }),
   ];
 
@@ -1947,9 +1976,11 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     ? { label: '自ターン', color: '#22c55e' }
     : phase === 'monsterTurn'
       ? { label: '使役ターン', color: '#06b6d4' }
-      : phase === 'enemyTurn'
-        ? { label: '敵ターン', color: '#ef4444' }
-        : { label: '行動中', color: '#f59e0b' };
+      : phase === 'monsterSkillMenu'
+        ? { label: '使役術選択', color: '#06b6d4' }
+        : phase === 'enemyTurn'
+          ? { label: '敵ターン', color: '#ef4444' }
+          : { label: '行動中', color: '#f59e0b' };
   const currentWave = battleWaves[waveIndex] ?? battleWaves[0];
   const currentJobId = player?.currentJobId ?? 'warrior';
   const currentJobData = JOBS[currentJobId] ?? JOBS.warrior;
@@ -1969,6 +2000,16 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
   const activeMonster = activeMonsterTurnId
     ? party.find((monster): monster is MonsterData => Boolean(monster && monster.id === activeMonsterTurnId)) ?? null
     : null;
+  const activeMonsterEnergy = activeMonster
+    ? monsterEnergy[activeMonster.id] ?? getMonsterEnergyState(activeMonster)
+    : null;
+  const currentMonsterMp = activeMonsterEnergy?.currentEnergy ?? 0;
+  const activeMonsterSkills = activeMonster
+    ? (activeMonster.skillIds ?? [])
+      .map(skillId => MASTER_SKILLS[skillId])
+      .filter((skill): skill is SkillData => Boolean(skill))
+      .map(toBattleSkill)
+    : [];
 
   const addLog = useCallback((line: string) => setLog(prev => [...prev, line]), []);
 
@@ -2258,6 +2299,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     enemiesRef.current = firstEnemies;
     commitBattleAvState(createInitialAvState(firstEnemies), firstEnemies);
     setActiveMonsterTurnId(null);
+    setMonsterEnergy(buildMonsterEnergyState(party.slice(0, 3)));
     bossGimmickFiredRef.current = new Set();
     playerHpRef.current = playerMaxHp;
     setPlayerHp(playerMaxHp);
@@ -2285,7 +2327,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
       ...(areaGimmick !== 'NONE' ? [`エリアギミック発生：${areaGimmickMeta.label} — ${areaGimmickMeta.description}`] : []),
       `${battleWaves[0].label} 開始。骸骨騎士のターン。MP ${initialEnergy}/${player?.maxEnergy ?? currentJobData.energyCurve?.baseMaxEnergy ?? 100} で開戦。`,
     ]);
-  }, [areaGimmick, areaGimmickMeta.description, areaGimmickMeta.label, battleWaves, currentJobData, currentJobLevel, player?.maxEnergy, playerMaxHp, stageId, updateEnergy]);
+  }, [areaGimmick, areaGimmickMeta.description, areaGimmickMeta.label, battleWaves, currentJobData, currentJobLevel, party, player?.maxEnergy, playerMaxHp, stageId, updateEnergy]);
 
   useEffect(() => { waveIndexRef.current = waveIndex; }, [waveIndex]);
   useEffect(() => {
@@ -2486,6 +2528,47 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     });
   }
 
+  function calculateMonsterHitDamage(
+    monster: MonsterData,
+    targetId: number,
+    opts: {
+      powerMultiplier?: number;
+      element?: ElementType;
+      attackType?: SkillAttackType;
+    } = {},
+  ): BattleDamageResult {
+    const target = enemiesRef.current.find(e => e.id === targetId);
+    if (!target) {
+      return { damage: 0, isCritical: false, isWeakness: false, isResisted: false };
+    }
+
+    const attackProfile = calculateMonsterAttackProfile(monster, { awakened: Boolean(player?.isAwakened) });
+    return calculateBattleDamage({
+      attackerStats: attackProfile.stats,
+      attackerElementBoosts: {},
+      defenderStats: toEnemyBattleStats(target),
+      defenderResistances: target.resistances ?? {},
+      powerMultiplier: opts.powerMultiplier ?? 1.0,
+      element: opts.element ?? attackProfile.element,
+      synergyBonus: battleSynergyBonus,
+    });
+  }
+
+  function spendMonsterEnergy(monsterId: string, cost: number) {
+    if (cost <= 0) return;
+    setMonsterEnergy(prev => {
+      const monster = party.find(candidate => candidate?.id === monsterId) ?? null;
+      const current = prev[monsterId] ?? (monster ? getMonsterEnergyState(monster) : { currentEnergy: 0, maxEnergy: 1 });
+      return {
+        ...prev,
+        [monsterId]: {
+          ...current,
+          currentEnergy: Math.max(0, current.currentEnergy - cost),
+        },
+      };
+    });
+  }
+
   function damageEnemy(
     targetId: number,
     dmg: number,
@@ -2573,15 +2656,22 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     });
   }
 
-  function applyAilmentToEnemy(targetId: number, skill: Pick<BattleSkill, 'ailmentType' | 'ailmentBaseRate' | 'element' | 'attackType'>) {
+  function applyAilmentToEnemy(
+    targetId: number,
+    skill: Pick<BattleSkill, 'ailmentType' | 'ailmentBaseRate' | 'element' | 'attackType'>,
+    attackerStats: Pick<BaseStats, 'atk' | 'effectHit'> = {
+      atk: playerStats?.atk ?? 1500,
+      effectHit: playerStats?.effectHit ?? 0,
+    },
+  ) {
     const target = enemiesRef.current.find(enemy => enemy.id === targetId);
     const ailmentType = getSkillAilmentType(skill);
     if (!target || !ailmentType) return;
     const result = tryApplyAilment(
       ailmentType,
       {
-        atk: playerStats?.atk ?? 1500,
-        effectHit: playerStats?.effectHit ?? 0,
+        atk: attackerStats.atk,
+        effectHit: attackerStats.effectHit,
       },
       {
         effectRes: target.effectRes ?? 0,
@@ -3072,14 +3162,10 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
         endMonsterTurn(monster);
         return;
       }
-      const result = calculateBattleDamage({
-        attackerStats: attackProfile.stats,
-        attackerElementBoosts: {},
-        defenderStats: toEnemyBattleStats(target),
-        defenderResistances: target.resistances ?? {},
+      const result = calculateMonsterHitDamage(monster, tid, {
         powerMultiplier: 1.0,
         element: attackProfile.element,
-        synergyBonus: battleSynergyBonus,
+        attackType: 'STRIKE',
       });
       const actualDamage = damageEnemy(tid, result.damage, {
         color: '#06b6d4',
@@ -3091,6 +3177,81 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
       addLog(`${monster.name}の攻撃！${attackProfile.spiritCoreName ? ` 霊核「${attackProfile.spiritCoreName}」が共鳴。` : ''} ${target.name}に ${actualDamage}ダメージ！`);
       setTimeout(() => endMonsterTurn(monster), speedMs * 0.35);
     }, speedMs * 0.3);
+  }
+
+  function handleMonsterSkill(skill: BattleSkill) {
+    const monster = activeMonster;
+    if (!monster) return;
+    if (!tryLockPlayerAction('monsterSkillMenu')) return;
+
+    const monsterMp = monsterEnergy[monster.id] ?? getMonsterEnergyState(monster);
+    const cost = skill.mp ?? 0;
+    if (cost > monsterMp.currentEnergy) {
+      addLog(`${monster.name}のMPが不足しています（必要 ${cost} / 現在 ${monsterMp.currentEnergy}）`);
+      unlockPlayerAction();
+      return;
+    }
+
+    spendMonsterEnergy(monster.id, cost);
+    actionCountRef.current += 1;
+    sfx.skillCast(skill.element, skill.attackType);
+    setBattlePhase('animating');
+
+    const targets = skill.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
+    const vfxStyle = ELEMENT_VFX[skill.element];
+    const attackProfile = calculateMonsterAttackProfile(monster, { awakened: Boolean(player?.isAwakened) });
+    triggerSkillEffect(skill, targets);
+    addLog(`${monster.name}の術！ ${skill.name}！ ${vfxStyle.label}属性/${ATTACK_TYPE_LABEL[skill.attackType]}`);
+    setFlashColor(vfxStyle.soft);
+    setTimeout(() => setFlashColor(null), 400);
+
+    setTimeout(() => {
+      const targetInterval = battleDelay(190, 85);
+      targets.forEach((tid, i) => {
+        setTimeout(() => {
+          const target = enemiesRef.current.find(e => e.id === tid);
+          if (!target) return;
+          const result = calculateMonsterHitDamage(monster, tid, {
+            powerMultiplier: skill.powerMultiplier,
+            element: skill.element,
+            attackType: skill.attackType,
+          });
+          const actualDamage = damageEnemy(tid, result.damage, {
+            color: vfxStyle.color,
+            element: skill.element,
+            crit: result.isCritical,
+            isWeakness: result.isWeakness,
+            isResisted: result.isResisted,
+          });
+          addLog(`${target.name}に ${actualDamage}ダメージ！`);
+          applyAilmentToEnemy(tid, skill, {
+            atk: attackProfile.stats.atk,
+            effectHit: attackProfile.stats.effectHit,
+          });
+        }, i * targetInterval);
+      });
+      setTimeout(() => endMonsterTurn(monster), targets.length * targetInterval + speedMs * 0.35);
+    }, speedMs * 0.4);
+  }
+
+  function handleAutoMonsterAction() {
+    const monster = activeMonster;
+    if (!monster) return;
+    const energy = monsterEnergy[monster.id] ?? getMonsterEnergyState(monster);
+    const choice = pickMonsterAction(
+      { skillIds: monster.skillIds, currentEnergy: energy.currentEnergy, maxEnergy: energy.maxEnergy },
+      MASTER_SKILLS,
+      enemiesRef.current.map(enemy => ({ hp: enemy.hp, resistances: enemy.resistances })),
+    );
+    if (choice.type === 'SKILL') {
+      const skill = activeMonsterSkills.find(candidate => candidate.id === choice.skillId);
+      if (skill) {
+        setBattlePhase('monsterSkillMenu');
+        handleMonsterSkill(skill);
+        return;
+      }
+    }
+    handleMonsterAttack();
   }
 
   function handleItem(item: BattleConsumableItem) {
@@ -3223,7 +3384,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     console.log('[AUTO effect]', { auto, phase, speedMs });
     if (!auto || (phase !== 'playerTurn' && phase !== 'monsterTurn')) return;
     const t = setTimeout(() => {
-      if (phase === 'monsterTurn') handleMonsterAttack();
+      if (phase === 'monsterTurn') handleAutoMonsterAction();
       else handleAttack();
     }, speedMs * 0.4);
     return () => clearTimeout(t);
@@ -3365,6 +3526,41 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
               スキルを選択してください。長押しで詳細確認。
             </div>
           </div>
+        ) : phase === 'monsterSkillMenu' ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, color: '#06b6d4', letterSpacing: '0.1em' }}>
+                術選択 / {activeMonster?.name ?? '使役魔'}
+              </div>
+              <div onClick={() => setBattlePhase('monsterTurn')} style={{
+                padding: '3px 10px', borderRadius: 6,
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#8b7da8', cursor: 'pointer',
+              }}>← 戻る</div>
+            </div>
+            <div className="safe-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+              {activeMonsterSkills.length > 0 ? activeMonsterSkills.map(skill => (
+                <SkillButton key={skill.id} skill={skill} mp={currentMonsterMp}
+                  onClick={handleMonsterSkill}
+                  demonized={false}/>
+              )) : (
+                <div style={{
+                  padding: '12px',
+                  borderRadius: 10,
+                  border: '1px dashed rgba(255,255,255,0.12)',
+                  background: 'rgba(255,255,255,0.025)',
+                  fontFamily: "var(--font-inter), sans-serif",
+                  fontSize: 10,
+                  color: '#8b7da8',
+                }}>
+                  使用できる術がありません。
+                </div>
+              )}
+            </div>
+            <div style={{ marginTop: 8, padding: '6px 10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#8b7da8', lineHeight: 1.5 }}>
+              MP {currentMonsterMp}/{activeMonsterEnergy?.maxEnergy ?? 0}
+            </div>
+          </div>
         ) : phase === 'itemMenu' ? (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -3425,6 +3621,14 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
                 enabled={phase === 'monsterTurn' && Boolean(activeMonster)}
                 color="#06b6d4"
                 onClick={handleMonsterAttack}
+              />
+              <CommandButton
+                icon="✦"
+                label="術"
+                sublabel={`MP ${currentMonsterMp}`}
+                enabled={phase === 'monsterTurn' && Boolean(activeMonster) && activeMonsterSkills.length > 0}
+                color="#8B00FF"
+                onClick={() => setBattlePhase('monsterSkillMenu')}
               />
             </div>
           </div>

@@ -51,6 +51,8 @@ function enemyToMonster(enemyId: string): MonsterData {
     cost: 1,
     stats: { ...enemy.stats },
     resistances: { ...enemy.resistances },
+    currentEnergy: enemy.necromance?.allyMaxEnergy ?? 30,
+    maxEnergy: enemy.necromance?.allyMaxEnergy ?? 30,
     weaknesses: [...enemy.weaknesses],
     shieldHp: enemy.shieldHp,
     maxShieldHp: enemy.maxShieldHp ?? enemy.shieldHp,

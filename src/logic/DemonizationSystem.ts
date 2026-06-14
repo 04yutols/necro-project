@@ -7,6 +7,7 @@ export type DemonActivationPhase =
   | 'playerTurn'
   | 'monsterTurn'
   | 'skillMenu'
+  | 'monsterSkillMenu'
   | 'itemMenu'
   | 'animating'
   | 'enemyTurn'

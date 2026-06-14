@@ -5,6 +5,7 @@ import { MasterDataService } from '../services/MasterDataService';
 import { BattleEngine } from './BattleEngine';
 import { getJobBaseStatsAtLevel } from './JobGrowthSystem';
 import { calculateEnergyState } from './EnergySystem';
+import { hydrateMonsterEnergy } from './MonsterEnergySystem';
 import { levelFromTotalExp } from './ExperienceSystem';
 import { prisma } from '../lib/prisma';
 import { CharacterData, JobData, MonsterData, PassiveBonuses } from '../types/game';
@@ -116,8 +117,9 @@ export class GameManager {
 
     const monsterList = monsterData.map((m: any) => {
       const mMaster = this.masterData.getMonster(m.id);
-      return {
+      return hydrateMonsterEnergy({
         id: m.id,
+        masterId: m.masterId ?? undefined,
         name: m.name,
         tribe: m.tribe as any,
         cost: m.cost,
@@ -128,6 +130,8 @@ export class GameManager {
         },
         resistances: m.resistances ?? mMaster?.resistances ?? {},
         skillIds: Array.isArray(m.skillIds) ? m.skillIds.filter((id: unknown): id is string => typeof id === 'string') : [],
+        currentEnergy: m.currentEnergy ?? undefined,
+        maxEnergy: m.maxEnergy ?? undefined,
         spiritCore: m.spiritCore ? {
           id: m.spiritCore.id,
           name: m.spiritCore.name,
@@ -135,7 +139,7 @@ export class GameManager {
           skillChangeId: m.spiritCore.skillChangeId ?? undefined,
           atkMultiplier: m.spiritCore.atkMultiplier ?? 1,
         } : undefined,
-      };
+      });
     });
 
     const engine = new BattleEngine(player, monsterList);
@@ -212,6 +216,8 @@ export class GameManager {
             tribe: m.tribe,
             cost: m.cost,
             ...m.stats,
+            currentEnergy: m.currentEnergy,
+            maxEnergy: m.maxEnergy,
             resistances: m.resistances ?? {},
             skillIds: m.skillIds ?? [],
           }

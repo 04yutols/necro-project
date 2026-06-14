@@ -2,6 +2,7 @@ export type BattlePhase =
   | 'playerTurn'
   | 'monsterTurn'
   | 'skillMenu'
+  | 'monsterSkillMenu'
   | 'itemMenu'
   | 'animating'
   | 'enemyTurn'

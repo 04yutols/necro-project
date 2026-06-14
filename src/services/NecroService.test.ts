@@ -11,6 +11,8 @@ describe('NecroService', () => {
     cost,
     stats: { hp: 100, atk: 50, def: 20, spd: 80, critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0 },
     resistances: {},
+    currentEnergy: 30,
+    maxEnergy: 30,
   });
 
   const createNecroStatus = (overrides: Partial<NecroStatus> = {}): NecroStatus => ({

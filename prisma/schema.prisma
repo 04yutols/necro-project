@@ -275,6 +275,8 @@ model Monster {
   critDmg     Float   @default(150.0)
   effectHit   Float   @default(0.0)
   effectRes   Float   @default(0.0)
+  currentEnergy Int    @default(30)
+  maxEnergy     Int    @default(30)
   resistances  Json    @default("{}")
   skillIds     Json    @default("[]")
 

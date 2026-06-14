@@ -4,6 +4,7 @@ import itemsData from '../data/master/items.json';
 import demonFormsData from '../data/master/demonForms.json';
 import { getJobUnlockStatus } from '../logic/JobSystem';
 import { calculateEnergyState } from '../logic/EnergySystem';
+import { hydrateMonsterEnergy } from '../logic/MonsterEnergySystem';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import { DEMON_ACTION_LIMIT, clampDemonGauge } from '../logic/DemonizationSystem';
@@ -723,8 +724,12 @@ export const useGameStore = create<GameState>((set) => ({
     return {
       player: withDerivedElementBoosts(data.player, equippedResidueSlots, data.necroStatus),
       necroStatus: data.necroStatus,
-      party: [data.party[0] ?? null, data.party[1] ?? null, data.party[2] ?? null],
-      inventoryMonsters: data.inventoryMonsters,
+      party: [
+        data.party[0] ? hydrateMonsterEnergy(data.party[0]) : null,
+        data.party[1] ? hydrateMonsterEnergy(data.party[1]) : null,
+        data.party[2] ? hydrateMonsterEnergy(data.party[2]) : null,
+      ],
+      inventoryMonsters: data.inventoryMonsters.map(monster => hydrateMonsterEnergy(monster)),
       soulShards: data.soulShards,
       inventoryItems: data.inventoryItems,
       abyssalResidues: data.abyssalResidues,
@@ -830,9 +835,9 @@ export const useGameStore = create<GameState>((set) => ({
       exp: 0,
     },
     inventoryMonsters: [
-      { id: 'm1', name: 'ゴブリン',   tribe: 'HUMANOID', cost: 3, stats: { hp: 50, atk: 10, def: 5,  spd: 80,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0 }, resistances: { FIRE: -20 } },
-      { id: 'm2', name: 'スケルトン', tribe: 'UNDEAD',   cost: 4, stats: { hp: 40, atk: 12, def: 8,  spd: 50,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 20 }, resistances: { LIGHT: -50, DARK: 50 } },
-      { id: 'm3', name: 'ゾンビ',     tribe: 'UNDEAD',   cost: 4, stats: { hp: 80, atk: 8,  def: 4,  spd: 20,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0 }, resistances: { FIRE: -50, LIGHT: -20, DARK: 20 } },
+      hydrateMonsterEnergy({ id: 'm1', name: 'ゴブリン',   tribe: 'HUMANOID' as const, cost: 3, stats: { hp: 50, atk: 10, def: 5,  spd: 80,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0 }, resistances: { FIRE: -20 }, skillIds: ['skill_rogue_1'], maxEnergy: 18 }),
+      hydrateMonsterEnergy({ id: 'm2', name: 'スケルトン', tribe: 'UNDEAD' as const,   cost: 4, stats: { hp: 40, atk: 12, def: 8,  spd: 50,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 20 }, resistances: { LIGHT: -50, DARK: 50 }, skillIds: ['skill_necromancer_1'], maxEnergy: 36 }),
+      hydrateMonsterEnergy({ id: 'm3', name: 'ゾンビ',     tribe: 'UNDEAD' as const,   cost: 4, stats: { hp: 80, atk: 8,  def: 4,  spd: 20,  critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0 }, resistances: { FIRE: -50, LIGHT: -20, DARK: 20 }, skillIds: ['skill_darkpriest_1'], maxEnergy: 30 }),
     ],
     inventoryItems: [...MOCK_WEAPONS, ...INITIAL_CONSUMABLES],
     soulShards: [
@@ -854,8 +859,8 @@ export const useGameStore = create<GameState>((set) => ({
     isServerBacked: false,
     residueMaterials: [],
     party: [
-      { id: 'm2', name: 'スケルトン', tribe: 'UNDEAD', cost: 4, stats: { hp: 40, atk: 12, def: 8, spd: 50, critRate: 0, critDmg: 150, effectHit: 0, effectRes: 20 }, resistances: { LIGHT: -50, DARK: 50 } },
-      { id: 'm3', name: 'ゾンビ',     tribe: 'UNDEAD', cost: 4, stats: { hp: 80, atk: 8,  def: 4, spd: 20, critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0  }, resistances: { FIRE: -50, LIGHT: -20, DARK: 20 } },
+      hydrateMonsterEnergy({ id: 'm2', name: 'スケルトン', tribe: 'UNDEAD' as const, cost: 4, stats: { hp: 40, atk: 12, def: 8, spd: 50, critRate: 0, critDmg: 150, effectHit: 0, effectRes: 20 }, resistances: { LIGHT: -50, DARK: 50 }, skillIds: ['skill_necromancer_1'], maxEnergy: 36 }),
+      hydrateMonsterEnergy({ id: 'm3', name: 'ゾンビ',     tribe: 'UNDEAD' as const, cost: 4, stats: { hp: 80, atk: 8,  def: 4, spd: 20, critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0  }, resistances: { FIRE: -50, LIGHT: -20, DARK: 20 }, skillIds: ['skill_darkpriest_1'], maxEnergy: 30 }),
       null,
     ],
     currentTab: 'HOME',

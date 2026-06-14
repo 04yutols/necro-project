@@ -318,6 +318,8 @@ export interface MonsterData {
   stats: BaseStats;
   resistances: Resistances;
   skillIds?: string[]; // 味方化後に保持するスキルID
+  currentEnergy: number; // 現在MP。主人公と同じくスキル使用で消費し、自動回復しない。
+  maxEnergy: number;     // 最大MP。捕獲時は enemy.necromance.allyMaxEnergy から初期化する。
   // キャラと同じ装備体系 (GDD-007) — 未装備時は undefined（空扱い）
   equipment?: EquipmentSlots;                          // 武器スロット（weapon のみ使用）
   equippedResidues?: (AbyssalResidueData | null)[];    // 深淵の残滓 5スロット
@@ -353,6 +355,7 @@ export interface EnemyNecromanceConfig {
   captureRate?: number;
   allyCost?: number;
   allyStats?: BaseStats;
+  allyMaxEnergy?: number;
   skillIds?: string[];
 }
 
