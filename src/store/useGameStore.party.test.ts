@@ -1,8 +1,9 @@
-import { useGameStore } from './useGameStore';
+import { GAME_STORE_STORAGE_KEY, useGameStore } from './useGameStore';
 import jobsData from '../data/master/jobs.json';
 import { calculateEnergyState } from '../logic/EnergySystem';
 import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import type { JobData } from '../types/game';
+import type { ServerGameData } from '../types/serverGame';
 
 const JOBS = jobsData as Record<string, JobData>;
 const RESIDUE_FIXTURE = {
@@ -41,8 +42,32 @@ function unlockResidueFixture() {
   ]);
 }
 
+function currentStateAsServerData(overrides: Partial<ServerGameData> = {}): ServerGameData {
+  const state = useGameStore.getState();
+  return {
+    player: state.player!,
+    necroStatus: state.necroStatus!,
+    party: state.party,
+    inventoryMonsters: state.inventoryMonsters,
+    soulShards: state.soulShards,
+    inventoryItems: state.inventoryItems,
+    weaponMaterials: state.weaponMaterials,
+    abyssalResidues: state.abyssalResidues,
+    equippedResidueSlots: state.equippedResidueSlots,
+    ...overrides,
+  };
+}
+
+async function getPersistedGameState() {
+  const storage = useGameStore.persist.getOptions().storage;
+  if (!storage) throw new Error('game store persist storage is unavailable');
+  const stored = await storage.getItem(GAME_STORE_STORAGE_KEY);
+  return stored?.state ?? null;
+}
+
 describe('useGameStore party formation actions', () => {
   beforeEach(() => {
+    useGameStore.persist.clearStorage();
     useGameStore.getState().initialize();
   });
 
@@ -84,9 +109,10 @@ describe('useGameStore party formation actions', () => {
 
   test('initializes player with full MP from current job energy curve', () => {
     const player = useGameStore.getState().player;
+    const expectedEnergy = calculateEnergyState(JOBS.warrior, 1);
 
-    expect(player?.currentEnergy).toBe(100);
-    expect(player?.maxEnergy).toBe(100);
+    expect(player?.currentEnergy).toBe(expectedEnergy.currentEnergy);
+    expect(player?.maxEnergy).toBe(expectedEnergy.maxEnergy);
   });
 
   test('addExp uses the shared cumulative EXP level formula', () => {
@@ -173,5 +199,78 @@ describe('useGameStore party formation actions', () => {
     expect(residue?.level).toBe(3);
     expect(residue?.exp).toBe(500);
     expect(residue?.maxExp).toBe(1800);
+  });
+
+  test('persists guest progression without battle runtime state', async () => {
+    useGameStore.getState().addClearedStage('area1_node1');
+    useGameStore.getState().fillDemonGauge(40);
+    useGameStore.getState().setCurrentTab('MAP');
+    useGameStore.getState().addBattleLog('RUNTIME LOG');
+
+    const persisted = await getPersistedGameState();
+    const raw = persisted as Record<string, unknown>;
+
+    expect(persisted?.player?.clearedStages).toContain('area1_node1');
+    expect(persisted?.party).toHaveLength(3);
+    expect(raw.isServerBacked).toBeUndefined();
+    expect(raw.currentTab).toBeUndefined();
+    expect(raw.demonGauge).toBeUndefined();
+    expect(raw.battleLogs).toBeUndefined();
+    expect(raw.actionTrigger).toBeUndefined();
+  });
+
+  test('loadFromServer is authoritative over cached local progression', async () => {
+    useGameStore.getState().addClearedStage('local_only');
+
+    const state = useGameStore.getState();
+    const serverPlayer = {
+      ...state.player!,
+      clearedStages: ['server_stage'],
+      gold: 1234,
+    };
+    const serverNecroStatus = {
+      ...state.necroStatus!,
+      level: 7,
+      exp: 321,
+    };
+
+    useGameStore.getState().loadFromServer(currentStateAsServerData({
+      player: serverPlayer,
+      necroStatus: serverNecroStatus,
+      party: [null, null, null],
+      inventoryMonsters: [],
+    }));
+
+    const current = useGameStore.getState();
+    const persisted = await getPersistedGameState();
+    const raw = persisted as Record<string, unknown>;
+
+    expect(current.isServerBacked).toBe(true);
+    expect(current.player?.clearedStages).toEqual(['server_stage']);
+    expect(current.player?.gold).toBe(1234);
+    expect(current.necroStatus?.level).toBe(7);
+    expect(persisted?.player?.clearedStages).toEqual(['server_stage']);
+    expect(persisted?.necroStatus?.level).toBe(7);
+    expect(raw.isServerBacked).toBeUndefined();
+  });
+
+  test('rehydrated cached data is treated as local-only', () => {
+    const options = useGameStore.persist.getOptions();
+    if (!options.partialize || !options.merge) {
+      throw new Error('game store persist options are incomplete');
+    }
+
+    const persisted = {
+      ...(options.partialize(useGameStore.getState()) as Record<string, unknown>),
+      isServerBacked: true,
+      currentTab: 'BATTLE',
+      demonGauge: 100,
+    };
+    const merged = options.merge(persisted, useGameStore.getInitialState());
+
+    expect(merged.isServerBacked).toBe(false);
+    expect(merged.currentTab).toBe('HOME');
+    expect(merged.demonGauge).toBe(0);
+    expect(merged.battleLogs).toEqual(['LOCAL SAVE LOADED...']);
   });
 });

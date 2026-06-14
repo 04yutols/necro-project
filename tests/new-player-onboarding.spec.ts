@@ -23,6 +23,7 @@ async function setupGuestMode(page: Page) {
     route.fulfill({ status: 200, contentType: 'text/html', body: '' });
   });
   await page.addInitScript(() => {
+    window.localStorage.removeItem('necro-game-store-v1');
     window.sessionStorage.setItem('necro-e2e-battle-boost', '1');
   });
 }

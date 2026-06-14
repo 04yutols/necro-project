@@ -42,6 +42,7 @@ export async function prepareE2EPage(page: Page, options: PrepareE2EPageOptions 
   });
 
   await page.addInitScript(({ storyScenes, tutorialPhases, clearedStages }) => {
+    window.localStorage.removeItem('necro-game-store-v1');
     window.localStorage.setItem('necro-story-store-v2', JSON.stringify({
       state: {
         viewedScenes: storyScenes,

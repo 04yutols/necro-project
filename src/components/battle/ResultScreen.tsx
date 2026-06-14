@@ -29,6 +29,8 @@ interface ResultScreenProps {
   clearTime?: number;
   wavesCleared?: number;
   totalWaves?: number;
+  failureTitle?: string;
+  failureMessage?: string;
   onFinish: () => void;
 }
 
@@ -669,6 +671,8 @@ export default function ResultScreen({
   clearTime = 74,
   wavesCleared = 3,
   totalWaves = 3,
+  failureTitle,
+  failureMessage,
   onFinish,
 }: ResultScreenProps) {
   const [showContent, setShowContent] = useState(false);
@@ -1121,11 +1125,15 @@ export default function ResultScreen({
                 }}
               >
                 <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, fontWeight: 700, color: '#ef4444', letterSpacing: '0.18em' }}>
-                  BATTLE LOST
+                  {failureTitle ?? 'BATTLE LOST'}
                 </div>
                 <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 13, color: 'rgba(240,234,255,0.72)', lineHeight: 1.7 }}>
-                  骸骨騎士は倒れた。<br />
-                  報酬は得られなかった。
+                  {failureMessage ?? (
+                    <>
+                      骸骨騎士は倒れた。<br />
+                      報酬は得られなかった。
+                    </>
+                  )}
                 </div>
               </div>
 

@@ -81,10 +81,11 @@ describe('Balance tuning for area1_node1', () => {
     expect(STAGES.area1_node1.waves[2]).toMatchObject({
       label: 'WAVE 3',
       role: 'ELITE',
-      enemyIds: ['grave_soldier', 'grave_knight'],
+      enemyIds: ['abyss_warden'],
     });
+    expect(STAGES.area1_node1.waves[2].enemyIds.some(enemyId => ENEMIES[enemyId]?.tier === 'BOSS')).toBe(false);
+    expect(ENEMIES.abyss_warden.stats.hp).toBe(30);
     expect(ENEMIES.ossuary_wyrm_lord.stats.hp).toBe(90);
-    expect(ENEMIES.grave_knight.stats.hp).toBe(44);
   });
 
   test('starter damage hits area1_node1 kill-count targets without crit variance', () => {

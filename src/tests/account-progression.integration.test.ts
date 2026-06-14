@@ -118,8 +118,9 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(created.data.player.necroBaseStatsBonus).toBe(created.data.necroStatus.baseStatsBonus);
     expect(created.data.player.currentJobId).toBe('warrior');
     expect(created.data.player.jobs).toEqual([{ jobId: 'warrior', level: 1, exp: 0 }]);
-    expect(created.data.player.currentEnergy).toBe(100);
-    expect(created.data.player.maxEnergy).toBe(100);
+    const warriorEnergy = calculateEnergyState(JOBS.warrior, 1);
+    expect(created.data.player.currentEnergy).toBe(warriorEnergy.currentEnergy);
+    expect(created.data.player.maxEnergy).toBe(warriorEnergy.maxEnergy);
     expect(created.data.inventoryItems).toHaveLength(1);
     expect(created.data.inventoryItems[0].type).toBe('WEAPON');
     expect(created.data.inventoryItems[0].name).toBe('骨砕きの短剣');
@@ -254,6 +255,7 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(persistedAfterClear.hp).toBe(initialBaseStats.hp);
     expect(persistedAfterClear.atk).toBe(initialBaseStats.atk);
     expect(persistedAfterClear.def).toBe(initialBaseStats.def);
+    expect(persistedAfterClear.clearedStages).toContain('area1_node1');
     expect(afterClear.data.player.clearedStages).toContain('area1_node1');
     expect(afterClear.data.inventoryItems.length).toBeGreaterThan(1);
     expect(afterClear.data.abyssalResidues).toHaveLength(0);

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import jobsData from '../data/master/jobs.json';
 import itemsData from '../data/master/items.json';
 import demonFormsData from '../data/master/demonForms.json';
@@ -25,6 +26,30 @@ import type { ServerGameData } from '../types/serverGame';
 const JOBS = jobsData as Record<string, JobData>;
 const ITEMS = itemsData as Record<string, ItemData>;
 const DEMON_FORMS = demonFormsData as Record<string, DemonFormData>;
+export const GAME_STORE_STORAGE_KEY = 'necro-game-store-v1';
+const GAME_STORE_VERSION = 1;
+
+const memoryStorage: StateStorage = (() => {
+  const storage = new Map<string, string>();
+  return {
+    getItem: (name) => storage.get(name) ?? null,
+    setItem: (name, value) => {
+      storage.set(name, value);
+    },
+    removeItem: (name) => {
+      storage.delete(name);
+    },
+  };
+})();
+
+const getGameStorage = (): StateStorage => {
+  if (typeof window === 'undefined') return memoryStorage;
+  try {
+    return window.localStorage;
+  } catch {
+    return memoryStorage;
+  }
+};
 
 function emptyResidueSlots(): (AbyssalResidueData | null)[] {
   return [null, null, null, null, null];
@@ -322,7 +347,101 @@ interface GameState {
   clearServerData: () => void;
 }
 
-export const useGameStore = create<GameState>((set) => ({
+type PersistedGameState = Pick<
+  GameState,
+  | 'player'
+  | 'necroStatus'
+  | 'party'
+  | 'inventoryMonsters'
+  | 'soulShards'
+  | 'inventoryItems'
+  | 'abyssalResidues'
+  | 'equippedResidueSlots'
+  | 'residueMaterials'
+  | 'weaponMaterials'
+  | 'transmutationPoints'
+>;
+
+function normalizePersistedParty(party?: (MonsterData | null)[]): (MonsterData | null)[] {
+  return [
+    party?.[0] ? hydrateMonsterEnergy(party[0]) : null,
+    party?.[1] ? hydrateMonsterEnergy(party[1]) : null,
+    party?.[2] ? hydrateMonsterEnergy(party[2]) : null,
+  ];
+}
+
+function normalizeResidueSlots(slots?: (AbyssalResidueData | null)[]): (AbyssalResidueData | null)[] {
+  return [
+    slots?.[0] ?? null,
+    slots?.[1] ?? null,
+    slots?.[2] ?? null,
+    slots?.[3] ?? null,
+    slots?.[4] ?? null,
+  ];
+}
+
+function partializeGameState(state: GameState): PersistedGameState {
+  return {
+    player: state.player,
+    necroStatus: state.necroStatus,
+    party: normalizePersistedParty(state.party),
+    inventoryMonsters: state.inventoryMonsters.map(monster => hydrateMonsterEnergy(monster)),
+    soulShards: state.soulShards,
+    inventoryItems: state.inventoryItems,
+    abyssalResidues: state.abyssalResidues,
+    equippedResidueSlots: normalizeResidueSlots(state.equippedResidueSlots),
+    residueMaterials: state.residueMaterials,
+    weaponMaterials: state.weaponMaterials,
+    transmutationPoints: state.transmutationPoints,
+  };
+}
+
+function mergePersistedGameState(persistedState: unknown, currentState: GameState): GameState {
+  const persisted = (persistedState ?? {}) as Partial<PersistedGameState>;
+  if (!persisted.player) {
+    return {
+      ...currentState,
+      isServerBacked: false,
+    };
+  }
+
+  const equippedResidueSlots = isAbyssalResidueUnlocked(persisted.player.clearedStages)
+    ? normalizeResidueSlots(persisted.equippedResidueSlots)
+    : emptyResidueSlots();
+
+  return {
+    ...currentState,
+    player: withDerivedElementBoosts(persisted.player, equippedResidueSlots, persisted.necroStatus ?? null),
+    necroStatus: persisted.necroStatus ?? currentState.necroStatus,
+    party: normalizePersistedParty(persisted.party),
+    inventoryMonsters: (persisted.inventoryMonsters ?? []).map(monster => hydrateMonsterEnergy(monster)),
+    soulShards: persisted.soulShards ?? [],
+    inventoryItems: persisted.inventoryItems ?? [],
+    abyssalResidues: persisted.abyssalResidues ?? [],
+    equippedResidueSlots,
+    residueMaterials: persisted.residueMaterials ?? [],
+    weaponMaterials: persisted.weaponMaterials ?? [],
+    transmutationPoints: persisted.transmutationPoints ?? 0,
+    isServerBacked: false,
+    monsterCurrentHp: {},
+    equippingMonsterId: null,
+    battleLogs: ['LOCAL SAVE LOADED...'],
+    actionTrigger: null,
+    currentTab: 'HOME',
+    demonGauge: 0,
+    isDemonMode: false,
+    demonActionsRemaining: 0,
+    demonUltimateUsed: false,
+    demonFormJobId: null,
+    demonEffectBFlag: null,
+    demonRiskType: null,
+    demonRiskValue: 0,
+  };
+}
+
+export const useGameStore = create<GameState>()(
+  persist(
+    (set) => ({
   player: null,
   necroStatus: null,
   party: [null, null, null],
@@ -878,4 +997,13 @@ export const useGameStore = create<GameState>((set) => ({
     demonRiskValue: 0,
     });
   }
-}));
+    }),
+    {
+      name: GAME_STORE_STORAGE_KEY,
+      version: GAME_STORE_VERSION,
+      storage: createJSONStorage<PersistedGameState>(getGameStorage),
+      partialize: partializeGameState,
+      merge: mergePersistedGameState,
+    },
+  ),
+);

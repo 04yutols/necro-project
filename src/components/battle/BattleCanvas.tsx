@@ -37,6 +37,11 @@ import {
   shouldTriggerBossGimmick,
 } from '../../logic/BossGimmickSystem';
 import { applyPlayerDamage, isPlayerDead } from '../../logic/PlayerDefeat';
+import {
+  canUseLocalStageResultFallback,
+  getStageResultTimeoutMs,
+  requiresCloudStageSave,
+} from '../../logic/StageResultPersistence';
 import type { StageResultMeta } from '../../types/online';
 import {
   DEMON_ACTION_LIMIT,
@@ -566,33 +571,56 @@ function isNextClientRuntime() {
 
 async function processStageResultLocal(stageId?: string, stageAttemptId?: string | null, meta: StageResultMeta = {}) {
   const stage = stageId ? STAGES[stageId] : undefined;
+  const persistenceContext = {
+    hasStageId: Boolean(stageId),
+    isNextRuntime: isNextClientRuntime(),
+    isServerBacked: useGameStore.getState().isServerBacked,
+  };
+  const cloudSaveRequired = requiresCloudStageSave(persistenceContext);
 
-  if (stageId && isNextClientRuntime()) {
+  if (stageId && persistenceContext.isNextRuntime) {
     try {
       const { processStageResultAction } = await import('../../app/actions');
-      const onlineResult = await Promise.race([
-        processStageResultAction(stageId, stageAttemptId ?? null, meta),
-        new Promise<never>((_, reject) => {
-          window.setTimeout(() => reject(new Error('Stage result action timed out.')), 3500);
-        }),
-      ]);
+      const actionResult = processStageResultAction(stageId, stageAttemptId ?? null, meta);
+      const timeoutMs = getStageResultTimeoutMs(persistenceContext);
+      const onlineResult = timeoutMs === null
+        ? await actionResult
+        : await Promise.race([
+            actionResult,
+            new Promise<never>((_, reject) => {
+              window.setTimeout(() => reject(new Error('Stage result action timed out.')), timeoutMs);
+            }),
+          ]);
       if (onlineResult.success) {
         return {
           dropResult: onlineResult.dropResult,
           expGain: onlineResult.expGain,
           goldGain: onlineResult.goldGain,
+          cloudSaved: onlineResult.cloudSaved === true,
         };
       }
       if (onlineResult.error === 'SESSION_EXPIRED') {
         window.dispatchEvent(new Event('necro-session-expired'));
       }
+      if (cloudSaveRequired) {
+        throw new Error(onlineResult.error ?? 'CLOUD_STAGE_RESULT_FAILED');
+      }
     } catch (error) {
+      if (cloudSaveRequired) {
+        throw error;
+      }
       console.warn('Cloud stage result failed, using local fallback.', error);
     }
   }
 
+  if (!canUseLocalStageResultFallback(persistenceContext)) {
+    throw new Error('CLOUD_STAGE_RESULT_REQUIRED');
+  }
   const clearedStages = useGameStore.getState().player?.clearedStages ?? [];
-  return buildLocalStageResult(stage, clearedStages);
+  return {
+    ...buildLocalStageResult(stage, clearedStages),
+    cloudSaved: false,
+  };
 }
 
 // ── SVG ENEMIES ───────────────────────────────────────────────────────────────
@@ -1933,6 +1961,8 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     wavesCleared: number;
     totalWaves: number;
     clearTime: number;
+    failureTitle?: string;
+    failureMessage?: string;
   } | null>(null);
   const waveIndexRef = useRef(0);
   const enemiesRef = useRef<EnemyState[]>(cloneEnemies(battleWaves[0].enemies));
@@ -2384,7 +2414,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
           clearTimeSec: clearTime,
           totalDamage: totalDamageRef.current,
         }).then(({ dropResult, expGain, goldGain }) => {
-          // ローカル実行時のストア更新
+          // 画面表示用のストア反映。ログイン時の正本は Server Action 側のDB保存。
           addInventoryItems([...dropResult.weapons, ...dropResult.consumables]);
           addWeaponMaterials(dropResult.weaponMaterials);
           if (dropResult.monsters.length > 0) {
@@ -2420,13 +2450,16 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
             clearTime,
           });
           setShowResult(true);
-        }).catch(() => {
-          // ネットワーク失敗時フォールバック
+        }).catch((error) => {
+          const message = error instanceof Error ? error.message : String(error);
+          addLog(`クラウド保存に失敗しました: ${message}`);
           restoreEnergy();
           setBattleResult({
-            isVictory: true, expGained: 0, goldGained: 0,
+            isVictory: false, expGained: 0, goldGained: 0,
             itemsGained: [], monstersGained: [], necromancedMonsters: [], isPurplePillar: false,
             wavesCleared: totalWaves, totalWaves, clearTime,
+            failureTitle: 'SYNC FAILED',
+            failureMessage: '戦果をクラウドへ保存できませんでした。通信状態とログイン状態を確認して、もう一度侵攻してください。',
           });
           setShowResult(true);
         });
@@ -3414,6 +3447,8 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
         wavesCleared={battleResult.wavesCleared}
         totalWaves={battleResult.totalWaves}
         clearTime={battleResult.clearTime}
+        failureTitle={battleResult.failureTitle}
+        failureMessage={battleResult.failureMessage}
         onFinish={onEnd}
       />
     );
