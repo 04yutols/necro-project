@@ -8,9 +8,11 @@ import { StoryOrchestrator } from '../components/story/StoryOrchestrator';
 import { StoryArchive } from '../components/story/StoryArchive';
 import { useStoryTrigger } from '../hooks/useStoryTrigger';
 import { useStoryStore } from '../store/useStoryStore';
+import { useTutorialStore } from '../store/useTutorialStore';
 import { TutorialOrchestrator } from '../components/tutorial/TutorialOrchestrator';
 import { useBGM } from '../hooks/useBGM';
 import { useAuthFlow } from '../hooks/useAuthFlow';
+import { getTutorialPhaseAfterClear } from '../data/tutorial/triggers';
 
 const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').then((mod) => mod.default), {
   ssr: false,
@@ -159,6 +161,19 @@ function GameContent() {
     setPendingStageAttemptId(null);
     startStageNow(stageId, stageAttemptId);
   }, [activeStoryScene, pendingStageAttemptId, pendingStageId, startStageNow, storyQueueLength]);
+
+  const finishBattle = useCallback(() => {
+    setIsInBattle(false);
+    setActiveStageAttemptId(null);
+
+    const pendingTutorialPhase = getTutorialPhaseAfterClear({
+      clearedStages: useGameStore.getState().player?.clearedStages,
+      completedPhases: useTutorialStore.getState().completedPhases,
+      storyFlags: useStoryStore.getState().storyFlags,
+    });
+
+    setCurrentTab(pendingTutorialPhase ? 'HOME' : 'MAP');
+  }, [setCurrentTab]);
 
   if (authFlow.status === 'authRequired') {
     return <AuthGate onAuthenticated={authFlow.reload} />;
@@ -336,11 +351,7 @@ function GameContent() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               style={{ position: 'absolute', inset: 0, zIndex: 9999, display: 'flex', flexDirection: 'column', background: '#000', overflow: 'hidden' }}
             >
-              <BattleCanvas stageId={activeStageId ?? undefined} stageAttemptId={activeStageAttemptId} onEnd={() => {
-                setIsInBattle(false);
-                setActiveStageAttemptId(null);
-                setCurrentTab('MAP');
-              }} />
+              <BattleCanvas stageId={activeStageId ?? undefined} stageAttemptId={activeStageAttemptId} onEnd={finishBattle} />
             </motion.div>
           ) : currentTab === 'MAP' ? (
             <motion.div

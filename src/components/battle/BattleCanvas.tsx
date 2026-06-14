@@ -11,7 +11,7 @@ import enemiesData from '../../data/master/enemies.json';
 import itemsData from '../../data/master/items.json';
 import demonFormsData from '../../data/master/demonForms.json';
 import { getBaseAttackType, getJobLevel, resolveUnlockedJobSkills } from '../../logic/JobSystem';
-import { startTutorialBattlePhase } from '../../hooks/useTutorialTrigger';
+import { useTutorialBattlePhase } from '../../hooks/useTutorialTrigger';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { RewardService, type StageDropResult } from '../../services/RewardService';
@@ -2290,9 +2290,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     return next;
   }
 
-  useEffect(() => {
-    if (stageId) startTutorialBattlePhase(stageId);
-  }, [stageId]);
+  useTutorialBattlePhase(stageId);
 
   useEffect(() => {
     const battleKey = stageId ?? '__fallback__';
