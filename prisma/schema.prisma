@@ -137,6 +137,8 @@ model Character {
 
   // 進行管理
   clearedStages   String[] @default([])
+  // Phase 1-2 personal save blob for state that should not become shared game entities.
+  playerState     Json?
   stageAttempts   StageAttempt[]
   soulShards      SoulShard[] @relation("CharacterSoulShards")
 

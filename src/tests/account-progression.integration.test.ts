@@ -7,6 +7,7 @@ import { RESIDUE_SLOT_ORDER } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
 import { calculateWeaponBaseAttack } from '../logic/WeaponSystem';
 import { createCredentialsUser } from '../services/AuthService';
+import { PLAYER_SAVE_SCHEMA_VERSION, type PlayerSaveV1 } from '../types/playerSave';
 import type { JobData } from '../types/game';
 
 jest.mock('@/auth', () => ({
@@ -133,6 +134,16 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
       { type: 'IDEA_COMMON', name: '凡骨のイデア', quantity: 8 },
       { type: 'ABYSSAL_OBSIDIAN', name: '深淵の黒鋼', quantity: 10 },
     ]));
+    expect(created.data.residueMaterials).toEqual([]);
+    expect(created.data.transmutationPoints).toBe(0);
+    const createdPlayerStateRows = await prisma.$queryRaw<Array<{ playerState: PlayerSaveV1 | null }>>`
+      SELECT "playerState" FROM "Character" WHERE id = ${created.data.player.id}
+    `;
+    expect(createdPlayerStateRows[0]?.playerState).toMatchObject({
+      schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
+      residueMaterials: [],
+      transmutationPoints: 0,
+    });
 
     const starterWeapon = created.data.inventoryItems[0];
     const starterAtk = calculateWeaponBaseAttack(starterWeapon);
@@ -304,11 +315,30 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     await clearStageForTest(user, 'area1_boss');
     await clearStageForTest(user, 'area1_node3');
     const area2GateResult = await clearStageForTest(user, 'area2_gate');
+    const parallelAttemptA = await startStageForUser(user, 'area2_gate');
+    const parallelAttemptB = await startStageForUser(user, 'area2_gate');
+    expect(parallelAttemptA.success).toBe(true);
+    expect(parallelAttemptB.success).toBe(true);
+    if (!parallelAttemptA.success) throw new Error(parallelAttemptA.error);
+    if (!parallelAttemptB.success) throw new Error(parallelAttemptB.error);
+    const [parallelArea2A, parallelArea2B] = await Promise.all([
+      processStageResultForUser(user, 'area2_gate', parallelAttemptA.stageAttemptId),
+      processStageResultForUser(user, 'area2_gate', parallelAttemptB.stageAttemptId),
+    ]);
     chapterProgressSpy.mockRestore();
 
     expect(area2GateResult.success).toBe(true);
     expect(area2GateResult.dropResult.residues.length).toBeGreaterThan(0);
     expect(area2GateResult.dropResult.materials.length).toBeGreaterThan(0);
+    expect(parallelArea2A.success).toBe(true);
+    expect(parallelArea2B.success).toBe(true);
+    expect(parallelArea2A.dropResult.materials.length).toBeGreaterThan(0);
+    expect(parallelArea2B.dropResult.materials.length).toBeGreaterThan(0);
+    const allDroppedResidueMaterials = [
+      ...area2GateResult.dropResult.materials,
+      ...parallelArea2A.dropResult.materials,
+      ...parallelArea2B.dropResult.materials,
+    ];
 
     const afterArea2Gate = await loadCharacterForUser(user);
     expect(afterArea2Gate.success).toBe(true);
@@ -316,6 +346,35 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     if (!afterArea2Gate.success || afterArea2Gate.status !== 'READY') throw new Error('failed to reload area2 character');
     expect(afterArea2Gate.data.player.clearedStages).toContain('area1_node3');
     expect(afterArea2Gate.data.abyssalResidues.length).toBeGreaterThan(0);
+    expect(afterArea2Gate.data.residueMaterials.length).toBeGreaterThanOrEqual(allDroppedResidueMaterials.length);
+    for (const droppedMaterial of allDroppedResidueMaterials) {
+      expect(afterArea2Gate.data.residueMaterials).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: droppedMaterial.id,
+          quantity: droppedMaterial.quantity,
+          expValue: droppedMaterial.expValue,
+          rarity: droppedMaterial.rarity,
+        }),
+      ]));
+    }
+
+    const playerStateRows = await prisma.$queryRaw<Array<{ playerState: PlayerSaveV1 | null }>>`
+      SELECT "playerState" FROM "Character" WHERE id = ${afterArea2Gate.data.player.id}
+    `;
+    const playerState = playerStateRows[0]?.playerState;
+    expect(playerState).toMatchObject({
+      schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
+      transmutationPoints: 0,
+    });
+    expect(playerState?.residueMaterials.length).toBeGreaterThanOrEqual(allDroppedResidueMaterials.length);
+    for (const droppedMaterial of allDroppedResidueMaterials) {
+      expect(playerState?.residueMaterials).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: droppedMaterial.id,
+          quantity: droppedMaterial.quantity,
+        }),
+      ]));
+    }
 
     const residue = afterArea2Gate.data.abyssalResidues[0];
     const slotIndex = RESIDUE_SLOT_ORDER.indexOf(residue.itemId as typeof RESIDUE_SLOT_ORDER[number]);

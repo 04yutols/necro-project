@@ -39,6 +39,7 @@ import type {
   MonsterData,
   NecroStatus,
   PassiveBonuses,
+  ResidueMatData,
   Resistances,
   SoulShardData,
   SpiritCoreData,
@@ -48,6 +49,7 @@ import type {
   WeaponRarity,
 } from '@/types/game';
 import type { OnlineStageRecordSummary, StageResultMeta, WorldEventType, WorldLogEntry } from '@/types/online';
+import { PLAYER_SAVE_SCHEMA_VERSION, type PlayerSaveV1 } from '@/types/playerSave';
 import type { CreateCharacterResult, LoadCharacterResult, SaveGameStateResult, ServerGameData, ServerGameUser } from '@/types/serverGame';
 
 // ── ユーザー登録 ──────────────────────────────────────────────────────────────
@@ -265,6 +267,94 @@ function toWeaponMaterialData(row: {
   };
 }
 
+const RESIDUE_MATERIAL_RARITIES = new Set<ResidueMatData['rarity']>(['COMMON', 'RARE', 'EPIC', 'LEGENDARY']);
+
+function emptyPlayerSave(): PlayerSaveV1 {
+  return {
+    schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
+    residueMaterials: [],
+    transmutationPoints: 0,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizePositiveInt(value: unknown, fallback = 0): number {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return fallback;
+  return Math.max(0, Math.floor(numberValue));
+}
+
+function normalizeResidueMaterial(value: unknown): ResidueMatData | null {
+  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.name !== 'string') return null;
+  if (!RESIDUE_MATERIAL_RARITIES.has(value.rarity as ResidueMatData['rarity'])) return null;
+  const quantity = normalizePositiveInt(value.quantity);
+  if (quantity <= 0) return null;
+  return {
+    id: value.id,
+    name: value.name,
+    quantity,
+    expValue: normalizePositiveInt(value.expValue),
+    rarity: value.rarity as ResidueMatData['rarity'],
+  };
+}
+
+function normalizeResidueMaterials(value: unknown): ResidueMatData[] {
+  if (!Array.isArray(value)) return [];
+  const merged = new Map<string, ResidueMatData>();
+  for (const raw of value) {
+    const material = normalizeResidueMaterial(raw);
+    if (!material) continue;
+    const existing = merged.get(material.id);
+    if (existing) {
+      existing.quantity += material.quantity;
+      existing.name = material.name;
+      existing.expValue = material.expValue;
+      existing.rarity = material.rarity;
+    } else {
+      merged.set(material.id, { ...material });
+    }
+  }
+  return Array.from(merged.values());
+}
+
+function mergeResidueMaterials(current: ResidueMatData[], additions: ResidueMatData[]): ResidueMatData[] {
+  return normalizeResidueMaterials([...current, ...additions]);
+}
+
+function readPlayerSave(playerState: unknown): PlayerSaveV1 {
+  if (!isRecord(playerState) || playerState.schemaVersion !== PLAYER_SAVE_SCHEMA_VERSION) {
+    return emptyPlayerSave();
+  }
+  return {
+    schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
+    residueMaterials: normalizeResidueMaterials(playerState.residueMaterials),
+    transmutationPoints: normalizePositiveInt(playerState.transmutationPoints),
+  };
+}
+
+function playerSaveToJson(save: PlayerSaveV1): Prisma.InputJsonValue {
+  return {
+    schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
+    residueMaterials: save.residueMaterials.map((material) => ({
+      id: material.id,
+      name: material.name,
+      quantity: material.quantity,
+      expValue: material.expValue,
+      rarity: material.rarity,
+    })),
+    transmutationPoints: normalizePositiveInt(save.transmutationPoints),
+  };
+}
+
+async function lockCharacterForUpdate(tx: Prisma.TransactionClient, characterId: string) {
+  await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE
+  `;
+}
+
 function toBaseStats(row: {
   hp: number;
   atk: number;
@@ -388,6 +478,7 @@ function toServerUser(sessionUser: { id?: string; name?: string | null; email?: 
 }
 
 function toServerGameData(character: any, inventoryItems: any[], inventoryMonsters: any[], weaponMaterials: any[] = []): ServerGameData {
+  const playerSave = readPlayerSave(character.playerState);
   const currentJobId = character.currentJobId ?? 'warrior';
   const currentJob = getJobData(currentJobId);
   const jobs = (character.jobs ?? []).map((job: any) => ({ jobId: job.jobId, level: job.level, exp: job.exp }));
@@ -470,6 +561,8 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
     soulShards: Array.from(soulShards.values()),
     inventoryItems: inventoryItems.map(toItemData),
     weaponMaterials: weaponMaterials.map(toWeaponMaterialData),
+    residueMaterials: playerSave.residueMaterials,
+    transmutationPoints: playerSave.transmutationPoints,
     abyssalResidues: (character.abyssalResidues ?? []).map(toResidueData),
     equippedResidueSlots,
   };
@@ -775,33 +868,16 @@ export async function processStageResultForUser(
   // Character 取得（userId で紐付け）
   const char = await prisma.character.findFirst({
     where: { userId },
-    include: { jobs: true },
+    select: { id: true },
   });
   if (!char) {
     return { success: false, dropResult: emptyDrop(), expGain: 0, goldGain: 0, cloudSaved: false, error: 'CHARACTER_NOT_FOUND' };
   }
 
-  // EXP 計算
-  const playerForExp: Parameters<RewardService['calculateExp']>[1] = {
-    category:     'PHYSICAL',
-    currentJobId: char.currentJobId ?? 'warrior',
-    jobs:         (char.jobs as any[]).map(j => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
-  } as any;
-  const expGain  = svc.calculateExp(stage.rewards.baseExp, playerForExp);
   const goldGain = stage.rewards.baseGold;
-
-  const ownedMonsterMasterIds = (await prisma.monster.findMany({
-    where: { characterId: char.id },
-    select: { masterId: true, id: true },
-  })).map(monster => monster.masterId ?? monster.id);
-
-  // ドロップ抽選（サーバー側で確定）
-  const dropResult = svc.processStageDropTable(stage, char.clearedStages ?? [], 0, Math.random, ownedMonsterMasterIds);
-  dropResult.monsters.push(...svc.processStageNecromance(
-    stage,
-    [...ownedMonsterMasterIds, ...dropResult.monsters.map(monster => monster.masterId ?? monster.id)],
-  ));
-  const bestResidueScore = Math.max(0, ...dropResult.residues.map(residue => calculateResidueScore(residue)));
+  let expGain = 0;
+  let dropResult = emptyDrop();
+  let bestResidueScore = 0;
   const playerName = getPlayerDisplayName(authorizedUser);
 
   // DB 保存（トランザクション）
@@ -817,6 +893,32 @@ export async function processStageResultForUser(
     if (stageAttemptError) {
       throw new Error(stageAttemptError);
     }
+
+    await lockCharacterForUpdate(tx, char.id);
+    const lockedChar = await tx.character.findUnique({
+      where: { id: char.id },
+      include: { jobs: true },
+    });
+    if (!lockedChar) throw new Error('キャラクターが見つかりません');
+
+    const playerForExp: Parameters<RewardService['calculateExp']>[1] = {
+      category:     'PHYSICAL',
+      currentJobId: lockedChar.currentJobId ?? 'warrior',
+      jobs:         (lockedChar.jobs as any[]).map(j => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
+    } as any;
+    expGain = svc.calculateExp(stage.rewards.baseExp, playerForExp);
+
+    const ownedMonsterMasterIds = (await tx.monster.findMany({
+      where: { characterId: char.id },
+      select: { masterId: true, id: true },
+    })).map(monster => monster.masterId ?? monster.id);
+
+    dropResult = svc.processStageDropTable(stage, lockedChar.clearedStages ?? [], 0, Math.random, ownedMonsterMasterIds);
+    dropResult.monsters.push(...svc.processStageNecromance(
+      stage,
+      [...ownedMonsterMasterIds, ...dropResult.monsters.map(monster => monster.masterId ?? monster.id)],
+    ));
+    bestResidueScore = Math.max(0, ...dropResult.residues.map(residue => calculateResidueScore(residue)));
 
     // 武器保存
     for (const weapon of dropResult.weapons) {
@@ -924,7 +1026,7 @@ export async function processStageResultForUser(
     }
 
     // EXP 加算 + レベルアップ時の永続%パッシブ
-    const currentJob = (char.jobs as any[]).find(j => j.jobId === char.currentJobId);
+    const currentJob = (lockedChar.jobs as any[]).find(j => j.jobId === lockedChar.currentJobId);
     if (currentJob) {
       const newExp      = currentJob.exp + expGain;
       const oldLevel    = currentJob.level as number;
@@ -932,7 +1034,7 @@ export async function processStageResultForUser(
       const levelsGained = newLevel - oldLevel;
 
       await tx.userJob.update({
-        where: { characterId_jobId: { characterId: char.id, jobId: char.currentJobId! } },
+        where: { characterId_jobId: { characterId: char.id, jobId: lockedChar.currentJobId! } },
         data:  { exp: newExp, level: newLevel },
       });
 
@@ -980,11 +1082,18 @@ export async function processStageResultForUser(
       });
     }
 
+    const lockedPlayerSave = readPlayerSave(lockedChar.playerState);
+    const nextPlayerSave: PlayerSaveV1 = {
+      ...lockedPlayerSave,
+      residueMaterials: mergeResidueMaterials(lockedPlayerSave.residueMaterials, dropResult.materials),
+    };
+
     await tx.character.update({
       where: { id: char.id },
       data: {
         gold: { increment: goldGain },
-        ...(!char.clearedStages.includes(normalizedStageId) ? { clearedStages: { push: normalizedStageId } } : {}),
+        ...(!lockedChar.clearedStages.includes(normalizedStageId) ? { clearedStages: { push: normalizedStageId } } : {}),
+        playerState: playerSaveToJson(nextPlayerSave),
       },
     });
 
@@ -1189,6 +1298,7 @@ export async function createCharacterForUser(
         userId,
         currentJobId: jobId,
         gold: 50000,
+        playerState: playerSaveToJson(emptyPlayerSave()),
         hp: initialStats.hp,
         atk: initialStats.atk,
         def: initialStats.def,

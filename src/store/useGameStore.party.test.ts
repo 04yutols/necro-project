@@ -52,6 +52,8 @@ function currentStateAsServerData(overrides: Partial<ServerGameData> = {}): Serv
     soulShards: state.soulShards,
     inventoryItems: state.inventoryItems,
     weaponMaterials: state.weaponMaterials,
+    residueMaterials: state.residueMaterials,
+    transmutationPoints: state.transmutationPoints,
     abyssalResidues: state.abyssalResidues,
     equippedResidueSlots: state.equippedResidueSlots,
     ...overrides,
@@ -233,12 +235,17 @@ describe('useGameStore party formation actions', () => {
       level: 7,
       exp: 321,
     };
+    const serverResidueMaterials = [
+      { id: 'server-mat', name: 'サーバー素材', quantity: 3, expValue: 600, rarity: 'RARE' as const },
+    ];
 
     useGameStore.getState().loadFromServer(currentStateAsServerData({
       player: serverPlayer,
       necroStatus: serverNecroStatus,
       party: [null, null, null],
       inventoryMonsters: [],
+      residueMaterials: serverResidueMaterials,
+      transmutationPoints: 77,
     }));
 
     const current = useGameStore.getState();
@@ -249,8 +256,12 @@ describe('useGameStore party formation actions', () => {
     expect(current.player?.clearedStages).toEqual(['server_stage']);
     expect(current.player?.gold).toBe(1234);
     expect(current.necroStatus?.level).toBe(7);
+    expect(current.residueMaterials).toEqual(serverResidueMaterials);
+    expect(current.transmutationPoints).toBe(77);
     expect(persisted?.player?.clearedStages).toEqual(['server_stage']);
     expect(persisted?.necroStatus?.level).toBe(7);
+    expect(persisted?.residueMaterials).toEqual(serverResidueMaterials);
+    expect(persisted?.transmutationPoints).toBe(77);
     expect(raw.isServerBacked).toBeUndefined();
   });
 
