@@ -23,8 +23,8 @@
       "1": {
         "hp": 34,
         "mp": 10,
-        "atk": 5,
-        "def": 5,
+        "atk": 8,
+        "def": 7,
         "spd": 98,
         "critRate": 4.8,
         "critDmg": 157.5,
@@ -32,10 +32,10 @@
         "effectRes": 0
       },
       "2": {
-        "hp": 35,
+        "hp": 36,
         "mp": 11,
-        "atk": 5,
-        "def": 5,
+        "atk": 10,
+        "def": 9,
         "spd": 98,
         "critRate": 4.8,
         "critDmg": 157.5,
@@ -43,10 +43,10 @@
         "effectRes": 0
       },
       "3": {
-        "hp": 37,
+        "hp": 38,
         "mp": 12,
-        "atk": 5,
-        "def": 5,
+        "atk": 12,
+        "def": 11,
         "spd": 98,
         "critRate": 4.8,
         "critDmg": 157.6,
@@ -54,10 +54,10 @@
         "effectRes": 0
       },
       "4": {
-        "hp": 38,
+        "hp": 40,
         "mp": 14,
-        "atk": 5,
-        "def": 5,
+        "atk": 13,
+        "def": 13,
         "spd": 98,
         "critRate": 4.8,
         "critDmg": 157.6,
@@ -65,10 +65,10 @@
         "effectRes": 0
       },
       "5": {
-        "hp": 40,
+        "hp": 43,
         "mp": 15,
-        "atk": 6,
-        "def": 5,
+        "atk": 15,
+        "def": 15,
         "spd": 98,
         "critRate": 4.8,
         "critDmg": 157.6,
@@ -76,10 +76,10 @@
         "effectRes": 0
       },
       "6": {
-        "hp": 42,
+        "hp": 45,
         "mp": 16,
-        "atk": 6,
-        "def": 6,
+        "atk": 17,
+        "def": 17,
         "spd": 98,
         "critRate": 4.8,
         "critDmg": 157.7,
@@ -87,10 +87,10 @@
         "effectRes": 0.1
       },
       "7": {
-        "hp": 43,
+        "hp": 47,
         "mp": 17,
-        "atk": 6,
-        "def": 6,
+        "atk": 19,
+        "def": 19,
         "spd": 98,
         "critRate": 4.8,
         "critDmg": 157.7,
@@ -98,10 +98,10 @@
         "effectRes": 0.1
       },
       "8": {
-        "hp": 45,
+        "hp": 49,
         "mp": 18,
-        "atk": 6,
-        "def": 6,
+        "atk": 21,
+        "def": 21,
         "spd": 98,
         "critRate": 4.8,
         "critDmg": 157.7,
@@ -109,10 +109,10 @@
         "effectRes": 0.1
       },
       "9": {
-        "hp": 46,
+        "hp": 52,
         "mp": 20,
-        "atk": 6,
-        "def": 6,
+        "atk": 23,
+        "def": 23,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 157.8,
@@ -120,10 +120,10 @@
         "effectRes": 0.1
       },
       "10": {
-        "hp": 48,
+        "hp": 54,
         "mp": 21,
-        "atk": 6,
-        "def": 6,
+        "atk": 24,
+        "def": 25,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 157.8,
@@ -131,10 +131,10 @@
         "effectRes": 0.1
       },
       "11": {
-        "hp": 49,
+        "hp": 56,
         "mp": 22,
-        "atk": 6,
-        "def": 6,
+        "atk": 26,
+        "def": 27,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 157.9,
@@ -142,10 +142,10 @@
         "effectRes": 0.1
       },
       "12": {
-        "hp": 51,
+        "hp": 58,
         "mp": 23,
-        "atk": 7,
-        "def": 6,
+        "atk": 28,
+        "def": 29,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 157.9,
@@ -153,10 +153,10 @@
         "effectRes": 0.1
       },
       "13": {
-        "hp": 53,
+        "hp": 61,
         "mp": 25,
-        "atk": 7,
-        "def": 6,
+        "atk": 30,
+        "def": 31,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 157.9,
@@ -164,10 +164,10 @@
         "effectRes": 0.1
       },
       "14": {
-        "hp": 54,
+        "hp": 63,
         "mp": 26,
-        "atk": 7,
-        "def": 6,
+        "atk": 32,
+        "def": 33,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 158,
@@ -175,10 +175,10 @@
         "effectRes": 0.2
       },
       "15": {
-        "hp": 56,
+        "hp": 65,
         "mp": 27,
-        "atk": 7,
-        "def": 7,
+        "atk": 34,
+        "def": 35,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 158,
@@ -186,10 +186,10 @@
         "effectRes": 0.2
       },
       "16": {
-        "hp": 57,
+        "hp": 68,
         "mp": 28,
-        "atk": 7,
-        "def": 7,
+        "atk": 36,
+        "def": 37,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 158,
@@ -197,10 +197,10 @@
         "effectRes": 0.2
       },
       "17": {
-        "hp": 59,
+        "hp": 70,
         "mp": 30,
-        "atk": 7,
-        "def": 7,
+        "atk": 38,
+        "def": 40,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 158.1,
@@ -208,10 +208,10 @@
         "effectRes": 0.2
       },
       "18": {
-        "hp": 61,
+        "hp": 73,
         "mp": 31,
-        "atk": 8,
-        "def": 7,
+        "atk": 40,
+        "def": 42,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 158.1,
@@ -219,10 +219,10 @@
         "effectRes": 0.2
       },
       "19": {
-        "hp": 62,
+        "hp": 75,
         "mp": 32,
-        "atk": 8,
-        "def": 7,
+        "atk": 42,
+        "def": 44,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 158.2,
@@ -230,10 +230,10 @@
         "effectRes": 0.2
       },
       "20": {
-        "hp": 64,
+        "hp": 78,
         "mp": 34,
-        "atk": 8,
-        "def": 7,
+        "atk": 44,
+        "def": 46,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 158.2,
@@ -241,10 +241,10 @@
         "effectRes": 0.2
       },
       "21": {
-        "hp": 66,
+        "hp": 80,
         "mp": 35,
-        "atk": 8,
-        "def": 7,
+        "atk": 46,
+        "def": 48,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 158.2,
@@ -252,10 +252,10 @@
         "effectRes": 0.3
       },
       "22": {
-        "hp": 68,
+        "hp": 82,
         "mp": 36,
-        "atk": 8,
-        "def": 7,
+        "atk": 48,
+        "def": 50,
         "spd": 98,
         "critRate": 4.9,
         "critDmg": 158.3,
@@ -263,10 +263,10 @@
         "effectRes": 0.3
       },
       "23": {
-        "hp": 69,
+        "hp": 85,
         "mp": 38,
-        "atk": 8,
-        "def": 8,
+        "atk": 50,
+        "def": 53,
         "spd": 98,
         "critRate": 5,
         "critDmg": 158.3,
@@ -274,10 +274,10 @@
         "effectRes": 0.3
       },
       "24": {
-        "hp": 71,
+        "hp": 87,
         "mp": 39,
-        "atk": 8,
-        "def": 8,
+        "atk": 52,
+        "def": 55,
         "spd": 98,
         "critRate": 5,
         "critDmg": 158.4,
@@ -285,10 +285,10 @@
         "effectRes": 0.3
       },
       "25": {
-        "hp": 73,
+        "hp": 90,
         "mp": 41,
-        "atk": 9,
-        "def": 8,
+        "atk": 54,
+        "def": 57,
         "spd": 98,
         "critRate": 5,
         "critDmg": 158.4,
@@ -296,10 +296,10 @@
         "effectRes": 0.3
       },
       "26": {
-        "hp": 75,
+        "hp": 93,
         "mp": 42,
-        "atk": 9,
-        "def": 8,
+        "atk": 56,
+        "def": 60,
         "spd": 98,
         "critRate": 5,
         "critDmg": 158.4,
@@ -307,10 +307,10 @@
         "effectRes": 0.3
       },
       "27": {
-        "hp": 76,
+        "hp": 95,
         "mp": 43,
-        "atk": 9,
-        "def": 8,
+        "atk": 58,
+        "def": 62,
         "spd": 98,
         "critRate": 5,
         "critDmg": 158.5,
@@ -318,10 +318,10 @@
         "effectRes": 0.3
       },
       "28": {
-        "hp": 78,
+        "hp": 98,
         "mp": 45,
-        "atk": 9,
-        "def": 8,
+        "atk": 61,
+        "def": 64,
         "spd": 98,
         "critRate": 5,
         "critDmg": 158.5,
@@ -329,10 +329,10 @@
         "effectRes": 0.3
       },
       "29": {
-        "hp": 80,
+        "hp": 100,
         "mp": 46,
-        "atk": 9,
-        "def": 8,
+        "atk": 63,
+        "def": 66,
         "spd": 98,
         "critRate": 5,
         "critDmg": 158.6,
@@ -340,10 +340,10 @@
         "effectRes": 0.4
       },
       "30": {
-        "hp": 82,
+        "hp": 103,
         "mp": 48,
-        "atk": 9,
-        "def": 9,
+        "atk": 65,
+        "def": 69,
         "spd": 98,
         "critRate": 5,
         "critDmg": 158.6,
@@ -351,10 +351,10 @@
         "effectRes": 0.4
       },
       "31": {
-        "hp": 84,
+        "hp": 105,
         "mp": 49,
-        "atk": 10,
-        "def": 9,
+        "atk": 67,
+        "def": 71,
         "spd": 98,
         "critRate": 5,
         "critDmg": 158.6,
@@ -362,10 +362,10 @@
         "effectRes": 0.4
       },
       "32": {
-        "hp": 85,
+        "hp": 108,
         "mp": 50,
-        "atk": 10,
-        "def": 9,
+        "atk": 69,
+        "def": 74,
         "spd": 99,
         "critRate": 5,
         "critDmg": 158.7,
@@ -373,10 +373,10 @@
         "effectRes": 0.4
       },
       "33": {
-        "hp": 87,
+        "hp": 111,
         "mp": 52,
-        "atk": 10,
-        "def": 9,
+        "atk": 71,
+        "def": 76,
         "spd": 99,
         "critRate": 5,
         "critDmg": 158.7,
@@ -384,10 +384,10 @@
         "effectRes": 0.4
       },
       "34": {
-        "hp": 89,
+        "hp": 113,
         "mp": 53,
-        "atk": 10,
-        "def": 9,
+        "atk": 74,
+        "def": 78,
         "spd": 99,
         "critRate": 5,
         "critDmg": 158.8,
@@ -395,10 +395,10 @@
         "effectRes": 0.4
       },
       "35": {
-        "hp": 91,
+        "hp": 116,
         "mp": 55,
-        "atk": 10,
-        "def": 9,
+        "atk": 76,
+        "def": 81,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 158.8,
@@ -406,10 +406,10 @@
         "effectRes": 0.4
       },
       "36": {
-        "hp": 93,
+        "hp": 119,
         "mp": 56,
-        "atk": 11,
-        "def": 9,
+        "atk": 78,
+        "def": 83,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 158.9,
@@ -417,10 +417,10 @@
         "effectRes": 0.5
       },
       "37": {
-        "hp": 95,
+        "hp": 122,
         "mp": 58,
-        "atk": 11,
-        "def": 9,
+        "atk": 80,
+        "def": 86,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 158.9,
@@ -428,10 +428,10 @@
         "effectRes": 0.5
       },
       "38": {
-        "hp": 97,
+        "hp": 124,
         "mp": 59,
-        "atk": 11,
-        "def": 10,
+        "atk": 83,
+        "def": 88,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 158.9,
@@ -439,10 +439,10 @@
         "effectRes": 0.5
       },
       "39": {
-        "hp": 98,
+        "hp": 127,
         "mp": 61,
-        "atk": 11,
-        "def": 10,
+        "atk": 85,
+        "def": 91,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 159,
@@ -450,10 +450,10 @@
         "effectRes": 0.5
       },
       "40": {
-        "hp": 100,
+        "hp": 130,
         "mp": 62,
-        "atk": 11,
-        "def": 10,
+        "atk": 87,
+        "def": 93,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 159,
@@ -461,10 +461,10 @@
         "effectRes": 0.5
       },
       "41": {
-        "hp": 102,
+        "hp": 133,
         "mp": 64,
-        "atk": 11,
-        "def": 10,
+        "atk": 89,
+        "def": 96,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 159.1,
@@ -472,10 +472,10 @@
         "effectRes": 0.5
       },
       "42": {
-        "hp": 104,
+        "hp": 135,
         "mp": 65,
-        "atk": 12,
-        "def": 10,
+        "atk": 92,
+        "def": 98,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 159.1,
@@ -483,10 +483,10 @@
         "effectRes": 0.6
       },
       "43": {
-        "hp": 106,
+        "hp": 138,
         "mp": 67,
-        "atk": 12,
-        "def": 10,
+        "atk": 94,
+        "def": 101,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 159.2,
@@ -494,10 +494,10 @@
         "effectRes": 0.6
       },
       "44": {
-        "hp": 108,
+        "hp": 141,
         "mp": 68,
-        "atk": 12,
-        "def": 10,
+        "atk": 96,
+        "def": 103,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 159.2,
@@ -505,10 +505,10 @@
         "effectRes": 0.6
       },
       "45": {
-        "hp": 110,
+        "hp": 144,
         "mp": 70,
-        "atk": 12,
-        "def": 11,
+        "atk": 99,
+        "def": 106,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 159.3,
@@ -516,10 +516,10 @@
         "effectRes": 0.6
       },
       "46": {
-        "hp": 112,
+        "hp": 147,
         "mp": 72,
-        "atk": 12,
-        "def": 11,
+        "atk": 101,
+        "def": 108,
         "spd": 99,
         "critRate": 5.1,
         "critDmg": 159.3,
@@ -527,10 +527,10 @@
         "effectRes": 0.6
       },
       "47": {
-        "hp": 114,
+        "hp": 150,
         "mp": 73,
-        "atk": 13,
-        "def": 11,
+        "atk": 104,
+        "def": 111,
         "spd": 99,
         "critRate": 5.2,
         "critDmg": 159.4,
@@ -538,10 +538,10 @@
         "effectRes": 0.6
       },
       "48": {
-        "hp": 116,
+        "hp": 153,
         "mp": 75,
-        "atk": 13,
-        "def": 11,
+        "atk": 106,
+        "def": 113,
         "spd": 99,
         "critRate": 5.2,
         "critDmg": 159.4,
@@ -549,10 +549,10 @@
         "effectRes": 0.6
       },
       "49": {
-        "hp": 118,
+        "hp": 156,
         "mp": 76,
-        "atk": 13,
-        "def": 11,
+        "atk": 108,
+        "def": 116,
         "spd": 99,
         "critRate": 5.2,
         "critDmg": 159.5,
@@ -560,10 +560,10 @@
         "effectRes": 0.7
       },
       "50": {
-        "hp": 120,
+        "hp": 159,
         "mp": 78,
-        "atk": 13,
-        "def": 11,
+        "atk": 111,
+        "def": 119,
         "spd": 99,
         "critRate": 5.2,
         "critDmg": 159.5,
@@ -571,10 +571,10 @@
         "effectRes": 0.7
       },
       "51": {
-        "hp": 122,
+        "hp": 161,
         "mp": 80,
-        "atk": 13,
-        "def": 12,
+        "atk": 113,
+        "def": 121,
         "spd": 99,
         "critRate": 5.2,
         "critDmg": 159.5,
@@ -582,10 +582,10 @@
         "effectRes": 0.7
       },
       "52": {
-        "hp": 124,
+        "hp": 164,
         "mp": 81,
-        "atk": 13,
-        "def": 12,
+        "atk": 116,
+        "def": 124,
         "spd": 99,
         "critRate": 5.2,
         "critDmg": 159.6,
@@ -593,10 +593,10 @@
         "effectRes": 0.7
       },
       "53": {
-        "hp": 126,
+        "hp": 167,
         "mp": 83,
-        "atk": 14,
-        "def": 12,
+        "atk": 118,
+        "def": 127,
         "spd": 99,
         "critRate": 5.2,
         "critDmg": 159.6,
@@ -604,10 +604,10 @@
         "effectRes": 0.7
       },
       "54": {
-        "hp": 129,
+        "hp": 170,
         "mp": 85,
-        "atk": 14,
-        "def": 12,
+        "atk": 121,
+        "def": 129,
         "spd": 99,
         "critRate": 5.2,
         "critDmg": 159.7,
@@ -615,10 +615,10 @@
         "effectRes": 0.7
       },
       "55": {
-        "hp": 131,
+        "hp": 173,
         "mp": 86,
-        "atk": 14,
-        "def": 12,
+        "atk": 123,
+        "def": 132,
         "spd": 99,
         "critRate": 5.2,
         "critDmg": 159.7,
@@ -626,10 +626,10 @@
         "effectRes": 0.8
       },
       "56": {
-        "hp": 133,
+        "hp": 177,
         "mp": 88,
-        "atk": 14,
-        "def": 12,
+        "atk": 126,
+        "def": 135,
         "spd": 99,
         "critRate": 5.2,
         "critDmg": 159.8,
@@ -637,10 +637,10 @@
         "effectRes": 0.8
       },
       "57": {
-        "hp": 135,
+        "hp": 180,
         "mp": 89,
-        "atk": 14,
-        "def": 12,
+        "atk": 128,
+        "def": 138,
         "spd": 99,
         "critRate": 5.2,
         "critDmg": 159.8,
@@ -648,10 +648,10 @@
         "effectRes": 0.8
       },
       "58": {
-        "hp": 137,
+        "hp": 183,
         "mp": 91,
-        "atk": 15,
-        "def": 13,
+        "atk": 131,
+        "def": 140,
         "spd": 99,
         "critRate": 5.3,
         "critDmg": 159.9,
@@ -659,10 +659,10 @@
         "effectRes": 0.8
       },
       "59": {
-        "hp": 139,
+        "hp": 186,
         "mp": 93,
-        "atk": 15,
-        "def": 13,
+        "atk": 133,
+        "def": 143,
         "spd": 99,
         "critRate": 5.3,
         "critDmg": 159.9,
@@ -670,10 +670,10 @@
         "effectRes": 0.8
       },
       "60": {
-        "hp": 141,
+        "hp": 189,
         "mp": 95,
-        "atk": 15,
-        "def": 13,
+        "atk": 136,
+        "def": 146,
         "spd": 99,
         "critRate": 5.3,
         "critDmg": 160,
@@ -681,10 +681,10 @@
         "effectRes": 0.8
       },
       "61": {
-        "hp": 143,
+        "hp": 192,
         "mp": 96,
-        "atk": 15,
-        "def": 13,
+        "atk": 138,
+        "def": 149,
         "spd": 99,
         "critRate": 5.3,
         "critDmg": 160,
@@ -692,10 +692,10 @@
         "effectRes": 0.9
       },
       "62": {
-        "hp": 146,
+        "hp": 195,
         "mp": 98,
-        "atk": 15,
-        "def": 13,
+        "atk": 141,
+        "def": 152,
         "spd": 99,
         "critRate": 5.3,
         "critDmg": 160.1,
@@ -703,10 +703,10 @@
         "effectRes": 0.9
       },
       "63": {
-        "hp": 148,
+        "hp": 198,
         "mp": 100,
-        "atk": 16,
-        "def": 13,
+        "atk": 144,
+        "def": 154,
         "spd": 99,
         "critRate": 5.3,
         "critDmg": 160.1,
@@ -714,10 +714,10 @@
         "effectRes": 0.9
       },
       "64": {
-        "hp": 150,
+        "hp": 201,
         "mp": 101,
-        "atk": 16,
-        "def": 14,
+        "atk": 146,
+        "def": 157,
         "spd": 99,
         "critRate": 5.3,
         "critDmg": 160.2,
@@ -725,10 +725,10 @@
         "effectRes": 0.9
       },
       "65": {
-        "hp": 152,
+        "hp": 205,
         "mp": 103,
-        "atk": 16,
-        "def": 14,
+        "atk": 149,
+        "def": 160,
         "spd": 99,
         "critRate": 5.3,
         "critDmg": 160.2,
@@ -736,10 +736,10 @@
         "effectRes": 0.9
       },
       "66": {
-        "hp": 154,
+        "hp": 208,
         "mp": 105,
-        "atk": 16,
-        "def": 14,
+        "atk": 152,
+        "def": 163,
         "spd": 99,
         "critRate": 5.3,
         "critDmg": 160.3,
@@ -747,10 +747,10 @@
         "effectRes": 0.9
       },
       "67": {
-        "hp": 157,
+        "hp": 211,
         "mp": 107,
-        "atk": 16,
-        "def": 14,
+        "atk": 154,
+        "def": 166,
         "spd": 99,
         "critRate": 5.3,
         "critDmg": 160.3,
@@ -758,10 +758,10 @@
         "effectRes": 1
       },
       "68": {
-        "hp": 159,
+        "hp": 214,
         "mp": 108,
-        "atk": 17,
-        "def": 14,
+        "atk": 157,
+        "def": 169,
         "spd": 99,
         "critRate": 5.4,
         "critDmg": 160.4,
@@ -769,10 +769,10 @@
         "effectRes": 1
       },
       "69": {
-        "hp": 161,
+        "hp": 218,
         "mp": 110,
-        "atk": 17,
-        "def": 14,
+        "atk": 160,
+        "def": 172,
         "spd": 99,
         "critRate": 5.4,
         "critDmg": 160.4,
@@ -780,10 +780,10 @@
         "effectRes": 1
       },
       "70": {
-        "hp": 163,
+        "hp": 221,
         "mp": 112,
-        "atk": 17,
-        "def": 15,
+        "atk": 162,
+        "def": 175,
         "spd": 99,
         "critRate": 5.4,
         "critDmg": 160.5,
@@ -791,10 +791,10 @@
         "effectRes": 1
       },
       "71": {
-        "hp": 166,
+        "hp": 224,
         "mp": 114,
-        "atk": 17,
-        "def": 15,
+        "atk": 165,
+        "def": 178,
         "spd": 99,
         "critRate": 5.4,
         "critDmg": 160.6,
@@ -802,10 +802,10 @@
         "effectRes": 1
       },
       "72": {
-        "hp": 168,
+        "hp": 227,
         "mp": 116,
-        "atk": 18,
-        "def": 15,
+        "atk": 168,
+        "def": 181,
         "spd": 99,
         "critRate": 5.4,
         "critDmg": 160.6,
@@ -813,10 +813,10 @@
         "effectRes": 1.1
       },
       "73": {
-        "hp": 170,
+        "hp": 231,
         "mp": 117,
-        "atk": 18,
-        "def": 15,
+        "atk": 171,
+        "def": 184,
         "spd": 99,
         "critRate": 5.4,
         "critDmg": 160.7,
@@ -824,10 +824,10 @@
         "effectRes": 1.1
       },
       "74": {
-        "hp": 173,
+        "hp": 234,
         "mp": 119,
-        "atk": 18,
-        "def": 15,
+        "atk": 173,
+        "def": 187,
         "spd": 99,
         "critRate": 5.4,
         "critDmg": 160.7,
@@ -835,10 +835,10 @@
         "effectRes": 1.1
       },
       "75": {
-        "hp": 175,
+        "hp": 238,
         "mp": 121,
-        "atk": 18,
-        "def": 15,
+        "atk": 176,
+        "def": 190,
         "spd": 99,
         "critRate": 5.4,
         "critDmg": 160.8,
@@ -846,10 +846,10 @@
         "effectRes": 1.1
       },
       "76": {
-        "hp": 177,
+        "hp": 241,
         "mp": 123,
-        "atk": 18,
-        "def": 16,
+        "atk": 179,
+        "def": 193,
         "spd": 99,
         "critRate": 5.4,
         "critDmg": 160.8,
@@ -857,10 +857,10 @@
         "effectRes": 1.1
       },
       "77": {
-        "hp": 180,
+        "hp": 244,
         "mp": 125,
-        "atk": 19,
-        "def": 16,
+        "atk": 182,
+        "def": 196,
         "spd": 99,
         "critRate": 5.4,
         "critDmg": 160.9,
@@ -868,10 +868,10 @@
         "effectRes": 1.1
       },
       "78": {
-        "hp": 182,
+        "hp": 248,
         "mp": 127,
-        "atk": 19,
-        "def": 16,
+        "atk": 185,
+        "def": 199,
         "spd": 99,
         "critRate": 5.5,
         "critDmg": 160.9,
@@ -879,10 +879,10 @@
         "effectRes": 1.2
       },
       "79": {
-        "hp": 184,
+        "hp": 251,
         "mp": 129,
-        "atk": 19,
-        "def": 16,
+        "atk": 187,
+        "def": 202,
         "spd": 99,
         "critRate": 5.5,
         "critDmg": 161,
@@ -890,10 +890,10 @@
         "effectRes": 1.2
       },
       "80": {
-        "hp": 187,
+        "hp": 255,
         "mp": 130,
-        "atk": 19,
-        "def": 16,
+        "atk": 190,
+        "def": 205,
         "spd": 100,
         "critRate": 5.5,
         "critDmg": 161,
@@ -901,10 +901,10 @@
         "effectRes": 1.2
       },
       "81": {
-        "hp": 189,
+        "hp": 258,
         "mp": 132,
-        "atk": 20,
-        "def": 16,
+        "atk": 193,
+        "def": 208,
         "spd": 100,
         "critRate": 5.5,
         "critDmg": 161.1,
@@ -912,10 +912,10 @@
         "effectRes": 1.2
       },
       "82": {
-        "hp": 192,
+        "hp": 262,
         "mp": 134,
-        "atk": 20,
-        "def": 17,
+        "atk": 196,
+        "def": 211,
         "spd": 100,
         "critRate": 5.5,
         "critDmg": 161.1,
@@ -923,10 +923,10 @@
         "effectRes": 1.2
       },
       "83": {
-        "hp": 194,
+        "hp": 265,
         "mp": 136,
-        "atk": 20,
-        "def": 17,
+        "atk": 199,
+        "def": 214,
         "spd": 100,
         "critRate": 5.5,
         "critDmg": 161.2,
@@ -934,10 +934,10 @@
         "effectRes": 1.3
       },
       "84": {
-        "hp": 196,
+        "hp": 269,
         "mp": 138,
-        "atk": 20,
-        "def": 17,
+        "atk": 202,
+        "def": 218,
         "spd": 100,
         "critRate": 5.5,
         "critDmg": 161.3,
@@ -945,10 +945,10 @@
         "effectRes": 1.3
       },
       "85": {
-        "hp": 199,
+        "hp": 272,
         "mp": 140,
-        "atk": 20,
-        "def": 17,
+        "atk": 205,
+        "def": 221,
         "spd": 100,
         "critRate": 5.5,
         "critDmg": 161.3,
@@ -956,10 +956,10 @@
         "effectRes": 1.3
       },
       "86": {
-        "hp": 201,
+        "hp": 276,
         "mp": 142,
-        "atk": 21,
-        "def": 17,
+        "atk": 208,
+        "def": 224,
         "spd": 100,
         "critRate": 5.5,
         "critDmg": 161.4,
@@ -967,10 +967,10 @@
         "effectRes": 1.3
       },
       "87": {
-        "hp": 204,
+        "hp": 279,
         "mp": 144,
-        "atk": 21,
-        "def": 18,
+        "atk": 210,
+        "def": 227,
         "spd": 100,
         "critRate": 5.6,
         "critDmg": 161.4,
@@ -978,10 +978,10 @@
         "effectRes": 1.3
       },
       "88": {
-        "hp": 206,
+        "hp": 283,
         "mp": 146,
-        "atk": 21,
-        "def": 18,
+        "atk": 213,
+        "def": 230,
         "spd": 100,
         "critRate": 5.6,
         "critDmg": 161.5,
@@ -989,10 +989,10 @@
         "effectRes": 1.4
       },
       "89": {
-        "hp": 209,
+        "hp": 286,
         "mp": 148,
-        "atk": 21,
-        "def": 18,
+        "atk": 216,
+        "def": 234,
         "spd": 100,
         "critRate": 5.6,
         "critDmg": 161.5,
@@ -1000,10 +1000,10 @@
         "effectRes": 1.4
       },
       "90": {
-        "hp": 211,
+        "hp": 290,
         "mp": 150,
-        "atk": 22,
-        "def": 18,
+        "atk": 219,
+        "def": 237,
         "spd": 100,
         "critRate": 5.6,
         "critDmg": 161.6,
@@ -1011,10 +1011,10 @@
         "effectRes": 1.4
       },
       "91": {
-        "hp": 214,
+        "hp": 294,
         "mp": 152,
-        "atk": 22,
-        "def": 18,
+        "atk": 222,
+        "def": 240,
         "spd": 100,
         "critRate": 5.6,
         "critDmg": 161.7,
@@ -1022,10 +1022,10 @@
         "effectRes": 1.4
       },
       "92": {
-        "hp": 216,
+        "hp": 297,
         "mp": 154,
-        "atk": 22,
-        "def": 18,
+        "atk": 225,
+        "def": 243,
         "spd": 100,
         "critRate": 5.6,
         "critDmg": 161.7,
@@ -1033,10 +1033,10 @@
         "effectRes": 1.4
       },
       "93": {
-        "hp": 219,
+        "hp": 301,
         "mp": 156,
-        "atk": 22,
-        "def": 19,
+        "atk": 228,
+        "def": 247,
         "spd": 100,
         "critRate": 5.6,
         "critDmg": 161.8,
@@ -1044,10 +1044,10 @@
         "effectRes": 1.5
       },
       "94": {
-        "hp": 221,
+        "hp": 305,
         "mp": 158,
-        "atk": 23,
-        "def": 19,
+        "atk": 231,
+        "def": 250,
         "spd": 100,
         "critRate": 5.6,
         "critDmg": 161.8,
@@ -1055,10 +1055,10 @@
         "effectRes": 1.5
       },
       "95": {
-        "hp": 224,
+        "hp": 308,
         "mp": 160,
-        "atk": 23,
-        "def": 19,
+        "atk": 235,
+        "def": 253,
         "spd": 100,
         "critRate": 5.6,
         "critDmg": 161.9,
@@ -1066,10 +1066,10 @@
         "effectRes": 1.5
       },
       "96": {
-        "hp": 227,
+        "hp": 312,
         "mp": 162,
-        "atk": 23,
-        "def": 19,
+        "atk": 238,
+        "def": 257,
         "spd": 100,
         "critRate": 5.7,
         "critDmg": 162,
@@ -1077,10 +1077,10 @@
         "effectRes": 1.5
       },
       "97": {
-        "hp": 229,
+        "hp": 316,
         "mp": 164,
-        "atk": 23,
-        "def": 19,
+        "atk": 241,
+        "def": 260,
         "spd": 100,
         "critRate": 5.7,
         "critDmg": 162,
@@ -1088,10 +1088,10 @@
         "effectRes": 1.5
       },
       "98": {
-        "hp": 232,
+        "hp": 319,
         "mp": 166,
-        "atk": 24,
-        "def": 20,
+        "atk": 244,
+        "def": 263,
         "spd": 100,
         "critRate": 5.7,
         "critDmg": 162.1,
@@ -1099,10 +1099,10 @@
         "effectRes": 1.6
       },
       "99": {
-        "hp": 234,
+        "hp": 323,
         "mp": 168,
-        "atk": 24,
-        "def": 20,
+        "atk": 247,
+        "def": 267,
         "spd": 100,
         "critRate": 5.7,
         "critDmg": 162.1,
@@ -1110,10 +1110,10 @@
         "effectRes": 1.6
       },
       "100": {
-        "hp": 237,
+        "hp": 327,
         "mp": 170,
-        "atk": 24,
-        "def": 20,
+        "atk": 250,
+        "def": 270,
         "spd": 100,
         "critRate": 5.7,
         "critDmg": 162.2,

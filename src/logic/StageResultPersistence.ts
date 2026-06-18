@@ -1,13 +1,15 @@
 export interface StageResultPersistenceContext {
   hasStageId: boolean;
-  isNextRuntime: boolean;
+  requiresCloudSave: boolean;
   isServerBacked: boolean;
+  hasStageAttempt: boolean;
 }
 
 export const LOCAL_STAGE_RESULT_TIMEOUT_MS = 3500;
 
 export function requiresCloudStageSave(context: StageResultPersistenceContext): boolean {
-  return context.hasStageId && context.isNextRuntime && context.isServerBacked;
+  return context.hasStageId
+    && (context.requiresCloudSave || context.isServerBacked || context.hasStageAttempt);
 }
 
 export function canUseLocalStageResultFallback(context: StageResultPersistenceContext): boolean {

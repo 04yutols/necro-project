@@ -69,6 +69,7 @@ import type { AilmentType, BaseStats, BossGimmick, DemonFormData, DropEntry, Ele
 interface BattleCanvasProps {
   stageId?: string;
   stageAttemptId?: string | null;
+  requiresCloudSave?: boolean;
   onEnd: () => void;
 }
 
@@ -564,21 +565,22 @@ function buildLocalStageResult(stage?: StageData, clearedStages: readonly string
   };
 }
 
-function isNextClientRuntime() {
-  return typeof window !== 'undefined'
-    && Boolean((window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__);
-}
-
-async function processStageResultLocal(stageId?: string, stageAttemptId?: string | null, meta: StageResultMeta = {}) {
+async function processStageResultLocal(
+  stageId?: string,
+  stageAttemptId?: string | null,
+  meta: StageResultMeta = {},
+  options: { requiresCloudSave?: boolean } = {},
+) {
   const stage = stageId ? STAGES[stageId] : undefined;
   const persistenceContext = {
     hasStageId: Boolean(stageId),
-    isNextRuntime: isNextClientRuntime(),
+    requiresCloudSave: options.requiresCloudSave === true,
     isServerBacked: useGameStore.getState().isServerBacked,
+    hasStageAttempt: Boolean(stageAttemptId),
   };
   const cloudSaveRequired = requiresCloudStageSave(persistenceContext);
 
-  if (stageId && persistenceContext.isNextRuntime) {
+  if (stageId && cloudSaveRequired) {
     try {
       const { processStageResultAction } = await import('../../app/actions');
       const actionResult = processStageResultAction(stageId, stageAttemptId ?? null, meta);
@@ -596,6 +598,7 @@ async function processStageResultLocal(stageId?: string, stageAttemptId?: string
           dropResult: onlineResult.dropResult,
           expGain: onlineResult.expGain,
           goldGain: onlineResult.goldGain,
+          serverData: onlineResult.data,
           cloudSaved: onlineResult.cloudSaved === true,
         };
       }
@@ -1898,12 +1901,13 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
 }
 
 // ── MAIN BATTLE CANVAS ────────────────────────────────────────────────────────
-export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleCanvasProps) {
+export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSave = false, onEnd }: BattleCanvasProps) {
   console.log('[BattleCanvas] render at', Date.now());
   const {
     player, party, equippedResidueSlots, inventoryItems,
     addExp, addGold, addClearedStage, updateEnergy, updateEnergyBy, restoreEnergy,
     addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials, addWeaponMaterials,
+    loadFromServer,
     consumeInventoryItem,
   } = useGameStore();
   const sfx = useSoundEffects();
@@ -2400,42 +2404,53 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
     sfx.waveClear(clearedWave.isBoss ? 'boss' : 'wave');
     addLog(`★ ${clearedWave.label} クリア！ EXP +${clearedWave.rewards.exp} / Gold +${clearedWave.rewards.gold}G`);
 
-    window.setTimeout(() => {
-      const nextIndex = clearedIndex + 1;
-      if (nextIndex >= battleWaves.length) {
-        const isBoss      = clearedWave.isBoss;
-        const bossName    = clearedWave.enemies[0]?.name ?? 'ボス';
-        const clearTime   = Math.max(1, Math.round((Date.now() - battleStartedAtRef.current) / 1000));
-        const totalWaves  = battleWaves.length;
-        const turnCount   = Math.max(1, actionCountRef.current);
-
-        processStageResultLocal(stageId, stageAttemptId, {
+    const nextIndex = clearedIndex + 1;
+    const finalStageResult = nextIndex >= battleWaves.length
+      ? (() => {
+        const clearTime  = Math.max(1, Math.round((Date.now() - battleStartedAtRef.current) / 1000));
+        const totalWaves = battleWaves.length;
+        const turnCount  = Math.max(1, actionCountRef.current);
+        const promise = processStageResultLocal(stageId, stageAttemptId, {
           turnCount,
           clearTimeSec: clearTime,
           totalDamage: totalDamageRef.current,
-        }).then(({ dropResult, expGain, goldGain }) => {
-          // 画面表示用のストア反映。ログイン時の正本は Server Action 側のDB保存。
-          addInventoryItems([...dropResult.weapons, ...dropResult.consumables]);
-          addWeaponMaterials(dropResult.weaponMaterials);
-          if (dropResult.monsters.length > 0) {
-            const latestInventory = useGameStore.getState().inventoryMonsters;
-            const owned = new Set(getOwnedMonsterMasterIds(latestInventory));
-            const newMonsters = dropResult.monsters.filter((monster) => {
-              const key = monster.masterId ?? monster.id;
-              if (owned.has(key)) return false;
-              owned.add(key);
-              return true;
-            });
-            if (newMonsters.length > 0) {
-              setInventoryMonsters([...latestInventory, ...newMonsters]);
+        }, {
+          requiresCloudSave,
+        });
+        return { clearTime, totalWaves, promise };
+      })()
+      : null;
+
+    window.setTimeout(() => {
+      if (finalStageResult) {
+        const { clearTime, totalWaves, promise } = finalStageResult;
+
+        promise.then(({ dropResult, expGain, goldGain, serverData }) => {
+          if (serverData) {
+            loadFromServer(serverData);
+          } else {
+            addInventoryItems([...dropResult.weapons, ...dropResult.consumables]);
+            addWeaponMaterials(dropResult.weaponMaterials);
+            if (dropResult.monsters.length > 0) {
+              const latestInventory = useGameStore.getState().inventoryMonsters;
+              const owned = new Set(getOwnedMonsterMasterIds(latestInventory));
+              const newMonsters = dropResult.monsters.filter((monster) => {
+                const key = monster.masterId ?? monster.id;
+                if (owned.has(key)) return false;
+                owned.add(key);
+                return true;
+              });
+              if (newMonsters.length > 0) {
+                setInventoryMonsters([...latestInventory, ...newMonsters]);
+              }
             }
+            addExp(expGain);
+            addGold(goldGain);
+            if (stageId) addClearedStage(stageId);
+            addAbyssalResidues(dropResult.residues);
+            addResidueMaterials(dropResult.materials);
+            restoreEnergy();
           }
-          addExp(expGain);
-          addGold(goldGain);
-          if (stageId) addClearedStage(stageId);
-          addAbyssalResidues(dropResult.residues);
-          addResidueMaterials(dropResult.materials);
-          restoreEnergy();
 
           setBattleResult({
             isVictory:      true,
@@ -2484,7 +2499,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, onEnd }: BattleC
         window.setTimeout(() => setFlashColor(null), 600);
       }
     }, battleDelay(1200, 520));
-  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials, addWeaponMaterials, battleDelay, battleWaves, player?.name, restoreEnergy, sfx, stageId]);
+  }, [addLog, addExp, addGold, addClearedStage, addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials, addWeaponMaterials, battleDelay, battleWaves, loadFromServer, player?.name, requiresCloudSave, restoreEnergy, sfx, stageAttemptId, stageId]);
 
   function spawnFloat(x: string, y: string, value: number, opts: Partial<FloatDmg> = {}) {
     const id = ++floatId;

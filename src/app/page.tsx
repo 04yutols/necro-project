@@ -36,21 +36,21 @@ import { Home as HomeIcon, Lock } from 'lucide-react';
 import { isAbyssalResidueUnlocked } from '../logic/AbyssalResidueUnlockSystem';
 import { MOTION, fullscreenScreenVariants, getNavigationDirection, tabScreenVariants } from '../lib/motion';
 
-function isNextClientRuntime() {
-  return typeof window !== 'undefined'
-    && Boolean((window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__);
-}
-
-async function requestStageAttempt(stageId: string): Promise<string | null> {
-  if (!isNextClientRuntime()) return null;
-  const { startStageAction } = await import('./actions');
-  const result = await startStageAction(stageId);
-  if (result.success) return result.stageAttemptId;
-  if (result.error === 'SESSION_EXPIRED') {
-    window.dispatchEvent(new Event('necro-session-expired'));
+async function requestStageAttempt(stageId: string): Promise<{ stageAttemptId: string | null; error?: string }> {
+  try {
+    const { startStageAction } = await import('./actions');
+    const result = await startStageAction(stageId);
+    if (result.success) return { stageAttemptId: result.stageAttemptId };
+    if (result.error === 'SESSION_EXPIRED') {
+      window.dispatchEvent(new Event('necro-session-expired'));
+    }
+    console.warn('[StageStart] rejected', { stageId, error: result.error });
+    return { stageAttemptId: null, error: result.error };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[StageStart] server action unavailable', { stageId, error: message });
+    return { stageAttemptId: null, error: 'SERVER_ACTION_UNAVAILABLE' };
   }
-  console.warn('Stage start was rejected.', result.error);
-  return null;
 }
 
 function AbyssalResidueLockedScreen({ onBack, onMap }: { onBack: () => void; onMap: () => void }) {
@@ -115,6 +115,8 @@ function GameContent() {
   const [activeStageAttemptId, setActiveStageAttemptId] = useState<string | null>(null);
   const [pendingStageId, setPendingStageId] = useState<string | null>(null);
   const [pendingStageAttemptId, setPendingStageAttemptId] = useState<string | null>(null);
+  const [isStartingStage, setIsStartingStage] = useState(false);
+  const [stageStartError, setStageStartError] = useState<string | null>(null);
   const [logPanel, setLogPanel] = useState<'STORY' | 'BATTLE' | 'WORLD'>('STORY');
   const { unlockAudio } = useBGM({
     currentTab,
@@ -142,16 +144,29 @@ function GameContent() {
   }, [setCurrentTab]);
 
   const requestStageStart = useCallback(async (stageId: string) => {
+    if (isStartingStage) return;
     const requiresStageAttempt = authFlow.status !== 'guest';
-    const stageAttemptId = requiresStageAttempt ? await requestStageAttempt(stageId) : null;
-    if (requiresStageAttempt && isNextClientRuntime() && !stageAttemptId) return;
-    if (triggerStageEnter(stageId)) {
-      setPendingStageId(stageId);
-      setPendingStageAttemptId(stageAttemptId);
-      return;
+    console.info('[StageStart] request', { stageId, authStatus: authFlow.status, requiresStageAttempt });
+    setIsStartingStage(true);
+    setStageStartError(null);
+    try {
+      const attempt = requiresStageAttempt
+        ? await requestStageAttempt(stageId)
+        : { stageAttemptId: null as string | null };
+      if (requiresStageAttempt && !attempt.stageAttemptId) {
+        setStageStartError(`侵攻開始に失敗しました: ${attempt.error ?? 'STAGE_ATTEMPT_UNAVAILABLE'}`);
+        return;
+      }
+      if (triggerStageEnter(stageId)) {
+        setPendingStageId(stageId);
+        setPendingStageAttemptId(attempt.stageAttemptId);
+        return;
+      }
+      startStageNow(stageId, attempt.stageAttemptId);
+    } finally {
+      setIsStartingStage(false);
     }
-    startStageNow(stageId, stageAttemptId);
-  }, [authFlow.status, startStageNow, triggerStageEnter]);
+  }, [authFlow.status, isStartingStage, startStageNow, triggerStageEnter]);
 
   useEffect(() => {
     if (!pendingStageId || activeStoryScene || storyQueueLength > 0) return;
@@ -219,7 +234,7 @@ function GameContent() {
   }
 
   const isCloudLoading = authFlow.status === 'checking' || authFlow.status === 'loadingCharacter';
-  if (!player && isCloudLoading) {
+  if (isCloudLoading) {
     return (
       <LoadingScreen
         label={authFlow.status === 'loadingCharacter' ? 'Loading Character' : 'Cloud Save Sync'}
@@ -230,6 +245,15 @@ function GameContent() {
 
   if (!player) {
     return <LoadingScreen />;
+  }
+
+  if (isStartingStage) {
+    return (
+      <LoadingScreen
+        label="Preparing Invasion"
+        detail="侵攻証跡を発行しています"
+      />
+    );
   }
 
   // タブに応じたメインコンテンツのレンダリング (除外: BattleCanvas)
@@ -334,6 +358,7 @@ function GameContent() {
 
   // MAP と BATTLE は全画面（ナビバーなし）でレンダリング
   const isFullscreen = isInBattle || currentTab === 'MAP';
+  const requiresCloudSave = authFlow.status !== 'guest';
 
   return (
     <>
@@ -351,7 +376,12 @@ function GameContent() {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               style={{ position: 'absolute', inset: 0, zIndex: 9999, display: 'flex', flexDirection: 'column', background: '#000', overflow: 'hidden' }}
             >
-              <BattleCanvas stageId={activeStageId ?? undefined} stageAttemptId={activeStageAttemptId} onEnd={finishBattle} />
+              <BattleCanvas
+                stageId={activeStageId ?? undefined}
+                stageAttemptId={activeStageAttemptId}
+                requiresCloudSave={requiresCloudSave}
+                onEnd={finishBattle}
+              />
             </motion.div>
           ) : currentTab === 'MAP' ? (
             <motion.div
@@ -385,6 +415,47 @@ function GameContent() {
             monster={equippingMonster}
             onClose={() => setEquippingMonsterId(null)}
           />
+        )}
+        {stageStartError && !isInBattle && (
+          <div
+            role="alert"
+            style={{
+              position: 'fixed',
+              left: 16,
+              right: 16,
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)',
+              zIndex: 10020,
+              maxWidth: 460,
+              margin: '0 auto',
+              border: '1px solid rgba(239,68,68,0.38)',
+              borderRadius: 12,
+              background: 'rgba(20,4,12,0.94)',
+              color: '#F0EAFF',
+              padding: '12px 14px',
+              boxShadow: '0 18px 50px rgba(0,0,0,0.55)',
+              fontSize: 12,
+              lineHeight: 1.6,
+            }}
+          >
+            <div style={{ fontWeight: 900, letterSpacing: '0.08em', marginBottom: 4 }}>SYNC ERROR</div>
+            <div style={{ color: '#FCA5A5' }}>{stageStartError}</div>
+            <button
+              type="button"
+              onClick={() => setStageStartError(null)}
+              style={{
+                marginTop: 8,
+                minHeight: 34,
+                width: '100%',
+                borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'rgba(255,255,255,0.06)',
+                color: '#F0EAFF',
+                fontWeight: 900,
+              }}
+            >
+              閉じる
+            </button>
+          </div>
         )}
         <ReloginModal open={authFlow.status === 'sessionExpired'} onRecovered={authFlow.reload} />
       </div>
