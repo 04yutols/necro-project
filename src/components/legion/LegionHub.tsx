@@ -3956,8 +3956,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
   const necroStatus = useGameStore(state => state.necroStatus);
   const inventoryMonsters = useGameStore(state => state.inventoryMonsters);
   const setParty = useGameStore(state => state.setParty);
-  const updatePartySlot = useGameStore(state => state.updatePartySlot);
-  const swapPartySlots = useGameStore(state => state.swapPartySlots);
+  const isServerBacked = useGameStore(state => state.isServerBacked);
   const addBattleLog = useGameStore(state => state.addBattleLog);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(0);
   const [pickerSlotIndex, setPickerSlotIndex] = useState<number | null>(null);
@@ -4005,7 +4004,28 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
     haptic([10, 5, 10]);
   }, []);
 
+  const persistParty = useCallback((nextParty: (MonsterData | null)[], rollbackParty: (MonsterData | null)[]) => {
+    if (!player || !isServerBacked) return;
+    void (async () => {
+      try {
+        const { updatePartyAction } = await import('../../app/actions');
+        const result = await updatePartyAction(player.id, nextParty.map(member => member?.id ?? null));
+        if (result.success) {
+          setParty(result.data.party);
+          addBattleLog('FORMATION: 編成を保存しました');
+          return;
+        }
+        setParty(rollbackParty);
+        showCostError(result.error ?? '編成の保存に失敗しました');
+      } catch (error) {
+        setParty(rollbackParty);
+        showCostError(error instanceof Error ? error.message : '編成の保存に失敗しました');
+      }
+    })();
+  }, [addBattleLog, isServerBacked, player, setParty, showCostError]);
+
   const assignMonster = useCallback((slotIndex: number, monster: MonsterData) => {
+    const previous = [...party] as (MonsterData | null)[];
     const next = previewParty(slotIndex, monster);
     const nextCost = next.reduce((sum, member) => sum + (member?.cost ?? 0), 0);
     if (nextCost > maxCost) {
@@ -4017,24 +4037,33 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
     onFocusMember(`MONSTER_${slotIndex}` as MemberKey);
     addBattleLog(`FORMATION: ${POSITION_META[slotIndex].label} に ${monster.name} を配置`);
     haptic([10, 4, 14]);
+    persistParty(next, previous);
     return true;
-  }, [addBattleLog, maxCost, onFocusMember, previewParty, setParty, showCostError]);
+  }, [addBattleLog, maxCost, onFocusMember, party, persistParty, previewParty, setParty, showCostError]);
 
   const removeSlot = useCallback((slotIndex: number) => {
     if (!party[slotIndex]) return;
-    updatePartySlot(slotIndex, null);
+    const previous = [...party] as (MonsterData | null)[];
+    const next = [...party] as (MonsterData | null)[];
+    next[slotIndex] = null;
+    setParty(next);
     setSelectedSlotIndex(slotIndex);
     addBattleLog(`FORMATION: ${POSITION_META[slotIndex].label} を空き枠に変更`);
     haptic([8, 4, 8]);
-  }, [addBattleLog, party, updatePartySlot]);
+    persistParty(next, previous);
+  }, [addBattleLog, party, persistParty, setParty]);
 
   const handleSwap = useCallback((from: number, to: number) => {
-    swapPartySlots(from, to);
+    const previous = [...party] as (MonsterData | null)[];
+    const next = [...party] as (MonsterData | null)[];
+    [next[from], next[to]] = [next[to], next[from]];
+    setParty(next);
     setSelectedSlotIndex(to);
     onFocusMember(`MONSTER_${to}` as MemberKey);
     addBattleLog(`FORMATION: ${POSITION_META[from].label} と ${POSITION_META[to].label} を入れ替え`);
     haptic([15, 10]);
-  }, [addBattleLog, onFocusMember, swapPartySlots]);
+    persistParty(next, previous);
+  }, [addBattleLog, onFocusMember, party, persistParty, setParty]);
 
   const toggleFilter = useCallback((key: TribeFilterKey) => {
     if (key === 'ALL') {

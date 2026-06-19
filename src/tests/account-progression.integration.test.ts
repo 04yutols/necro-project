@@ -26,11 +26,12 @@ import {
   rankUpWeaponForUser,
   reforgeWeaponForUser,
   startStageForUser,
+  updatePartyForUser,
 } from '../app/actions';
 import type { ServerGameUser } from '../types/serverGame';
 import type { StageResultMeta } from '../types/online';
 
-jest.setTimeout(45000);
+jest.setTimeout(70000);
 
 const JOBS = jobsData as Record<string, JobData>;
 
@@ -298,6 +299,90 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
       }),
     ]));
 
+    const formationMonsterA = await prisma.monster.create({
+      data: {
+        name: '編成保存確認スケルトン',
+        masterId: 'test_formation_skeleton',
+        characterId: afterClear.data.player.id,
+        tribe: 'UNDEAD',
+        cost: 3,
+        hp: 80,
+        atk: 22,
+        def: 10,
+        spd: 98,
+        critRate: 5,
+        critDmg: 150,
+        effectHit: 0,
+        effectRes: 0,
+        currentEnergy: 30,
+        maxEnergy: 30,
+        resistances: {},
+        skillIds: [],
+      },
+    });
+    const formationMonsterB = await prisma.monster.create({
+      data: {
+        name: '編成保存確認デーモン',
+        masterId: 'test_formation_demon',
+        characterId: afterClear.data.player.id,
+        tribe: 'DEMON',
+        cost: 4,
+        hp: 90,
+        atk: 26,
+        def: 12,
+        spd: 92,
+        critRate: 5,
+        critDmg: 150,
+        effectHit: 0,
+        effectRes: 0,
+        currentEnergy: 30,
+        maxEnergy: 30,
+        resistances: {},
+        skillIds: [],
+      },
+    });
+    const partyUpdated = await updatePartyForUser(user, afterClear.data.player.id, [formationMonsterA.id, formationMonsterB.id, null]);
+    expect(partyUpdated.success).toBe(true);
+    if (!partyUpdated.success) throw new Error(partyUpdated.error);
+    expect(partyUpdated.data.party.map(monster => monster?.id ?? null)).toEqual([formationMonsterA.id, formationMonsterB.id, null]);
+    const playerStateAfterPartyRows = await prisma.$queryRaw<Array<{
+      playerState: PlayerSaveV1 | null;
+      partySlot0Id: string | null;
+      partySlot1Id: string | null;
+      partySlot2Id: string | null;
+    }>>`
+      SELECT "playerState", "partySlot0Id", "partySlot1Id", "partySlot2Id"
+      FROM "Character"
+      WHERE id = ${afterClear.data.player.id}
+    `;
+    expect(playerStateAfterPartyRows[0]).toMatchObject({
+      partySlot0Id: formationMonsterA.id,
+      partySlot1Id: formationMonsterB.id,
+      partySlot2Id: null,
+    });
+    expect(playerStateAfterPartyRows[0]?.playerState?.player.partyMonsterIds).toEqual([formationMonsterA.id, formationMonsterB.id, null]);
+    await prisma.character.update({
+      where: { id: afterClear.data.player.id },
+      data: {
+        partySlot0Id: null,
+        partySlot1Id: null,
+        partySlot2Id: null,
+      },
+    });
+    const partyLoadedFromPlayerState = await loadCharacterForUser(user);
+    expect(partyLoadedFromPlayerState.success).toBe(true);
+    expect(partyLoadedFromPlayerState.success && partyLoadedFromPlayerState.status).toBe('READY');
+    if (!partyLoadedFromPlayerState.success || partyLoadedFromPlayerState.status !== 'READY') throw new Error('failed to reload party drift character');
+    expect(partyLoadedFromPlayerState.data.party.map(monster => monster?.id ?? null)).toEqual([formationMonsterA.id, formationMonsterB.id, null]);
+    await prisma.character.update({
+      where: { id: afterClear.data.player.id },
+      data: {
+        partySlot0Id: formationMonsterA.id,
+        partySlot1Id: formationMonsterB.id,
+        partySlot2Id: null,
+      },
+    });
+
     const lockedResidue = await prisma.abyssalResidue.create({
       data: {
         name: '未開放確認用の残滓',
@@ -338,6 +423,19 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
       SELECT "playerState" FROM "Character" WHERE id = ${weaponEquipped.data.player.id}
     `;
     expect(playerStateAfterWeaponEquipRows[0]?.playerState?.player.equipmentIds.weapon).toBe(droppedWeapon.id);
+    await prisma.character.update({
+      where: { id: weaponEquipped.data.player.id },
+      data: { equipWeaponId: null },
+    });
+    const weaponLoadedFromPlayerState = await loadCharacterForUser(user);
+    expect(weaponLoadedFromPlayerState.success).toBe(true);
+    expect(weaponLoadedFromPlayerState.success && weaponLoadedFromPlayerState.status).toBe('READY');
+    if (!weaponLoadedFromPlayerState.success || weaponLoadedFromPlayerState.status !== 'READY') throw new Error('failed to reload weapon drift character');
+    expect(weaponLoadedFromPlayerState.data.player.equipment.weapon?.id).toBe(droppedWeapon.id);
+    await prisma.character.update({
+      where: { id: weaponEquipped.data.player.id },
+      data: { equipWeaponId: droppedWeapon.id },
+    });
     const afterWeaponEquip = calculateCharacterStatProfile(weaponEquipped.data.player, weaponEquipped.data.equippedResidueSlots);
     expect(afterWeaponEquip.total.atk).toBeGreaterThan(beforeWeaponEquip.total.atk);
 
@@ -426,6 +524,26 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
       SELECT "playerState" FROM "Character" WHERE id = ${residueEquipped.data.player.id}
     `;
     expect(playerStateAfterResidueEquipRows[0]?.playerState?.player.equippedResidueIds[slotIndex]).toBe(residue.id);
+    const residueSlotFields = [
+      'equippedResidue0Id',
+      'equippedResidue1Id',
+      'equippedResidue2Id',
+      'equippedResidue3Id',
+      'equippedResidue4Id',
+    ] as const;
+    await prisma.character.update({
+      where: { id: residueEquipped.data.player.id },
+      data: { [residueSlotFields[slotIndex]]: null },
+    });
+    const residueLoadedFromPlayerState = await loadCharacterForUser(user);
+    expect(residueLoadedFromPlayerState.success).toBe(true);
+    expect(residueLoadedFromPlayerState.success && residueLoadedFromPlayerState.status).toBe('READY');
+    if (!residueLoadedFromPlayerState.success || residueLoadedFromPlayerState.status !== 'READY') throw new Error('failed to reload residue drift character');
+    expect(residueLoadedFromPlayerState.data.equippedResidueSlots[slotIndex]?.id).toBe(residue.id);
+    await prisma.character.update({
+      where: { id: residueEquipped.data.player.id },
+      data: { [residueSlotFields[slotIndex]]: residue.id },
+    });
 
     const afterResidueEquip = calculateCharacterStatProfile(residueEquipped.data.player, residueEquipped.data.equippedResidueSlots);
     const statIncreased = (Object.keys(afterResidueEquip.total) as Array<keyof typeof afterResidueEquip.total>)

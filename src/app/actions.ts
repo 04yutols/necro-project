@@ -772,6 +772,7 @@ function toServerUser(sessionUser: { id?: string; name?: string | null; email?: 
 
 function toServerGameData(character: any, inventoryItems: any[], inventoryMonsters: any[], weaponMaterials: any[] = []): ServerGameData {
   const dbPlayerSave = buildPlayerSaveFromDb(character, weaponMaterials);
+  const hasPlayerSave = hasCompletePlayerSave(character.playerState);
   const playerSave = readPlayerSave(character.playerState, dbPlayerSave);
   const currentJobId = playerSave.player.currentJobId ?? 'warrior';
   const currentJob = getJobData(currentJobId);
@@ -781,6 +782,19 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
   const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, toBaseStats(character));
   const clearedStages = playerSave.player.clearedStages;
   const residueUnlocked = isAbyssalResidueUnlocked(clearedStages);
+  const items = inventoryItems.map(toItemData);
+  const itemById = new Map(items.map(item => [item.id, item]));
+  const monsters = inventoryMonsters.map(toMonsterData);
+  const monsterById = new Map(monsters.map(monster => [monster.id, monster]));
+  const residues: AbyssalResidueData[] = (character.abyssalResidues ?? []).map(toResidueData);
+  const residueById = new Map(residues.map(residue => [residue.id, residue]));
+  const resolveEquipment = (slot: keyof PlayerSaveV1['player']['equipmentIds'], relationRow: unknown): ItemData | null => {
+    if (hasPlayerSave) {
+      const itemId = playerSave.player.equipmentIds[slot];
+      return itemId ? itemById.get(itemId) ?? null : null;
+    }
+    return relationRow ? toItemData(relationRow as Parameters<typeof toItemData>[0]) : null;
+  };
   const persistedEquippedResidueSlots = [
     toResidueSlot(character.equippedResidue0),
     toResidueSlot(character.equippedResidue1),
@@ -788,8 +802,11 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
     toResidueSlot(character.equippedResidue3),
     toResidueSlot(character.equippedResidue4),
   ];
+  const saveEquippedResidueSlots = playerSave.player.equippedResidueIds.map((residueId) =>
+    residueId ? residueById.get(residueId) ?? null : null,
+  ) as (AbyssalResidueData | null)[];
   const equippedResidueSlots = residueUnlocked
-    ? persistedEquippedResidueSlots
+    ? (hasPlayerSave ? saveEquippedResidueSlots : persistedEquippedResidueSlots)
     : [null, null, null, null, null];
   const player: CharacterData = {
     id: character.id,
@@ -803,14 +820,14 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
     passives: playerSave.player.passives,
     equipment: {
       ...EMPTY_EQUIPMENT,
-      weapon: character.equipWeapon ? toItemData(character.equipWeapon) : null,
-      sub: character.equipSub ? toItemData(character.equipSub) : null,
-      head: character.equipHead ? toItemData(character.equipHead) : null,
-      body: character.equipBody ? toItemData(character.equipBody) : null,
-      arms: character.equipArms ? toItemData(character.equipArms) : null,
-      legs: character.equipLegs ? toItemData(character.equipLegs) : null,
-      acc1: character.equipAcc1 ? toItemData(character.equipAcc1) : null,
-      acc2: character.equipAcc2 ? toItemData(character.equipAcc2) : null,
+      weapon: resolveEquipment('weapon', character.equipWeapon),
+      sub: resolveEquipment('sub', character.equipSub),
+      head: resolveEquipment('head', character.equipHead),
+      body: resolveEquipment('body', character.equipBody),
+      arms: resolveEquipment('arms', character.equipArms),
+      legs: resolveEquipment('legs', character.equipLegs),
+      acc1: resolveEquipment('acc1', character.equipAcc1),
+      acc2: resolveEquipment('acc2', character.equipAcc2),
     },
     baseResistances: {},
     jobs,
@@ -821,7 +838,6 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
     maxEnergy: energyState.maxEnergy,
     elementDmgBoosts: {},
   };
-  const monsters = inventoryMonsters.map(toMonsterData);
   const soulShards = new Map<string, SoulShardData>();
   (character.soulShards ?? []).forEach((shard: any) => {
     soulShards.set(shard.id, toSoulShardData(shard));
@@ -829,22 +845,25 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
   inventoryMonsters.forEach((monster) => {
     if (monster.soulShard) soulShards.set(monster.soulShard.id, toSoulShardData(monster.soulShard));
   });
+  const partyFromSave = playerSave.player.partyMonsterIds.map((monsterId) =>
+    monsterId ? monsterById.get(monsterId) ?? null : null,
+  ) as (MonsterData | null)[];
 
   return {
     player,
     necroStatus: playerSave.player.necroStatus satisfies NecroStatus,
-    party: [
+    party: hasPlayerSave ? partyFromSave : [
       character.partySlot0 ? toMonsterData(character.partySlot0) : null,
       character.partySlot1 ? toMonsterData(character.partySlot1) : null,
       character.partySlot2 ? toMonsterData(character.partySlot2) : null,
     ],
     inventoryMonsters: monsters,
     soulShards: Array.from(soulShards.values()),
-    inventoryItems: inventoryItems.map(toItemData),
+    inventoryItems: items,
     weaponMaterials: playerSave.weaponMaterials,
     residueMaterials: playerSave.residueMaterials,
     transmutationPoints: playerSave.transmutationPoints,
-    abyssalResidues: (character.abyssalResidues ?? []).map(toResidueData),
+    abyssalResidues: residues,
     equippedResidueSlots,
   };
 }
@@ -1966,7 +1985,7 @@ export async function updatePartyForUser(
   const ids = [monsterIds[0] ?? null, monsterIds[1] ?? null, monsterIds[2] ?? null];
   const character = await prisma.character.findFirst({
     where: { id: characterId, userId: authorizedUser.id },
-    select: { id: true, necroMaxCost: true },
+    select: { id: true, necroMaxCost: true, playerState: true },
   });
   if (!character) return { success: false, error: 'キャラクターが見つかりません' };
 
@@ -1982,7 +2001,10 @@ export async function updatePartyForUser(
     return { success: false, error: '所有していない魔物が含まれています' };
   }
   const totalCost = monsters.reduce((sum, monster) => sum + monster.cost, 0);
-  if (totalCost > character.necroMaxCost) {
+  const maxCost = hasCompletePlayerSave(character.playerState)
+    ? readPlayerSave(character.playerState).player.necroStatus.maxCost
+    : character.necroMaxCost;
+  if (totalCost > maxCost) {
     return { success: false, error: '編成コストが上限を超えています' };
   }
 
