@@ -8,10 +8,11 @@ import type {
 
 export const PLAYER_SAVE_SCHEMA_VERSION = 2 as const;
 export const MIN_SUPPORTED_PLAYER_SAVE_SCHEMA_VERSION = 1 as const;
-export type PlayerSaveSchemaVersion = typeof MIN_SUPPORTED_PLAYER_SAVE_SCHEMA_VERSION | typeof PLAYER_SAVE_SCHEMA_VERSION;
+export type PlayerSaveSchemaVersion =
+  typeof MIN_SUPPORTED_PLAYER_SAVE_SCHEMA_VERSION
+  | typeof PLAYER_SAVE_SCHEMA_VERSION;
 
-// Historical name retained for existing imports. The active payload version is PLAYER_SAVE_SCHEMA_VERSION.
-export interface PlayerSaveV1 {
+export interface PlayerSaveData {
   schemaVersion: typeof PLAYER_SAVE_SCHEMA_VERSION;
   player: {
     name: string;
@@ -39,4 +40,5 @@ export interface PlayerSaveV1 {
   transmutationPoints: number;
 }
 
-export type PlayerSaveData = PlayerSaveV1;
+// Historical name retained for existing imports. The active payload version is PlayerSaveData.
+export type PlayerSaveV1 = PlayerSaveData;

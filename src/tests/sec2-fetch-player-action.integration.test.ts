@@ -5,6 +5,8 @@ import {
   createCharacterForUser,
   fetchPlayerAction,
   fetchPlayerForUser,
+  loadCharacterForUser,
+  startStageForUser,
 } from '../app/actions';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 import { createCredentialsUser } from '../services/AuthService';
@@ -111,5 +113,44 @@ describe('SEC-2 fetchPlayerAction ownership checks', () => {
     expect(ownerB.data.id).toBe(characterBId);
     expect(ownerB.data.name).toBe('SEC2-B');
     expect(ownerB.data.currentJobId).toBe('mage');
+  });
+
+  test('returns controlled errors for malformed playerState instead of throwing', async () => {
+    await cleanupUser(emailA);
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      const userA = await createUser(emailA, 'SEC2-BadSave');
+      (auth as jest.Mock).mockResolvedValue({ user: userA });
+      const created = await createCharacterForUser(userA, 'warrior', 'SEC2-BadSave');
+      expect(created.success).toBe(true);
+      if (!created.success) throw new Error(created.error);
+
+      await prisma.character.update({
+        where: { id: created.data.player.id },
+        data: {
+          playerState: { schemaVersion: 'broken' },
+        },
+      });
+
+      const loaded = await loadCharacterForUser(userA);
+      expect(loaded.success).toBe(false);
+      expect(!loaded.success && loaded.status).toBe('ERROR');
+      expect(!loaded.success && loaded.error).toContain('セーブデータ');
+
+      const fetched = await fetchPlayerForUser(userA, created.data.player.id);
+      expect(fetched.success).toBe(false);
+      expect(!fetched.success && fetched.error).toContain('セーブデータ');
+
+      const started = await startStageForUser(userA, 'area1_node1');
+      expect(started.success).toBe(false);
+      expect(!started.success && started.error).toContain('セーブデータ');
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[PlayerSaveSchemaError]',
+        expect.objectContaining({ error: expect.stringContaining('schemaVersion') }),
+      );
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });

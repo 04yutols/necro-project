@@ -15,6 +15,7 @@ import {
   getEffectiveClearedStages,
   lockCharacterForUpdate,
   playerSaveToJson,
+  PlayerSaveSchemaError,
   rankUpNecroInSave,
   readPlayerSave,
   spendWeaponMaterialsInSave,
@@ -137,6 +138,8 @@ const CHARACTER_GAME_DATA_INCLUDE = {
   abyssalResidues: true,
   soulShards: true,
 } satisfies Prisma.CharacterInclude;
+
+const PLAYER_SAVE_SCHEMA_ERROR_MESSAGE = 'セーブデータの形式が不正です。サポートに連絡してください。';
 
 const EMPTY_EQUIPMENT: EquipmentSlots = {
   weapon: null,
@@ -504,7 +507,15 @@ function toReadyResult(loaded: LoadCharacterResult): SaveGameStateResult {
   return { success: false, error: loaded.error };
 }
 
+function playerSaveSchemaErrorMessage(error: unknown, context: Record<string, unknown>): string | null {
+  if (!(error instanceof PlayerSaveSchemaError)) return null;
+  console.error('[PlayerSaveSchemaError]', { ...context, error: error.message });
+  return PLAYER_SAVE_SCHEMA_ERROR_MESSAGE;
+}
+
 function jobChangeErrorMessage(error: unknown): string {
+  const saveError = playerSaveSchemaErrorMessage(error, { action: 'changeJobForUser' });
+  if (saveError) return saveError;
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes('not found in master data')) return '存在しない職業です';
   if (message.includes('is locked')) return '解放条件を満たしていません';
@@ -513,6 +524,8 @@ function jobChangeErrorMessage(error: unknown): string {
 }
 
 function rankUpErrorMessage(error: unknown): string {
+  const saveError = playerSaveSchemaErrorMessage(error, { action: 'processGrowthForUser' });
+  if (saveError) return saveError;
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes('Lv.99') || message.includes('99')) return 'ランクアップには死霊術Lv.99到達が必要です';
   if (message.includes('試練')) return 'ランクアップには試練のクリアが必要です';
@@ -521,6 +534,8 @@ function rankUpErrorMessage(error: unknown): string {
 }
 
 function weaponEnhancementErrorMessage(error: unknown): string {
+  const saveError = playerSaveSchemaErrorMessage(error, { action: 'weaponEnhancement' });
+  if (saveError) return saveError;
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes('キャラクター')) return 'キャラクターが見つかりません';
   if (message.includes('所有していない')) return '所有していない武器です';
@@ -566,7 +581,18 @@ export async function startStageForUser(user: ServerGameUser, stageId: string): 
     select: { id: true, playerState: true },
   });
   if (!char) return { success: false, error: 'CHARACTER_NOT_FOUND' };
-  const effectiveClearedStages = getEffectiveClearedStages(char);
+  let effectiveClearedStages: string[];
+  try {
+    effectiveClearedStages = getEffectiveClearedStages(char);
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'startStageForUser',
+      userId: authorizedUser.id,
+      characterId: char.id,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
   if (!isStageUnlocked(stage, effectiveClearedStages)) {
     return { success: false, error: 'STAGE_LOCKED' };
   }
@@ -876,6 +902,13 @@ export async function processStageResultForUser(
       return { stageRecord, worldEvents };
     });
   } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'processStageResultForUser',
+      userId,
+      characterId: char.id,
+      stageId: normalizedStageId,
+    });
+    if (saveError) return stageResultFailure(saveError);
     const message = error instanceof Error ? error.message : String(error);
     if (
       message === 'INVALID_STAGE_ATTEMPT'
@@ -943,12 +976,24 @@ export async function loadCharacterForUser(user: ServerGameUser): Promise<LoadCh
     }),
   ]);
 
-  return {
-    success: true,
-    status: 'READY',
-    user: authorizedUser,
-    data: toServerGameData(character, inventoryItems, inventoryMonsters),
-  };
+  try {
+    return {
+      success: true,
+      status: 'READY',
+      user: authorizedUser,
+      data: toServerGameData(character, inventoryItems, inventoryMonsters),
+    };
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'loadCharacterForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) {
+      return { success: false, status: 'ERROR', error: saveError };
+    }
+    throw error;
+  }
 }
 
 export async function changeJobAction(characterId: string, jobId: string): Promise<SaveGameStateResult> {
@@ -1018,6 +1063,7 @@ export async function createCharacterForUser(
   if (exists) {
     const loaded = await loadCharacterForUser(authorizedUser);
     if (loaded.success && loaded.status === 'READY') return { success: true, data: loaded.data };
+    if (!loaded.success) return { success: false, error: loaded.error };
     return { success: false, error: '既にキャラクターが存在します' };
   }
 
@@ -1087,10 +1133,20 @@ export async function fetchPlayerForUser(
     }),
   ]);
 
-  return {
-    success: true,
-    data: toServerGameData(character, inventoryItems, inventoryMonsters).player,
-  };
+  try {
+    return {
+      success: true,
+      data: toServerGameData(character, inventoryItems, inventoryMonsters).player,
+    };
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'fetchPlayerForUser',
+      userId: authorizedUser.id,
+      characterId: character.id,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
 }
 
 export async function processGrowthAction(characterId: string, type: GrowthActionType): Promise<SaveGameStateResult> {
@@ -1403,16 +1459,37 @@ export async function updatePartyForUser(
     return { success: false, error: '所有していない魔物が含まれています' };
   }
   const totalCost = monsters.reduce((sum, monster) => sum + monster.cost, 0);
-  const maxCost = readPlayerSave(character.playerState).player.necroStatus.maxCost;
+  let maxCost: number;
+  try {
+    maxCost = readPlayerSave(character.playerState).player.necroStatus.maxCost;
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'updatePartyForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
   if (totalCost > maxCost) {
     return { success: false, error: '編成コストが上限を超えています' };
   }
 
-  await prisma.$transaction(async (tx) => {
-    await updatePlayerSaveBlob(tx, characterId, (save) => {
-      save.player.partyMonsterIds = ids as PlayerSaveV1['player']['partyMonsterIds'];
-    }, { cleanReferenceScopes: ['party'] });
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      await updatePlayerSaveBlob(tx, characterId, (save) => {
+        save.player.partyMonsterIds = ids as PlayerSaveV1['player']['partyMonsterIds'];
+      }, { cleanReferenceScopes: ['party'] });
+    });
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'updatePartyForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));
 }
@@ -1443,11 +1520,21 @@ export async function equipItemForUser(
   if (!item) return { success: false, error: '所有していない装備です' };
   if (item.type !== expectedType) return { success: false, error: 'このスロットには装備できません' };
 
-  await prisma.$transaction(async (tx) => {
-    await updatePlayerSaveBlob(tx, characterId, (save) => {
-      save.player.equipmentIds[typedSlot as keyof PlayerSaveV1['player']['equipmentIds']] = item.id;
-    }, { cleanReferenceScopes: ['equipment'] });
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      await updatePlayerSaveBlob(tx, characterId, (save) => {
+        save.player.equipmentIds[typedSlot as keyof PlayerSaveV1['player']['equipmentIds']] = item.id;
+      }, { cleanReferenceScopes: ['equipment'] });
+    });
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'equipItemForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));
 }
@@ -1466,11 +1553,21 @@ export async function unequipItemForUser(
   const character = await prisma.character.findFirst({ where: { id: characterId, userId: authorizedUser.id }, select: { id: true } });
   if (!character) return { success: false, error: 'キャラクターが見つかりません' };
 
-  await prisma.$transaction(async (tx) => {
-    await updatePlayerSaveBlob(tx, characterId, (save) => {
-      save.player.equipmentIds[typedSlot as keyof PlayerSaveV1['player']['equipmentIds']] = null;
-    }, { cleanReferenceScopes: ['equipment'] });
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      await updatePlayerSaveBlob(tx, characterId, (save) => {
+        save.player.equipmentIds[typedSlot as keyof PlayerSaveV1['player']['equipmentIds']] = null;
+      }, { cleanReferenceScopes: ['equipment'] });
+    });
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'unequipItemForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));
 }
@@ -1493,7 +1590,19 @@ export async function equipResidueForUser(
     select: { id: true, playerState: true },
   });
   if (!character) return { success: false, error: 'キャラクターが見つかりません' };
-  if (!isAbyssalResidueUnlocked(getEffectiveClearedStages(character))) {
+  let effectiveClearedStages: string[];
+  try {
+    effectiveClearedStages = getEffectiveClearedStages(character);
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'equipResidueForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
+  if (!isAbyssalResidueUnlocked(effectiveClearedStages)) {
     return { success: false, error: '深淵の残滓は第2章到達後に解放されます' };
   }
 
@@ -1506,13 +1615,23 @@ export async function equipResidueForUser(
     return { success: false, error: 'この残滓は選択中のスロットに装備できません' };
   }
 
-  await prisma.$transaction(async (tx) => {
-    await updatePlayerSaveBlob(tx, characterId, (save) => {
-      const slots = [...save.player.equippedResidueIds] as PlayerSaveV1['player']['equippedResidueIds'];
-      slots[slotIndex] = residue.id;
-      save.player.equippedResidueIds = slots;
-    }, { cleanReferenceScopes: ['residue'] });
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      await updatePlayerSaveBlob(tx, characterId, (save) => {
+        const slots = [...save.player.equippedResidueIds] as PlayerSaveV1['player']['equippedResidueIds'];
+        slots[slotIndex] = residue.id;
+        save.player.equippedResidueIds = slots;
+      }, { cleanReferenceScopes: ['residue'] });
+    });
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'equipResidueForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));
 }
