@@ -10,6 +10,7 @@ import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import { DEMON_ACTION_LIMIT, clampDemonGauge } from '../logic/DemonizationSystem';
 import { isAbyssalResidueUnlocked } from '../logic/AbyssalResidueUnlockSystem';
+import { applyResidueEnhancement, spendResidueMaterials } from '../logic/ResidueEnhancement';
 import { isResidueSlotCompatible } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
 import {
@@ -223,25 +224,6 @@ function addWeaponMaterials(materials: WeaponMaterialData[], rewards: { type: We
     }
     return [...current, { type: reward.type, name: reward.name, quantity: reward.quantity }];
   }, materials);
-}
-
-function spendResidueMaterials(
-  materials: ResidueMatData[],
-  matIds: string[],
-): { expGain: number; materials: ResidueMatData[] } {
-  const requested = matIds.reduce((counts, id) => counts.set(id, (counts.get(id) ?? 0) + 1), new Map<string, number>());
-  let expGain = 0;
-
-  const nextMaterials = materials.flatMap((material) => {
-    const consume = Math.min(requested.get(material.id) ?? 0, material.quantity);
-    if (consume <= 0) return [material];
-
-    expGain += material.expValue * consume;
-    const nextQuantity = material.quantity - consume;
-    return nextQuantity > 0 ? [{ ...material, quantity: nextQuantity }] : [];
-  });
-
-  return { expGain, materials: nextMaterials };
 }
 
 interface GameState {
@@ -635,21 +617,12 @@ export const useGameStore = create<GameState>()(
     const spent = spendResidueMaterials(state.residueMaterials, matIds);
     if (spent.expGain <= 0) return state;
 
-    const expGain = spent.expGain;
-    let newExp = residue.exp + expGain;
-    let newLevel = residue.level;
-    let newMaxExp = residue.maxExp;
-    while (newExp >= newMaxExp && newLevel < 20) {
-      newExp -= newMaxExp;
-      newLevel++;
-      newMaxExp = Math.floor(newMaxExp * 1.5);
-    }
-    if (newLevel >= 20) newExp = Math.min(newExp, newMaxExp);
+    const enhanced = applyResidueEnhancement(residue, spent.expGain);
     const updatedResidues = state.abyssalResidues.map(r =>
-      r.id === residueId ? { ...r, level: newLevel, exp: newExp, maxExp: newMaxExp } : r
+      r.id === residueId ? enhanced : r
     );
     const updatedEquippedSlots = state.equippedResidueSlots.map(s =>
-      s?.id === residueId ? { ...s, level: newLevel, exp: newExp, maxExp: newMaxExp } : s
+      s?.id === residueId ? { ...s, level: enhanced.level, exp: enhanced.exp, maxExp: enhanced.maxExp } : s
     ) as (AbyssalResidueData | null)[];
     const remainingMaterials = spent.materials;
     return { abyssalResidues: updatedResidues, equippedResidueSlots: updatedEquippedSlots, residueMaterials: remainingMaterials };

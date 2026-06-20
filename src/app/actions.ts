@@ -10,6 +10,7 @@ import { RankingService, normalizeStageClearMetrics } from '@/services/RankingSe
 import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventService';
 import {
   applyJobExpGainToSave,
+  applyNecroExpGainToSave,
   changeJobInSave,
   emptyPlayerSave,
   getEffectiveClearedStages,
@@ -22,6 +23,7 @@ import {
   toBaseStats,
   updatePlayerSaveSnapshot as updatePlayerSaveBlob,
 } from '@/services/PlayerSaveService';
+import { calculateResidueEnhancement, spendResidueMaterials } from '@/logic/ResidueEnhancement';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
 import { calculateEnergyState } from '@/logic/EnergySystem';
 import { hydrateMonsterEnergy } from '@/logic/MonsterEnergySystem';
@@ -547,6 +549,17 @@ function weaponEnhancementErrorMessage(error: unknown): string {
   return '武器強化の保存に失敗しました';
 }
 
+function residueEnhancementErrorMessage(error: unknown): string {
+  const saveError = playerSaveSchemaErrorMessage(error, { action: 'enhanceResidueForUser' });
+  if (saveError) return saveError;
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('深淵')) return '深淵の残滓は第2章到達後に解放されます';
+  if (message.includes('キャラクター')) return 'キャラクターが見つかりません';
+  if (message.includes('所有していない')) return '所有していない残滓です';
+  if (message.includes('素材')) return '残滓強化素材が不足しています';
+  return '残滓強化の保存に失敗しました';
+}
+
 async function getAuthorizedUser(userId: string): Promise<ServerGameUser | null> {
   const session = await auth().catch(() => null);
   if (session?.user?.id !== userId) return null;
@@ -854,7 +867,8 @@ export async function processStageResultForUser(
       ? clearedStagesBeforeClear
       : [...clearedStagesBeforeClear, normalizedStageId];
     await updatePlayerSaveBlob(tx, char.id, (save) => {
-      const nextSave = applyJobExpGainToSave(save, expGain, (jobId) => mds.getJob(jobId));
+      const leveledSave = applyJobExpGainToSave(save, expGain, (jobId) => mds.getJob(jobId));
+      const nextSave = applyNecroExpGainToSave(leveledSave, expGain);
       return {
         ...nextSave,
         player: {
@@ -1286,6 +1300,12 @@ export async function equipResidueAction(characterId: string, slotIndex: number,
   return equipResidueForUser(toServerUser(session.user), characterId, slotIndex, residueId);
 }
 
+export async function enhanceResidueAction(characterId: string, residueId: string, matIds: string[]): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return enhanceResidueForUser(toServerUser(session.user), characterId, residueId, matIds);
+}
+
 export async function rankUpWeaponAction(characterId: string, weaponId: string): Promise<SaveGameStateResult> {
   const session = await auth().catch(() => null);
   if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
@@ -1631,6 +1651,73 @@ export async function equipResidueForUser(
     });
     if (saveError) return { success: false, error: saveError };
     throw error;
+  }
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
+}
+
+export async function enhanceResidueForUser(
+  user: ServerGameUser,
+  characterId: string,
+  residueId: string,
+  matIds: string[],
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const selectedMatIds = Array.isArray(matIds)
+    ? matIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    : [];
+  if (selectedMatIds.length === 0) return { success: false, error: '残滓強化素材が不足しています' };
+
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    select: { id: true, playerState: true },
+  });
+  if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+
+  let effectiveClearedStages: string[];
+  try {
+    effectiveClearedStages = getEffectiveClearedStages(character);
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'enhanceResidueForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
+  if (!isAbyssalResidueUnlocked(effectiveClearedStages)) {
+    return { success: false, error: '深淵の残滓は第2章到達後に解放されます' };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const [residue] = await tx.$queryRaw<Array<{ id: string; level: number; exp: number; maxExp: number }>>`
+        SELECT id, level, exp, "maxExp"
+        FROM "AbyssalResidue"
+        WHERE id = ${residueId}
+          AND "characterId" = ${character.id}
+        FOR UPDATE
+      `;
+      if (!residue) throw new Error('所有していない残滓です');
+
+      let enhanced = calculateResidueEnhancement(residue, 0);
+      await updatePlayerSaveBlob(tx, character.id, (save) => {
+        const spent = spendResidueMaterials(save.residueMaterials, selectedMatIds);
+        if (spent.expGain <= 0) throw new Error('残滓強化素材が不足しています');
+        enhanced = calculateResidueEnhancement(residue, spent.expGain);
+        return { ...save, residueMaterials: spent.materials };
+      }, { cleanReferences: false });
+
+      await tx.abyssalResidue.update({
+        where: { id: residue.id },
+        data: enhanced,
+      });
+    });
+  } catch (error) {
+    return { success: false, error: residueEnhancementErrorMessage(error) };
   }
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));

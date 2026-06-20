@@ -2,6 +2,7 @@ import { expForLevel } from '../logic/ExperienceSystem';
 import { MasterDataService } from './MasterDataService';
 import {
   applyJobExpGainToSave,
+  applyNecroExpGainToSave,
   cleanPlayerSaveReferencesWithIds,
   emptyPlayerSave,
   migratePlayerSaveSchema,
@@ -118,5 +119,19 @@ describe('PlayerSaveService', () => {
     expect(masterData.getJob('warrior')?.levelBonuses['10']).toEqual({ passiveAtkBonus: 1 });
     expect(warrior).toMatchObject({ level: 10, exp: expForLevel(10) });
     expect(leveled.player.passives.passiveAtkBonus).toBe(1);
+  });
+
+  test('applies necro exp without requiring a schema change', () => {
+    const save = emptyPlayerSave();
+
+    const leveled = applyNecroExpGainToSave(save, expForLevel(12));
+
+    expect(leveled.player.necroStatus).toMatchObject({
+      rank: 1,
+      maxCost: 10,
+      baseStatsBonus: 1,
+      level: 12,
+      exp: expForLevel(12),
+    });
   });
 });

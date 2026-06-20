@@ -10,6 +10,7 @@ import { prisma } from '../lib/prisma';
 import { CharacterData, MonsterData } from '../types/game';
 import {
   applyJobExpGainToSave,
+  applyNecroExpGainToSave,
   readPlayerSave,
   updatePlayerSaveSnapshot,
 } from '../services/PlayerSaveService';
@@ -177,7 +178,8 @@ export class GameManager {
 
       // クリアフラグの追加
       await updatePlayerSaveSnapshot(tx, characterId, (save) => {
-        const nextSave = applyJobExpGainToSave(save, expGain, (jobId) => this.masterData.getJob(jobId));
+        const leveledSave = applyJobExpGainToSave(save, expGain, (jobId) => this.masterData.getJob(jobId));
+        const nextSave = applyNecroExpGainToSave(leveledSave, expGain);
         return {
           ...nextSave,
           player: {

@@ -497,6 +497,27 @@ export function applyJobExpGainToSave(
   return nextSave;
 }
 
+export function applyNecroExpGainToSave(
+  save: PlayerSaveV1,
+  expGain: number,
+): PlayerSaveV1 {
+  const current = normalizeNecroStatus(save.player.necroStatus);
+  const newExp = current.exp + normalizePositiveInt(expGain);
+  const newLevel = Math.min(99, Math.max(current.level, levelFromTotalExp(newExp)));
+
+  return {
+    ...save,
+    player: {
+      ...save.player,
+      necroStatus: {
+        ...current,
+        exp: newExp,
+        level: newLevel,
+      },
+    },
+  };
+}
+
 export function changeJobInSave(
   save: PlayerSaveV1,
   character: any,

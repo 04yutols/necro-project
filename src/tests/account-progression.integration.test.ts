@@ -3,6 +3,7 @@ import jobsData from '../data/master/jobs.json';
 import { calculateEnergyState } from '../logic/EnergySystem';
 import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
+import { calculateResidueEnhancement } from '../logic/ResidueEnhancement';
 import { RESIDUE_SLOT_ORDER } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
 import { calculateWeaponBaseAttack } from '../logic/WeaponSystem';
@@ -19,6 +20,7 @@ import {
   changeJobForUser,
   createCharacterForUser,
   dismantleWeaponForUser,
+  enhanceResidueForUser,
   equipItemForUser,
   equipResidueForUser,
   loadCharacterForUser,
@@ -258,6 +260,8 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(warriorJob?.exp).toBeGreaterThan(0);
     expect(warriorJob?.level).toBeGreaterThan(1);
     expect(warriorJob?.level).toBe(levelFromTotalExp(warriorJob?.exp ?? 0));
+    expect(afterClear.data.necroStatus.exp).toBe(clearResult.expGain);
+    expect(afterClear.data.necroStatus.level).toBe(levelFromTotalExp(afterClear.data.necroStatus.exp));
     const expectedWarriorStats = getJobBaseStatsAtLevel(JOBS.warrior, warriorJob?.level ?? 1);
     expect(afterClear.data.player.baseStats).toEqual(expectedWarriorStats);
     expect(afterClear.data.player.clearedStages).toContain('area1_node1');
@@ -269,6 +273,10 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     const playerStateAfterClear = playerStateAfterClearRows[0]?.playerState;
     expect(playerStateAfterClear?.player.clearedStages).toContain('area1_node1');
     expect(playerStateAfterClear?.player.gold).toBe(afterClear.data.player.gold);
+    expect(playerStateAfterClear?.player.necroStatus).toMatchObject({
+      exp: afterClear.data.necroStatus.exp,
+      level: afterClear.data.necroStatus.level,
+    });
     expect(playerStateAfterClear?.player.jobs).toEqual(expect.arrayContaining([
       expect.objectContaining({
         jobId: 'warrior',
@@ -482,6 +490,39 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
       .some((key) => afterResidueEquip.total[key] > beforeResidueEquip.total[key]);
     const elementIncreased = Object.values(afterResidueEquip.elementDmgBoosts).some((value) => (value ?? 0) > 0);
     expect(statIncreased || elementIncreased).toBe(true);
+
+    const materialForEnhance = afterArea2Gate.data.residueMaterials[0];
+    expect(materialForEnhance).toBeTruthy();
+    if (!materialForEnhance) throw new Error('expected residue material');
+    const expectedEnhancedResidue = calculateResidueEnhancement(residue, materialForEnhance.expValue);
+    const residueEnhanced = await enhanceResidueForUser(
+      user,
+      afterArea2Gate.data.player.id,
+      residue.id,
+      [materialForEnhance.id],
+    );
+    expect(residueEnhanced.success).toBe(true);
+    if (!residueEnhanced.success) throw new Error(residueEnhanced.error);
+    const enhancedResidue = residueEnhanced.data.abyssalResidues.find((item) => item.id === residue.id);
+    expect(enhancedResidue).toMatchObject(expectedEnhancedResidue);
+    expect(residueEnhanced.data.equippedResidueSlots[slotIndex]).toMatchObject(expectedEnhancedResidue);
+    const remainingEnhancedMaterial = residueEnhanced.data.residueMaterials.find((item) => item.id === materialForEnhance.id);
+    if (materialForEnhance.quantity > 1) {
+      expect(remainingEnhancedMaterial?.quantity).toBe(materialForEnhance.quantity - 1);
+    } else {
+      expect(remainingEnhancedMaterial).toBeUndefined();
+    }
+    const persistedEnhancedResidue = await prisma.abyssalResidue.findUniqueOrThrow({ where: { id: residue.id } });
+    expect(persistedEnhancedResidue).toMatchObject(expectedEnhancedResidue);
+    const playerStateAfterResidueEnhanceRows = await prisma.$queryRaw<Array<{ playerState: PlayerSaveV1 | null }>>`
+      SELECT "playerState" FROM "Character" WHERE id = ${residueEnhanced.data.player.id}
+    `;
+    const persistedMaterial = playerStateAfterResidueEnhanceRows[0]?.playerState?.residueMaterials.find((item) => item.id === materialForEnhance.id);
+    if (materialForEnhance.quantity > 1) {
+      expect(persistedMaterial?.quantity).toBe(materialForEnhance.quantity - 1);
+    } else {
+      expect(persistedMaterial).toBeUndefined();
+    }
 
     const selectedPlayerStateFields = await prisma.$queryRaw<Array<{ currentJobId: string; gold: string; clearedCount: number }>>`
       SELECT
