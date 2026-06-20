@@ -6,7 +6,7 @@ import {
   Tribe
 } from '../types/game';
 import { MasterDataService } from './MasterDataService';
-import { updatePlayerSaveSnapshot } from './PlayerSaveService';
+import { rankUpNecroInSave, updatePlayerSaveSnapshot } from './PlayerSaveService';
 
 export class NecroService {
   private masterData: MasterDataService;
@@ -55,7 +55,7 @@ export class NecroService {
 
       await tx.monster.delete({ where: { id: monsterId } });
       if (monster.characterId) {
-        await updatePlayerSaveSnapshot(tx, monster.characterId);
+        await updatePlayerSaveSnapshot(tx, monster.characterId, undefined, { cleanReferenceScopes: ['party'] });
       }
 
       return {
@@ -105,17 +105,7 @@ export class NecroService {
     const characterId = arg;
     return this.prisma.$transaction(async (tx: any) => {
       if (!isTrialCompleted) throw new Error('ランクアップには試練のクリアが必要です。');
-      await updatePlayerSaveSnapshot(tx, characterId, (save) => {
-        const current = save.player.necroStatus;
-        if (current.level < 99) throw new Error('ランクアップにはLv.99到達が必要です。');
-        save.player.necroStatus = {
-          level: 1,
-          rank: Math.min(10, current.rank + 1),
-          maxCost: current.maxCost + 5,
-          baseStatsBonus: current.baseStatsBonus + 0.5,
-          exp: 0,
-        };
-      });
+      await updatePlayerSaveSnapshot(tx, characterId, rankUpNecroInSave);
     });
   }
 

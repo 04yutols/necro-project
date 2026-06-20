@@ -6,33 +6,15 @@ import { BattleEngine } from './BattleEngine';
 import { getJobBaseStatsAtLevel } from './JobGrowthSystem';
 import { calculateEnergyState } from './EnergySystem';
 import { hydrateMonsterEnergy } from './MonsterEnergySystem';
-import { levelFromTotalExp } from './ExperienceSystem';
 import { prisma } from '../lib/prisma';
-import { CharacterData, JobData, MonsterData, PassiveBonuses } from '../types/game';
+import { CharacterData, MonsterData } from '../types/game';
 import {
-  addPassiveBonusToSave,
+  applyJobExpGainToSave,
   buildPlayerSaveFromDb,
   readPlayerSave,
   updatePlayerSaveSnapshot,
 } from '../services/PlayerSaveService';
 import type { PlayerSaveV1 } from '../types/playerSave';
-
-function sumLevelBonuses(job: JobData | undefined, fromExclusive: number, toInclusive: number): Partial<PassiveBonuses> {
-  const totals: Partial<PassiveBonuses> = {};
-  if (!job?.levelBonuses || toInclusive <= fromExclusive) return totals;
-  for (let level = fromExclusive + 1; level <= toInclusive; level += 1) {
-    const bonus = job.levelBonuses[String(level)];
-    if (!bonus) continue;
-    (Object.keys(bonus) as (keyof PassiveBonuses)[]).forEach((key) => {
-      totals[key] = (totals[key] ?? 0) + (bonus[key] ?? 0);
-    });
-  }
-  return totals;
-}
-
-function hasPassiveBonus(bonus: Partial<PassiveBonuses>): boolean {
-  return Object.values(bonus).some((value) => typeof value === 'number' && value !== 0);
-}
 
 /**
  * ゲーム全体の進行とループを管理するクラス (GDD-002)
@@ -199,31 +181,16 @@ export class GameManager {
 
       // クリアフラグの追加
       await updatePlayerSaveSnapshot(tx, characterId, (save) => {
-        const currentJobId = save.player.currentJobId || 'warrior';
-        const jobs = save.player.jobs.map((job) => ({ ...job }));
-        const jobIndex = jobs.findIndex((job) => job.jobId === currentJobId);
-        if (jobIndex >= 0) {
-          const currentJob = jobs[jobIndex];
-          const newExp = currentJob.exp + expGain;
-          const newLevel = levelFromTotalExp(newExp);
-          jobs[jobIndex] = { ...currentJob, exp: newExp, level: newLevel };
-          save.player.jobs = jobs;
-
-          if (newLevel > currentJob.level) {
-            const passiveBonus = sumLevelBonuses(
-              this.masterData.getJob(currentJobId),
-              currentJob.level,
-              newLevel,
-            );
-            if (hasPassiveBonus(passiveBonus)) {
-              save = addPassiveBonusToSave(save, passiveBonus);
-            }
-          }
-        }
-        if (!save.player.clearedStages.includes(stageId)) {
-          save.player.clearedStages.push(stageId);
-        }
-        return save;
+        const nextSave = applyJobExpGainToSave(save, expGain, (jobId) => this.masterData.getJob(jobId));
+        return {
+          ...nextSave,
+          player: {
+            ...nextSave.player,
+            clearedStages: nextSave.player.clearedStages.includes(stageId)
+              ? nextSave.player.clearedStages
+              : [...nextSave.player.clearedStages, stageId],
+          },
+        };
       });
     });
 
@@ -300,7 +267,7 @@ export class GameManager {
 
       await updatePlayerSaveSnapshot(tx, char.id, (save) => {
         save.player.partyMonsterIds = slotIds as PlayerSaveV1['player']['partyMonsterIds'];
-      });
+      }, { cleanReferenceScopes: ['party'] });
     });
   }
 
@@ -339,7 +306,7 @@ export class GameManager {
     await prisma.$transaction(async (tx: any) => {
       await updatePlayerSaveSnapshot(tx, characterId, (save) => {
         save.player.equipmentIds[slot as keyof PlayerSaveV1['player']['equipmentIds']] = itemId;
-      });
+      }, { cleanReferenceScopes: ['equipment'] });
     });
   }
 
@@ -364,7 +331,7 @@ export class GameManager {
     await prisma.$transaction(async (tx: any) => {
       await updatePlayerSaveSnapshot(tx, characterId, (save) => {
         save.player.equipmentIds[slot as keyof PlayerSaveV1['player']['equipmentIds']] = null;
-      });
+      }, { cleanReferenceScopes: ['equipment'] });
     });
   }
 

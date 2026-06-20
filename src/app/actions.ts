@@ -9,18 +9,26 @@ import { MasterDataService } from '@/services/MasterDataService';
 import { RankingService, normalizeStageClearMetrics } from '@/services/RankingService';
 import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventService';
 import {
-  addPassiveBonusToSave,
+  applyJobExpGainToSave,
+  buildPlayerSaveFromDb,
+  changeJobInSave,
+  emptyPlayerSave,
+  getEffectiveClearedStages,
+  hasCompletePlayerSave,
+  lockCharacterForUpdate,
+  playerSaveToJson,
+  rankUpNecroInSave,
+  readPlayerSave,
   spendWeaponMaterialsInSave,
+  toBaseStats,
   updatePlayerSaveSnapshot as updatePlayerSaveBlob,
 } from '@/services/PlayerSaveService';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
 import { calculateEnergyState } from '@/logic/EnergySystem';
 import { hydrateMonsterEnergy } from '@/logic/MonsterEnergySystem';
-import { levelFromTotalExp } from '@/logic/ExperienceSystem';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
 import { isAbyssalResidueUnlocked } from '@/logic/AbyssalResidueUnlockSystem';
 import { isStageUnlocked } from '@/logic/DungeonSystem';
-import { getJobUnlockStatus } from '@/logic/JobSystem';
 import {
   calculateDismantleRewards,
   calculateReforgedWeapon,
@@ -29,11 +37,9 @@ import {
   getRankUpCost,
   getReforgeCost,
   INITIAL_WEAPON_MATERIALS,
-  type WeaponCost,
 } from '@/logic/WeaponSystem';
 import type {
   AbyssalResidueData,
-  BaseStats,
   CharacterData,
   EnemyData,
   ElementType,
@@ -42,19 +48,14 @@ import type {
   JobData,
   MonsterData,
   NecroStatus,
-  PassiveBonuses,
-  ResidueMatData,
   Resistances,
   SoulShardData,
   SpiritCoreData,
   StageData,
-  UserJobState,
-  WeaponMaterialData,
-  WeaponMaterialType,
   WeaponRarity,
 } from '@/types/game';
 import type { OnlineStageRecordSummary, StageResultMeta, WorldEventType, WorldLogEntry } from '@/types/online';
-import { PLAYER_SAVE_SCHEMA_VERSION, type PlayerSaveV1 } from '@/types/playerSave';
+import type { PlayerSaveV1 } from '@/types/playerSave';
 import type { CreateCharacterResult, LoadCharacterResult, SaveGameStateResult, ServerGameData, ServerGameUser } from '@/types/serverGame';
 
 // ── ユーザー登録 ──────────────────────────────────────────────────────────────
@@ -261,399 +262,6 @@ function toItemData(row: {
   };
 }
 
-function toWeaponMaterialData(row: {
-  type: string;
-  name: string;
-  quantity: number;
-}): WeaponMaterialData {
-  return {
-    type: row.type as WeaponMaterialType,
-    name: row.name,
-    quantity: row.quantity,
-  };
-}
-
-const RESIDUE_MATERIAL_RARITIES = new Set<ResidueMatData['rarity']>(['COMMON', 'RARE', 'EPIC', 'LEGENDARY']);
-
-function emptyPlayerSave(): PlayerSaveV1 {
-  return {
-    schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
-    player: {
-      name: 'アルド',
-      currentJobId: 'warrior',
-      gold: 50000,
-      clearedStages: [],
-      jobs: [{ jobId: 'warrior', level: 1, exp: 0 }],
-      passives: {
-        passiveAtkBonus: 0,
-        passiveDefBonus: 0,
-        passiveSpdBonus: 0,
-        passiveCritRateBonus: 0,
-        passiveCritDmgBonus: 0,
-        passiveHpBonus: 0,
-      },
-      necroStatus: {
-        level: 1,
-        rank: 1,
-        maxCost: 10,
-        baseStatsBonus: 1,
-        exp: 0,
-      },
-      equipmentIds: {
-        weapon: null,
-        sub: null,
-        head: null,
-        body: null,
-        arms: null,
-        legs: null,
-        acc1: null,
-        acc2: null,
-      },
-      partyMonsterIds: [null, null, null],
-      equippedResidueIds: [null, null, null, null, null],
-    },
-    weaponMaterials: [],
-    residueMaterials: [],
-    transmutationPoints: 0,
-  };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function normalizePositiveInt(value: unknown, fallback = 0): number {
-  const numberValue = Number(value);
-  if (!Number.isFinite(numberValue)) return fallback;
-  return Math.max(0, Math.floor(numberValue));
-}
-
-function normalizeResidueMaterial(value: unknown): ResidueMatData | null {
-  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.name !== 'string') return null;
-  if (!RESIDUE_MATERIAL_RARITIES.has(value.rarity as ResidueMatData['rarity'])) return null;
-  const quantity = normalizePositiveInt(value.quantity);
-  if (quantity <= 0) return null;
-  return {
-    id: value.id,
-    name: value.name,
-    quantity,
-    expValue: normalizePositiveInt(value.expValue),
-    rarity: value.rarity as ResidueMatData['rarity'],
-  };
-}
-
-function normalizeResidueMaterials(value: unknown): ResidueMatData[] {
-  if (!Array.isArray(value)) return [];
-  const merged = new Map<string, ResidueMatData>();
-  for (const raw of value) {
-    const material = normalizeResidueMaterial(raw);
-    if (!material) continue;
-    const existing = merged.get(material.id);
-    if (existing) {
-      existing.quantity += material.quantity;
-      existing.name = material.name;
-      existing.expValue = material.expValue;
-      existing.rarity = material.rarity;
-    } else {
-      merged.set(material.id, { ...material });
-    }
-  }
-  return Array.from(merged.values());
-}
-
-function mergeResidueMaterials(current: ResidueMatData[], additions: ResidueMatData[]): ResidueMatData[] {
-  return normalizeResidueMaterials([...current, ...additions]);
-}
-
-function normalizeStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
-}
-
-function mergeStringArrays(...values: unknown[]): string[] {
-  const merged = new Set<string>();
-  for (const value of values) {
-    for (const item of normalizeStringArray(value)) {
-      merged.add(item);
-    }
-  }
-  return Array.from(merged);
-}
-
-function getEffectiveClearedStages(character: { clearedStages?: unknown; playerState?: unknown }): string[] {
-  return mergeStringArrays(
-    character.clearedStages,
-    readPlayerSave(character.playerState).player.clearedStages,
-  );
-}
-
-function nullableString(value: unknown): string | null {
-  return typeof value === 'string' && value.length > 0 ? value : null;
-}
-
-function normalizeJobs(value: unknown, fallback: UserJobState[] = [{ jobId: 'warrior', level: 1, exp: 0 }]): UserJobState[] {
-  if (!Array.isArray(value)) return fallback;
-  const jobs = value
-    .filter(isRecord)
-    .map((job) => ({
-      jobId: typeof job.jobId === 'string' ? job.jobId : '',
-      level: Math.max(1, normalizePositiveInt(job.level, 1)),
-      exp: normalizePositiveInt(job.exp),
-    }))
-    .filter((job) => job.jobId.length > 0);
-  return jobs.length > 0 ? jobs : fallback;
-}
-
-function normalizePassives(value: unknown, fallback = emptyPlayerSave().player.passives): PassiveBonuses {
-  const source = isRecord(value) ? value : {};
-  return {
-    passiveAtkBonus: normalizePositiveInt(source.passiveAtkBonus, fallback.passiveAtkBonus),
-    passiveDefBonus: normalizePositiveInt(source.passiveDefBonus, fallback.passiveDefBonus),
-    passiveSpdBonus: normalizePositiveInt(source.passiveSpdBonus, fallback.passiveSpdBonus),
-    passiveCritRateBonus: Number.isFinite(Number(source.passiveCritRateBonus)) ? Number(source.passiveCritRateBonus) : fallback.passiveCritRateBonus,
-    passiveCritDmgBonus: Number.isFinite(Number(source.passiveCritDmgBonus)) ? Number(source.passiveCritDmgBonus) : fallback.passiveCritDmgBonus,
-    passiveHpBonus: normalizePositiveInt(source.passiveHpBonus, fallback.passiveHpBonus),
-  };
-}
-
-function normalizeNecroStatus(value: unknown, fallback = emptyPlayerSave().player.necroStatus): NecroStatus {
-  const source = isRecord(value) ? value : {};
-  return {
-    level: Math.max(1, normalizePositiveInt(source.level, fallback.level)),
-    rank: Math.max(1, normalizePositiveInt(source.rank, fallback.rank)),
-    maxCost: Math.max(1, normalizePositiveInt(source.maxCost, fallback.maxCost)),
-    baseStatsBonus: Number.isFinite(Number(source.baseStatsBonus)) ? Number(source.baseStatsBonus) : fallback.baseStatsBonus,
-    exp: normalizePositiveInt(source.exp, fallback.exp ?? 0),
-  };
-}
-
-function normalizeWeaponMaterials(value: unknown): WeaponMaterialData[] {
-  if (!Array.isArray(value)) return [];
-  const merged = new Map<string, WeaponMaterialData>();
-  for (const raw of value) {
-    if (!isRecord(raw) || typeof raw.type !== 'string' || typeof raw.name !== 'string') continue;
-    const quantity = normalizePositiveInt(raw.quantity);
-    const existing = merged.get(raw.type);
-    if (existing) {
-      existing.quantity += quantity;
-      existing.name = raw.name;
-    } else {
-      merged.set(raw.type, {
-        type: raw.type as WeaponMaterialType,
-        name: raw.name,
-        quantity,
-      });
-    }
-  }
-  return Array.from(merged.values());
-}
-
-function normalizeEquipmentIds(value: unknown, fallback = emptyPlayerSave().player.equipmentIds): PlayerSaveV1['player']['equipmentIds'] {
-  const source = isRecord(value) ? value : {};
-  return {
-    weapon: nullableString(source.weapon) ?? fallback.weapon,
-    sub: nullableString(source.sub) ?? fallback.sub,
-    head: nullableString(source.head) ?? fallback.head,
-    body: nullableString(source.body) ?? fallback.body,
-    arms: nullableString(source.arms) ?? fallback.arms,
-    legs: nullableString(source.legs) ?? fallback.legs,
-    acc1: nullableString(source.acc1) ?? fallback.acc1,
-    acc2: nullableString(source.acc2) ?? fallback.acc2,
-  };
-}
-
-function normalizeNullableTuple(value: unknown, length: 3, fallback: [string | null, string | null, string | null]): [string | null, string | null, string | null];
-function normalizeNullableTuple(value: unknown, length: 5, fallback: [string | null, string | null, string | null, string | null, string | null]): [string | null, string | null, string | null, string | null, string | null];
-function normalizeNullableTuple(value: unknown, length: number, fallback: (string | null)[]) {
-  const source = Array.isArray(value) ? value : [];
-  return Array.from({ length }, (_, index) => nullableString(source[index]) ?? fallback[index] ?? null);
-}
-
-function readPlayerSave(playerState: unknown, fallback: PlayerSaveV1 = emptyPlayerSave()): PlayerSaveV1 {
-  if (!isRecord(playerState) || playerState.schemaVersion !== PLAYER_SAVE_SCHEMA_VERSION) {
-    return fallback;
-  }
-  const player = isRecord(playerState.player) ? playerState.player : {};
-  return {
-    schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
-    player: {
-      name: typeof player.name === 'string' ? player.name : fallback.player.name,
-      currentJobId: typeof player.currentJobId === 'string' ? player.currentJobId : fallback.player.currentJobId,
-      gold: normalizePositiveInt(player.gold, fallback.player.gold),
-      clearedStages: Array.isArray(player.clearedStages)
-        ? normalizeStringArray(player.clearedStages)
-        : fallback.player.clearedStages,
-      jobs: normalizeJobs(player.jobs, fallback.player.jobs),
-      passives: normalizePassives(player.passives, fallback.player.passives),
-      necroStatus: normalizeNecroStatus(player.necroStatus, fallback.player.necroStatus),
-      equipmentIds: normalizeEquipmentIds(player.equipmentIds, fallback.player.equipmentIds),
-      partyMonsterIds: normalizeNullableTuple(player.partyMonsterIds, 3, fallback.player.partyMonsterIds),
-      equippedResidueIds: normalizeNullableTuple(player.equippedResidueIds, 5, fallback.player.equippedResidueIds),
-    },
-    weaponMaterials: Array.isArray(playerState.weaponMaterials)
-      ? normalizeWeaponMaterials(playerState.weaponMaterials)
-      : fallback.weaponMaterials,
-    residueMaterials: Array.isArray(playerState.residueMaterials)
-      ? normalizeResidueMaterials(playerState.residueMaterials)
-      : fallback.residueMaterials,
-    transmutationPoints: typeof playerState.transmutationPoints === 'number'
-      ? normalizePositiveInt(playerState.transmutationPoints)
-      : fallback.transmutationPoints,
-  };
-}
-
-function playerSaveToJson(save: PlayerSaveV1): Prisma.InputJsonValue {
-  return {
-    schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
-    player: {
-      name: save.player.name,
-      currentJobId: save.player.currentJobId,
-      gold: normalizePositiveInt(save.player.gold),
-      clearedStages: [...save.player.clearedStages],
-      jobs: save.player.jobs.map((job) => ({
-        jobId: job.jobId,
-        level: job.level,
-        exp: job.exp,
-      })),
-      passives: { ...save.player.passives },
-      necroStatus: { ...save.player.necroStatus },
-      equipmentIds: { ...save.player.equipmentIds },
-      partyMonsterIds: [...save.player.partyMonsterIds],
-      equippedResidueIds: [...save.player.equippedResidueIds],
-    },
-    weaponMaterials: save.weaponMaterials.map((material) => ({
-      type: material.type,
-      name: material.name,
-      quantity: material.quantity,
-    })),
-    residueMaterials: save.residueMaterials.map((material) => ({
-      id: material.id,
-      name: material.name,
-      quantity: material.quantity,
-      expValue: material.expValue,
-      rarity: material.rarity,
-    })),
-    transmutationPoints: normalizePositiveInt(save.transmutationPoints),
-  };
-}
-
-async function lockCharacterForUpdate(tx: Prisma.TransactionClient, characterId: string) {
-  await tx.$queryRaw<Array<{ id: string }>>`
-    SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE
-  `;
-}
-
-function buildPlayerSaveFromDb(
-  character: any,
-  weaponMaterials: unknown[] = [],
-  previousSave: PlayerSaveV1 = readPlayerSave(character?.playerState),
-): PlayerSaveV1 {
-  const jobs = normalizeJobs((character.jobs ?? []).map((job: any) => ({
-    jobId: job.jobId,
-    level: job.level,
-    exp: job.exp,
-  })), previousSave.player.jobs);
-  const currentJobId = character.currentJobId ?? previousSave.player.currentJobId ?? jobs[0]?.jobId ?? 'warrior';
-
-  return {
-    schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
-    player: {
-      name: character.name ?? previousSave.player.name,
-      currentJobId,
-      gold: normalizePositiveInt(character.gold, previousSave.player.gold),
-      clearedStages: mergeStringArrays(character.clearedStages, previousSave.player.clearedStages),
-      jobs,
-      passives: {
-        passiveAtkBonus: normalizePositiveInt(character.passiveAtkBonus),
-        passiveDefBonus: normalizePositiveInt(character.passiveDefBonus),
-        passiveSpdBonus: normalizePositiveInt(character.passiveSpdBonus),
-        passiveCritRateBonus: Number(character.passiveCritRateBonus ?? 0),
-        passiveCritDmgBonus: Number(character.passiveCritDmgBonus ?? 0),
-        passiveHpBonus: normalizePositiveInt(character.passiveHpBonus),
-      },
-      necroStatus: {
-        level: Math.max(1, normalizePositiveInt(character.necroLevel, previousSave.player.necroStatus.level)),
-        rank: Math.max(1, normalizePositiveInt(character.necroRank, previousSave.player.necroStatus.rank)),
-        maxCost: Math.max(1, normalizePositiveInt(character.necroMaxCost, previousSave.player.necroStatus.maxCost)),
-        baseStatsBonus: Number.isFinite(Number(character.necroBaseStatsBonus))
-          ? Number(character.necroBaseStatsBonus)
-          : previousSave.player.necroStatus.baseStatsBonus,
-        exp: normalizePositiveInt(character.necroExp, previousSave.player.necroStatus.exp ?? 0),
-      },
-      equipmentIds: {
-        weapon: character.equipWeaponId ?? null,
-        sub: character.equipSubId ?? null,
-        head: character.equipHeadId ?? null,
-        body: character.equipBodyId ?? null,
-        arms: character.equipArmsId ?? null,
-        legs: character.equipLegsId ?? null,
-        acc1: character.equipAcc1Id ?? null,
-        acc2: character.equipAcc2Id ?? null,
-      },
-      partyMonsterIds: [
-        character.partySlot0Id ?? null,
-        character.partySlot1Id ?? null,
-        character.partySlot2Id ?? null,
-      ],
-      equippedResidueIds: [
-        character.equippedResidue0Id ?? null,
-        character.equippedResidue1Id ?? null,
-        character.equippedResidue2Id ?? null,
-        character.equippedResidue3Id ?? null,
-        character.equippedResidue4Id ?? null,
-      ],
-    },
-    weaponMaterials: normalizeWeaponMaterials(weaponMaterials),
-    residueMaterials: previousSave.residueMaterials,
-    transmutationPoints: previousSave.transmutationPoints,
-  };
-}
-
-function hasCompletePlayerSave(playerState: unknown): boolean {
-  return isRecord(playerState)
-    && playerState.schemaVersion === PLAYER_SAVE_SCHEMA_VERSION
-    && isRecord(playerState.player)
-    && Array.isArray(playerState.player.clearedStages)
-    && Array.isArray(playerState.player.jobs)
-    && isRecord(playerState.player.necroStatus)
-    && isRecord(playerState.player.passives)
-    && isRecord(playerState.player.equipmentIds)
-    && Array.isArray(playerState.player.partyMonsterIds)
-    && Array.isArray(playerState.player.equippedResidueIds)
-    && Array.isArray(playerState.weaponMaterials)
-    && Array.isArray(playerState.residueMaterials)
-    && typeof playerState.transmutationPoints === 'number';
-}
-
-async function syncPlayerStateSnapshot(
-  tx: Prisma.TransactionClient,
-  characterId: string,
-  options: { residueMaterialAdditions?: ResidueMatData[] } = {},
-): Promise<PlayerSaveV1> {
-  return updatePlayerSaveBlob(tx, characterId, undefined, options);
-}
-
-function toBaseStats(row: {
-  hp: number;
-  atk: number;
-  def: number;
-  spd: number;
-  critRate: number;
-  critDmg: number;
-  effectHit: number;
-  effectRes: number;
-}): BaseStats {
-  return {
-    hp: row.hp,
-    atk: row.atk,
-    def: row.def,
-    spd: row.spd,
-    critRate: row.critRate,
-    critDmg: row.critDmg,
-    effectHit: row.effectHit,
-    effectRes: row.effectRes,
-  };
-}
-
 function toResidueSlot(row: unknown): AbyssalResidueData | null {
   return row ? toResidueData(row as Parameters<typeof toResidueData>[0]) : null;
 }
@@ -725,25 +333,6 @@ function getJobData(jobId: string): JobData {
   const job = mds.getJob(jobId) ?? mds.getJob('warrior');
   if (!job) throw new Error(`Job ${jobId} not found in master data`);
   return job;
-}
-
-function sumLevelBonuses(job: JobData | undefined, fromExclusive: number, toInclusive: number): Partial<PassiveBonuses> {
-  const totals: Partial<PassiveBonuses> = {};
-  if (!job?.levelBonuses || toInclusive <= fromExclusive) return totals;
-
-  for (let level = fromExclusive + 1; level <= toInclusive; level += 1) {
-    const bonus = job.levelBonuses[String(level)];
-    if (!bonus) continue;
-    (Object.keys(bonus) as (keyof PassiveBonuses)[]).forEach((key) => {
-      totals[key] = (totals[key] ?? 0) + (bonus[key] ?? 0);
-    });
-  }
-
-  return totals;
-}
-
-function hasPassiveBonus(bonus: Partial<PassiveBonuses>): boolean {
-  return Object.values(bonus).some((value) => typeof value === 'number' && value !== 0);
 }
 
 function toServerUser(sessionUser: { id?: string; name?: string | null; email?: string | null }): ServerGameUser {
@@ -1307,27 +896,15 @@ export async function processStageResultForUser(
       ? clearedStagesBeforeClear
       : [...clearedStagesBeforeClear, normalizedStageId];
     await updatePlayerSaveBlob(tx, char.id, (save) => {
-      const currentJobId = save.player.currentJobId || 'warrior';
-      const jobs = save.player.jobs.map((job) => ({ ...job }));
-      const jobIndex = jobs.findIndex((job) => job.jobId === currentJobId);
-      if (jobIndex >= 0) {
-        const currentJob = jobs[jobIndex];
-        const newExp = currentJob.exp + expGain;
-        const oldLevel = currentJob.level;
-        const newLevel = levelFromTotalExp(newExp);
-        jobs[jobIndex] = { ...currentJob, exp: newExp, level: newLevel };
-        save.player.jobs = jobs;
-
-        if (newLevel > oldLevel) {
-          const passiveBonus = sumLevelBonuses(mds.getJob(currentJob.jobId), oldLevel, newLevel);
-          if (hasPassiveBonus(passiveBonus)) {
-            save = addPassiveBonusToSave(save, passiveBonus);
-          }
-        }
-      }
-      save.player.gold += goldGain;
-      save.player.clearedStages = nextClearedStages;
-      return save;
+      const nextSave = applyJobExpGainToSave(save, expGain, (jobId) => mds.getJob(jobId));
+      return {
+        ...nextSave,
+        player: {
+          ...nextSave.player,
+          gold: nextSave.player.gold + goldGain,
+          clearedStages: nextClearedStages,
+        },
+      };
     }, {
       residueMaterialAdditions: dropResult.materials,
       weaponMaterialAdditions: dropResult.weaponMaterials,
@@ -1440,7 +1017,7 @@ export async function loadCharacterForUser(user: ServerGameUser): Promise<LoadCh
 
   if (!hasCompletePlayerSave(character.playerState)) {
     await prisma.$transaction(async (tx) => {
-      await syncPlayerStateSnapshot(tx, characterId);
+      await updatePlayerSaveBlob(tx, characterId);
     });
     character = await prisma.character.findFirst({
       where: { userId: authorizedUser.id },
@@ -1481,15 +1058,9 @@ export async function changeJobForUser(
 
   try {
     await prisma.$transaction(async (tx) => {
-      await updatePlayerSaveBlob(tx, character.id, (save) => {
-        const jobData = getJobData(jobId);
-        const unlock = getJobUnlockStatus({ jobs: save.player.jobs } as CharacterData, jobData);
-        if (!unlock.unlocked) throw new Error(`Job ${jobId} is locked`);
-        if (!save.player.jobs.some((job) => job.jobId === jobId)) {
-          save.player.jobs.push({ jobId, level: 1, exp: 0 });
-        }
-        save.player.currentJobId = jobId;
-      });
+      await updatePlayerSaveBlob(tx, character.id, (save, { character }) =>
+        changeJobInSave(save, character, jobId, getJobData(jobId)),
+      );
     });
   } catch (error) {
     return { success: false, error: jobChangeErrorMessage(error) };
@@ -1642,17 +1213,7 @@ export async function processGrowthForUser(
 
   try {
     await prisma.$transaction(async (tx) => {
-      await updatePlayerSaveBlob(tx, character.id, (save) => {
-        const current = save.player.necroStatus;
-        if (current.level < 99) throw new Error('ランクアップにはLv.99到達が必要です。');
-        save.player.necroStatus = {
-          level: 1,
-          rank: Math.min(10, current.rank + 1),
-          maxCost: current.maxCost + 5,
-          baseStatsBonus: current.baseStatsBonus + 0.5,
-          exp: 0,
-        };
-      });
+      await updatePlayerSaveBlob(tx, character.id, rankUpNecroInSave);
     });
   } catch (error) {
     return { success: false, error: rankUpErrorMessage(error) };
@@ -1698,7 +1259,7 @@ export async function soulStoneForUser(
       },
     });
     await tx.monster.delete({ where: { id: monster.id } });
-    await syncPlayerStateSnapshot(tx, monster.characterId!);
+    await updatePlayerSaveBlob(tx, monster.characterId!, undefined, { cleanReferenceScopes: ['party'] });
     return created;
   });
 
@@ -1781,14 +1342,6 @@ export async function dismantleWeaponAction(characterId: string, weaponId: strin
   return dismantleWeaponForUser(toServerUser(session.user), characterId, weaponId);
 }
 
-async function spendWeaponMaterialsForUser(
-  tx: Prisma.TransactionClient,
-  characterId: string,
-  costs: WeaponCost[],
-) {
-  await updatePlayerSaveBlob(tx, characterId, (save) => spendWeaponMaterialsInSave(save, costs));
-}
-
 async function findOwnedWeapon(
   tx: Prisma.TransactionClient,
   userId: string,
@@ -1830,12 +1383,16 @@ export async function rankUpWeaponForUser(
       const cost = getRankUpCost(item);
       if (!cost) throw new Error('これ以上共鳴できません');
 
-      await spendWeaponMaterialsForUser(tx, character.id, [cost]);
       await tx.item.update({
         where: { id: weapon.id },
         data: { rank: (item.rank ?? 0) + 1 },
       });
-      await syncPlayerStateSnapshot(tx, character.id);
+      await updatePlayerSaveBlob(
+        tx,
+        character.id,
+        (save) => spendWeaponMaterialsInSave(save, [cost]),
+        { cleanReferences: false },
+      );
     });
   } catch (error) {
     return { success: false, error: weaponEnhancementErrorMessage(error) };
@@ -1860,7 +1417,7 @@ export async function reforgeWeaponForUser(
       const targetIlv = getNextReforgeTargetIlv(item);
       if (!targetIlv) throw new Error('これ以上ILvを上げられません');
 
-      await spendWeaponMaterialsForUser(tx, character.id, getReforgeCost(item));
+      const costs = getReforgeCost(item);
       const reforged = calculateReforgedWeapon(item, targetIlv);
       await tx.item.update({
         where: { id: weapon.id },
@@ -1869,7 +1426,12 @@ export async function reforgeWeaponForUser(
           atk: calculateWeaponBaseAttack(reforged),
         },
       });
-      await syncPlayerStateSnapshot(tx, character.id);
+      await updatePlayerSaveBlob(
+        tx,
+        character.id,
+        (save) => spendWeaponMaterialsInSave(save, costs),
+        { cleanReferences: false },
+      );
     });
   } catch (error) {
     return { success: false, error: weaponEnhancementErrorMessage(error) };
@@ -1896,7 +1458,10 @@ export async function dismantleWeaponForUser(
       const rewards = calculateDismantleRewards(toItemData(weapon));
       if (rewards.length === 0) throw new Error('この武器は分解できません');
       await tx.item.delete({ where: { id: weapon.id } });
-      await updatePlayerSaveBlob(tx, character.id, undefined, { weaponMaterialAdditions: rewards });
+      await updatePlayerSaveBlob(tx, character.id, undefined, {
+        weaponMaterialAdditions: rewards,
+        cleanReferences: false,
+      });
     });
   } catch (error) {
     return { success: false, error: weaponEnhancementErrorMessage(error) };
@@ -1942,7 +1507,7 @@ export async function updatePartyForUser(
   await prisma.$transaction(async (tx) => {
     await updatePlayerSaveBlob(tx, characterId, (save) => {
       save.player.partyMonsterIds = ids as PlayerSaveV1['player']['partyMonsterIds'];
-    });
+    }, { cleanReferenceScopes: ['party'] });
   });
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));
@@ -1978,7 +1543,7 @@ export async function equipItemForUser(
   await prisma.$transaction(async (tx) => {
     await updatePlayerSaveBlob(tx, characterId, (save) => {
       save.player.equipmentIds[typedSlot as keyof PlayerSaveV1['player']['equipmentIds']] = item.id;
-    });
+    }, { cleanReferenceScopes: ['equipment'] });
   });
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));
@@ -2002,7 +1567,7 @@ export async function unequipItemForUser(
   await prisma.$transaction(async (tx) => {
     await updatePlayerSaveBlob(tx, characterId, (save) => {
       save.player.equipmentIds[typedSlot as keyof PlayerSaveV1['player']['equipmentIds']] = null;
-    });
+    }, { cleanReferenceScopes: ['equipment'] });
   });
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));
@@ -2044,7 +1609,7 @@ export async function equipResidueForUser(
       const slots = [...save.player.equippedResidueIds] as PlayerSaveV1['player']['equippedResidueIds'];
       slots[slotIndex] = residue.id;
       save.player.equippedResidueIds = slots;
-    });
+    }, { cleanReferenceScopes: ['residue'] });
   });
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));

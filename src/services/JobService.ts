@@ -5,8 +5,8 @@ import { getJobUnlockStatus } from '../logic/JobSystem';
 import { calculateEnergyState } from '../logic/EnergySystem';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 import {
-  addPassiveBonusToSave,
-  toCharacterDataForSave,
+  changeJobInSave,
+  setJobLevelInSave,
   updatePlayerSaveSnapshot,
 } from './PlayerSaveService';
 
@@ -42,15 +42,9 @@ export class JobService {
     if (!this.prisma) throw new Error('PrismaClient is required for persistent job changes.');
     const characterId = characterOrId;
     await this.prisma.$transaction(async (tx: any) => {
-      await updatePlayerSaveSnapshot(tx, characterId, (save, { character }) => {
-        const unlock = getJobUnlockStatus(toCharacterDataForSave(character, save), jobData);
-        if (!unlock.unlocked) throw new Error(`Job ${nextJobId} is locked`);
-
-        if (!save.player.jobs.some((job) => job.jobId === nextJobId)) {
-          save.player.jobs.push({ jobId: nextJobId, level: 1, exp: 0 });
-        }
-        save.player.currentJobId = nextJobId;
-      });
+      await updatePlayerSaveSnapshot(tx, characterId, (save, { character }) =>
+        changeJobInSave(save, character, nextJobId, jobData),
+      );
     });
   }
 
@@ -85,53 +79,6 @@ export class JobService {
     };
   }
 
-  private toCharacterDataForUnlock(character: any): CharacterData {
-    const currentJobId = character.currentJobId ?? 'warrior';
-    const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior')!;
-    const jobs = (character.jobs ?? []).map((job: UserJobState) => ({ jobId: job.jobId, level: job.level, exp: job.exp }));
-    const currentJobLevel = Math.max(1, jobs.find((job: { jobId: string; level: number; exp: number }) => job.jobId === currentJobId)?.level ?? 1);
-    const energyState = calculateEnergyState(currentJob, currentJobLevel);
-    const persistedBaseStats = {
-      hp: character.hp,
-      atk: character.atk,
-      def: character.def,
-      spd: character.spd,
-      critRate: character.critRate,
-      critDmg: character.critDmg,
-      effectHit: character.effectHit,
-      effectRes: character.effectRes,
-    };
-    const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, persistedBaseStats);
-
-    return {
-      id: character.id,
-      name: character.name,
-      currentJobId,
-      category: currentJob.category,
-      baseStats,
-      necroLevel: character.necroLevel ?? 1,
-      necroBaseStatsBonus: character.necroBaseStatsBonus ?? 1,
-      stats: baseStats,
-      passives: {
-        passiveAtkBonus: character.passiveAtkBonus ?? 0,
-        passiveDefBonus: character.passiveDefBonus ?? 0,
-        passiveSpdBonus: character.passiveSpdBonus ?? 0,
-        passiveCritRateBonus: character.passiveCritRateBonus ?? 0,
-        passiveCritDmgBonus: character.passiveCritDmgBonus ?? 0,
-        passiveHpBonus: character.passiveHpBonus ?? 0,
-      },
-      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
-      baseResistances: {},
-      jobs,
-      isAwakened: false,
-      clearedStages: character.clearedStages ?? [],
-      gold: character.gold ?? 0,
-      currentEnergy: energyState.currentEnergy,
-      maxEnergy: energyState.maxEnergy,
-      elementDmgBoosts: {},
-    };
-  }
-
   /**
    * 職業レベルアップ時の処理とパッシブ蓄積。
    * Character モデルの passiveXxxBonus を確実に更新。
@@ -160,21 +107,9 @@ export class JobService {
     if (!this.prisma) throw new Error('PrismaClient is required for persistent job level updates.');
     const characterId = characterOrId;
     await this.prisma.$transaction(async (tx: any) => {
-      await updatePlayerSaveSnapshot(tx, characterId, (save) => {
-        const jobs = save.player.jobs.map((job) => ({ ...job }));
-        const index = jobs.findIndex((job) => job.jobId === jobId);
-        const oldLevel = index >= 0 ? jobs[index].level : 0;
-        if (index >= 0) {
-          jobs[index] = { ...jobs[index], level: newLevel };
-        } else {
-          jobs.push({ jobId, level: newLevel, exp: 0 });
-        }
-        save.player.jobs = jobs;
-
-        const jobData = this.masterData.getJob(jobId);
-        const bonus = this.sumLevelBonuses(jobData, oldLevel, newLevel);
-        return this.hasPassiveBonus(bonus) ? addPassiveBonusToSave(save, bonus) : save;
-      });
+      await updatePlayerSaveSnapshot(tx, characterId, (save) =>
+        setJobLevelInSave(save, jobId, newLevel, (id) => this.masterData.getJob(id)),
+      );
     });
   }
 

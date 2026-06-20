@@ -3,6 +3,7 @@ import type {
   BaseStats,
   CharacterData,
   EquipmentSlots,
+  JobData,
   NecroStatus,
   PassiveBonuses,
   ResidueMatData,
@@ -15,6 +16,8 @@ import { PLAYER_SAVE_SCHEMA_VERSION, type PlayerSaveV1 } from '../types/playerSa
 import { MasterDataService } from './MasterDataService';
 import { calculateEnergyState } from '../logic/EnergySystem';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
+import { levelFromTotalExp } from '../logic/ExperienceSystem';
+import { getJobUnlockStatus } from '../logic/JobSystem';
 
 const EMPTY_EQUIPMENT_IDS: PlayerSaveV1['player']['equipmentIds'] = {
   weapon: null,
@@ -87,6 +90,13 @@ export function mergeStringArrays(...values: unknown[]): string[] {
     }
   }
   return Array.from(merged);
+}
+
+export function getEffectiveClearedStages(character: { clearedStages?: unknown; playerState?: unknown }): string[] {
+  return mergeStringArrays(
+    character.clearedStages,
+    readPlayerSave(character.playerState).player.clearedStages,
+  );
 }
 
 export function normalizeJobs(
@@ -343,6 +353,131 @@ export function toBaseStats(row: Partial<BaseStats> | null | undefined): BaseSta
   };
 }
 
+function sumLevelBonuses(job: JobData | undefined, fromExclusive: number, toInclusive: number): Partial<PassiveBonuses> {
+  const totals: Partial<PassiveBonuses> = {};
+  if (!job?.levelBonuses || toInclusive <= fromExclusive) return totals;
+
+  for (let level = fromExclusive + 1; level <= toInclusive; level += 1) {
+    const bonus = job.levelBonuses[String(level)];
+    if (!bonus) continue;
+    (Object.keys(bonus) as (keyof PassiveBonuses)[]).forEach((key) => {
+      totals[key] = (totals[key] ?? 0) + (bonus[key] ?? 0);
+    });
+  }
+
+  return totals;
+}
+
+function hasPassiveBonus(bonus: Partial<PassiveBonuses>): boolean {
+  return Object.values(bonus).some((value) => typeof value === 'number' && value !== 0);
+}
+
+type JobResolver = (jobId: string) => JobData | undefined;
+
+export function setJobLevelInSave(
+  save: PlayerSaveV1,
+  jobId: string,
+  newLevel: number,
+  getJob: JobResolver,
+): PlayerSaveV1 {
+  const jobs = save.player.jobs.map((job) => ({ ...job }));
+  const index = jobs.findIndex((job) => job.jobId === jobId);
+  const oldLevel = index >= 0 ? jobs[index].level : 0;
+  const level = Math.max(1, Math.floor(Number.isFinite(newLevel) ? newLevel : 1));
+
+  if (index >= 0) {
+    jobs[index] = { ...jobs[index], level };
+  } else {
+    jobs.push({ jobId, level, exp: 0 });
+  }
+
+  const nextSave: PlayerSaveV1 = {
+    ...save,
+    player: {
+      ...save.player,
+      jobs,
+    },
+  };
+  const bonus = sumLevelBonuses(getJob(jobId), oldLevel, level);
+  return hasPassiveBonus(bonus) ? addPassiveBonusToSave(nextSave, bonus) : nextSave;
+}
+
+export function applyJobExpGainToSave(
+  save: PlayerSaveV1,
+  expGain: number,
+  getJob: JobResolver,
+): PlayerSaveV1 {
+  const currentJobId = save.player.currentJobId || 'warrior';
+  const jobs = save.player.jobs.map((job) => ({ ...job }));
+  const index = jobs.findIndex((job) => job.jobId === currentJobId);
+  const currentJob = index >= 0 ? jobs[index] : { jobId: currentJobId, level: 1, exp: 0 };
+  const newExp = currentJob.exp + normalizePositiveInt(expGain);
+  const newLevel = levelFromTotalExp(newExp);
+
+  if (index >= 0) {
+    jobs[index] = { ...currentJob, exp: newExp, level: newLevel };
+  } else {
+    jobs.push({ ...currentJob, exp: newExp, level: newLevel });
+  }
+
+  let nextSave: PlayerSaveV1 = {
+    ...save,
+    player: {
+      ...save.player,
+      jobs,
+    },
+  };
+  if (newLevel > currentJob.level) {
+    const bonus = sumLevelBonuses(getJob(currentJobId), currentJob.level, newLevel);
+    if (hasPassiveBonus(bonus)) {
+      nextSave = addPassiveBonusToSave(nextSave, bonus);
+    }
+  }
+  return nextSave;
+}
+
+export function changeJobInSave(
+  save: PlayerSaveV1,
+  character: any,
+  nextJobId: string,
+  jobData: JobData,
+): PlayerSaveV1 {
+  const unlock = getJobUnlockStatus(toCharacterDataForSave(character, save), jobData);
+  if (!unlock.unlocked) throw new Error(`Job ${nextJobId} is locked`);
+
+  const jobs = save.player.jobs.map((job) => ({ ...job }));
+  if (!jobs.some((job) => job.jobId === nextJobId)) {
+    jobs.push({ jobId: nextJobId, level: 1, exp: 0 });
+  }
+
+  return {
+    ...save,
+    player: {
+      ...save.player,
+      currentJobId: nextJobId,
+      jobs,
+    },
+  };
+}
+
+export function rankUpNecroInSave(save: PlayerSaveV1): PlayerSaveV1 {
+  const current = save.player.necroStatus;
+  if (current.level < 99) throw new Error('ランクアップにはLv.99到達が必要です。');
+  return {
+    ...save,
+    player: {
+      ...save.player,
+      necroStatus: {
+        level: 1,
+        rank: Math.min(10, current.rank + 1),
+        maxCost: current.maxCost + 5,
+        baseStatsBonus: current.baseStatsBonus + 0.5,
+        exp: 0,
+      },
+    },
+  };
+}
+
 export function buildPlayerSaveFromDb(
   character: any,
   weaponMaterials: unknown[] = [],
@@ -424,10 +559,15 @@ type PlayerSaveUpdater = (
   context: { character: any },
 ) => PlayerSaveV1 | void;
 
+export type PlayerSaveReferenceScope = 'equipment' | 'party' | 'residue';
+
+const ALL_REFERENCE_SCOPES: PlayerSaveReferenceScope[] = ['equipment', 'party', 'residue'];
+
 export interface UpdatePlayerSaveOptions {
   residueMaterialAdditions?: ResidueMatData[];
   weaponMaterialAdditions?: { type: WeaponMaterialType; name: string; quantity: number }[];
   cleanReferences?: boolean;
+  cleanReferenceScopes?: PlayerSaveReferenceScope[];
 }
 
 export async function updatePlayerSaveSnapshot(
@@ -469,7 +609,7 @@ export async function updatePlayerSaveSnapshot(
 
   nextSave = options.cleanReferences === false
     ? normalizePlayerSave(nextSave)
-    : await cleanPlayerSaveReferences(tx, character, nextSave);
+    : await cleanPlayerSaveReferences(tx, character, nextSave, options.cleanReferenceScopes);
 
   await tx.character.update({
     where: { id: characterId },
@@ -486,24 +626,59 @@ async function cleanPlayerSaveReferences(
   tx: Prisma.TransactionClient,
   character: any,
   save: PlayerSaveV1,
+  scopes: PlayerSaveReferenceScope[] = ALL_REFERENCE_SCOPES,
 ): Promise<PlayerSaveV1> {
   const normalized = normalizePlayerSave(save);
+  const scopeSet = new Set(scopes);
   const [itemRows, monsterRows, residueRows] = await Promise.all([
-    character.userId
+    scopeSet.has('equipment') && character.userId
       ? tx.item.findMany({ where: { ownerId: character.userId }, select: { id: true } })
-      : Promise.resolve([]),
-    tx.monster.findMany({ where: { characterId: character.id }, select: { id: true } }),
-    tx.abyssalResidue.findMany({ where: { characterId: character.id }, select: { id: true } }),
+      : Promise.resolve(undefined),
+    scopeSet.has('party')
+      ? tx.monster.findMany({ where: { characterId: character.id }, select: { id: true } })
+      : Promise.resolve(undefined),
+    scopeSet.has('residue')
+      ? tx.abyssalResidue.findMany({ where: { characterId: character.id }, select: { id: true } })
+      : Promise.resolve(undefined),
   ]);
-  const itemIds = new Set(itemRows.map((row) => row.id));
-  const monsterIds = new Set(monsterRows.map((row) => row.id));
-  const residueIds = new Set(residueRows.map((row) => row.id));
-  const equipmentIds = Object.fromEntries(
-    Object.entries(normalized.player.equipmentIds).map(([slot, itemId]) => [
-      slot,
-      itemId && itemIds.has(itemId) ? itemId : null,
-    ]),
-  ) as PlayerSaveV1['player']['equipmentIds'];
+  return cleanPlayerSaveReferencesWithIds(normalized, {
+    scopes,
+    characterName: character.name,
+    itemIds: itemRows?.map((row) => row.id),
+    monsterIds: monsterRows?.map((row) => row.id),
+    residueIds: residueRows?.map((row) => row.id),
+  });
+}
+
+export interface PlayerSaveReferenceIds {
+  itemIds?: Iterable<string>;
+  monsterIds?: Iterable<string>;
+  residueIds?: Iterable<string>;
+  characterName?: string | null;
+  scopes?: PlayerSaveReferenceScope[];
+}
+
+function toStringSet(ids: Iterable<string> | undefined): Set<string> {
+  return new Set(ids ?? []);
+}
+
+export function cleanPlayerSaveReferencesWithIds(
+  save: PlayerSaveV1,
+  references: PlayerSaveReferenceIds,
+): PlayerSaveV1 {
+  const normalized = normalizePlayerSave(save);
+  const scopeSet = new Set(references.scopes ?? ALL_REFERENCE_SCOPES);
+  const itemIds = toStringSet(references.itemIds);
+  const monsterIds = toStringSet(references.monsterIds);
+  const residueIds = toStringSet(references.residueIds);
+  const equipmentIds = scopeSet.has('equipment')
+    ? Object.fromEntries(
+        Object.entries(normalized.player.equipmentIds).map(([slot, itemId]) => [
+          slot,
+          itemId && itemIds.has(itemId) ? itemId : null,
+        ]),
+      ) as PlayerSaveV1['player']['equipmentIds']
+    : { ...normalized.player.equipmentIds };
   const currentJobId = normalized.player.currentJobId || normalized.player.jobs[0]?.jobId || 'warrior';
   const jobs = normalizeJobs(normalized.player.jobs);
   if (!jobs.some((job) => job.jobId === currentJobId)) {
@@ -514,16 +689,20 @@ async function cleanPlayerSaveReferences(
     ...normalized,
     player: {
       ...normalized.player,
-      name: normalized.player.name || character.name || 'アルド',
+      name: normalized.player.name || references.characterName || 'アルド',
       currentJobId,
       jobs,
       equipmentIds,
-      partyMonsterIds: normalized.player.partyMonsterIds.map((monsterId) =>
-        monsterId && monsterIds.has(monsterId) ? monsterId : null,
-      ) as PlayerSaveV1['player']['partyMonsterIds'],
-      equippedResidueIds: normalized.player.equippedResidueIds.map((residueId) =>
-        residueId && residueIds.has(residueId) ? residueId : null,
-      ) as PlayerSaveV1['player']['equippedResidueIds'],
+      partyMonsterIds: scopeSet.has('party')
+        ? normalized.player.partyMonsterIds.map((monsterId) =>
+            monsterId && monsterIds.has(monsterId) ? monsterId : null,
+          ) as PlayerSaveV1['player']['partyMonsterIds']
+        : [...normalized.player.partyMonsterIds] as PlayerSaveV1['player']['partyMonsterIds'],
+      equippedResidueIds: scopeSet.has('residue')
+        ? normalized.player.equippedResidueIds.map((residueId) =>
+            residueId && residueIds.has(residueId) ? residueId : null,
+          ) as PlayerSaveV1['player']['equippedResidueIds']
+        : [...normalized.player.equippedResidueIds] as PlayerSaveV1['player']['equippedResidueIds'],
     },
   };
 }
