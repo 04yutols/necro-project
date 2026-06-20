@@ -214,10 +214,15 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
 
     const persistedMage = await prisma.character.findUnique({
       where: { id: created.data.player.id },
-      include: { jobs: true },
+      select: { playerState: true, currentJobId: true },
     });
-    expect(persistedMage?.currentJobId).toBe('mage');
-    expect(persistedMage?.jobs.some((job) => job.jobId === 'mage' && job.level === 1)).toBe(true);
+    expect(persistedMage?.currentJobId).toBeNull();
+    expect(persistedMage?.playerState).toMatchObject({
+      player: {
+        currentJobId: 'mage',
+        jobs: expect.arrayContaining([{ jobId: 'mage', level: 1, exp: 0 }]),
+      },
+    });
 
     const changedBackToWarrior = await changeJobForUser(user, created.data.player.id, 'warrior');
     expect(changedBackToWarrior.success).toBe(true);
@@ -281,7 +286,7 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(persistedAfterClear.hp).toBe(initialBaseStats.hp);
     expect(persistedAfterClear.atk).toBe(initialBaseStats.atk);
     expect(persistedAfterClear.def).toBe(initialBaseStats.def);
-    expect(persistedAfterClear.clearedStages).toContain('area1_node1');
+    expect(persistedAfterClear.clearedStages).toEqual([]);
     expect(afterClear.data.player.clearedStages).toContain('area1_node1');
     expect(afterClear.data.inventoryItems.length).toBeGreaterThan(1);
     expect(afterClear.data.abyssalResidues).toHaveLength(0);
@@ -356,8 +361,8 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
       WHERE id = ${afterClear.data.player.id}
     `;
     expect(playerStateAfterPartyRows[0]).toMatchObject({
-      partySlot0Id: formationMonsterA.id,
-      partySlot1Id: formationMonsterB.id,
+      partySlot0Id: null,
+      partySlot1Id: null,
       partySlot2Id: null,
     });
     expect(playerStateAfterPartyRows[0]?.playerState?.player.partyMonsterIds).toEqual([formationMonsterA.id, formationMonsterB.id, null]);

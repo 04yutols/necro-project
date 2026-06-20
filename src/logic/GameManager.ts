@@ -9,6 +9,13 @@ import { hydrateMonsterEnergy } from './MonsterEnergySystem';
 import { levelFromTotalExp } from './ExperienceSystem';
 import { prisma } from '../lib/prisma';
 import { CharacterData, JobData, MonsterData, PassiveBonuses } from '../types/game';
+import {
+  addPassiveBonusToSave,
+  buildPlayerSaveFromDb,
+  readPlayerSave,
+  updatePlayerSaveSnapshot,
+} from '../services/PlayerSaveService';
+import type { PlayerSaveV1 } from '../types/playerSave';
 
 function sumLevelBonuses(job: JobData | undefined, fromExclusive: number, toInclusive: number): Partial<PassiveBonuses> {
   const totals: Partial<PassiveBonuses> = {};
@@ -76,10 +83,12 @@ export class GameManager {
     const stageData = this.masterData.getStage(stageId);
     if (!stageData) throw new Error("Stage not found");
 
+    const playerSave = readPlayerSave(char.playerState, buildPlayerSaveFromDb(char));
+
     // CharacterData 型への変換
-    const currentJobId = char.currentJobId || 'warrior';
+    const currentJobId = playerSave.player.currentJobId || 'warrior';
     const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior');
-    const jobs = char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp }));
+    const jobs = playerSave.player.jobs;
     const currentJobLevel = Math.max(1, jobs.find((job: any) => job.jobId === currentJobId)?.level ?? 1);
     const energyState = calculateEnergyState(currentJob, currentJobLevel);
     const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, {
@@ -89,27 +98,20 @@ export class GameManager {
     });
     const player: CharacterData = {
       id: char.id,
-      name: char.name,
+      name: playerSave.player.name,
       currentJobId,
       category: currentJob?.category ?? 'PHYSICAL',
       baseStats,
-      necroLevel: char.necroLevel ?? 1,
-      necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
+      necroLevel: playerSave.player.necroStatus.level,
+      necroBaseStatsBonus: playerSave.player.necroStatus.baseStatsBonus,
       stats: baseStats,
-      passives: {
-        passiveAtkBonus:      char.passiveAtkBonus,
-        passiveDefBonus:      char.passiveDefBonus,
-        passiveSpdBonus:      char.passiveSpdBonus ?? 0,
-        passiveCritRateBonus: char.passiveCritRateBonus ?? 0,
-        passiveCritDmgBonus:  char.passiveCritDmgBonus ?? 0,
-        passiveHpBonus:       char.passiveHpBonus ?? 0,
-      },
+      passives: playerSave.player.passives,
       baseResistances: {},
       equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
       jobs,
       isAwakened: false,
-      clearedStages: char.clearedStages,
-      gold: (char as any).gold ?? 0,
+      clearedStages: playerSave.player.clearedStages,
+      gold: playerSave.player.gold,
       currentEnergy: energyState.currentEnergy,
       maxEnergy: energyState.maxEnergy,
       elementDmgBoosts: {},
@@ -158,6 +160,7 @@ export class GameManager {
       include: { jobs: true }
     });
     if (!char) throw new Error("Character not found");
+    const playerSave = readPlayerSave(char.playerState, buildPlayerSaveFromDb(char));
 
     const ownedMonsterMasterIds = (await prisma.monster.findMany({
       where: { characterId },
@@ -165,9 +168,9 @@ export class GameManager {
     })).map((monster: { masterId: string | null; id: string }) => monster.masterId ?? monster.id);
 
     // 1. 経験値と報酬の計算
-    const playerConverted = this.convertToCharacterData(char);
+    const playerConverted = this.convertToCharacterData(char, playerSave);
     const expGain = this.rewardService.calculateExp(stage.rewards.baseExp, playerConverted);
-    const rewards = this.rewardService.processStageDropTable(stage, char.clearedStages ?? [], 0, Math.random, ownedMonsterMasterIds);
+    const rewards = this.rewardService.processStageDropTable(stage, playerSave.player.clearedStages, 0, Math.random, ownedMonsterMasterIds);
     rewards.monsters.push(...this.rewardService.processStageNecromance(
       stage,
       [...ownedMonsterMasterIds, ...rewards.monsters.map(monster => monster.masterId ?? monster.id)],
@@ -175,39 +178,6 @@ export class GameManager {
 
     // 2. DBへの反映 (トランザクション)
     await prisma.$transaction(async (tx: any) => {
-      // 経験値加算
-      const currentJob = char.jobs.find((j: any) => j.jobId === char.currentJobId);
-      if (currentJob) {
-        const newExp = currentJob.exp + expGain;
-        const newLevel = levelFromTotalExp(newExp);
-        
-        await tx.userJob.update({
-          where: { characterId_jobId: { characterId, jobId: char.currentJobId! } },
-          data: { exp: newExp, level: newLevel }
-        });
-
-        if (newLevel > currentJob.level) {
-          const passiveBonus = sumLevelBonuses(
-            this.masterData.getJob(char.currentJobId || 'warrior'),
-            currentJob.level,
-            newLevel,
-          );
-          if (hasPassiveBonus(passiveBonus)) {
-            await tx.character.update({
-              where: { id: characterId },
-              data: {
-                passiveAtkBonus:      { increment: passiveBonus.passiveAtkBonus      ?? 0 },
-                passiveDefBonus:      { increment: passiveBonus.passiveDefBonus      ?? 0 },
-                passiveSpdBonus:      { increment: passiveBonus.passiveSpdBonus      ?? 0 },
-                passiveCritRateBonus: { increment: passiveBonus.passiveCritRateBonus ?? 0 },
-                passiveCritDmgBonus:  { increment: passiveBonus.passiveCritDmgBonus  ?? 0 },
-                passiveHpBonus:       { increment: passiveBonus.passiveHpBonus       ?? 0 },
-              },
-            });
-          }
-        }
-      }
-
       // ネクロマンス成功モンスターの追加
       for (const m of rewards.monsters) {
         await tx.monster.create({
@@ -228,21 +198,42 @@ export class GameManager {
       }
 
       // クリアフラグの追加
-      if (!char.clearedStages.includes(stageId)) {
-        await tx.character.update({
-          where: { id: characterId },
-          data: { clearedStages: { push: stageId } }
-        });
-      }
+      await updatePlayerSaveSnapshot(tx, characterId, (save) => {
+        const currentJobId = save.player.currentJobId || 'warrior';
+        const jobs = save.player.jobs.map((job) => ({ ...job }));
+        const jobIndex = jobs.findIndex((job) => job.jobId === currentJobId);
+        if (jobIndex >= 0) {
+          const currentJob = jobs[jobIndex];
+          const newExp = currentJob.exp + expGain;
+          const newLevel = levelFromTotalExp(newExp);
+          jobs[jobIndex] = { ...currentJob, exp: newExp, level: newLevel };
+          save.player.jobs = jobs;
+
+          if (newLevel > currentJob.level) {
+            const passiveBonus = sumLevelBonuses(
+              this.masterData.getJob(currentJobId),
+              currentJob.level,
+              newLevel,
+            );
+            if (hasPassiveBonus(passiveBonus)) {
+              save = addPassiveBonusToSave(save, passiveBonus);
+            }
+          }
+        }
+        if (!save.player.clearedStages.includes(stageId)) {
+          save.player.clearedStages.push(stageId);
+        }
+        return save;
+      });
     });
 
     return { expGain, rewards };
   }
 
-  private convertToCharacterData(char: any): CharacterData {
-    const currentJobId = char.currentJobId || 'warrior';
+  private convertToCharacterData(char: any, playerSave: PlayerSaveV1 = readPlayerSave(char.playerState, buildPlayerSaveFromDb(char))): CharacterData {
+    const currentJobId = playerSave.player.currentJobId || 'warrior';
     const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior');
-    const jobs = char.jobs.map((j: any) => ({ jobId: j.jobId, level: j.level, exp: j.exp }));
+    const jobs = playerSave.player.jobs;
     const currentJobLevel = Math.max(1, jobs.find((job: any) => job.jobId === currentJobId)?.level ?? 1);
     const energyState = calculateEnergyState(currentJob, currentJobLevel);
     const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, {
@@ -252,27 +243,20 @@ export class GameManager {
     });
     return {
       id: char.id,
-      name: char.name,
+      name: playerSave.player.name,
       currentJobId,
       category: currentJob?.category ?? 'PHYSICAL',
       baseStats,
-      necroLevel: char.necroLevel ?? 1,
-      necroBaseStatsBonus: char.necroBaseStatsBonus ?? 1,
+      necroLevel: playerSave.player.necroStatus.level,
+      necroBaseStatsBonus: playerSave.player.necroStatus.baseStatsBonus,
       stats: baseStats,
-      passives: {
-        passiveAtkBonus:      char.passiveAtkBonus,
-        passiveDefBonus:      char.passiveDefBonus,
-        passiveSpdBonus:      char.passiveSpdBonus ?? 0,
-        passiveCritRateBonus: char.passiveCritRateBonus ?? 0,
-        passiveCritDmgBonus:  char.passiveCritDmgBonus ?? 0,
-        passiveHpBonus:       char.passiveHpBonus ?? 0,
-      },
+      passives: playerSave.player.passives,
       baseResistances: {},
       equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
       jobs,
       isAwakened: false,
-      clearedStages: char.clearedStages || [],
-      gold: (char as any).gold ?? 0,
+      clearedStages: playerSave.player.clearedStages,
+      gold: playerSave.player.gold,
       currentEnergy: energyState.currentEnergy,
       maxEnergy: energyState.maxEnergy,
       elementDmgBoosts: {},
@@ -294,7 +278,7 @@ export class GameManager {
     await prisma.$transaction(async (tx: any) => {
       const char = await tx.character.findUnique({
         where: { id: characterId },
-        select: { id: true, necroMaxCost: true },
+        include: { jobs: true },
       });
       if (!char) throw new Error("Character not found.");
 
@@ -309,17 +293,13 @@ export class GameManager {
       }
 
       const totalCost = monsters.reduce((acc: number, monster: { cost: number }) => acc + monster.cost, 0);
-      if (totalCost > char.necroMaxCost) {
-        throw new Error(`Cost limit exceeded: ${totalCost} / ${char.necroMaxCost}`);
+      const maxCost = readPlayerSave(char.playerState, buildPlayerSaveFromDb(char)).player.necroStatus.maxCost;
+      if (totalCost > maxCost) {
+        throw new Error(`Cost limit exceeded: ${totalCost} / ${maxCost}`);
       }
 
-      await tx.character.update({
-        where: { id: char.id },
-        data: {
-          partySlot0Id: slotIds[0],
-          partySlot1Id: slotIds[1],
-          partySlot2Id: slotIds[2],
-        },
+      await updatePlayerSaveSnapshot(tx, char.id, (save) => {
+        save.player.partyMonsterIds = slotIds as PlayerSaveV1['player']['partyMonsterIds'];
       });
     });
   }
@@ -356,9 +336,10 @@ export class GameManager {
     const dbField = fieldMap[slot];
     if (!dbField) throw new Error("Invalid equipment slot");
 
-    await prisma.character.update({
-      where: { id: characterId },
-      data: { [dbField]: itemId }
+    await prisma.$transaction(async (tx: any) => {
+      await updatePlayerSaveSnapshot(tx, characterId, (save) => {
+        save.player.equipmentIds[slot as keyof PlayerSaveV1['player']['equipmentIds']] = itemId;
+      });
     });
   }
 
@@ -380,9 +361,10 @@ export class GameManager {
     const dbField = fieldMap[slot];
     if (!dbField) throw new Error("Invalid equipment slot");
 
-    await prisma.character.update({
-      where: { id: characterId },
-      data: { [dbField]: null }
+    await prisma.$transaction(async (tx: any) => {
+      await updatePlayerSaveSnapshot(tx, characterId, (save) => {
+        save.player.equipmentIds[slot as keyof PlayerSaveV1['player']['equipmentIds']] = null;
+      });
     });
   }
 

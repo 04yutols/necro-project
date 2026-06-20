@@ -70,11 +70,11 @@ describe('Balance tuning for area1_node1', () => {
     const profile = calculateCharacterStatProfile(player, [null, null, null, null, null]);
 
     expect(warriorStats.hp).toBe(34);
-    expect(warriorStats.atk).toBe(5);
-    expect(warriorStats.def).toBe(5);
+    expect(warriorStats.atk).toBe(8);
+    expect(warriorStats.def).toBe(7);
     expect(starterWeaponAtk).toBe(1);
-    expect(warriorStats.atk + starterWeaponAtk).toBe(6);
-    expect(profile.total).toMatchObject({ hp: 34, atk: 6, def: 5 });
+    expect(warriorStats.atk + starterWeaponAtk).toBe(9);
+    expect(profile.total).toMatchObject({ hp: 34, atk: 9, def: 7 });
   });
 
   test('area1_node1 final wave is an elite tutorial fight, not a boss', () => {
@@ -124,13 +124,13 @@ describe('Balance tuning for area1_node1', () => {
       rng: noCrit,
     });
 
-    expect(graveSoldierAttack.damage).toBe(5);
-    expect(graveSoldierSkill.damage).toBe(8);
-    expect(graveKnightAttack.damage).toBe(5);
-    expect(graveKnightSkill.damage).toBe(8);
+    expect(graveSoldierAttack.damage).toBe(8);
+    expect(graveSoldierSkill.damage).toBe(13);
+    expect(graveKnightAttack.damage).toBe(8);
+    expect(graveKnightSkill.damage).toBe(13);
   });
 
-  test('abyss_warden shield breaks with four starter normal attacks', () => {
+  test('abyss_warden shield breaks with three starter normal attacks', () => {
     const warriorStats = getJobBaseStatsAtLevel(JOBS.warrior, 1);
     const player = makePlayer({
       ...warriorStats,
@@ -141,15 +141,11 @@ describe('Balance tuning for area1_node1', () => {
     const engine = new BattleEngine(player, []);
 
     engine.simulateAction('PHYSICAL_ATTACK', target);
-    expect(target.shieldHp).toBe(13);
+    expect(target.shieldHp).toBe(10);
     expect(target.shieldBroken).toBeFalsy();
 
     engine.simulateAction('PHYSICAL_ATTACK', target);
-    expect(target.shieldHp).toBe(8);
-    expect(target.shieldBroken).toBeFalsy();
-
-    engine.simulateAction('PHYSICAL_ATTACK', target);
-    expect(target.shieldHp).toBe(3);
+    expect(target.shieldHp).toBe(2);
     expect(target.shieldBroken).toBeFalsy();
 
     engine.simulateAction('PHYSICAL_ATTACK', target);

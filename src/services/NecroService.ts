@@ -6,6 +6,7 @@ import {
   Tribe
 } from '../types/game';
 import { MasterDataService } from './MasterDataService';
+import { updatePlayerSaveSnapshot } from './PlayerSaveService';
 
 export class NecroService {
   private masterData: MasterDataService;
@@ -53,6 +54,9 @@ export class NecroService {
       });
 
       await tx.monster.delete({ where: { id: monsterId } });
+      if (monster.characterId) {
+        await updatePlayerSaveSnapshot(tx, monster.characterId);
+      }
 
       return {
         id: soulShard.id,
@@ -100,20 +104,17 @@ export class NecroService {
     if (!this.prisma) throw new Error('PrismaClient is required for DB performRankUp.');
     const characterId = arg;
     return this.prisma.$transaction(async (tx: any) => {
-      const character = await tx.character.findUnique({ where: { id: characterId } });
-      if (!character) throw new Error('Character not found');
-      if (character.necroLevel < 99) throw new Error('ランクアップにはLv.99到達が必要です。');
       if (!isTrialCompleted) throw new Error('ランクアップには試練のクリアが必要です。');
-
-      const nextRank = Math.min(10, character.necroRank + 1);
-      await tx.character.update({
-        where: { id: characterId },
-        data: {
-          necroLevel: 1,
-          necroRank: nextRank,
-          necroMaxCost: character.necroMaxCost + 5,
-          necroBaseStatsBonus: character.necroBaseStatsBonus + 0.5,
-        },
+      await updatePlayerSaveSnapshot(tx, characterId, (save) => {
+        const current = save.player.necroStatus;
+        if (current.level < 99) throw new Error('ランクアップにはLv.99到達が必要です。');
+        save.player.necroStatus = {
+          level: 1,
+          rank: Math.min(10, current.rank + 1),
+          maxCost: current.maxCost + 5,
+          baseStatsBonus: current.baseStatsBonus + 0.5,
+          exp: 0,
+        };
       });
     });
   }

@@ -4,6 +4,11 @@ import { MasterDataService } from './MasterDataService';
 import { getJobUnlockStatus } from '../logic/JobSystem';
 import { calculateEnergyState } from '../logic/EnergySystem';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
+import {
+  addPassiveBonusToSave,
+  toCharacterDataForSave,
+  updatePlayerSaveSnapshot,
+} from './PlayerSaveService';
 
 /**
  * 職業に関するビジネスロジックを担当するサービス (GDD-004)
@@ -37,56 +42,14 @@ export class JobService {
     if (!this.prisma) throw new Error('PrismaClient is required for persistent job changes.');
     const characterId = characterOrId;
     await this.prisma.$transaction(async (tx: any) => {
-      const character = await tx.character.findUnique({
-        where: { id: characterId },
-        include: { jobs: true },
-      });
-      if (!character) throw new Error(`Character ${characterId} not found`);
+      await updatePlayerSaveSnapshot(tx, characterId, (save, { character }) => {
+        const unlock = getJobUnlockStatus(toCharacterDataForSave(character, save), jobData);
+        if (!unlock.unlocked) throw new Error(`Job ${nextJobId} is locked`);
 
-      const unlock = getJobUnlockStatus(this.toCharacterDataForUnlock(character), jobData);
-      if (!unlock.unlocked) throw new Error(`Job ${nextJobId} is locked`);
-
-      await tx.job.upsert({
-        where: { id: nextJobId },
-        update: {
-          name: jobData.displayName ?? jobData.name,
-          tier: jobData.tier,
-          category: jobData.category,
-        },
-        create: {
-          id: nextJobId,
-          name: jobData.displayName ?? jobData.name,
-          tier: jobData.tier,
-          category: jobData.category,
-        },
-      });
-
-      // 既存の UserJob を確認
-      const userJob = await tx.userJob.findUnique({
-        where: {
-          characterId_jobId: {
-            characterId: characterId,
-            jobId: nextJobId,
-          },
-        },
-      });
-
-      // 初めての職業の場合は Lv1 で新規作成 (GDD-004)
-      if (!userJob) {
-        await tx.userJob.create({
-          data: {
-            characterId: characterId,
-            jobId: nextJobId,
-            level: 1,
-            exp: 0,
-          },
-        });
-      }
-
-      // 現在の職業を更新
-      await tx.character.update({
-        where: { id: characterId },
-        data: { currentJobId: nextJobId },
+        if (!save.player.jobs.some((job) => job.jobId === nextJobId)) {
+          save.player.jobs.push({ jobId: nextJobId, level: 1, exp: 0 });
+        }
+        save.player.currentJobId = nextJobId;
       });
     });
   }
@@ -197,33 +160,21 @@ export class JobService {
     if (!this.prisma) throw new Error('PrismaClient is required for persistent job level updates.');
     const characterId = characterOrId;
     await this.prisma.$transaction(async (tx: any) => {
-      const current = await tx.userJob.findUnique({
-        where: {
-          characterId_jobId: {
-            characterId,
-            jobId,
-          },
-        },
-        select: { level: true },
-      });
+      await updatePlayerSaveSnapshot(tx, characterId, (save) => {
+        const jobs = save.player.jobs.map((job) => ({ ...job }));
+        const index = jobs.findIndex((job) => job.jobId === jobId);
+        const oldLevel = index >= 0 ? jobs[index].level : 0;
+        if (index >= 0) {
+          jobs[index] = { ...jobs[index], level: newLevel };
+        } else {
+          jobs.push({ jobId, level: newLevel, exp: 0 });
+        }
+        save.player.jobs = jobs;
 
-      // UserJob のレベルを更新
-      await tx.userJob.update({
-        where: {
-          characterId_jobId: {
-            characterId,
-            jobId,
-          },
-        },
-        data: { level: newLevel },
+        const jobData = this.masterData.getJob(jobId);
+        const bonus = this.sumLevelBonuses(jobData, oldLevel, newLevel);
+        return this.hasPassiveBonus(bonus) ? addPassiveBonusToSave(save, bonus) : save;
       });
-
-      // 特定レベル到達時の永続パッシブ加算処理 (GDD-004)
-      const jobData = this.masterData.getJob(jobId);
-      const bonus = this.sumLevelBonuses(jobData, current?.level ?? 0, newLevel);
-      if (this.hasPassiveBonus(bonus)) {
-        await this.applyPassiveBonus(tx, characterId, bonus);
-      }
     });
   }
 
@@ -244,20 +195,4 @@ export class JobService {
     return Object.values(bonus).some(value => value !== 0);
   }
 
-  /**
-   * 職業とレベルに応じたパッシブボーナスの適用を DB に反映
-   */
-  private async applyPassiveBonus(tx: any, characterId: string, bonus: any): Promise<void> {
-    await tx.character.update({
-      where: { id: characterId },
-      data: {
-        passiveAtkBonus:      { increment: bonus.passiveAtkBonus      || 0 },
-        passiveDefBonus:      { increment: bonus.passiveDefBonus      || 0 },
-        passiveSpdBonus:      { increment: bonus.passiveSpdBonus      || 0 },
-        passiveCritRateBonus: { increment: bonus.passiveCritRateBonus || 0 },
-        passiveCritDmgBonus:  { increment: bonus.passiveCritDmgBonus  || 0 },
-        passiveHpBonus:       { increment: bonus.passiveHpBonus       || 0 },
-      },
-    });
-  }
 }

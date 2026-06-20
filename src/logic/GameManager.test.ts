@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { GameManager } from './GameManager';
+import { readPlayerSave } from '../services/PlayerSaveService';
 
 jest.setTimeout(45000);
 
@@ -99,12 +100,17 @@ describe('GameManager.updateParty', () => {
 
     const updated = await prisma.character.findUniqueOrThrow({
       where: { id: character.id },
-      select: { partySlot0Id: true, partySlot1Id: true, partySlot2Id: true },
+      select: { playerState: true, partySlot0Id: true, partySlot1Id: true, partySlot2Id: true },
     });
-    expect(updated).toEqual({
-      partySlot0Id: front.id,
+    expect(readPlayerSave(updated.playerState).player.partyMonsterIds).toEqual([front.id, null, back.id]);
+    expect({
+      partySlot0Id: updated.partySlot0Id,
+      partySlot1Id: updated.partySlot1Id,
+      partySlot2Id: updated.partySlot2Id,
+    }).toEqual({
+      partySlot0Id: null,
       partySlot1Id: null,
-      partySlot2Id: back.id,
+      partySlot2Id: null,
     });
   });
 
@@ -131,11 +137,16 @@ describe('GameManager.updateParty', () => {
 
     const unchanged = await prisma.character.findUniqueOrThrow({
       where: { id: characterA.id },
-      select: { partySlot0Id: true, partySlot1Id: true, partySlot2Id: true },
+      select: { playerState: true, partySlot0Id: true, partySlot1Id: true, partySlot2Id: true },
     });
-    expect(unchanged).toEqual({
-      partySlot0Id: first.id,
-      partySlot1Id: second.id,
+    expect(readPlayerSave(unchanged.playerState).player.partyMonsterIds).toEqual([first.id, second.id, null]);
+    expect({
+      partySlot0Id: unchanged.partySlot0Id,
+      partySlot1Id: unchanged.partySlot1Id,
+      partySlot2Id: unchanged.partySlot2Id,
+    }).toEqual({
+      partySlot0Id: null,
+      partySlot1Id: null,
       partySlot2Id: null,
     });
   });

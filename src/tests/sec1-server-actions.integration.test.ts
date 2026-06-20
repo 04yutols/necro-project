@@ -9,6 +9,7 @@ import {
   soulStoneForUser,
 } from '../app/actions';
 import { createCredentialsUser } from '../services/AuthService';
+import { playerSaveToJson, readPlayerSave } from '../services/PlayerSaveService';
 import type { ServerGameUser } from '../types/serverGame';
 
 jest.mock('@/auth', () => ({
@@ -150,14 +151,21 @@ describe('SEC-1 authenticated Server Actions', () => {
     expect(equippedMonster.soulShardId).toBe(soulStone.data.id);
     expect(shardEquipped.data.inventoryMonsters.find((monster) => monster.id === targetMonster.id)?.equippedShardId).toBe(soulStone.data.id);
 
+    const rankUpCharacter = await prisma.character.findUniqueOrThrow({
+      where: { id: characterAId },
+      select: { playerState: true },
+    });
+    const rankUpSave = readPlayerSave(rankUpCharacter.playerState);
+    rankUpSave.player.necroStatus = {
+      level: 99,
+      rank: 1,
+      maxCost: 10,
+      baseStatsBonus: 1,
+      exp: 0,
+    };
     await prisma.character.update({
       where: { id: characterAId },
-      data: {
-        necroLevel: 99,
-        necroRank: 1,
-        necroMaxCost: 10,
-        necroBaseStatsBonus: 1.0,
-      },
+      data: { playerState: playerSaveToJson(rankUpSave) },
     });
     const rankUp = await processGrowthForUser(userA, characterAId, 'RANK_UP');
     expect(rankUp.success).toBe(true);
