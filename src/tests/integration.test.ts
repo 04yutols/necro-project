@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { JobService } from '../services/JobService';
 import { emptyPlayerSave, playerSaveToJson, readPlayerSave } from '../services/PlayerSaveService';
+import { PLAYER_SAVE_SCHEMA_VERSION } from '../types/playerSave';
 
 // Neon コールドスタートを考慮して長めに設定
 jest.setTimeout(30000);
@@ -32,11 +33,13 @@ describe('Integration Test: Job Persistence', () => {
       where: { id: characterId },
       update: {
         playerState: playerSaveToJson(initialSave),
+        saveVersion: PLAYER_SAVE_SCHEMA_VERSION,
       },
       create: {
         id: characterId,
         userId,
         playerState: playerSaveToJson(initialSave),
+        saveVersion: PLAYER_SAVE_SCHEMA_VERSION,
       }
     });
 

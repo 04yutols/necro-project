@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { GameManager } from './GameManager';
 import { emptyPlayerSave, playerSaveToJson, readPlayerSave } from '../services/PlayerSaveService';
+import { PLAYER_SAVE_SCHEMA_VERSION } from '../types/playerSave';
 
 jest.setTimeout(45000);
 
@@ -41,6 +42,7 @@ async function createUserWithCharacter(email: string, displayName: string, necro
     data: {
       userId: user.id,
       playerState: playerSaveToJson(save),
+      saveVersion: PLAYER_SAVE_SCHEMA_VERSION,
     },
   });
   return { user, character };

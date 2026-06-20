@@ -27,7 +27,9 @@ const JOBS = jobsData as Record<string, JobData>;
 const ITEMS = itemsData as Record<string, ItemData>;
 const DEMON_FORMS = demonFormsData as Record<string, DemonFormData>;
 export const GAME_STORE_STORAGE_KEY = 'necro-game-store-v1';
-const GAME_STORE_VERSION = 1;
+const GAME_STORE_VERSION = 2;
+const CACHE_KIND_GUEST_SAVE = 'guest-save';
+const CACHE_KIND_SERVER_SNAPSHOT = 'server-snapshot';
 
 const memoryStorage: StateStorage = (() => {
   const storage = new Map<string, string>();
@@ -347,7 +349,7 @@ interface GameState {
   clearServerData: () => void;
 }
 
-type PersistedGameState = Pick<
+type PersistedGameSnapshot = Pick<
   GameState,
   | 'player'
   | 'necroStatus'
@@ -361,6 +363,15 @@ type PersistedGameState = Pick<
   | 'weaponMaterials'
   | 'transmutationPoints'
 >;
+
+type PersistedGameCacheKind = typeof CACHE_KIND_GUEST_SAVE | typeof CACHE_KIND_SERVER_SNAPSHOT;
+type PersistedOfflineMutation = never;
+
+type PersistedGameState = PersistedGameSnapshot & {
+  cacheKind: PersistedGameCacheKind;
+  cachedAt: string;
+  offlineQueue: PersistedOfflineMutation[];
+};
 
 function normalizePersistedParty(party?: (MonsterData | null)[]): (MonsterData | null)[] {
   return [
@@ -380,7 +391,7 @@ function normalizeResidueSlots(slots?: (AbyssalResidueData | null)[]): (AbyssalR
   ];
 }
 
-function partializeGameState(state: GameState): PersistedGameState {
+function snapshotGameState(state: GameState): PersistedGameSnapshot {
   return {
     player: state.player,
     necroStatus: state.necroStatus,
@@ -396,8 +407,34 @@ function partializeGameState(state: GameState): PersistedGameState {
   };
 }
 
+function normalizeCacheKind(value: unknown): PersistedGameCacheKind {
+  return value === CACHE_KIND_SERVER_SNAPSHOT ? CACHE_KIND_SERVER_SNAPSHOT : CACHE_KIND_GUEST_SAVE;
+}
+
+function withPersistedCacheMeta(state: Partial<PersistedGameState>): PersistedGameState {
+  return {
+    ...(state as PersistedGameSnapshot),
+    cacheKind: normalizeCacheKind(state.cacheKind),
+    cachedAt: typeof state.cachedAt === 'string' ? state.cachedAt : new Date(0).toISOString(),
+    offlineQueue: [],
+  };
+}
+
+function partializeGameState(state: GameState): PersistedGameState {
+  return {
+    ...snapshotGameState(state),
+    cacheKind: state.isServerBacked ? CACHE_KIND_SERVER_SNAPSHOT : CACHE_KIND_GUEST_SAVE,
+    cachedAt: new Date().toISOString(),
+    offlineQueue: [],
+  };
+}
+
+function migratePersistedGameState(persistedState: unknown): PersistedGameState {
+  return withPersistedCacheMeta((persistedState ?? {}) as Partial<PersistedGameState>);
+}
+
 function mergePersistedGameState(persistedState: unknown, currentState: GameState): GameState {
-  const persisted = (persistedState ?? {}) as Partial<PersistedGameState>;
+  const persisted = withPersistedCacheMeta((persistedState ?? {}) as Partial<PersistedGameState>);
   if (!persisted.player) {
     return {
       ...currentState,
@@ -425,7 +462,11 @@ function mergePersistedGameState(persistedState: unknown, currentState: GameStat
     isServerBacked: false,
     monsterCurrentHp: {},
     equippingMonsterId: null,
-    battleLogs: ['LOCAL SAVE LOADED...'],
+    battleLogs: [
+      persisted.cacheKind === CACHE_KIND_SERVER_SNAPSHOT
+        ? 'CACHED CLOUD SNAPSHOT LOADED...'
+        : 'LOCAL SAVE LOADED...',
+    ],
     actionTrigger: null,
     currentTab: 'HOME',
     demonGauge: 0,
@@ -1003,6 +1044,7 @@ export const useGameStore = create<GameState>()(
       version: GAME_STORE_VERSION,
       storage: createJSONStorage<PersistedGameState>(getGameStorage),
       partialize: partializeGameState,
+      migrate: migratePersistedGameState,
       merge: mergePersistedGameState,
     },
   ),

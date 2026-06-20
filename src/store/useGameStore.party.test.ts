@@ -214,6 +214,8 @@ describe('useGameStore party formation actions', () => {
 
     expect(persisted?.player?.clearedStages).toContain('area1_node1');
     expect(persisted?.party).toHaveLength(3);
+    expect(raw.cacheKind).toBe('guest-save');
+    expect(raw.offlineQueue).toEqual([]);
     expect(raw.isServerBacked).toBeUndefined();
     expect(raw.currentTab).toBeUndefined();
     expect(raw.demonGauge).toBeUndefined();
@@ -262,6 +264,8 @@ describe('useGameStore party formation actions', () => {
     expect(persisted?.necroStatus?.level).toBe(7);
     expect(persisted?.residueMaterials).toEqual(serverResidueMaterials);
     expect(persisted?.transmutationPoints).toBe(77);
+    expect(raw.cacheKind).toBe('server-snapshot');
+    expect(raw.offlineQueue).toEqual([]);
     expect(raw.isServerBacked).toBeUndefined();
   });
 
@@ -283,5 +287,38 @@ describe('useGameStore party formation actions', () => {
     expect(merged.currentTab).toBe('HOME');
     expect(merged.demonGauge).toBe(0);
     expect(merged.battleLogs).toEqual(['LOCAL SAVE LOADED...']);
+  });
+
+  test('rehydrated server snapshots are cached views until the server reloads', () => {
+    const options = useGameStore.persist.getOptions();
+    if (!options.partialize || !options.merge) {
+      throw new Error('game store persist options are incomplete');
+    }
+
+    useGameStore.getState().loadFromServer(currentStateAsServerData());
+    const persisted = options.partialize(useGameStore.getState());
+    const merged = options.merge(persisted, useGameStore.getInitialState());
+
+    expect(merged.isServerBacked).toBe(false);
+    expect(merged.player?.id).toBe(useGameStore.getState().player?.id);
+    expect(merged.battleLogs).toEqual(['CACHED CLOUD SNAPSHOT LOADED...']);
+  });
+
+  test('migrates v1 persisted state into cache metadata without losing the snapshot', async () => {
+    const options = useGameStore.persist.getOptions();
+    if (!options.partialize || !options.migrate) {
+      throw new Error('game store persist options are incomplete');
+    }
+
+    const v1Persisted = options.partialize(useGameStore.getState()) as Record<string, unknown>;
+    delete v1Persisted.cacheKind;
+    delete v1Persisted.cachedAt;
+    delete v1Persisted.offlineQueue;
+
+    const migrated = await options.migrate(v1Persisted, 1) as Record<string, unknown>;
+
+    expect((migrated.player as { name?: string } | null)?.name).toBe('アルド');
+    expect(migrated.cacheKind).toBe('guest-save');
+    expect(migrated.offlineQueue).toEqual([]);
   });
 });

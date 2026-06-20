@@ -12,7 +12,11 @@ import type {
   WeaponMaterialData,
   WeaponMaterialType,
 } from '../types/game';
-import { PLAYER_SAVE_SCHEMA_VERSION, type PlayerSaveV1 } from '../types/playerSave';
+import {
+  MIN_SUPPORTED_PLAYER_SAVE_SCHEMA_VERSION,
+  PLAYER_SAVE_SCHEMA_VERSION,
+  type PlayerSaveV1,
+} from '../types/playerSave';
 import { MasterDataService } from './MasterDataService';
 import { calculateEnergyState } from '../logic/EnergySystem';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
@@ -235,11 +239,64 @@ function normalizeNullableTuple(value: unknown, length: number, fallback: (strin
   return Array.from({ length }, (_, index) => nullableString(source[index]) ?? fallback[index] ?? null);
 }
 
-export function readPlayerSave(playerState: unknown, fallback: PlayerSaveV1 = emptyPlayerSave()): PlayerSaveV1 {
-  if (!isRecord(playerState) || playerState.schemaVersion !== PLAYER_SAVE_SCHEMA_VERSION) {
-    return clonePlayerSave(fallback);
+export class PlayerSaveSchemaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PlayerSaveSchemaError';
   }
-  const player = isRecord(playerState.player) ? playerState.player : {};
+}
+
+type RawPlayerSaveState = Record<string, unknown>;
+type PlayerSaveMigration = (state: RawPlayerSaveState) => RawPlayerSaveState;
+
+const PLAYER_SAVE_MIGRATIONS: Record<number, PlayerSaveMigration> = {
+  1: (state) => ({
+    ...state,
+    schemaVersion: 2,
+  }),
+};
+
+function readSchemaVersion(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isInteger(value)) return null;
+  return value;
+}
+
+export function migratePlayerSaveSchema(playerState: unknown): RawPlayerSaveState {
+  if (!isRecord(playerState)) {
+    throw new PlayerSaveSchemaError('playerState is missing or malformed');
+  }
+
+  let version = readSchemaVersion(playerState.schemaVersion);
+  if (version === null) {
+    throw new PlayerSaveSchemaError('playerState.schemaVersion is missing or malformed');
+  }
+  if (version < MIN_SUPPORTED_PLAYER_SAVE_SCHEMA_VERSION) {
+    throw new PlayerSaveSchemaError(`Unsupported playerState schemaVersion: ${version}`);
+  }
+  if (version > PLAYER_SAVE_SCHEMA_VERSION) {
+    throw new PlayerSaveSchemaError(`Future playerState schemaVersion is not supported: ${version}`);
+  }
+
+  let migrated: RawPlayerSaveState = { ...playerState };
+  while (version < PLAYER_SAVE_SCHEMA_VERSION) {
+    const migrate = PLAYER_SAVE_MIGRATIONS[version];
+    if (!migrate) {
+      throw new PlayerSaveSchemaError(`No migration registered for playerState schemaVersion: ${version}`);
+    }
+    migrated = migrate(migrated);
+    const nextVersion = readSchemaVersion(migrated.schemaVersion);
+    if (nextVersion === null || nextVersion <= version) {
+      throw new PlayerSaveSchemaError(`Invalid migration result for playerState schemaVersion: ${version}`);
+    }
+    version = nextVersion;
+  }
+
+  return migrated;
+}
+
+export function readPlayerSave(playerState: unknown, fallback: PlayerSaveV1 = emptyPlayerSave()): PlayerSaveV1 {
+  const migrated = migratePlayerSaveSchema(playerState);
+  const player = isRecord(migrated.player) ? migrated.player : {};
   return {
     schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
     player: {
@@ -256,14 +313,14 @@ export function readPlayerSave(playerState: unknown, fallback: PlayerSaveV1 = em
       partyMonsterIds: normalizeNullableTuple(player.partyMonsterIds, 3, fallback.player.partyMonsterIds),
       equippedResidueIds: normalizeNullableTuple(player.equippedResidueIds, 5, fallback.player.equippedResidueIds),
     },
-    weaponMaterials: Array.isArray(playerState.weaponMaterials)
-      ? normalizeWeaponMaterials(playerState.weaponMaterials)
+    weaponMaterials: Array.isArray(migrated.weaponMaterials)
+      ? normalizeWeaponMaterials(migrated.weaponMaterials)
       : normalizeWeaponMaterials(fallback.weaponMaterials),
-    residueMaterials: Array.isArray(playerState.residueMaterials)
-      ? normalizeResidueMaterials(playerState.residueMaterials)
+    residueMaterials: Array.isArray(migrated.residueMaterials)
+      ? normalizeResidueMaterials(migrated.residueMaterials)
       : normalizeResidueMaterials(fallback.residueMaterials),
-    transmutationPoints: typeof playerState.transmutationPoints === 'number'
-      ? normalizePositiveInt(playerState.transmutationPoints)
+    transmutationPoints: typeof migrated.transmutationPoints === 'number'
+      ? normalizePositiveInt(migrated.transmutationPoints)
       : fallback.transmutationPoints,
   };
 }
@@ -325,19 +382,23 @@ export function playerSaveToJson(save: PlayerSaveV1): Prisma.InputJsonValue {
 }
 
 export function hasCompletePlayerSave(playerState: unknown): boolean {
-  return isRecord(playerState)
-    && playerState.schemaVersion === PLAYER_SAVE_SCHEMA_VERSION
-    && isRecord(playerState.player)
-    && Array.isArray(playerState.player.clearedStages)
-    && Array.isArray(playerState.player.jobs)
-    && isRecord(playerState.player.necroStatus)
-    && isRecord(playerState.player.passives)
-    && isRecord(playerState.player.equipmentIds)
-    && Array.isArray(playerState.player.partyMonsterIds)
-    && Array.isArray(playerState.player.equippedResidueIds)
-    && Array.isArray(playerState.weaponMaterials)
-    && Array.isArray(playerState.residueMaterials)
-    && typeof playerState.transmutationPoints === 'number';
+  try {
+    const migrated = migratePlayerSaveSchema(playerState);
+    return migrated.schemaVersion === PLAYER_SAVE_SCHEMA_VERSION
+      && isRecord(migrated.player)
+      && Array.isArray(migrated.player.clearedStages)
+      && Array.isArray(migrated.player.jobs)
+      && isRecord(migrated.player.necroStatus)
+      && isRecord(migrated.player.passives)
+      && isRecord(migrated.player.equipmentIds)
+      && Array.isArray(migrated.player.partyMonsterIds)
+      && Array.isArray(migrated.player.equippedResidueIds)
+      && Array.isArray(migrated.weaponMaterials)
+      && Array.isArray(migrated.residueMaterials)
+      && typeof migrated.transmutationPoints === 'number';
+  } catch {
+    return false;
+  }
 }
 
 export function toBaseStats(row: Partial<BaseStats> | null | undefined): BaseStats {
@@ -539,7 +600,10 @@ export async function updatePlayerSaveSnapshot(
 
   await tx.character.update({
     where: { id: characterId },
-    data: { playerState: playerSaveToJson(nextSave) },
+    data: {
+      playerState: playerSaveToJson(nextSave),
+      saveVersion: PLAYER_SAVE_SCHEMA_VERSION,
+    },
   });
   return nextSave;
 }

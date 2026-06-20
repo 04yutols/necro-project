@@ -51,7 +51,7 @@ import type {
   WeaponRarity,
 } from '@/types/game';
 import type { OnlineStageRecordSummary, StageResultMeta, WorldEventType, WorldLogEntry } from '@/types/online';
-import type { PlayerSaveV1 } from '@/types/playerSave';
+import { PLAYER_SAVE_SCHEMA_VERSION, type PlayerSaveV1 } from '@/types/playerSave';
 import type { CreateCharacterResult, LoadCharacterResult, SaveGameStateResult, ServerGameData, ServerGameUser } from '@/types/serverGame';
 
 // ── ユーザー登録 ──────────────────────────────────────────────────────────────
@@ -1039,6 +1039,7 @@ export async function createCharacterForUser(
       data: {
         userId,
         playerState: playerSaveToJson(initialSave),
+        saveVersion: PLAYER_SAVE_SCHEMA_VERSION,
       },
       select: { id: true },
     });

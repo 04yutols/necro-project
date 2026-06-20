@@ -33,7 +33,7 @@ model Character {
   userId          String   @unique
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   playerState     Json
-  saveVersion     Int      @default(1)
+  saveVersion     Int      @default(2)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

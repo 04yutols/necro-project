@@ -10,6 +10,7 @@ import {
 } from '../app/actions';
 import { createCredentialsUser } from '../services/AuthService';
 import { playerSaveToJson, readPlayerSave } from '../services/PlayerSaveService';
+import { PLAYER_SAVE_SCHEMA_VERSION } from '../types/playerSave';
 import type { ServerGameUser } from '../types/serverGame';
 
 jest.mock('@/auth', () => ({
@@ -143,7 +144,10 @@ describe('SEC-1 authenticated Server Actions', () => {
     };
     await prisma.character.update({
       where: { id: characterAId },
-      data: { playerState: playerSaveToJson(rankUpSave) },
+      data: {
+        playerState: playerSaveToJson(rankUpSave),
+        saveVersion: PLAYER_SAVE_SCHEMA_VERSION,
+      },
     });
     const rankUp = await processGrowthForUser(userA, characterAId, 'RANK_UP');
     expect(rankUp.success).toBe(true);

@@ -4,10 +4,13 @@ import {
   applyJobExpGainToSave,
   cleanPlayerSaveReferencesWithIds,
   emptyPlayerSave,
+  migratePlayerSaveSchema,
   playerSaveToJson,
+  PlayerSaveSchemaError,
   readPlayerSave,
   spendWeaponMaterialsInSave,
 } from './PlayerSaveService';
+import { PLAYER_SAVE_SCHEMA_VERSION } from '../types/playerSave';
 
 describe('PlayerSaveService', () => {
   test('roundtrips playerState JSON while normalizing material stacks', () => {
@@ -33,6 +36,29 @@ describe('PlayerSaveService', () => {
     expect(roundtrip.residueMaterials).toEqual([
       { id: 'bone_chip', name: '骨片', quantity: 3, expValue: 120, rarity: 'COMMON' },
     ]);
+  });
+
+  test('migrates legacy v1 playerState to the current schema without losing progress', () => {
+    const save = emptyPlayerSave();
+    save.player.name = '移行前アルド';
+    save.player.gold = 12345;
+    save.player.clearedStages = ['area1_node1'];
+    const legacy = {
+      ...(playerSaveToJson(save) as Record<string, unknown>),
+      schemaVersion: 1,
+    };
+
+    const migrated = readPlayerSave(legacy);
+
+    expect(migrated.schemaVersion).toBe(PLAYER_SAVE_SCHEMA_VERSION);
+    expect(migrated.player.name).toBe('移行前アルド');
+    expect(migrated.player.gold).toBe(12345);
+    expect(migrated.player.clearedStages).toEqual(['area1_node1']);
+  });
+
+  test('rejects malformed or future playerState instead of silently resetting progress', () => {
+    expect(() => migratePlayerSaveSchema({ schemaVersion: '1' })).toThrow(PlayerSaveSchemaError);
+    expect(() => readPlayerSave({ schemaVersion: PLAYER_SAVE_SCHEMA_VERSION + 1 })).toThrow(PlayerSaveSchemaError);
   });
 
   test('spends weapon materials and rejects insufficient stock', () => {

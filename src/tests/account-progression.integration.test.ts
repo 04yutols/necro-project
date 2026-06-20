@@ -116,9 +116,10 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     ]));
     expect(created.data.residueMaterials).toEqual([]);
     expect(created.data.transmutationPoints).toBe(0);
-    const createdPlayerStateRows = await prisma.$queryRaw<Array<{ playerState: PlayerSaveV1 | null }>>`
-      SELECT "playerState" FROM "Character" WHERE id = ${created.data.player.id}
+    const createdPlayerStateRows = await prisma.$queryRaw<Array<{ playerState: PlayerSaveV1 | null; saveVersion: number }>>`
+      SELECT "playerState", "saveVersion" FROM "Character" WHERE id = ${created.data.player.id}
     `;
+    expect(createdPlayerStateRows[0]?.saveVersion).toBe(PLAYER_SAVE_SCHEMA_VERSION);
     expect(createdPlayerStateRows[0]?.playerState).toMatchObject({
       schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
       player: {
@@ -432,10 +433,11 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
       ]));
     }
 
-    const playerStateRows = await prisma.$queryRaw<Array<{ playerState: PlayerSaveV1 | null }>>`
-      SELECT "playerState" FROM "Character" WHERE id = ${afterArea2Gate.data.player.id}
+    const playerStateRows = await prisma.$queryRaw<Array<{ playerState: PlayerSaveV1 | null; saveVersion: number }>>`
+      SELECT "playerState", "saveVersion" FROM "Character" WHERE id = ${afterArea2Gate.data.player.id}
     `;
     const playerState = playerStateRows[0]?.playerState;
+    expect(playerStateRows[0]?.saveVersion).toBe(PLAYER_SAVE_SCHEMA_VERSION);
     expect(playerState).toMatchObject({
       schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
       player: {
