@@ -494,6 +494,20 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     const materialForEnhance = afterArea2Gate.data.residueMaterials[0];
     expect(materialForEnhance).toBeTruthy();
     if (!materialForEnhance) throw new Error('expected residue material');
+    const overRequestedEnhance = await enhanceResidueForUser(
+      user,
+      afterArea2Gate.data.player.id,
+      residue.id,
+      Array.from({ length: materialForEnhance.quantity + 1 }, () => materialForEnhance.id),
+    );
+    expect(overRequestedEnhance).toEqual({ success: false, error: '残滓強化素材が不足しています' });
+    const residueAfterOverRequest = await prisma.abyssalResidue.findUniqueOrThrow({ where: { id: residue.id } });
+    expect(residueAfterOverRequest).toMatchObject({
+      level: residue.level,
+      exp: residue.exp,
+      maxExp: residue.maxExp,
+    });
+
     const expectedEnhancedResidue = calculateResidueEnhancement(residue, materialForEnhance.expValue);
     const residueEnhanced = await enhanceResidueForUser(
       user,

@@ -1703,13 +1703,16 @@ export async function enhanceResidueForUser(
       `;
       if (!residue) throw new Error('所有していない残滓です');
 
-      let enhanced = calculateResidueEnhancement(residue, 0);
+      let enhanced: ReturnType<typeof calculateResidueEnhancement> | undefined;
       await updatePlayerSaveBlob(tx, character.id, (save) => {
         const spent = spendResidueMaterials(save.residueMaterials, selectedMatIds);
-        if (spent.expGain <= 0) throw new Error('残滓強化素材が不足しています');
+        if (spent.expGain <= 0 || spent.missingCount > 0) {
+          throw new Error('残滓強化素材が不足しています');
+        }
         enhanced = calculateResidueEnhancement(residue, spent.expGain);
         return { ...save, residueMaterials: spent.materials };
       }, { cleanReferences: false });
+      if (!enhanced) throw new Error('残滓強化の保存に失敗しました');
 
       await tx.abyssalResidue.update({
         where: { id: residue.id },
