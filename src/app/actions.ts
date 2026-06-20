@@ -8,12 +8,25 @@ import { RewardService, StageDropResult } from '@/services/RewardService';
 import { MasterDataService } from '@/services/MasterDataService';
 import { RankingService, normalizeStageClearMetrics } from '@/services/RankingService';
 import { createWorldEvent, publishWorldEvents } from '@/services/WorldEventService';
-import { JobService } from '@/services/JobService';
-import { NecroService } from '@/services/NecroService';
+import {
+  applyJobExpGainToSave,
+  applyNecroExpGainToSave,
+  changeJobInSave,
+  emptyPlayerSave,
+  getEffectiveClearedStages,
+  lockCharacterForUpdate,
+  playerSaveToJson,
+  PlayerSaveSchemaError,
+  rankUpNecroInSave,
+  readPlayerSave,
+  spendWeaponMaterialsInSave,
+  toBaseStats,
+  updatePlayerSaveSnapshot as updatePlayerSaveBlob,
+} from '@/services/PlayerSaveService';
+import { calculateResidueEnhancement, spendResidueMaterials } from '@/logic/ResidueEnhancement';
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
 import { calculateEnergyState } from '@/logic/EnergySystem';
 import { hydrateMonsterEnergy } from '@/logic/MonsterEnergySystem';
-import { levelFromTotalExp } from '@/logic/ExperienceSystem';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
 import { isAbyssalResidueUnlocked } from '@/logic/AbyssalResidueUnlockSystem';
 import { isStageUnlocked } from '@/logic/DungeonSystem';
@@ -25,29 +38,23 @@ import {
   getRankUpCost,
   getReforgeCost,
   INITIAL_WEAPON_MATERIALS,
-  type WeaponCost,
 } from '@/logic/WeaponSystem';
 import type {
   AbyssalResidueData,
-  BaseStats,
   CharacterData,
   EnemyData,
-  ElementType,
   EquipmentSlots,
   ItemData,
   JobData,
   MonsterData,
   NecroStatus,
-  PassiveBonuses,
   Resistances,
   SoulShardData,
-  SpiritCoreData,
   StageData,
-  WeaponMaterialData,
-  WeaponMaterialType,
   WeaponRarity,
 } from '@/types/game';
 import type { OnlineStageRecordSummary, StageResultMeta, WorldEventType, WorldLogEntry } from '@/types/online';
+import { PLAYER_SAVE_SCHEMA_VERSION, type PlayerSaveV1 } from '@/types/playerSave';
 import type { CreateCharacterResult, LoadCharacterResult, SaveGameStateResult, ServerGameData, ServerGameUser } from '@/types/serverGame';
 
 // ── ユーザー登録 ──────────────────────────────────────────────────────────────
@@ -90,6 +97,7 @@ export interface StageResultPayload {
   dropResult: StageDropResult;
   expGain:   number;
   goldGain:  number;
+  data?: ServerGameData;
   cloudSaved?: boolean;
   stageRecord?: OnlineStageRecordSummary;
   worldEvents?: WorldLogEntry[];
@@ -129,26 +137,11 @@ const STAGE_ID_ALIASES: Record<string, string> = {
 const STAGE_ATTEMPT_TTL_MS = 2 * 60 * 60 * 1000;
 
 const CHARACTER_GAME_DATA_INCLUDE = {
-  jobs: true,
-  equipWeapon: true,
-  equipSub: true,
-  equipHead: true,
-  equipBody: true,
-  equipArms: true,
-  equipLegs: true,
-  equipAcc1: true,
-  equipAcc2: true,
   abyssalResidues: true,
-  partySlot0: { include: { soulShard: true, spiritCore: true } },
-  partySlot1: { include: { soulShard: true, spiritCore: true } },
-  partySlot2: { include: { soulShard: true, spiritCore: true } },
   soulShards: true,
-  equippedResidue0: true,
-  equippedResidue1: true,
-  equippedResidue2: true,
-  equippedResidue3: true,
-  equippedResidue4: true,
 } satisfies Prisma.CharacterInclude;
+
+const PLAYER_SAVE_SCHEMA_ERROR_MESSAGE = 'セーブデータの形式が不正です。サポートに連絡してください。';
 
 const EMPTY_EQUIPMENT: EquipmentSlots = {
   weapon: null,
@@ -253,61 +246,6 @@ function toItemData(row: {
   };
 }
 
-function toWeaponMaterialData(row: {
-  type: string;
-  name: string;
-  quantity: number;
-}): WeaponMaterialData {
-  return {
-    type: row.type as WeaponMaterialType,
-    name: row.name,
-    quantity: row.quantity,
-  };
-}
-
-function toBaseStats(row: {
-  hp: number;
-  atk: number;
-  def: number;
-  spd: number;
-  critRate: number;
-  critDmg: number;
-  effectHit: number;
-  effectRes: number;
-}): BaseStats {
-  return {
-    hp: row.hp,
-    atk: row.atk,
-    def: row.def,
-    spd: row.spd,
-    critRate: row.critRate,
-    critDmg: row.critDmg,
-    effectHit: row.effectHit,
-    effectRes: row.effectRes,
-  };
-}
-
-function toResidueSlot(row: unknown): AbyssalResidueData | null {
-  return row ? toResidueData(row as Parameters<typeof toResidueData>[0]) : null;
-}
-
-function toSpiritCoreData(row: {
-  id: string;
-  name: string;
-  element: string | null;
-  skillChangeId: string | null;
-  atkMultiplier: number;
-} | null | undefined): SpiritCoreData | undefined {
-  if (!row) return undefined;
-  return {
-    id: row.id,
-    name: row.name,
-    element: row.element as ElementType | undefined,
-    skillChangeId: row.skillChangeId ?? undefined,
-    atkMultiplier: row.atkMultiplier,
-  };
-}
-
 function deriveSoulShardAbility(tribe: string): string | undefined {
   switch (tribe) {
     case 'UNDEAD': return 'REGENERATE_SOUL';
@@ -347,7 +285,6 @@ function toMonsterData(row: any): MonsterData {
     resistances: (row.resistances ?? {}) as Resistances,
     skillIds: Array.isArray(row.skillIds) ? row.skillIds.filter((id: unknown): id is string => typeof id === 'string') : [],
     equippedShardId: row.soulShardId ?? undefined,
-    spiritCore: toSpiritCoreData(row.spiritCore),
     currentEnergy: row.currentEnergy ?? undefined,
     maxEnergy: row.maxEnergy ?? undefined,
   });
@@ -360,25 +297,6 @@ function getJobData(jobId: string): JobData {
   return job;
 }
 
-function sumLevelBonuses(job: JobData | undefined, fromExclusive: number, toInclusive: number): Partial<PassiveBonuses> {
-  const totals: Partial<PassiveBonuses> = {};
-  if (!job?.levelBonuses || toInclusive <= fromExclusive) return totals;
-
-  for (let level = fromExclusive + 1; level <= toInclusive; level += 1) {
-    const bonus = job.levelBonuses[String(level)];
-    if (!bonus) continue;
-    (Object.keys(bonus) as (keyof PassiveBonuses)[]).forEach((key) => {
-      totals[key] = (totals[key] ?? 0) + (bonus[key] ?? 0);
-    });
-  }
-
-  return totals;
-}
-
-function hasPassiveBonus(bonus: Partial<PassiveBonuses>): boolean {
-  return Object.values(bonus).some((value) => typeof value === 'number' && value !== 0);
-}
-
 function toServerUser(sessionUser: { id?: string; name?: string | null; email?: string | null }): ServerGameUser {
   return {
     id: sessionUser.id ?? '',
@@ -387,63 +305,62 @@ function toServerUser(sessionUser: { id?: string; name?: string | null; email?: 
   };
 }
 
-function toServerGameData(character: any, inventoryItems: any[], inventoryMonsters: any[], weaponMaterials: any[] = []): ServerGameData {
-  const currentJobId = character.currentJobId ?? 'warrior';
+function toServerGameData(character: any, inventoryItems: any[], inventoryMonsters: any[]): ServerGameData {
+  const playerSave = readPlayerSave(character.playerState);
+  const currentJobId = playerSave.player.currentJobId ?? 'warrior';
   const currentJob = getJobData(currentJobId);
-  const jobs = (character.jobs ?? []).map((job: any) => ({ jobId: job.jobId, level: job.level, exp: job.exp }));
+  const jobs = playerSave.player.jobs;
   const currentJobLevel = Math.max(1, jobs.find((job: { jobId: string; level: number; exp: number }) => job.jobId === currentJobId)?.level ?? 1);
   const energyState = calculateEnergyState(currentJob, currentJobLevel);
-  const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, toBaseStats(character));
-  const clearedStages = character.clearedStages ?? [];
+  const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel);
+  const clearedStages = playerSave.player.clearedStages;
   const residueUnlocked = isAbyssalResidueUnlocked(clearedStages);
-  const persistedEquippedResidueSlots = [
-    toResidueSlot(character.equippedResidue0),
-    toResidueSlot(character.equippedResidue1),
-    toResidueSlot(character.equippedResidue2),
-    toResidueSlot(character.equippedResidue3),
-    toResidueSlot(character.equippedResidue4),
-  ];
+  const items = inventoryItems.map(toItemData);
+  const itemById = new Map(items.map(item => [item.id, item]));
+  const monsters = inventoryMonsters.map(toMonsterData);
+  const monsterById = new Map(monsters.map(monster => [monster.id, monster]));
+  const residues: AbyssalResidueData[] = (character.abyssalResidues ?? []).map(toResidueData);
+  const residueById = new Map(residues.map(residue => [residue.id, residue]));
+  const resolveEquipment = (slot: keyof PlayerSaveV1['player']['equipmentIds']): ItemData | null => {
+    const itemId = playerSave.player.equipmentIds[slot];
+    return itemId ? itemById.get(itemId) ?? null : null;
+  };
+  const saveEquippedResidueSlots = playerSave.player.equippedResidueIds.map((residueId) =>
+    residueId ? residueById.get(residueId) ?? null : null,
+  ) as (AbyssalResidueData | null)[];
   const equippedResidueSlots = residueUnlocked
-    ? persistedEquippedResidueSlots
+    ? saveEquippedResidueSlots
     : [null, null, null, null, null];
   const player: CharacterData = {
     id: character.id,
-    name: character.name,
+    name: playerSave.player.name,
     currentJobId,
     category: currentJob.category,
     baseStats,
-    necroLevel: character.necroLevel ?? 1,
-    necroBaseStatsBonus: character.necroBaseStatsBonus ?? 1,
+    necroLevel: playerSave.player.necroStatus.level,
+    necroBaseStatsBonus: playerSave.player.necroStatus.baseStatsBonus,
     stats: baseStats,
-    passives: {
-      passiveAtkBonus: character.passiveAtkBonus,
-      passiveDefBonus: character.passiveDefBonus,
-      passiveSpdBonus: character.passiveSpdBonus,
-      passiveCritRateBonus: character.passiveCritRateBonus,
-      passiveCritDmgBonus: character.passiveCritDmgBonus,
-      passiveHpBonus: character.passiveHpBonus,
-    },
+    passives: playerSave.player.passives,
     equipment: {
       ...EMPTY_EQUIPMENT,
-      weapon: character.equipWeapon ? toItemData(character.equipWeapon) : null,
-      sub: character.equipSub ? toItemData(character.equipSub) : null,
-      head: character.equipHead ? toItemData(character.equipHead) : null,
-      body: character.equipBody ? toItemData(character.equipBody) : null,
-      arms: character.equipArms ? toItemData(character.equipArms) : null,
-      legs: character.equipLegs ? toItemData(character.equipLegs) : null,
-      acc1: character.equipAcc1 ? toItemData(character.equipAcc1) : null,
-      acc2: character.equipAcc2 ? toItemData(character.equipAcc2) : null,
+      weapon: resolveEquipment('weapon'),
+      sub: resolveEquipment('sub'),
+      head: resolveEquipment('head'),
+      body: resolveEquipment('body'),
+      arms: resolveEquipment('arms'),
+      legs: resolveEquipment('legs'),
+      acc1: resolveEquipment('acc1'),
+      acc2: resolveEquipment('acc2'),
     },
     baseResistances: {},
     jobs,
     isAwakened: false,
     clearedStages,
-    gold: character.gold ?? 50000,
+    gold: playerSave.player.gold,
     currentEnergy: energyState.currentEnergy,
     maxEnergy: energyState.maxEnergy,
     elementDmgBoosts: {},
   };
-  const monsters = inventoryMonsters.map(toMonsterData);
   const soulShards = new Map<string, SoulShardData>();
   (character.soulShards ?? []).forEach((shard: any) => {
     soulShards.set(shard.id, toSoulShardData(shard));
@@ -451,46 +368,23 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
   inventoryMonsters.forEach((monster) => {
     if (monster.soulShard) soulShards.set(monster.soulShard.id, toSoulShardData(monster.soulShard));
   });
+  const partyFromSave = playerSave.player.partyMonsterIds.map((monsterId) =>
+    monsterId ? monsterById.get(monsterId) ?? null : null,
+  ) as (MonsterData | null)[];
 
   return {
     player,
-    necroStatus: {
-      level: character.necroLevel,
-      rank: character.necroRank,
-      maxCost: character.necroMaxCost,
-      baseStatsBonus: character.necroBaseStatsBonus,
-      exp: character.necroExp ?? 0,
-    } satisfies NecroStatus,
-    party: [
-      character.partySlot0 ? toMonsterData(character.partySlot0) : null,
-      character.partySlot1 ? toMonsterData(character.partySlot1) : null,
-      character.partySlot2 ? toMonsterData(character.partySlot2) : null,
-    ],
+    necroStatus: playerSave.player.necroStatus satisfies NecroStatus,
+    party: partyFromSave,
     inventoryMonsters: monsters,
     soulShards: Array.from(soulShards.values()),
-    inventoryItems: inventoryItems.map(toItemData),
-    weaponMaterials: weaponMaterials.map(toWeaponMaterialData),
-    abyssalResidues: (character.abyssalResidues ?? []).map(toResidueData),
+    inventoryItems: items,
+    weaponMaterials: playerSave.weaponMaterials,
+    residueMaterials: playerSave.residueMaterials,
+    transmutationPoints: playerSave.transmutationPoints,
+    abyssalResidues: residues,
     equippedResidueSlots,
   };
-}
-
-async function ensureJobRow(tx: Prisma.TransactionClient, jobId: string) {
-  const job = getJobData(jobId);
-  await tx.job.upsert({
-    where: { id: jobId },
-    update: {
-      name: job.displayName ?? job.name,
-      tier: job.tier,
-      category: job.category,
-    },
-    create: {
-      id: jobId,
-      name: job.displayName ?? job.name,
-      tier: job.tier,
-      category: job.category,
-    },
-  });
 }
 
 function itemCreateDataFromMaster(item: ItemData, ownerId: string): Prisma.ItemCreateInput {
@@ -596,16 +490,7 @@ function getStarterWeaponId(jobId: string): string {
   return STARTER_WEAPON_BY_JOB[jobId] ?? STARTER_WEAPON_BY_JOB.warrior;
 }
 
-const EQUIPMENT_FIELD_BY_SLOT: Partial<Record<keyof EquipmentSlots, string>> = {
-  weapon: 'equipWeaponId',
-  sub: 'equipSubId',
-  head: 'equipHeadId',
-  body: 'equipBodyId',
-  arms: 'equipArmsId',
-  legs: 'equipLegsId',
-  acc1: 'equipAcc1Id',
-  acc2: 'equipAcc2Id',
-};
+const EQUIPMENT_SLOT_SET = new Set<keyof EquipmentSlots>(['weapon', 'sub', 'head', 'body', 'arms', 'legs', 'acc1', 'acc2']);
 
 const ITEM_TYPE_BY_SLOT: Partial<Record<keyof EquipmentSlots, ItemData['type']>> = {
   weapon: 'WEAPON',
@@ -624,7 +509,15 @@ function toReadyResult(loaded: LoadCharacterResult): SaveGameStateResult {
   return { success: false, error: loaded.error };
 }
 
+function playerSaveSchemaErrorMessage(error: unknown, context: Record<string, unknown>): string | null {
+  if (!(error instanceof PlayerSaveSchemaError)) return null;
+  console.error('[PlayerSaveSchemaError]', { ...context, error: error.message });
+  return PLAYER_SAVE_SCHEMA_ERROR_MESSAGE;
+}
+
 function jobChangeErrorMessage(error: unknown): string {
+  const saveError = playerSaveSchemaErrorMessage(error, { action: 'changeJobForUser' });
+  if (saveError) return saveError;
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes('not found in master data')) return '存在しない職業です';
   if (message.includes('is locked')) return '解放条件を満たしていません';
@@ -633,6 +526,8 @@ function jobChangeErrorMessage(error: unknown): string {
 }
 
 function rankUpErrorMessage(error: unknown): string {
+  const saveError = playerSaveSchemaErrorMessage(error, { action: 'processGrowthForUser' });
+  if (saveError) return saveError;
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes('Lv.99') || message.includes('99')) return 'ランクアップには死霊術Lv.99到達が必要です';
   if (message.includes('試練')) return 'ランクアップには試練のクリアが必要です';
@@ -641,6 +536,8 @@ function rankUpErrorMessage(error: unknown): string {
 }
 
 function weaponEnhancementErrorMessage(error: unknown): string {
+  const saveError = playerSaveSchemaErrorMessage(error, { action: 'weaponEnhancement' });
+  if (saveError) return saveError;
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes('キャラクター')) return 'キャラクターが見つかりません';
   if (message.includes('所有していない')) return '所有していない武器です';
@@ -650,6 +547,17 @@ function weaponEnhancementErrorMessage(error: unknown): string {
   if (message.includes('ILv')) return 'これ以上打ち直しできません';
   if (message.includes('分解')) return 'この武器は分解できません';
   return '武器強化の保存に失敗しました';
+}
+
+function residueEnhancementErrorMessage(error: unknown): string {
+  const saveError = playerSaveSchemaErrorMessage(error, { action: 'enhanceResidueForUser' });
+  if (saveError) return saveError;
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('深淵')) return '深淵の残滓は第2章到達後に解放されます';
+  if (message.includes('キャラクター')) return 'キャラクターが見つかりません';
+  if (message.includes('所有していない')) return '所有していない残滓です';
+  if (message.includes('素材')) return '残滓強化素材が不足しています';
+  return '残滓強化の保存に失敗しました';
 }
 
 async function getAuthorizedUser(userId: string): Promise<ServerGameUser | null> {
@@ -683,10 +591,22 @@ export async function startStageForUser(user: ServerGameUser, stageId: string): 
 
   const char = await prisma.character.findFirst({
     where: { userId: authorizedUser.id },
-    select: { id: true, clearedStages: true },
+    select: { id: true, playerState: true },
   });
   if (!char) return { success: false, error: 'CHARACTER_NOT_FOUND' };
-  if (!isStageUnlocked(stage, char.clearedStages ?? [])) {
+  let effectiveClearedStages: string[];
+  try {
+    effectiveClearedStages = getEffectiveClearedStages(char);
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'startStageForUser',
+      userId: authorizedUser.id,
+      characterId: char.id,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
+  if (!isStageUnlocked(stage, effectiveClearedStages)) {
     return { success: false, error: 'STAGE_LOCKED' };
   }
 
@@ -775,33 +695,16 @@ export async function processStageResultForUser(
   // Character 取得（userId で紐付け）
   const char = await prisma.character.findFirst({
     where: { userId },
-    include: { jobs: true },
+    select: { id: true },
   });
   if (!char) {
     return { success: false, dropResult: emptyDrop(), expGain: 0, goldGain: 0, cloudSaved: false, error: 'CHARACTER_NOT_FOUND' };
   }
 
-  // EXP 計算
-  const playerForExp: Parameters<RewardService['calculateExp']>[1] = {
-    category:     'PHYSICAL',
-    currentJobId: char.currentJobId ?? 'warrior',
-    jobs:         (char.jobs as any[]).map(j => ({ jobId: j.jobId, level: j.level, exp: j.exp })),
-  } as any;
-  const expGain  = svc.calculateExp(stage.rewards.baseExp, playerForExp);
   const goldGain = stage.rewards.baseGold;
-
-  const ownedMonsterMasterIds = (await prisma.monster.findMany({
-    where: { characterId: char.id },
-    select: { masterId: true, id: true },
-  })).map(monster => monster.masterId ?? monster.id);
-
-  // ドロップ抽選（サーバー側で確定）
-  const dropResult = svc.processStageDropTable(stage, char.clearedStages ?? [], 0, Math.random, ownedMonsterMasterIds);
-  dropResult.monsters.push(...svc.processStageNecromance(
-    stage,
-    [...ownedMonsterMasterIds, ...dropResult.monsters.map(monster => monster.masterId ?? monster.id)],
-  ));
-  const bestResidueScore = Math.max(0, ...dropResult.residues.map(residue => calculateResidueScore(residue)));
+  let expGain = 0;
+  let dropResult = emptyDrop();
+  let bestResidueScore = 0;
   const playerName = getPlayerDisplayName(authorizedUser);
 
   // DB 保存（トランザクション）
@@ -817,6 +720,34 @@ export async function processStageResultForUser(
     if (stageAttemptError) {
       throw new Error(stageAttemptError);
     }
+
+    await lockCharacterForUpdate(tx, char.id);
+    const lockedChar = await tx.character.findUnique({
+      where: { id: char.id },
+      select: { id: true, playerState: true },
+    });
+    if (!lockedChar) throw new Error('キャラクターが見つかりません');
+    const lockedSave = readPlayerSave(lockedChar.playerState);
+    const clearedStagesBeforeClear = lockedSave.player.clearedStages;
+
+    const playerForExp: Parameters<RewardService['calculateExp']>[1] = {
+      category:     'PHYSICAL',
+      currentJobId: lockedSave.player.currentJobId ?? 'warrior',
+      jobs:         lockedSave.player.jobs,
+    } as any;
+    expGain = svc.calculateExp(stage.rewards.baseExp, playerForExp);
+
+    const ownedMonsterMasterIds = (await tx.monster.findMany({
+      where: { characterId: char.id },
+      select: { masterId: true, id: true },
+    })).map(monster => monster.masterId ?? monster.id);
+
+    dropResult = svc.processStageDropTable(stage, clearedStagesBeforeClear, 0, Math.random, ownedMonsterMasterIds);
+    dropResult.monsters.push(...svc.processStageNecromance(
+      stage,
+      [...ownedMonsterMasterIds, ...dropResult.monsters.map(monster => monster.masterId ?? monster.id)],
+    ));
+    bestResidueScore = Math.max(0, ...dropResult.residues.map(residue => calculateResidueScore(residue)));
 
     // 武器保存
     for (const weapon of dropResult.weapons) {
@@ -907,54 +838,6 @@ export async function processStageResultForUser(
       });
     }
 
-    for (const material of dropResult.weaponMaterials) {
-      await tx.weaponMaterial.upsert({
-        where: { userId_type: { userId, type: material.type } },
-        update: {
-          name: material.name,
-          quantity: { increment: material.quantity },
-        },
-        create: {
-          userId,
-          type: material.type,
-          name: material.name,
-          quantity: material.quantity,
-        },
-      });
-    }
-
-    // EXP 加算 + レベルアップ時の永続%パッシブ
-    const currentJob = (char.jobs as any[]).find(j => j.jobId === char.currentJobId);
-    if (currentJob) {
-      const newExp      = currentJob.exp + expGain;
-      const oldLevel    = currentJob.level as number;
-      const newLevel    = levelFromTotalExp(newExp);
-      const levelsGained = newLevel - oldLevel;
-
-      await tx.userJob.update({
-        where: { characterId_jobId: { characterId: char.id, jobId: char.currentJobId! } },
-        data:  { exp: newExp, level: newLevel },
-      });
-
-      if (levelsGained > 0) {
-        const currentJobData = mds.getJob(currentJob.jobId);
-        const passiveBonus = sumLevelBonuses(currentJobData, oldLevel, newLevel);
-        if (hasPassiveBonus(passiveBonus)) {
-          await tx.character.update({
-            where: { id: char.id },
-            data: {
-              passiveAtkBonus:      { increment: passiveBonus.passiveAtkBonus      ?? 0 },
-              passiveDefBonus:      { increment: passiveBonus.passiveDefBonus      ?? 0 },
-              passiveSpdBonus:      { increment: passiveBonus.passiveSpdBonus      ?? 0 },
-              passiveCritRateBonus: { increment: passiveBonus.passiveCritRateBonus ?? 0 },
-              passiveCritDmgBonus:  { increment: passiveBonus.passiveCritDmgBonus  ?? 0 },
-              passiveHpBonus:       { increment: passiveBonus.passiveHpBonus       ?? 0 },
-            },
-          });
-        }
-      }
-    }
-
     for (const monster of dropResult.monsters) {
       await tx.monster.create({
         data: {
@@ -980,12 +863,23 @@ export async function processStageResultForUser(
       });
     }
 
-    await tx.character.update({
-      where: { id: char.id },
-      data: {
-        gold: { increment: goldGain },
-        ...(!char.clearedStages.includes(normalizedStageId) ? { clearedStages: { push: normalizedStageId } } : {}),
-      },
+    const nextClearedStages = clearedStagesBeforeClear.includes(normalizedStageId)
+      ? clearedStagesBeforeClear
+      : [...clearedStagesBeforeClear, normalizedStageId];
+    await updatePlayerSaveBlob(tx, char.id, (save) => {
+      const leveledSave = applyJobExpGainToSave(save, expGain, (jobId) => mds.getJob(jobId));
+      const nextSave = applyNecroExpGainToSave(leveledSave, expGain);
+      return {
+        ...nextSave,
+        player: {
+          ...nextSave.player,
+          gold: nextSave.player.gold + goldGain,
+          clearedStages: nextClearedStages,
+        },
+      };
+    }, {
+      residueMaterialAdditions: dropResult.materials,
+      weaponMaterialAdditions: dropResult.weaponMaterials,
     });
 
     const isBossStage = stage.nodeType === 'BOSS' || Boolean(stage.isAreaBoss);
@@ -1022,6 +916,13 @@ export async function processStageResultForUser(
       return { stageRecord, worldEvents };
     });
   } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'processStageResultForUser',
+      userId,
+      characterId: char.id,
+      stageId: normalizedStageId,
+    });
+    if (saveError) return stageResultFailure(saveError);
     const message = error instanceof Error ? error.message : String(error);
     if (
       message === 'INVALID_STAGE_ATTEMPT'
@@ -1039,12 +940,15 @@ export async function processStageResultForUser(
 
   await RankingService.invalidate();
   await publishWorldEvents(transactionResult.worldEvents);
+  const reloaded = await loadCharacterForUser(authorizedUser);
+  const data = reloaded.success && reloaded.status === 'READY' ? reloaded.data : undefined;
 
   return {
     success: true,
     dropResult,
     expGain,
     goldGain,
+    data,
     cloudSaved: true,
     stageRecord: transactionResult.stageRecord,
     worldEvents: transactionResult.worldEvents,
@@ -1065,36 +969,45 @@ export async function loadCharacterForUser(user: ServerGameUser): Promise<LoadCh
     return { success: false, status: 'UNAUTHENTICATED', error: 'ログインが必要です' };
   }
 
-  const character = await prisma.character.findFirst({
+  const character = await prisma.character.findUnique({
     where: { userId: authorizedUser.id },
     include: CHARACTER_GAME_DATA_INCLUDE,
   });
   if (!character) {
     return { success: true, status: 'NO_CHARACTER', user: authorizedUser };
   }
+  const characterId = character.id;
 
-  const [inventoryItems, inventoryMonsters, weaponMaterials] = await Promise.all([
+  const [inventoryItems, inventoryMonsters] = await Promise.all([
     prisma.item.findMany({
       where: { ownerId: authorizedUser.id },
       orderBy: { id: 'desc' },
     }),
     prisma.monster.findMany({
-      where: { characterId: character.id },
-      include: { soulShard: true, spiritCore: true },
+      where: { characterId },
+      include: { soulShard: true },
       orderBy: { id: 'asc' },
-    }),
-    prisma.weaponMaterial.findMany({
-      where: { userId: authorizedUser.id },
-      orderBy: { type: 'asc' },
     }),
   ]);
 
-  return {
-    success: true,
-    status: 'READY',
-    user: authorizedUser,
-    data: toServerGameData(character, inventoryItems, inventoryMonsters, weaponMaterials),
-  };
+  try {
+    return {
+      success: true,
+      status: 'READY',
+      user: authorizedUser,
+      data: toServerGameData(character, inventoryItems, inventoryMonsters),
+    };
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'loadCharacterForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) {
+      return { success: false, status: 'ERROR', error: saveError };
+    }
+    throw error;
+  }
 }
 
 export async function changeJobAction(characterId: string, jobId: string): Promise<SaveGameStateResult> {
@@ -1118,7 +1031,11 @@ export async function changeJobForUser(
   if (!character) return { success: false, error: 'キャラクターが見つかりません' };
 
   try {
-    await new JobService(prisma).changeJob(character.id, jobId);
+    await prisma.$transaction(async (tx) => {
+      await updatePlayerSaveBlob(tx, character.id, (save, { character }) =>
+        changeJobInSave(save, character, jobId, getJobData(jobId)),
+      );
+    });
   } catch (error) {
     return { success: false, error: jobChangeErrorMessage(error) };
   }
@@ -1156,50 +1073,35 @@ export async function createCharacterForUser(
     return { success: false, error: '存在しない職業です' };
   }
 
-  const exists = await prisma.character.findFirst({ where: { userId }, select: { id: true } });
+  const exists = await prisma.character.findUnique({ where: { userId }, select: { id: true } });
   if (exists) {
     const loaded = await loadCharacterForUser(authorizedUser);
     if (loaded.success && loaded.status === 'READY') return { success: true, data: loaded.data };
+    if (!loaded.success) return { success: false, error: loaded.error };
     return { success: false, error: '既にキャラクターが存在します' };
   }
 
   const mds = MasterDataService.getInstance();
-  const initialStats = getJobBaseStatsAtLevel(mds.getJob(jobId), 1);
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    await ensureJobRow(tx, jobId);
-
     const starterWeapon = mds.getItem(getStarterWeaponId(jobId));
     const createdWeapon = starterWeapon
       ? await tx.item.create({ data: itemCreateDataFromMaster(starterWeapon, userId), select: { id: true } })
       : null;
 
-    await tx.weaponMaterial.createMany({
-      data: INITIAL_WEAPON_MATERIALS.map((material) => ({
-        userId,
-        type: material.type,
-        name: material.name,
-        quantity: material.quantity,
-      })),
-      skipDuplicates: true,
-    });
+    const initialSave = emptyPlayerSave();
+    initialSave.player.name = trimmedName;
+    initialSave.player.currentJobId = jobId;
+    initialSave.player.jobs = [{ jobId, level: 1, exp: 0 }];
+    initialSave.player.equipmentIds.weapon = createdWeapon?.id ?? null;
+    initialSave.weaponMaterials = INITIAL_WEAPON_MATERIALS.map((material) => ({ ...material }));
 
     await tx.character.create({
       data: {
-        name: trimmedName,
         userId,
-        currentJobId: jobId,
-        gold: 50000,
-        hp: initialStats.hp,
-        atk: initialStats.atk,
-        def: initialStats.def,
-        spd: initialStats.spd,
-        critRate: initialStats.critRate,
-        critDmg: initialStats.critDmg,
-        effectHit: initialStats.effectHit,
-        effectRes: initialStats.effectRes,
-        equipWeaponId: createdWeapon?.id ?? null,
-        jobs: { create: { jobId, level: 1, exp: 0 } },
+        playerState: playerSaveToJson(initialSave),
+        saveVersion: PLAYER_SAVE_SCHEMA_VERSION,
       },
+      select: { id: true },
     });
   });
 
@@ -1240,15 +1142,25 @@ export async function fetchPlayerForUser(
     }),
     prisma.monster.findMany({
       where: { characterId: character.id },
-      include: { soulShard: true, spiritCore: true },
+      include: { soulShard: true },
       orderBy: { id: 'asc' },
     }),
   ]);
 
-  return {
-    success: true,
-    data: toServerGameData(character, inventoryItems, inventoryMonsters).player,
-  };
+  try {
+    return {
+      success: true,
+      data: toServerGameData(character, inventoryItems, inventoryMonsters).player,
+    };
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'fetchPlayerForUser',
+      userId: authorizedUser.id,
+      characterId: character.id,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
 }
 
 export async function processGrowthAction(characterId: string, type: GrowthActionType): Promise<SaveGameStateResult> {
@@ -1276,7 +1188,9 @@ export async function processGrowthForUser(
   }
 
   try {
-    await new NecroService(prisma).performRankUp(character.id, true);
+    await prisma.$transaction(async (tx) => {
+      await updatePlayerSaveBlob(tx, character.id, rankUpNecroInSave);
+    });
   } catch (error) {
     return { success: false, error: rankUpErrorMessage(error) };
   }
@@ -1321,6 +1235,7 @@ export async function soulStoneForUser(
       },
     });
     await tx.monster.delete({ where: { id: monster.id } });
+    await updatePlayerSaveBlob(tx, monster.characterId!, undefined, { cleanReferenceScopes: ['party'] });
     return created;
   });
 
@@ -1385,6 +1300,12 @@ export async function equipResidueAction(characterId: string, slotIndex: number,
   return equipResidueForUser(toServerUser(session.user), characterId, slotIndex, residueId);
 }
 
+export async function enhanceResidueAction(characterId: string, residueId: string, matIds: string[]): Promise<SaveGameStateResult> {
+  const session = await auth().catch(() => null);
+  if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
+  return enhanceResidueForUser(toServerUser(session.user), characterId, residueId, matIds);
+}
+
 export async function rankUpWeaponAction(characterId: string, weaponId: string): Promise<SaveGameStateResult> {
   const session = await auth().catch(() => null);
   if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
@@ -1401,24 +1322,6 @@ export async function dismantleWeaponAction(characterId: string, weaponId: strin
   const session = await auth().catch(() => null);
   if (!session?.user?.id) return { success: false, error: 'ログインが必要です' };
   return dismantleWeaponForUser(toServerUser(session.user), characterId, weaponId);
-}
-
-async function spendWeaponMaterialsForUser(
-  tx: Prisma.TransactionClient,
-  userId: string,
-  costs: WeaponCost[],
-) {
-  for (const cost of costs) {
-    const updated = await tx.weaponMaterial.updateMany({
-      where: {
-        userId,
-        type: cost.type,
-        quantity: { gte: cost.quantity },
-      },
-      data: { quantity: { decrement: cost.quantity } },
-    });
-    if (updated.count !== 1) throw new Error('武器強化素材が不足しています');
-  }
 }
 
 async function findOwnedWeapon(
@@ -1440,7 +1343,7 @@ async function assertOwnedCharacter(
 ) {
   const character = await tx.character.findFirst({
     where: { id: characterId, userId },
-    select: { id: true, equipWeaponId: true },
+    select: { id: true, playerState: true },
   });
   if (!character) throw new Error('キャラクターが見つかりません');
   return character;
@@ -1456,17 +1359,22 @@ export async function rankUpWeaponForUser(
 
   try {
     await prisma.$transaction(async (tx) => {
-      await assertOwnedCharacter(tx, authorizedUser.id, characterId);
+      const character = await assertOwnedCharacter(tx, authorizedUser.id, characterId);
       const weapon = await findOwnedWeapon(tx, authorizedUser.id, weaponId);
       const item = toItemData(weapon);
       const cost = getRankUpCost(item);
       if (!cost) throw new Error('これ以上共鳴できません');
 
-      await spendWeaponMaterialsForUser(tx, authorizedUser.id, [cost]);
       await tx.item.update({
         where: { id: weapon.id },
         data: { rank: (item.rank ?? 0) + 1 },
       });
+      await updatePlayerSaveBlob(
+        tx,
+        character.id,
+        (save) => spendWeaponMaterialsInSave(save, [cost]),
+        { cleanReferences: false },
+      );
     });
   } catch (error) {
     return { success: false, error: weaponEnhancementErrorMessage(error) };
@@ -1485,13 +1393,13 @@ export async function reforgeWeaponForUser(
 
   try {
     await prisma.$transaction(async (tx) => {
-      await assertOwnedCharacter(tx, authorizedUser.id, characterId);
+      const character = await assertOwnedCharacter(tx, authorizedUser.id, characterId);
       const weapon = await findOwnedWeapon(tx, authorizedUser.id, weaponId);
       const item = toItemData(weapon);
       const targetIlv = getNextReforgeTargetIlv(item);
       if (!targetIlv) throw new Error('これ以上ILvを上げられません');
 
-      await spendWeaponMaterialsForUser(tx, authorizedUser.id, getReforgeCost(item));
+      const costs = getReforgeCost(item);
       const reforged = calculateReforgedWeapon(item, targetIlv);
       await tx.item.update({
         where: { id: weapon.id },
@@ -1500,6 +1408,12 @@ export async function reforgeWeaponForUser(
           atk: calculateWeaponBaseAttack(reforged),
         },
       });
+      await updatePlayerSaveBlob(
+        tx,
+        character.id,
+        (save) => spendWeaponMaterialsInSave(save, costs),
+        { cleanReferences: false },
+      );
     });
   } catch (error) {
     return { success: false, error: weaponEnhancementErrorMessage(error) };
@@ -1520,23 +1434,16 @@ export async function dismantleWeaponForUser(
     await prisma.$transaction(async (tx) => {
       const character = await assertOwnedCharacter(tx, authorizedUser.id, characterId);
       const weapon = await findOwnedWeapon(tx, authorizedUser.id, weaponId);
-      if (character.equipWeaponId === weapon.id) throw new Error('装備中の武器は分解できません');
+      const equippedWeaponId = readPlayerSave(character.playerState).player.equipmentIds.weapon;
+      if (equippedWeaponId === weapon.id) throw new Error('装備中の武器は分解できません');
 
       const rewards = calculateDismantleRewards(toItemData(weapon));
       if (rewards.length === 0) throw new Error('この武器は分解できません');
-      for (const reward of rewards) {
-        await tx.weaponMaterial.upsert({
-          where: { userId_type: { userId: authorizedUser.id, type: reward.type } },
-          update: { name: reward.name, quantity: { increment: reward.quantity } },
-          create: {
-            userId: authorizedUser.id,
-            type: reward.type,
-            name: reward.name,
-            quantity: reward.quantity,
-          },
-        });
-      }
       await tx.item.delete({ where: { id: weapon.id } });
+      await updatePlayerSaveBlob(tx, character.id, undefined, {
+        weaponMaterialAdditions: rewards,
+        cleanReferences: false,
+      });
     });
   } catch (error) {
     return { success: false, error: weaponEnhancementErrorMessage(error) };
@@ -1556,7 +1463,7 @@ export async function updatePartyForUser(
   const ids = [monsterIds[0] ?? null, monsterIds[1] ?? null, monsterIds[2] ?? null];
   const character = await prisma.character.findFirst({
     where: { id: characterId, userId: authorizedUser.id },
-    select: { id: true, necroMaxCost: true },
+    select: { id: true, playerState: true },
   });
   if (!character) return { success: false, error: 'キャラクターが見つかりません' };
 
@@ -1572,18 +1479,37 @@ export async function updatePartyForUser(
     return { success: false, error: '所有していない魔物が含まれています' };
   }
   const totalCost = monsters.reduce((sum, monster) => sum + monster.cost, 0);
-  if (totalCost > character.necroMaxCost) {
+  let maxCost: number;
+  try {
+    maxCost = readPlayerSave(character.playerState).player.necroStatus.maxCost;
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'updatePartyForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
+  if (totalCost > maxCost) {
     return { success: false, error: '編成コストが上限を超えています' };
   }
 
-  await prisma.character.update({
-    where: { id: characterId },
-    data: {
-      partySlot0Id: ids[0],
-      partySlot1Id: ids[1],
-      partySlot2Id: ids[2],
-    },
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      await updatePlayerSaveBlob(tx, characterId, (save) => {
+        save.player.partyMonsterIds = ids as PlayerSaveV1['player']['partyMonsterIds'];
+      }, { cleanReferenceScopes: ['party'] });
+    });
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'updatePartyForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));
 }
@@ -1598,9 +1524,8 @@ export async function equipItemForUser(
   if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
 
   const typedSlot = slot as keyof EquipmentSlots;
-  const dbField = EQUIPMENT_FIELD_BY_SLOT[typedSlot];
   const expectedType = ITEM_TYPE_BY_SLOT[typedSlot];
-  if (!dbField || !expectedType) return { success: false, error: '装備スロットが不正です' };
+  if (!EQUIPMENT_SLOT_SET.has(typedSlot) || !expectedType) return { success: false, error: '装備スロットが不正です' };
 
   const character = await prisma.character.findFirst({
     where: { id: characterId, userId: authorizedUser.id },
@@ -1615,10 +1540,21 @@ export async function equipItemForUser(
   if (!item) return { success: false, error: '所有していない装備です' };
   if (item.type !== expectedType) return { success: false, error: 'このスロットには装備できません' };
 
-  await prisma.character.update({
-    where: { id: characterId },
-    data: { [dbField]: item.id } as Prisma.CharacterUpdateInput,
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      await updatePlayerSaveBlob(tx, characterId, (save) => {
+        save.player.equipmentIds[typedSlot as keyof PlayerSaveV1['player']['equipmentIds']] = item.id;
+      }, { cleanReferenceScopes: ['equipment'] });
+    });
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'equipItemForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));
 }
@@ -1632,16 +1568,26 @@ export async function unequipItemForUser(
   if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
 
   const typedSlot = slot as keyof EquipmentSlots;
-  const dbField = EQUIPMENT_FIELD_BY_SLOT[typedSlot];
-  if (!dbField) return { success: false, error: '装備スロットが不正です' };
+  if (!EQUIPMENT_SLOT_SET.has(typedSlot)) return { success: false, error: '装備スロットが不正です' };
 
   const character = await prisma.character.findFirst({ where: { id: characterId, userId: authorizedUser.id }, select: { id: true } });
   if (!character) return { success: false, error: 'キャラクターが見つかりません' };
 
-  await prisma.character.update({
-    where: { id: characterId },
-    data: { [dbField]: null } as Prisma.CharacterUpdateInput,
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      await updatePlayerSaveBlob(tx, characterId, (save) => {
+        save.player.equipmentIds[typedSlot as keyof PlayerSaveV1['player']['equipmentIds']] = null;
+      }, { cleanReferenceScopes: ['equipment'] });
+    });
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'unequipItemForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));
 }
@@ -1661,10 +1607,22 @@ export async function equipResidueForUser(
 
   const character = await prisma.character.findFirst({
     where: { id: characterId, userId: authorizedUser.id },
-    select: { id: true, clearedStages: true },
+    select: { id: true, playerState: true },
   });
   if (!character) return { success: false, error: 'キャラクターが見つかりません' };
-  if (!isAbyssalResidueUnlocked(character.clearedStages)) {
+  let effectiveClearedStages: string[];
+  try {
+    effectiveClearedStages = getEffectiveClearedStages(character);
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'equipResidueForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
+  if (!isAbyssalResidueUnlocked(effectiveClearedStages)) {
     return { success: false, error: '深淵の残滓は第2章到達後に解放されます' };
   }
 
@@ -1677,11 +1635,93 @@ export async function equipResidueForUser(
     return { success: false, error: 'この残滓は選択中のスロットに装備できません' };
   }
 
-  const dbField = `equippedResidue${slotIndex}Id`;
-  await prisma.character.update({
-    where: { id: characterId },
-    data: { [dbField]: residue.id } as Prisma.CharacterUpdateInput,
+  try {
+    await prisma.$transaction(async (tx) => {
+      await updatePlayerSaveBlob(tx, characterId, (save) => {
+        const slots = [...save.player.equippedResidueIds] as PlayerSaveV1['player']['equippedResidueIds'];
+        slots[slotIndex] = residue.id;
+        save.player.equippedResidueIds = slots;
+      }, { cleanReferenceScopes: ['residue'] });
+    });
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'equipResidueForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
+
+  return toReadyResult(await loadCharacterForUser(authorizedUser));
+}
+
+export async function enhanceResidueForUser(
+  user: ServerGameUser,
+  characterId: string,
+  residueId: string,
+  matIds: string[],
+): Promise<SaveGameStateResult> {
+  const authorizedUser = await getAuthorizedUser(user.id);
+  if (!authorizedUser) return { success: false, error: 'ログインが必要です' };
+
+  const selectedMatIds = Array.isArray(matIds)
+    ? matIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    : [];
+  if (selectedMatIds.length === 0) return { success: false, error: '残滓強化素材が不足しています' };
+
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, userId: authorizedUser.id },
+    select: { id: true, playerState: true },
   });
+  if (!character) return { success: false, error: 'キャラクターが見つかりません' };
+
+  let effectiveClearedStages: string[];
+  try {
+    effectiveClearedStages = getEffectiveClearedStages(character);
+  } catch (error) {
+    const saveError = playerSaveSchemaErrorMessage(error, {
+      action: 'enhanceResidueForUser',
+      userId: authorizedUser.id,
+      characterId,
+    });
+    if (saveError) return { success: false, error: saveError };
+    throw error;
+  }
+  if (!isAbyssalResidueUnlocked(effectiveClearedStages)) {
+    return { success: false, error: '深淵の残滓は第2章到達後に解放されます' };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const [residue] = await tx.$queryRaw<Array<{ id: string; level: number; exp: number; maxExp: number }>>`
+        SELECT id, level, exp, "maxExp"
+        FROM "AbyssalResidue"
+        WHERE id = ${residueId}
+          AND "characterId" = ${character.id}
+        FOR UPDATE
+      `;
+      if (!residue) throw new Error('所有していない残滓です');
+
+      let enhanced: ReturnType<typeof calculateResidueEnhancement> | undefined;
+      await updatePlayerSaveBlob(tx, character.id, (save) => {
+        const spent = spendResidueMaterials(save.residueMaterials, selectedMatIds);
+        if (spent.expGain <= 0 || spent.missingCount > 0) {
+          throw new Error('残滓強化素材が不足しています');
+        }
+        enhanced = calculateResidueEnhancement(residue, spent.expGain);
+        return { ...save, residueMaterials: spent.materials };
+      }, { cleanReferences: false });
+      if (!enhanced) throw new Error('残滓強化の保存に失敗しました');
+
+      await tx.abyssalResidue.update({
+        where: { id: residue.id },
+        data: enhanced,
+      });
+    });
+  } catch (error) {
+    return { success: false, error: residueEnhancementErrorMessage(error) };
+  }
 
   return toReadyResult(await loadCharacterForUser(authorizedUser));
 }

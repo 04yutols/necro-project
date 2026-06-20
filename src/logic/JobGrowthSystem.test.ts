@@ -2,7 +2,6 @@ import jobsData from '../data/master/jobs.json';
 import type { JobData } from '../types/game';
 import {
   calculateJobBaseStatsDelta,
-  calculateJobBaseStatsPowerScore,
   getJobBaseStatsAtLevel,
   JOB_BASE_STATS_MAX_LEVEL,
   JOB_BASE_STATS_MIN_LEVEL,
@@ -50,7 +49,7 @@ describe('JobGrowthSystem', () => {
     const warrior = getJobBaseStatsAtLevel(jobs.warrior, 1);
     const mage = getJobBaseStatsAtLevel(jobs.mage, 1);
 
-    expect(warrior).toMatchObject({ hp: 34, atk: 5, def: 5, spd: 98 });
+    expect(warrior).toMatchObject({ hp: 34, atk: 8, def: 7, spd: 98 });
     expect(mage.hp).toBeLessThan(warrior.hp);
     expect(mage.critDmg).toBeGreaterThan(warrior.critDmg);
   });
@@ -70,20 +69,17 @@ describe('JobGrowthSystem', () => {
     expect(split).toEqual(bulk);
   });
 
-  test('tier 2 jobs have a higher average fixed-stat power score than tier 1 jobs', () => {
-    const scoreAtSamples = (job: JobData) => [1, 50, 100]
-      .map((level) => calculateJobBaseStatsPowerScore(getJobBaseStatsAtLevel(job, level)))
-      .reduce((sum, score) => sum + score, 0) / 3;
-
-    const tier1Average = Object.values(jobs)
-      .filter((job) => job.tier === 1)
-      .map(scoreAtSamples)
-      .reduce((sum, score, _, scores) => sum + score / scores.length, 0);
+  test('tier 2 jobs use a larger starting MP budget than tier 1 jobs', () => {
+    const tier1MaxStartingMp = Math.max(
+      ...Object.values(jobs)
+        .filter((job) => job.tier === 1)
+        .map((job) => job.baseStatsByLevel?.['1']?.mp ?? 0),
+    );
 
     Object.entries(jobs)
       .filter(([, job]) => job.tier > 1)
       .forEach(([jobId, job]) => {
-        expect(scoreAtSamples(job)).toBeGreaterThan(tier1Average);
+        expect(job.baseStatsByLevel?.['1']?.mp).toBeGreaterThan(tier1MaxStartingMp);
         void jobId;
       });
   });

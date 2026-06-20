@@ -44,6 +44,8 @@ npm run dev          # Next.js full server → http://localhost:3000
 npm run dev:ui       # Vite (UI専用、Server Actions / admin は動かない) → http://localhost:5173
 ```
 
+`dev:ui` はゲスト/オフライン用として端末内 localStorage に進行を保持します。ログイン継続・クラウドセーブ・ランキング・管理画面を確認するときは `npm run dev` を使ってください。
+
 ## 開発者向け: 管理画面 (`/admin`)
 
 **development モードでのみ動作**。`NODE_ENV=production` ではミドルウェアと `assertDev()` により全 route / Server Action がブロックされる。

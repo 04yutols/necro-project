@@ -1,27 +1,20 @@
 import { prisma } from '../lib/prisma';
 import { GameManager } from './GameManager';
+import { emptyPlayerSave, playerSaveToJson, readPlayerSave } from '../services/PlayerSaveService';
+import { PLAYER_SAVE_SCHEMA_VERSION } from '../types/playerSave';
 
 jest.setTimeout(45000);
 
 async function cleanupUser(email: string) {
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { characters: { select: { id: true } } },
+    include: { character: { select: { id: true } } },
   });
   if (!user) return;
 
-  const characterIds = user.characters.map((character) => character.id);
+  const characterIds = user.character ? [user.character.id] : [];
   if (characterIds.length > 0) {
-    await prisma.character.updateMany({
-      where: { id: { in: characterIds } },
-      data: {
-        partySlot0Id: null,
-        partySlot1Id: null,
-        partySlot2Id: null,
-      },
-    });
     await prisma.monster.deleteMany({ where: { characterId: { in: characterIds } } });
-    await prisma.userJob.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.abyssalResidue.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.character.deleteMany({ where: { id: { in: characterIds } } });
   }
@@ -42,16 +35,14 @@ async function createUserWithCharacter(email: string, displayName: string, necro
       displayName,
     },
   });
+  const save = emptyPlayerSave();
+  save.player.name = displayName;
+  save.player.necroStatus.maxCost = necroMaxCost;
   const character = await prisma.character.create({
     data: {
       userId: user.id,
-      name: displayName,
-      currentJobId: 'warrior',
-      hp: 60,
-      atk: 8,
-      def: 10,
-      spd: 100,
-      necroMaxCost,
+      playerState: playerSaveToJson(save),
+      saveVersion: PLAYER_SAVE_SCHEMA_VERSION,
     },
   });
   return { user, character };
@@ -99,13 +90,9 @@ describe('GameManager.updateParty', () => {
 
     const updated = await prisma.character.findUniqueOrThrow({
       where: { id: character.id },
-      select: { partySlot0Id: true, partySlot1Id: true, partySlot2Id: true },
+      select: { playerState: true },
     });
-    expect(updated).toEqual({
-      partySlot0Id: front.id,
-      partySlot1Id: null,
-      partySlot2Id: back.id,
-    });
+    expect(readPlayerSave(updated.playerState).player.partyMonsterIds).toEqual([front.id, null, back.id]);
   });
 
   test('rejects duplicate, foreign, and over-cost formations without overwriting the saved party', async () => {
@@ -131,13 +118,9 @@ describe('GameManager.updateParty', () => {
 
     const unchanged = await prisma.character.findUniqueOrThrow({
       where: { id: characterA.id },
-      select: { partySlot0Id: true, partySlot1Id: true, partySlot2Id: true },
+      select: { playerState: true },
     });
-    expect(unchanged).toEqual({
-      partySlot0Id: first.id,
-      partySlot1Id: second.id,
-      partySlot2Id: null,
-    });
+    expect(readPlayerSave(unchanged.playerState).player.partyMonsterIds).toEqual([first.id, second.id, null]);
   });
 });
 
@@ -154,10 +137,6 @@ describe('GameManager.processStageResult', () => {
   test('does not use combat critRate as a discovery drop bonus', async () => {
     await cleanupUser(email);
     const { character } = await createUserWithCharacter(email, 'SEC5', 10);
-    await prisma.character.update({
-      where: { id: character.id },
-      data: { critRate: 100 },
-    });
 
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
     try {

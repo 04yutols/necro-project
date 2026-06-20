@@ -5,6 +5,8 @@ import {
   createCharacterForUser,
   fetchPlayerAction,
   fetchPlayerForUser,
+  loadCharacterForUser,
+  startStageForUser,
 } from '../app/actions';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 import { createCredentialsUser } from '../services/AuthService';
@@ -22,35 +24,13 @@ const JOBS = jobsData as Record<string, JobData>;
 async function cleanupUser(email: string) {
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { characters: { select: { id: true } } },
+    include: { character: { select: { id: true } } },
   });
   if (!user) return;
 
-  const characterIds = user.characters.map((character) => character.id);
+  const characterIds = user.character ? [user.character.id] : [];
   if (characterIds.length > 0) {
-    await prisma.character.updateMany({
-      where: { id: { in: characterIds } },
-      data: {
-        equipWeaponId: null,
-        equipSubId: null,
-        equipHeadId: null,
-        equipBodyId: null,
-        equipArmsId: null,
-        equipLegsId: null,
-        equipAcc1Id: null,
-        equipAcc2Id: null,
-        partySlot0Id: null,
-        partySlot1Id: null,
-        partySlot2Id: null,
-        equippedResidue0Id: null,
-        equippedResidue1Id: null,
-        equippedResidue2Id: null,
-        equippedResidue3Id: null,
-        equippedResidue4Id: null,
-      },
-    });
     await prisma.soulShard.deleteMany({ where: { characterId: { in: characterIds } } });
-    await prisma.userJob.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.monster.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.abyssalResidue.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.character.deleteMany({ where: { id: { in: characterIds } } });
@@ -110,15 +90,6 @@ describe('SEC-2 fetchPlayerAction ownership checks', () => {
     if (!createdB.success) throw new Error(createdB.error);
     const characterBId = createdB.data.player.id;
 
-    await prisma.character.update({
-      where: { id: characterAId },
-      data: {
-        hp: 123,
-        atk: 17,
-        def: 11,
-      },
-    });
-
     (auth as jest.Mock).mockResolvedValue({ user: userA });
     const ownViaAction = await fetchPlayerAction(characterAId);
     expect(ownViaAction.success).toBe(true);
@@ -142,5 +113,44 @@ describe('SEC-2 fetchPlayerAction ownership checks', () => {
     expect(ownerB.data.id).toBe(characterBId);
     expect(ownerB.data.name).toBe('SEC2-B');
     expect(ownerB.data.currentJobId).toBe('mage');
+  });
+
+  test('returns controlled errors for malformed playerState instead of throwing', async () => {
+    await cleanupUser(emailA);
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      const userA = await createUser(emailA, 'SEC2-BadSave');
+      (auth as jest.Mock).mockResolvedValue({ user: userA });
+      const created = await createCharacterForUser(userA, 'warrior', 'SEC2-BadSave');
+      expect(created.success).toBe(true);
+      if (!created.success) throw new Error(created.error);
+
+      await prisma.character.update({
+        where: { id: created.data.player.id },
+        data: {
+          playerState: { schemaVersion: 'broken' },
+        },
+      });
+
+      const loaded = await loadCharacterForUser(userA);
+      expect(loaded.success).toBe(false);
+      expect(!loaded.success && loaded.status).toBe('ERROR');
+      expect(!loaded.success && loaded.error).toContain('セーブデータ');
+
+      const fetched = await fetchPlayerForUser(userA, created.data.player.id);
+      expect(fetched.success).toBe(false);
+      expect(!fetched.success && fetched.error).toContain('セーブデータ');
+
+      const started = await startStageForUser(userA, 'area1_node1');
+      expect(started.success).toBe(false);
+      expect(!started.success && started.error).toContain('セーブデータ');
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[PlayerSaveSchemaError]',
+        expect.objectContaining({ error: expect.stringContaining('schemaVersion') }),
+      );
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });

@@ -4,6 +4,11 @@ import { MasterDataService } from './MasterDataService';
 import { getJobUnlockStatus } from '../logic/JobSystem';
 import { calculateEnergyState } from '../logic/EnergySystem';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
+import {
+  changeJobInSave,
+  setJobLevelInSave,
+  updatePlayerSaveSnapshot,
+} from './PlayerSaveService';
 
 /**
  * 職業に関するビジネスロジックを担当するサービス (GDD-004)
@@ -37,57 +42,9 @@ export class JobService {
     if (!this.prisma) throw new Error('PrismaClient is required for persistent job changes.');
     const characterId = characterOrId;
     await this.prisma.$transaction(async (tx: any) => {
-      const character = await tx.character.findUnique({
-        where: { id: characterId },
-        include: { jobs: true },
-      });
-      if (!character) throw new Error(`Character ${characterId} not found`);
-
-      const unlock = getJobUnlockStatus(this.toCharacterDataForUnlock(character), jobData);
-      if (!unlock.unlocked) throw new Error(`Job ${nextJobId} is locked`);
-
-      await tx.job.upsert({
-        where: { id: nextJobId },
-        update: {
-          name: jobData.displayName ?? jobData.name,
-          tier: jobData.tier,
-          category: jobData.category,
-        },
-        create: {
-          id: nextJobId,
-          name: jobData.displayName ?? jobData.name,
-          tier: jobData.tier,
-          category: jobData.category,
-        },
-      });
-
-      // 既存の UserJob を確認
-      const userJob = await tx.userJob.findUnique({
-        where: {
-          characterId_jobId: {
-            characterId: characterId,
-            jobId: nextJobId,
-          },
-        },
-      });
-
-      // 初めての職業の場合は Lv1 で新規作成 (GDD-004)
-      if (!userJob) {
-        await tx.userJob.create({
-          data: {
-            characterId: characterId,
-            jobId: nextJobId,
-            level: 1,
-            exp: 0,
-          },
-        });
-      }
-
-      // 現在の職業を更新
-      await tx.character.update({
-        where: { id: characterId },
-        data: { currentJobId: nextJobId },
-      });
+      await updatePlayerSaveSnapshot(tx, characterId, (save, { character }) =>
+        changeJobInSave(save, character, nextJobId, jobData),
+      );
     });
   }
 
@@ -122,53 +79,6 @@ export class JobService {
     };
   }
 
-  private toCharacterDataForUnlock(character: any): CharacterData {
-    const currentJobId = character.currentJobId ?? 'warrior';
-    const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior')!;
-    const jobs = (character.jobs ?? []).map((job: UserJobState) => ({ jobId: job.jobId, level: job.level, exp: job.exp }));
-    const currentJobLevel = Math.max(1, jobs.find((job: { jobId: string; level: number; exp: number }) => job.jobId === currentJobId)?.level ?? 1);
-    const energyState = calculateEnergyState(currentJob, currentJobLevel);
-    const persistedBaseStats = {
-      hp: character.hp,
-      atk: character.atk,
-      def: character.def,
-      spd: character.spd,
-      critRate: character.critRate,
-      critDmg: character.critDmg,
-      effectHit: character.effectHit,
-      effectRes: character.effectRes,
-    };
-    const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, persistedBaseStats);
-
-    return {
-      id: character.id,
-      name: character.name,
-      currentJobId,
-      category: currentJob.category,
-      baseStats,
-      necroLevel: character.necroLevel ?? 1,
-      necroBaseStatsBonus: character.necroBaseStatsBonus ?? 1,
-      stats: baseStats,
-      passives: {
-        passiveAtkBonus: character.passiveAtkBonus ?? 0,
-        passiveDefBonus: character.passiveDefBonus ?? 0,
-        passiveSpdBonus: character.passiveSpdBonus ?? 0,
-        passiveCritRateBonus: character.passiveCritRateBonus ?? 0,
-        passiveCritDmgBonus: character.passiveCritDmgBonus ?? 0,
-        passiveHpBonus: character.passiveHpBonus ?? 0,
-      },
-      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
-      baseResistances: {},
-      jobs,
-      isAwakened: false,
-      clearedStages: character.clearedStages ?? [],
-      gold: character.gold ?? 0,
-      currentEnergy: energyState.currentEnergy,
-      maxEnergy: energyState.maxEnergy,
-      elementDmgBoosts: {},
-    };
-  }
-
   /**
    * 職業レベルアップ時の処理とパッシブ蓄積。
    * Character モデルの passiveXxxBonus を確実に更新。
@@ -197,33 +107,9 @@ export class JobService {
     if (!this.prisma) throw new Error('PrismaClient is required for persistent job level updates.');
     const characterId = characterOrId;
     await this.prisma.$transaction(async (tx: any) => {
-      const current = await tx.userJob.findUnique({
-        where: {
-          characterId_jobId: {
-            characterId,
-            jobId,
-          },
-        },
-        select: { level: true },
-      });
-
-      // UserJob のレベルを更新
-      await tx.userJob.update({
-        where: {
-          characterId_jobId: {
-            characterId,
-            jobId,
-          },
-        },
-        data: { level: newLevel },
-      });
-
-      // 特定レベル到達時の永続パッシブ加算処理 (GDD-004)
-      const jobData = this.masterData.getJob(jobId);
-      const bonus = this.sumLevelBonuses(jobData, current?.level ?? 0, newLevel);
-      if (this.hasPassiveBonus(bonus)) {
-        await this.applyPassiveBonus(tx, characterId, bonus);
-      }
+      await updatePlayerSaveSnapshot(tx, characterId, (save) =>
+        setJobLevelInSave(save, jobId, newLevel, (id) => this.masterData.getJob(id)),
+      );
     });
   }
 
@@ -244,20 +130,4 @@ export class JobService {
     return Object.values(bonus).some(value => value !== 0);
   }
 
-  /**
-   * 職業とレベルに応じたパッシブボーナスの適用を DB に反映
-   */
-  private async applyPassiveBonus(tx: any, characterId: string, bonus: any): Promise<void> {
-    await tx.character.update({
-      where: { id: characterId },
-      data: {
-        passiveAtkBonus:      { increment: bonus.passiveAtkBonus      || 0 },
-        passiveDefBonus:      { increment: bonus.passiveDefBonus      || 0 },
-        passiveSpdBonus:      { increment: bonus.passiveSpdBonus      || 0 },
-        passiveCritRateBonus: { increment: bonus.passiveCritRateBonus || 0 },
-        passiveCritDmgBonus:  { increment: bonus.passiveCritDmgBonus  || 0 },
-        passiveHpBonus:       { increment: bonus.passiveHpBonus       || 0 },
-      },
-    });
-  }
 }

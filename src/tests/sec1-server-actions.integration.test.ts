@@ -9,6 +9,8 @@ import {
   soulStoneForUser,
 } from '../app/actions';
 import { createCredentialsUser } from '../services/AuthService';
+import { playerSaveToJson, readPlayerSave } from '../services/PlayerSaveService';
+import { PLAYER_SAVE_SCHEMA_VERSION } from '../types/playerSave';
 import type { ServerGameUser } from '../types/serverGame';
 
 jest.mock('@/auth', () => ({
@@ -20,35 +22,13 @@ jest.setTimeout(45000);
 async function cleanupUser(email: string) {
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { characters: { select: { id: true } } },
+    include: { character: { select: { id: true } } },
   });
   if (!user) return;
 
-  const characterIds = user.characters.map((character) => character.id);
+  const characterIds = user.character ? [user.character.id] : [];
   if (characterIds.length > 0) {
-    await prisma.character.updateMany({
-      where: { id: { in: characterIds } },
-      data: {
-        equipWeaponId: null,
-        equipSubId: null,
-        equipHeadId: null,
-        equipBodyId: null,
-        equipArmsId: null,
-        equipLegsId: null,
-        equipAcc1Id: null,
-        equipAcc2Id: null,
-        partySlot0Id: null,
-        partySlot1Id: null,
-        partySlot2Id: null,
-        equippedResidue0Id: null,
-        equippedResidue1Id: null,
-        equippedResidue2Id: null,
-        equippedResidue3Id: null,
-        equippedResidue4Id: null,
-      },
-    });
     await prisma.soulShard.deleteMany({ where: { characterId: { in: characterIds } } });
-    await prisma.userJob.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.monster.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.abyssalResidue.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.character.deleteMany({ where: { id: { in: characterIds } } });
@@ -150,13 +130,23 @@ describe('SEC-1 authenticated Server Actions', () => {
     expect(equippedMonster.soulShardId).toBe(soulStone.data.id);
     expect(shardEquipped.data.inventoryMonsters.find((monster) => monster.id === targetMonster.id)?.equippedShardId).toBe(soulStone.data.id);
 
+    const rankUpCharacter = await prisma.character.findUniqueOrThrow({
+      where: { id: characterAId },
+      select: { playerState: true },
+    });
+    const rankUpSave = readPlayerSave(rankUpCharacter.playerState);
+    rankUpSave.player.necroStatus = {
+      level: 99,
+      rank: 1,
+      maxCost: 10,
+      baseStatsBonus: 1,
+      exp: 0,
+    };
     await prisma.character.update({
       where: { id: characterAId },
       data: {
-        necroLevel: 99,
-        necroRank: 1,
-        necroMaxCost: 10,
-        necroBaseStatsBonus: 1.0,
+        playerState: playerSaveToJson(rankUpSave),
+        saveVersion: PLAYER_SAVE_SCHEMA_VERSION,
       },
     });
     const rankUp = await processGrowthForUser(userA, characterAId, 'RANK_UP');

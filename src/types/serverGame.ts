@@ -4,6 +4,7 @@ import type {
   ItemData,
   MonsterData,
   NecroStatus,
+  ResidueMatData,
   SoulShardData,
   WeaponMaterialData,
 } from './game';
@@ -16,6 +17,8 @@ export interface ServerGameData {
   soulShards: SoulShardData[];
   inventoryItems: ItemData[];
   weaponMaterials: WeaponMaterialData[];
+  residueMaterials: ResidueMatData[];
+  transmutationPoints: number;
   abyssalResidues: AbyssalResidueData[];
   equippedResidueSlots: (AbyssalResidueData | null)[];
 }

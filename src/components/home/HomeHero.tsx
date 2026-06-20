@@ -100,11 +100,11 @@ export function HomeHero() {
   const jobExpRemain = jobProgress.expToNextLevel;
   const jobExpPercent = Math.round(jobProgress.progressRatio * 100);
 
-  const necroLevel = necroStatus?.level || 1;
-  const necroNextExp = necroLevel * 2000;
   const necroExp = necroStatus?.exp ?? 0;
-  const necroExpRemain = Math.max(0, necroNextExp - necroExp);
-  const necroExpPercent = Math.min(100, Math.round((necroExp / necroNextExp) * 100));
+  const necroProgress = getJobLevelProgress(necroExp);
+  const necroLevel = necroStatus?.level ?? necroProgress.level;
+  const necroExpRemain = necroProgress.expToNextLevel;
+  const necroExpPercent = Math.round(necroProgress.progressRatio * 100);
 
   const currentCost = party.reduce((sum, monster) => sum + (monster ? monster.cost : 0), 0);
   const maxCost = necroStatus?.maxCost || 10;

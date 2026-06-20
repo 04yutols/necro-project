@@ -4,19 +4,35 @@ import { calculateEnergyState, calculateInitialEnergy, calculateMaxEnergy } from
 
 const JOBS = jobsData as Record<string, JobData>;
 
+function mpAt(job: JobData, level: number): number {
+  const value = job.baseStatsByLevel?.[String(level)]?.mp;
+  if (typeof value !== 'number') {
+    throw new Error(`Missing mp for ${job.id} Lv${level}`);
+  }
+  return value;
+}
+
+function expectFullEnergy(job: JobData, level: number) {
+  const expected = mpAt(job, level);
+  expect(calculateEnergyState(job, level)).toEqual({
+    maxEnergy: expected,
+    currentEnergy: expected,
+  });
+}
+
 describe('EnergySystem', () => {
   test('starts each job with full MP at Lv1', () => {
-    expect(calculateEnergyState(JOBS.warrior, 1)).toEqual({ maxEnergy: 100, currentEnergy: 100 });
-    expect(calculateEnergyState(JOBS.mage, 1)).toEqual({ maxEnergy: 110, currentEnergy: 110 });
-    expect(calculateEnergyState(JOBS.dark_knight, 1)).toEqual({ maxEnergy: 110, currentEnergy: 110 });
-    expect(calculateEnergyState(JOBS.berserker, 1)).toEqual({ maxEnergy: 120, currentEnergy: 120 });
+    expectFullEnergy(JOBS.warrior, 1);
+    expectFullEnergy(JOBS.mage, 1);
+    expectFullEnergy(JOBS.dark_knight, 1);
+    expectFullEnergy(JOBS.berserker, 1);
   });
 
   test('grows max MP and keeps initial MP full with job level', () => {
-    expect(calculateMaxEnergy(JOBS.warrior, 20)).toBe(110);
-    expect(calculateInitialEnergy(JOBS.warrior, 20)).toBe(110);
-    expect(calculateMaxEnergy(JOBS.archmage, 99)).toBe(377);
-    expect(calculateInitialEnergy(JOBS.archmage, 99)).toBe(377);
+    expect(calculateMaxEnergy(JOBS.warrior, 20)).toBe(mpAt(JOBS.warrior, 20));
+    expect(calculateInitialEnergy(JOBS.warrior, 20)).toBe(mpAt(JOBS.warrior, 20));
+    expect(calculateMaxEnergy(JOBS.archmage, 99)).toBe(mpAt(JOBS.archmage, 99));
+    expect(calculateInitialEnergy(JOBS.archmage, 99)).toBe(mpAt(JOBS.archmage, 99));
   });
 
   test('uses baseStatsByLevel.mp before legacy energyCurve fallback', () => {

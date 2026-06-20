@@ -10,6 +10,7 @@ import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats, WeaponMaterialData, type Tribe } from '../../types/game';
 import { getActiveSynergies, type ActiveSynergy } from '../../logic/TribeSynergySystem';
 import { isAbyssalResidueUnlocked } from '../../logic/AbyssalResidueUnlockSystem';
+import { calculateResidueEnhancement } from '../../logic/ResidueEnhancement';
 import {
   calculateCharacterStatProfile,
   ELEMENT_DAMAGE_KEYS,
@@ -1395,27 +1396,16 @@ interface ResidueEnhanceResult {
 }
 
 function previewResidueEnhanceResult(residue: AbyssalResidueData, expGain: number): ResidueEnhanceResult {
-  let newExp = residue.exp + expGain;
-  let newLevel = residue.level;
-  let newMaxExp = residue.maxExp;
-  let levelledUp = false;
-  while (newExp >= newMaxExp && newLevel < 20) {
-    newExp -= newMaxExp;
-    newLevel += 1;
-    newMaxExp = Math.floor(newMaxExp * 1.5);
-    levelledUp = true;
-  }
-  if (newLevel >= 20) newExp = Math.min(newExp, newMaxExp);
+  const enhanced = calculateResidueEnhancement(residue, expGain);
+  const levelledUp = enhanced.level > residue.level;
 
   const projectedMainValue = levelledUp
-    ? Number((residue.mainStat.value * (1 + newLevel * 0.04)).toFixed(1))
+    ? Number((residue.mainStat.value * (1 + enhanced.level * 0.04)).toFixed(1))
     : residue.mainStat.value;
   const beforeScore = calculateResidueScore(residue);
   const projectedResidue: AbyssalResidueData = {
     ...residue,
-    level: newLevel,
-    exp: newExp,
-    maxExp: newMaxExp,
+    ...enhanced,
     mainStat: { ...residue.mainStat, value: projectedMainValue },
   };
   const afterScore = calculateResidueScore(projectedResidue);
@@ -1435,9 +1425,9 @@ function previewResidueEnhanceResult(residue: AbyssalResidueData, expGain: numbe
       grade: getResidueScoreGrade(beforeScore),
     },
     after: {
-      level: newLevel,
-      exp: newExp,
-      maxExp: newMaxExp,
+      level: enhanced.level,
+      exp: enhanced.exp,
+      maxExp: enhanced.maxExp,
       mainValue: projectedMainValue,
       score: afterScore,
       grade: getResidueScoreGrade(afterScore),
@@ -1632,10 +1622,9 @@ function StatsComparison({ residue, expGain }: { residue: AbyssalResidueData | n
       <span className="text-[11px] tracking-widest font-bold" style={{ color: 'rgba(180,100,255,0.75)', fontFamily: 'monospace' }}>SELECT RESIDUE</span>
     </div>
   );
-  let newExp = residue.exp + expGain, newLevel = residue.level, newMaxExp = residue.maxExp, levelledUp = false;
-  while (newExp >= newMaxExp && newLevel < 20) { newExp -= newMaxExp; newLevel++; newMaxExp = Math.floor(newMaxExp * 1.5); levelledUp = true; }
-  if (newLevel >= 20) newExp = Math.min(newExp, newMaxExp);
-  const newMainValue = levelledUp ? +(residue.mainStat.value * (1 + newLevel * 0.04)).toFixed(1) : residue.mainStat.value;
+  const enhanced = calculateResidueEnhancement(residue, expGain);
+  const levelledUp = enhanced.level > residue.level;
+  const newMainValue = levelledUp ? +(residue.mainStat.value * (1 + enhanced.level * 0.04)).toFixed(1) : residue.mainStat.value;
   const color = RARITY_COLOR[residue.rarity];
   return (
     <div className="gothic-panel rounded-2xl p-3.5 shrink-0">
@@ -1652,7 +1641,7 @@ function StatsComparison({ residue, expGain }: { residue: AbyssalResidueData | n
         </div>
         <div className="flex flex-col items-center gap-1 flex-1">
           <span className="text-[10px] tracking-widest font-bold" style={{ color: 'rgba(195,182,238,0.65)', fontFamily: 'monospace' }}>AFTER</span>
-          <span className="text-[11px] font-black" style={{ color: levelledUp ? '#00DD77' : 'rgba(160,145,195,0.75)', fontFamily: 'monospace' }}>Lv.{newLevel}</span>
+          <span className="text-[11px] font-black" style={{ color: levelledUp ? '#00DD77' : 'rgba(160,145,195,0.75)', fontFamily: 'monospace' }}>Lv.{enhanced.level}</span>
           <span className="text-xl font-black leading-none" style={{ color: levelledUp ? color : 'rgba(195,185,240,0.92)', fontFamily: 'monospace', textShadow: levelledUp ? `0 0 12px ${color}99` : 'none' }}>{formatStat(residue.mainStat.type, newMainValue)}</span>
         </div>
       </div>
@@ -2470,14 +2459,29 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     }
   };
 
-  const handleEnhance = () => {
+  const handleEnhance = async () => {
     if (!selectedResidue || selectedMatIds.size === 0) return;
+    const materialIds = [...selectedMatIds];
     const result = previewResidueEnhanceResult(selectedResidue, totalExpGain);
     sound.playEquip();
     sfx.residueEnhance(result.levelledUp);
-    upgradeResidue(selectedResidue.id, [...selectedMatIds]);
+    upgradeResidue(selectedResidue.id, materialIds);
     setEnhanceResult(result);
     setSelectedMatIds(new Set());
+    showToast({ kind: 'success', text: '残滓を強化しました' });
+    if (!player || !canPersistToServer()) return;
+    try {
+      const { enhanceResidueAction } = await import('../../app/actions');
+      const actionResult = await enhanceResidueAction(player.id, selectedResidue.id, materialIds);
+      if (actionResult.success) {
+        loadFromServer(actionResult.data);
+        showToast({ kind: 'success', text: '強化を保存しました' });
+      } else {
+        showToast({ kind: 'error', text: actionResult.error ?? '強化の保存に失敗しました' });
+      }
+    } catch (error) {
+      showToast({ kind: 'error', text: error instanceof Error ? error.message : '強化の保存に失敗しました' });
+    }
   };
 
   const handleAutoSelect = () => {
@@ -3956,8 +3960,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
   const necroStatus = useGameStore(state => state.necroStatus);
   const inventoryMonsters = useGameStore(state => state.inventoryMonsters);
   const setParty = useGameStore(state => state.setParty);
-  const updatePartySlot = useGameStore(state => state.updatePartySlot);
-  const swapPartySlots = useGameStore(state => state.swapPartySlots);
+  const isServerBacked = useGameStore(state => state.isServerBacked);
   const addBattleLog = useGameStore(state => state.addBattleLog);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(0);
   const [pickerSlotIndex, setPickerSlotIndex] = useState<number | null>(null);
@@ -4005,7 +4008,28 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
     haptic([10, 5, 10]);
   }, []);
 
+  const persistParty = useCallback((nextParty: (MonsterData | null)[], rollbackParty: (MonsterData | null)[]) => {
+    if (!player || !isServerBacked) return;
+    void (async () => {
+      try {
+        const { updatePartyAction } = await import('../../app/actions');
+        const result = await updatePartyAction(player.id, nextParty.map(member => member?.id ?? null));
+        if (result.success) {
+          setParty(result.data.party);
+          addBattleLog('FORMATION: 編成を保存しました');
+          return;
+        }
+        setParty(rollbackParty);
+        showCostError(result.error ?? '編成の保存に失敗しました');
+      } catch (error) {
+        setParty(rollbackParty);
+        showCostError(error instanceof Error ? error.message : '編成の保存に失敗しました');
+      }
+    })();
+  }, [addBattleLog, isServerBacked, player, setParty, showCostError]);
+
   const assignMonster = useCallback((slotIndex: number, monster: MonsterData) => {
+    const previous = [...party] as (MonsterData | null)[];
     const next = previewParty(slotIndex, monster);
     const nextCost = next.reduce((sum, member) => sum + (member?.cost ?? 0), 0);
     if (nextCost > maxCost) {
@@ -4017,24 +4041,33 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
     onFocusMember(`MONSTER_${slotIndex}` as MemberKey);
     addBattleLog(`FORMATION: ${POSITION_META[slotIndex].label} に ${monster.name} を配置`);
     haptic([10, 4, 14]);
+    persistParty(next, previous);
     return true;
-  }, [addBattleLog, maxCost, onFocusMember, previewParty, setParty, showCostError]);
+  }, [addBattleLog, maxCost, onFocusMember, party, persistParty, previewParty, setParty, showCostError]);
 
   const removeSlot = useCallback((slotIndex: number) => {
     if (!party[slotIndex]) return;
-    updatePartySlot(slotIndex, null);
+    const previous = [...party] as (MonsterData | null)[];
+    const next = [...party] as (MonsterData | null)[];
+    next[slotIndex] = null;
+    setParty(next);
     setSelectedSlotIndex(slotIndex);
     addBattleLog(`FORMATION: ${POSITION_META[slotIndex].label} を空き枠に変更`);
     haptic([8, 4, 8]);
-  }, [addBattleLog, party, updatePartySlot]);
+    persistParty(next, previous);
+  }, [addBattleLog, party, persistParty, setParty]);
 
   const handleSwap = useCallback((from: number, to: number) => {
-    swapPartySlots(from, to);
+    const previous = [...party] as (MonsterData | null)[];
+    const next = [...party] as (MonsterData | null)[];
+    [next[from], next[to]] = [next[to], next[from]];
+    setParty(next);
     setSelectedSlotIndex(to);
     onFocusMember(`MONSTER_${to}` as MemberKey);
     addBattleLog(`FORMATION: ${POSITION_META[from].label} と ${POSITION_META[to].label} を入れ替え`);
     haptic([15, 10]);
-  }, [addBattleLog, onFocusMember, swapPartySlots]);
+    persistParty(next, previous);
+  }, [addBattleLog, onFocusMember, party, persistParty, setParty]);
 
   const toggleFilter = useCallback((key: TribeFilterKey) => {
     if (key === 'ALL') {
