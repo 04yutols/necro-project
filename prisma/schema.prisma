@@ -8,175 +8,39 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ── NextAuth.js v5 必須モデル ─────────────────────────────────────────────────
-
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
 // ── コアモデル ────────────────────────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(uuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  displayName   String?
-  passwordHash  String?   // ID/PW 認証用（bcrypt ハッシュ）
+  id             String   @id @default(uuid())
+  name           String?
+  email          String?  @unique
+  displayName    String?
+  passwordHash   String?  // ID/PW 認証用（bcrypt ハッシュ）
   sessionVersion Int      @default(1) // JWT セッション一括失効用
-  createdAt     DateTime  @default(now())
+  createdAt      DateTime @default(now())
 
-  accounts      Account[]
-  sessions      Session[]
-  characters    Character[]
-  ownedItems    Item[]  @relation("ItemOwner")
+  character       Character?
+  ownedItems      Item[]  @relation("ItemOwner")
   discoveredItems Item[]  @relation("Discoverer")
-  weaponMaterials WeaponMaterial[]
-  stageRecords  StageRecord[]
-  stageAttempts StageAttempt[]
-  playerStats   PlayerStats?
-  worldLogs     WorldLog[]
+  stageRecords    StageRecord[]
+  stageAttempts   StageAttempt[]
+  playerStats     PlayerStats?
+  worldLogs       WorldLog[]
 }
 
 model Character {
   id              String   @id @default(uuid())
-  name            String
-  userId          String?
-  user            User?    @relation(fields: [userId], references: [id])
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playerState     Json
+  saveVersion     Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  // 資産・オンライン同期
-  gold            Int      @default(50000)
-
-  // 8種の基礎ステータス（HSR互換）
-  hp              Int
-  atk             Int
-  def             Int
-  spd             Int
-  critRate        Float    @default(5.0)
-  critDmg         Float    @default(150.0)
-  effectHit       Float    @default(0.0)
-  effectRes       Float    @default(0.0)
-
-  // 職業レベル到達時に獲得する永続パッシブの累積補正
-  passiveAtkBonus      Int    @default(0)
-  passiveDefBonus      Int    @default(0)
-  passiveSpdBonus      Int    @default(0)
-  passiveCritRateBonus Float  @default(0)
-  passiveCritDmgBonus  Float  @default(0)
-  passiveHpBonus       Int    @default(0)
-
-  // 職業システム
-  jobs            UserJob[]
-  currentJobId    String?
-
-  // 8枠装備スロット
-  equipWeaponId   String?
-  equipSubId      String?
-  equipHeadId     String?
-  equipBodyId     String?
-  equipArmsId     String?
-  equipLegsId     String?
-  equipAcc1Id     String?
-  equipAcc2Id     String?
-
-  equipWeapon     Item?    @relation("Weapon", fields: [equipWeaponId], references: [id])
-  equipSub        Item?    @relation("Sub",    fields: [equipSubId],    references: [id])
-  equipHead       Item?    @relation("Head",   fields: [equipHeadId],   references: [id])
-  equipBody       Item?    @relation("Body",   fields: [equipBodyId],   references: [id])
-  equipArms       Item?    @relation("Arms",   fields: [equipArmsId],   references: [id])
-  equipLegs       Item?    @relation("Legs",   fields: [equipLegsId],   references: [id])
-  equipAcc1       Item?    @relation("Acc1",   fields: [equipAcc1Id],   references: [id])
-  equipAcc2       Item?    @relation("Acc2",   fields: [equipAcc2Id],   references: [id])
-
-  // 死霊術ステータス
-  necroLevel      Int      @default(1)
-  necroRank       Int      @default(1)
-  necroExp        Int      @default(0)
-  necroMaxCost    Int      @default(10)
-  necroBaseStatsBonus Float @default(1.0)
-
-  // パーティ編成（3枠）
-  partySlot0Id    String?
-  partySlot1Id    String?
-  partySlot2Id    String?
-  partySlot0      Monster? @relation("PartySlot0", fields: [partySlot0Id], references: [id], onDelete: SetNull)
-  partySlot1      Monster? @relation("PartySlot1", fields: [partySlot1Id], references: [id], onDelete: SetNull)
-  partySlot2      Monster? @relation("PartySlot2", fields: [partySlot2Id], references: [id], onDelete: SetNull)
   inventoryMonsters Monster[] @relation("CharacterMonsters")
-
-  // 進行管理
-  clearedStages   String[] @default([])
-  // Phase 1-2 personal save blob for state that should not become shared game entities.
-  playerState     Json?
   stageAttempts   StageAttempt[]
   soulShards      SoulShard[] @relation("CharacterSoulShards")
-
-  // 深淵の残滓（5部位）
   abyssalResidues AbyssalResidue[] @relation("CharacterResidues")
-  equippedResidue0Id String?
-  equippedResidue1Id String?
-  equippedResidue2Id String?
-  equippedResidue3Id String?
-  equippedResidue4Id String?
-  equippedResidue0   AbyssalResidue? @relation("ResidueSlot0", fields: [equippedResidue0Id], references: [id], onDelete: SetNull)
-  equippedResidue1   AbyssalResidue? @relation("ResidueSlot1", fields: [equippedResidue1Id], references: [id], onDelete: SetNull)
-  equippedResidue2   AbyssalResidue? @relation("ResidueSlot2", fields: [equippedResidue2Id], references: [id], onDelete: SetNull)
-  equippedResidue3   AbyssalResidue? @relation("ResidueSlot3", fields: [equippedResidue3Id], references: [id], onDelete: SetNull)
-  equippedResidue4   AbyssalResidue? @relation("ResidueSlot4", fields: [equippedResidue4Id], references: [id], onDelete: SetNull)
-
-  @@index([partySlot0Id])
-  @@index([partySlot1Id])
-  @@index([partySlot2Id])
-}
-
-model Job {
-  id       String    @id
-  name     String
-  tier     Int
-  category String    // PHYSICAL | MAGICAL
-  userJobs UserJob[]
-}
-
-model UserJob {
-  characterId String
-  jobId       String
-  level       Int       @default(1)
-  exp         Int       @default(0)
-  character   Character @relation(fields: [characterId], references: [id])
-  job         Job       @relation(fields: [jobId],       references: [id])
-
-  @@id([characterId, jobId])
 }
 
 model Item {
@@ -213,31 +77,11 @@ model Item {
   serialNo      Int?
   discoveredAt  DateTime?
 
-  // 装備リレーション（Character の各スロットから参照）
-  equippedWeapon  Character[] @relation("Weapon")
-  equippedSub     Character[] @relation("Sub")
-  equippedHead    Character[] @relation("Head")
-  equippedBody    Character[] @relation("Body")
-  equippedArms    Character[] @relation("Arms")
-  equippedLegs    Character[] @relation("Legs")
-  equippedAcc1    Character[] @relation("Acc1")
-  equippedAcc2    Character[] @relation("Acc2")
 }
 
 model ItemSerialCounter {
   itemName String @id
   counter  Int    @default(0)
-}
-
-model WeaponMaterial {
-  userId   String
-  type     String
-  name     String
-  quantity Int    @default(0)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([userId, type])
 }
 
 model AbyssalResidue {
@@ -247,11 +91,6 @@ model AbyssalResidue {
   itemId      String
   characterId String?
   character   Character? @relation("CharacterResidues", fields: [characterId], references: [id], onDelete: SetNull)
-  equippedResidue0Of Character[] @relation("ResidueSlot0")
-  equippedResidue1Of Character[] @relation("ResidueSlot1")
-  equippedResidue2Of Character[] @relation("ResidueSlot2")
-  equippedResidue3Of Character[] @relation("ResidueSlot3")
-  equippedResidue4Of Character[] @relation("ResidueSlot4")
 
   rarity      String   @default("COMMON")  // COMMON | RARE | EPIC | LEGENDARY
   mainStat    Json                          // { type: string, value: number }
@@ -284,11 +123,6 @@ model Monster {
 
   soulShardId  String?
   soulShard    SoulShard?  @relation(fields: [soulShardId],  references: [id])
-  spiritCoreId String?
-  spiritCore   SpiritCore? @relation(fields: [spiritCoreId], references: [id])
-  partySlot0Of Character[] @relation("PartySlot0")
-  partySlot1Of Character[] @relation("PartySlot1")
-  partySlot2Of Character[] @relation("PartySlot2")
 
   @@index([characterId])
 }
@@ -304,15 +138,6 @@ model SoulShard {
   monsters        Monster[]
 
   @@index([characterId])
-}
-
-model SpiritCore {
-  id            String    @id @default(uuid())
-  name          String
-  element       String?
-  skillChangeId String?
-  atkMultiplier Float     @default(1.0)
-  monsters      Monster[]
 }
 
 model StageRecord {

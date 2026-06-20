@@ -21,35 +21,13 @@ jest.setTimeout(45000);
 async function cleanupUser(email: string) {
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { characters: { select: { id: true } } },
+    include: { character: { select: { id: true } } },
   });
   if (!user) return;
 
-  const characterIds = user.characters.map((character) => character.id);
+  const characterIds = user.character ? [user.character.id] : [];
   if (characterIds.length > 0) {
-    await prisma.character.updateMany({
-      where: { id: { in: characterIds } },
-      data: {
-        equipWeaponId: null,
-        equipSubId: null,
-        equipHeadId: null,
-        equipBodyId: null,
-        equipArmsId: null,
-        equipLegsId: null,
-        equipAcc1Id: null,
-        equipAcc2Id: null,
-        partySlot0Id: null,
-        partySlot1Id: null,
-        partySlot2Id: null,
-        equippedResidue0Id: null,
-        equippedResidue1Id: null,
-        equippedResidue2Id: null,
-        equippedResidue3Id: null,
-        equippedResidue4Id: null,
-      },
-    });
     await prisma.soulShard.deleteMany({ where: { characterId: { in: characterIds } } });
-    await prisma.userJob.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.monster.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.abyssalResidue.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.character.deleteMany({ where: { id: { in: characterIds } } });

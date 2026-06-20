@@ -10,11 +10,21 @@ import { prisma } from '../lib/prisma';
 import { CharacterData, MonsterData } from '../types/game';
 import {
   applyJobExpGainToSave,
-  buildPlayerSaveFromDb,
   readPlayerSave,
   updatePlayerSaveSnapshot,
 } from '../services/PlayerSaveService';
 import type { PlayerSaveV1 } from '../types/playerSave';
+
+const EQUIPMENT_SLOTS = new Set<keyof PlayerSaveV1['player']['equipmentIds']>([
+  'weapon',
+  'sub',
+  'head',
+  'body',
+  'arms',
+  'legs',
+  'acc1',
+  'acc2',
+]);
 
 /**
  * ゲーム全体の進行とループを管理するクラス (GDD-002)
@@ -52,20 +62,18 @@ export class GameManager {
     // DB から最新のキャラクターとモンスターを取得
     const char = await prisma.character.findUnique({
       where: { id: characterId },
-      include: { jobs: true },
     });
 
     if (!char) throw new Error("Character not found");
 
     const monsterData = await prisma.monster.findMany({
       where: { id: { in: partyMonsterIds } },
-      include: { spiritCore: true },
     });
 
     const stageData = this.masterData.getStage(stageId);
     if (!stageData) throw new Error("Stage not found");
 
-    const playerSave = readPlayerSave(char.playerState, buildPlayerSaveFromDb(char));
+    const playerSave = readPlayerSave(char.playerState);
 
     // CharacterData 型への変換
     const currentJobId = playerSave.player.currentJobId || 'warrior';
@@ -73,11 +81,7 @@ export class GameManager {
     const jobs = playerSave.player.jobs;
     const currentJobLevel = Math.max(1, jobs.find((job: any) => job.jobId === currentJobId)?.level ?? 1);
     const energyState = calculateEnergyState(currentJob, currentJobLevel);
-    const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, {
-      hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
-      critRate: char.critRate, critDmg: char.critDmg,
-      effectHit: char.effectHit, effectRes: char.effectRes,
-    });
+    const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel);
     const player: CharacterData = {
       id: char.id,
       name: playerSave.player.name,
@@ -116,13 +120,6 @@ export class GameManager {
         skillIds: Array.isArray(m.skillIds) ? m.skillIds.filter((id: unknown): id is string => typeof id === 'string') : [],
         currentEnergy: m.currentEnergy ?? undefined,
         maxEnergy: m.maxEnergy ?? undefined,
-        spiritCore: m.spiritCore ? {
-          id: m.spiritCore.id,
-          name: m.spiritCore.name,
-          element: m.spiritCore.element ?? undefined,
-          skillChangeId: m.spiritCore.skillChangeId ?? undefined,
-          atkMultiplier: m.spiritCore.atkMultiplier ?? 1,
-        } : undefined,
       });
     });
 
@@ -139,10 +136,9 @@ export class GameManager {
 
     const char = await prisma.character.findUnique({
       where: { id: characterId },
-      include: { jobs: true }
     });
     if (!char) throw new Error("Character not found");
-    const playerSave = readPlayerSave(char.playerState, buildPlayerSaveFromDb(char));
+    const playerSave = readPlayerSave(char.playerState);
 
     const ownedMonsterMasterIds = (await prisma.monster.findMany({
       where: { characterId },
@@ -197,17 +193,13 @@ export class GameManager {
     return { expGain, rewards };
   }
 
-  private convertToCharacterData(char: any, playerSave: PlayerSaveV1 = readPlayerSave(char.playerState, buildPlayerSaveFromDb(char))): CharacterData {
+  private convertToCharacterData(char: any, playerSave: PlayerSaveV1 = readPlayerSave(char.playerState)): CharacterData {
     const currentJobId = playerSave.player.currentJobId || 'warrior';
     const currentJob = this.masterData.getJob(currentJobId) ?? this.masterData.getJob('warrior');
     const jobs = playerSave.player.jobs;
     const currentJobLevel = Math.max(1, jobs.find((job: any) => job.jobId === currentJobId)?.level ?? 1);
     const energyState = calculateEnergyState(currentJob, currentJobLevel);
-    const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, {
-      hp: char.hp, atk: char.atk, def: char.def, spd: char.spd,
-      critRate: char.critRate, critDmg: char.critDmg,
-      effectHit: char.effectHit, effectRes: char.effectRes,
-    });
+    const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel);
     return {
       id: char.id,
       name: playerSave.player.name,
@@ -245,7 +237,6 @@ export class GameManager {
     await prisma.$transaction(async (tx: any) => {
       const char = await tx.character.findUnique({
         where: { id: characterId },
-        include: { jobs: true },
       });
       if (!char) throw new Error("Character not found.");
 
@@ -260,7 +251,7 @@ export class GameManager {
       }
 
       const totalCost = monsters.reduce((acc: number, monster: { cost: number }) => acc + monster.cost, 0);
-      const maxCost = readPlayerSave(char.playerState, buildPlayerSaveFromDb(char)).player.necroStatus.maxCost;
+      const maxCost = readPlayerSave(char.playerState).player.necroStatus.maxCost;
       if (totalCost > maxCost) {
         throw new Error(`Cost limit exceeded: ${totalCost} / ${maxCost}`);
       }
@@ -289,19 +280,9 @@ export class GameManager {
    * アイテムの装備 (GDD-007)
    */
   public async equipItem(characterId: string, slot: string, itemId: string): Promise<void> {
-    const fieldMap: Record<string, string> = {
-      'weapon': 'equipWeaponId',
-      'sub': 'equipSubId',
-      'head': 'equipHeadId',
-      'body': 'equipBodyId',
-      'arms': 'equipArmsId',
-      'legs': 'equipLegsId',
-      'acc1': 'equipAcc1Id',
-      'acc2': 'equipAcc2Id',
-    };
-    
-    const dbField = fieldMap[slot];
-    if (!dbField) throw new Error("Invalid equipment slot");
+    if (!EQUIPMENT_SLOTS.has(slot as keyof PlayerSaveV1['player']['equipmentIds'])) {
+      throw new Error("Invalid equipment slot");
+    }
 
     await prisma.$transaction(async (tx: any) => {
       await updatePlayerSaveSnapshot(tx, characterId, (save) => {
@@ -314,19 +295,9 @@ export class GameManager {
    * アイテムの装備解除 (GDD-007)
    */
   public async unequipItem(characterId: string, slot: string): Promise<void> {
-    const fieldMap: Record<string, string> = {
-      'weapon': 'equipWeaponId',
-      'sub': 'equipSubId',
-      'head': 'equipHeadId',
-      'body': 'equipBodyId',
-      'arms': 'equipArmsId',
-      'legs': 'equipLegsId',
-      'acc1': 'equipAcc1Id',
-      'acc2': 'equipAcc2Id',
-    };
-    
-    const dbField = fieldMap[slot];
-    if (!dbField) throw new Error("Invalid equipment slot");
+    if (!EQUIPMENT_SLOTS.has(slot as keyof PlayerSaveV1['player']['equipmentIds'])) {
+      throw new Error("Invalid equipment slot");
+    }
 
     await prisma.$transaction(async (tx: any) => {
       await updatePlayerSaveSnapshot(tx, characterId, (save) => {

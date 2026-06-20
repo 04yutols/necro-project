@@ -38,34 +38,12 @@ const JOBS = jobsData as Record<string, JobData>;
 async function cleanupUser(email: string) {
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { characters: { select: { id: true } } },
+    include: { character: { select: { id: true } } },
   });
   if (!user) return;
 
-  const characterIds = user.characters.map((character) => character.id);
+  const characterIds = user.character ? [user.character.id] : [];
   if (characterIds.length > 0) {
-    await prisma.character.updateMany({
-      where: { id: { in: characterIds } },
-      data: {
-        equipWeaponId: null,
-        equipSubId: null,
-        equipHeadId: null,
-        equipBodyId: null,
-        equipArmsId: null,
-        equipLegsId: null,
-        equipAcc1Id: null,
-        equipAcc2Id: null,
-        partySlot0Id: null,
-        partySlot1Id: null,
-        partySlot2Id: null,
-        equippedResidue0Id: null,
-        equippedResidue1Id: null,
-        equippedResidue2Id: null,
-        equippedResidue3Id: null,
-        equippedResidue4Id: null,
-      },
-    });
-    await prisma.userJob.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.monster.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.abyssalResidue.deleteMany({ where: { characterId: { in: characterIds } } });
     await prisma.character.deleteMany({ where: { id: { in: characterIds } } });
@@ -214,9 +192,8 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
 
     const persistedMage = await prisma.character.findUnique({
       where: { id: created.data.player.id },
-      select: { playerState: true, currentJobId: true },
+      select: { playerState: true },
     });
-    expect(persistedMage?.currentJobId).toBeNull();
     expect(persistedMage?.playerState).toMatchObject({
       player: {
         currentJobId: 'mage',
@@ -282,11 +259,6 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(warriorJob?.level).toBe(levelFromTotalExp(warriorJob?.exp ?? 0));
     const expectedWarriorStats = getJobBaseStatsAtLevel(JOBS.warrior, warriorJob?.level ?? 1);
     expect(afterClear.data.player.baseStats).toEqual(expectedWarriorStats);
-    const persistedAfterClear = await prisma.character.findUniqueOrThrow({ where: { id: afterClear.data.player.id } });
-    expect(persistedAfterClear.hp).toBe(initialBaseStats.hp);
-    expect(persistedAfterClear.atk).toBe(initialBaseStats.atk);
-    expect(persistedAfterClear.def).toBe(initialBaseStats.def);
-    expect(persistedAfterClear.clearedStages).toEqual([]);
     expect(afterClear.data.player.clearedStages).toContain('area1_node1');
     expect(afterClear.data.inventoryItems.length).toBeGreaterThan(1);
     expect(afterClear.data.abyssalResidues).toHaveLength(0);
@@ -352,41 +324,17 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(partyUpdated.data.party.map(monster => monster?.id ?? null)).toEqual([formationMonsterA.id, formationMonsterB.id, null]);
     const playerStateAfterPartyRows = await prisma.$queryRaw<Array<{
       playerState: PlayerSaveV1 | null;
-      partySlot0Id: string | null;
-      partySlot1Id: string | null;
-      partySlot2Id: string | null;
     }>>`
-      SELECT "playerState", "partySlot0Id", "partySlot1Id", "partySlot2Id"
+      SELECT "playerState"
       FROM "Character"
       WHERE id = ${afterClear.data.player.id}
     `;
-    expect(playerStateAfterPartyRows[0]).toMatchObject({
-      partySlot0Id: null,
-      partySlot1Id: null,
-      partySlot2Id: null,
-    });
     expect(playerStateAfterPartyRows[0]?.playerState?.player.partyMonsterIds).toEqual([formationMonsterA.id, formationMonsterB.id, null]);
-    await prisma.character.update({
-      where: { id: afterClear.data.player.id },
-      data: {
-        partySlot0Id: null,
-        partySlot1Id: null,
-        partySlot2Id: null,
-      },
-    });
     const partyLoadedFromPlayerState = await loadCharacterForUser(user);
     expect(partyLoadedFromPlayerState.success).toBe(true);
     expect(partyLoadedFromPlayerState.success && partyLoadedFromPlayerState.status).toBe('READY');
     if (!partyLoadedFromPlayerState.success || partyLoadedFromPlayerState.status !== 'READY') throw new Error('failed to reload party drift character');
     expect(partyLoadedFromPlayerState.data.party.map(monster => monster?.id ?? null)).toEqual([formationMonsterA.id, formationMonsterB.id, null]);
-    await prisma.character.update({
-      where: { id: afterClear.data.player.id },
-      data: {
-        partySlot0Id: formationMonsterA.id,
-        partySlot1Id: formationMonsterB.id,
-        partySlot2Id: null,
-      },
-    });
 
     const lockedResidue = await prisma.abyssalResidue.create({
       data: {
@@ -428,19 +376,11 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
       SELECT "playerState" FROM "Character" WHERE id = ${weaponEquipped.data.player.id}
     `;
     expect(playerStateAfterWeaponEquipRows[0]?.playerState?.player.equipmentIds.weapon).toBe(droppedWeapon.id);
-    await prisma.character.update({
-      where: { id: weaponEquipped.data.player.id },
-      data: { equipWeaponId: null },
-    });
     const weaponLoadedFromPlayerState = await loadCharacterForUser(user);
     expect(weaponLoadedFromPlayerState.success).toBe(true);
     expect(weaponLoadedFromPlayerState.success && weaponLoadedFromPlayerState.status).toBe('READY');
     if (!weaponLoadedFromPlayerState.success || weaponLoadedFromPlayerState.status !== 'READY') throw new Error('failed to reload weapon drift character');
     expect(weaponLoadedFromPlayerState.data.player.equipment.weapon?.id).toBe(droppedWeapon.id);
-    await prisma.character.update({
-      where: { id: weaponEquipped.data.player.id },
-      data: { equipWeaponId: droppedWeapon.id },
-    });
     const afterWeaponEquip = calculateCharacterStatProfile(weaponEquipped.data.player, weaponEquipped.data.equippedResidueSlots);
     expect(afterWeaponEquip.total.atk).toBeGreaterThan(beforeWeaponEquip.total.atk);
 
@@ -529,26 +469,11 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
       SELECT "playerState" FROM "Character" WHERE id = ${residueEquipped.data.player.id}
     `;
     expect(playerStateAfterResidueEquipRows[0]?.playerState?.player.equippedResidueIds[slotIndex]).toBe(residue.id);
-    const residueSlotFields = [
-      'equippedResidue0Id',
-      'equippedResidue1Id',
-      'equippedResidue2Id',
-      'equippedResidue3Id',
-      'equippedResidue4Id',
-    ] as const;
-    await prisma.character.update({
-      where: { id: residueEquipped.data.player.id },
-      data: { [residueSlotFields[slotIndex]]: null },
-    });
     const residueLoadedFromPlayerState = await loadCharacterForUser(user);
     expect(residueLoadedFromPlayerState.success).toBe(true);
     expect(residueLoadedFromPlayerState.success && residueLoadedFromPlayerState.status).toBe('READY');
     if (!residueLoadedFromPlayerState.success || residueLoadedFromPlayerState.status !== 'READY') throw new Error('failed to reload residue drift character');
     expect(residueLoadedFromPlayerState.data.equippedResidueSlots[slotIndex]?.id).toBe(residue.id);
-    await prisma.character.update({
-      where: { id: residueEquipped.data.player.id },
-      data: { [residueSlotFields[slotIndex]]: residue.id },
-    });
 
     const afterResidueEquip = calculateCharacterStatProfile(residueEquipped.data.player, residueEquipped.data.equippedResidueSlots);
     const statIncreased = (Object.keys(afterResidueEquip.total) as Array<keyof typeof afterResidueEquip.total>)
@@ -570,51 +495,10 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     });
     expect(selectedPlayerStateFields[0]?.clearedCount).toBeGreaterThanOrEqual(5);
 
-    const fullPlayerStateBeforeLegacyDrift = playerStateAfterResidueEquipRows[0]?.playerState;
-    expect(fullPlayerStateBeforeLegacyDrift?.player.clearedStages).toContain('area2_gate');
-    await prisma.character.update({
-      where: { id: residueEquipped.data.player.id },
-      data: { clearedStages: [] },
-    });
     const startFromPlayerStateOnly = await startStageForUser(user, 'area2_gate');
     expect(startFromPlayerStateOnly.success).toBe(true);
     if (startFromPlayerStateOnly.success) {
       await prisma.stageAttempt.delete({ where: { id: startFromPlayerStateOnly.stageAttemptId } });
     }
-    await prisma.character.update({
-      where: { id: residueEquipped.data.player.id },
-      data: { clearedStages: fullPlayerStateBeforeLegacyDrift?.player.clearedStages ?? [] },
-    });
-
-    await prisma.character.update({
-      where: { id: residueEquipped.data.player.id },
-      data: {
-        playerState: {
-          schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
-          residueMaterials: [],
-          transmutationPoints: 0,
-        },
-      },
-    });
-    const backfilled = await loadCharacterForUser(user);
-    expect(backfilled.success).toBe(true);
-    expect(backfilled.success && backfilled.status).toBe('READY');
-    const backfilledRows = await prisma.$queryRaw<Array<{ playerState: PlayerSaveV1 | null }>>`
-      SELECT "playerState" FROM "Character" WHERE id = ${residueEquipped.data.player.id}
-    `;
-    expect(backfilledRows[0]?.playerState?.player.clearedStages).toContain('area2_gate');
-    expect(backfilledRows[0]?.playerState?.player.equipmentIds.weapon).toBe(droppedWeapon.id);
-    expect(backfilledRows[0]?.playerState?.weaponMaterials).toEqual(expect.any(Array));
-
-    const savedGold = backfilledRows[0]?.playerState?.player.gold ?? residueEquipped.data.player.gold;
-    await prisma.character.update({
-      where: { id: residueEquipped.data.player.id },
-      data: { gold: 1 },
-    });
-    const legacyDriftLoad = await loadCharacterForUser(user);
-    expect(legacyDriftLoad.success).toBe(true);
-    expect(legacyDriftLoad.success && legacyDriftLoad.status).toBe('READY');
-    if (!legacyDriftLoad.success || legacyDriftLoad.status !== 'READY') throw new Error('failed to reload drift character');
-    expect(legacyDriftLoad.data.player.gold).toBe(savedGold);
   });
 });

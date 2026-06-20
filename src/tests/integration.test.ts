@@ -14,31 +14,28 @@ describe('Integration Test: Job Persistence', () => {
 
   test('Permanent passives should be maintained across job changes', async () => {
     const characterId = 'test-char-001';
+    const userId = 'test-user-job-persistence';
 
     const initialSave = emptyPlayerSave();
     initialSave.player.name = 'Test Hero';
     initialSave.player.currentJobId = 'warrior';
     initialSave.player.jobs = [{ jobId: 'warrior', level: 9, exp: 0 }];
 
+    await prisma.user.upsert({
+      where: { id: userId },
+      update: {},
+      create: { id: userId, email: 'job-persistence@example.test', displayName: 'Test Hero' },
+    });
+
     // Character を用意（旧ミラーテーブルではなく playerState を正とする）
     await prisma.character.upsert({
       where: { id: characterId },
       update: {
-        currentJobId: null,
-        passiveAtkBonus: 0,
         playerState: playerSaveToJson(initialSave),
       },
       create: {
         id: characterId,
-        name: 'Test Hero',
-        hp: 100,
-        atk: 10,
-        def: 10,
-        spd: 100,
-        critRate: 5,
-        critDmg: 150,
-        effectHit: 0,
-        effectRes: 0,
+        userId,
         playerState: playerSaveToJson(initialSave),
       }
     });
@@ -55,8 +52,6 @@ describe('Integration Test: Job Persistence', () => {
     });
     const updatedSave = readPlayerSave(updatedChar?.playerState);
 
-    expect(updatedChar?.currentJobId).toBeNull();
-    expect(updatedChar?.passiveAtkBonus).toBe(0);
     expect(updatedSave.player.currentJobId).toBe('mage');
     expect(updatedSave.player.passives.passiveAtkBonus).toBe(1); // warrior Lv10 で +1%
     expect(updatedSave.player.jobs).toEqual(expect.arrayContaining([
@@ -66,5 +61,6 @@ describe('Integration Test: Job Persistence', () => {
 
     // クリーンアップ
     await prisma.character.delete({ where: { id: characterId } });
+    await prisma.user.delete({ where: { id: userId } });
   });
 });

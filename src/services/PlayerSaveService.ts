@@ -478,76 +478,6 @@ export function rankUpNecroInSave(save: PlayerSaveV1): PlayerSaveV1 {
   };
 }
 
-export function buildPlayerSaveFromDb(
-  character: any,
-  weaponMaterials: unknown[] = [],
-  previousSave: PlayerSaveV1 = readPlayerSave(character?.playerState),
-): PlayerSaveV1 {
-  const jobs = normalizeJobs((character.jobs ?? []).map((job: any) => ({
-    jobId: job.jobId,
-    level: job.level,
-    exp: job.exp,
-  })), previousSave.player.jobs);
-  const currentJobId = character.currentJobId ?? previousSave.player.currentJobId ?? jobs[0]?.jobId ?? 'warrior';
-
-  return {
-    schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
-    player: {
-      name: character.name ?? previousSave.player.name,
-      currentJobId,
-      gold: normalizePositiveInt(character.gold, previousSave.player.gold),
-      clearedStages: mergeStringArrays(character.clearedStages, previousSave.player.clearedStages),
-      jobs,
-      passives: {
-        passiveAtkBonus: normalizePositiveInt(character.passiveAtkBonus, previousSave.player.passives.passiveAtkBonus),
-        passiveDefBonus: normalizePositiveInt(character.passiveDefBonus, previousSave.player.passives.passiveDefBonus),
-        passiveSpdBonus: normalizePositiveInt(character.passiveSpdBonus, previousSave.player.passives.passiveSpdBonus),
-        passiveCritRateBonus: Number.isFinite(Number(character.passiveCritRateBonus))
-          ? Number(character.passiveCritRateBonus)
-          : previousSave.player.passives.passiveCritRateBonus,
-        passiveCritDmgBonus: Number.isFinite(Number(character.passiveCritDmgBonus))
-          ? Number(character.passiveCritDmgBonus)
-          : previousSave.player.passives.passiveCritDmgBonus,
-        passiveHpBonus: normalizePositiveInt(character.passiveHpBonus, previousSave.player.passives.passiveHpBonus),
-      },
-      necroStatus: {
-        level: Math.max(1, normalizePositiveInt(character.necroLevel, previousSave.player.necroStatus.level)),
-        rank: Math.max(1, normalizePositiveInt(character.necroRank, previousSave.player.necroStatus.rank)),
-        maxCost: Math.max(1, normalizePositiveInt(character.necroMaxCost, previousSave.player.necroStatus.maxCost)),
-        baseStatsBonus: Number.isFinite(Number(character.necroBaseStatsBonus))
-          ? Number(character.necroBaseStatsBonus)
-          : previousSave.player.necroStatus.baseStatsBonus,
-        exp: normalizePositiveInt(character.necroExp, previousSave.player.necroStatus.exp ?? 0),
-      },
-      equipmentIds: {
-        weapon: character.equipWeaponId ?? previousSave.player.equipmentIds.weapon ?? null,
-        sub: character.equipSubId ?? previousSave.player.equipmentIds.sub ?? null,
-        head: character.equipHeadId ?? previousSave.player.equipmentIds.head ?? null,
-        body: character.equipBodyId ?? previousSave.player.equipmentIds.body ?? null,
-        arms: character.equipArmsId ?? previousSave.player.equipmentIds.arms ?? null,
-        legs: character.equipLegsId ?? previousSave.player.equipmentIds.legs ?? null,
-        acc1: character.equipAcc1Id ?? previousSave.player.equipmentIds.acc1 ?? null,
-        acc2: character.equipAcc2Id ?? previousSave.player.equipmentIds.acc2 ?? null,
-      },
-      partyMonsterIds: [
-        character.partySlot0Id ?? previousSave.player.partyMonsterIds[0] ?? null,
-        character.partySlot1Id ?? previousSave.player.partyMonsterIds[1] ?? null,
-        character.partySlot2Id ?? previousSave.player.partyMonsterIds[2] ?? null,
-      ],
-      equippedResidueIds: [
-        character.equippedResidue0Id ?? previousSave.player.equippedResidueIds[0] ?? null,
-        character.equippedResidue1Id ?? previousSave.player.equippedResidueIds[1] ?? null,
-        character.equippedResidue2Id ?? previousSave.player.equippedResidueIds[2] ?? null,
-        character.equippedResidue3Id ?? previousSave.player.equippedResidueIds[3] ?? null,
-        character.equippedResidue4Id ?? previousSave.player.equippedResidueIds[4] ?? null,
-      ],
-    },
-    weaponMaterials: normalizeWeaponMaterials(weaponMaterials.length > 0 ? weaponMaterials : previousSave.weaponMaterials),
-    residueMaterials: previousSave.residueMaterials,
-    transmutationPoints: previousSave.transmutationPoints,
-  };
-}
-
 export async function lockCharacterForUpdate(tx: Prisma.TransactionClient, characterId: string) {
   await tx.$queryRaw<Array<{ id: string }>>`
     SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE
@@ -579,15 +509,11 @@ export async function updatePlayerSaveSnapshot(
   await lockCharacterForUpdate(tx, characterId);
   const character = await tx.character.findUnique({
     where: { id: characterId },
-    include: { jobs: true },
+    select: { id: true, userId: true, playerState: true },
   });
   if (!character) throw new Error('キャラクターが見つかりません');
 
-  const legacyWeaponMaterials = !hasCompletePlayerSave(character.playerState) && character.userId
-    ? await tx.weaponMaterial.findMany({ where: { userId: character.userId }, orderBy: { type: 'asc' } })
-    : [];
-  const fallbackSave = buildPlayerSaveFromDb(character, legacyWeaponMaterials);
-  let nextSave = readPlayerSave(character.playerState, fallbackSave);
+  let nextSave = readPlayerSave(character.playerState);
 
   if (options.weaponMaterialAdditions?.length) {
     nextSave = {
