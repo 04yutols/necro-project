@@ -675,7 +675,7 @@ export function toCharacterDataForSave(character: any, save: PlayerSaveV1): Char
   const currentJob = masterData.getJob(currentJobId) ?? masterData.getJob('warrior')!;
   const currentJobLevel = Math.max(1, save.player.jobs.find((job) => job.jobId === currentJobId)?.level ?? 1);
   const energyState = calculateEnergyState(currentJob, currentJobLevel);
-  const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel, toBaseStats(character));
+  const baseStats = getJobBaseStatsAtLevel(currentJob, currentJobLevel);
   const equipment: EquipmentSlots = {
     weapon: null,
     sub: null,
