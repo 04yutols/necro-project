@@ -1,9 +1,6 @@
 import {
   calculateCharacterStatProfile,
-  calculateNecromanceLevelBonus,
-  calculateNecroBaseStatsContribution,
   getCanonicalOptionType,
-  normalizeNecroBaseStatsBonus,
 } from './StatSystem';
 import type { CharacterData } from '../types/game';
 
@@ -64,11 +61,23 @@ describe('StatSystem', () => {
     expect(profile.elementDmgBoosts.DARK).toBe(8);
   });
 
-  test('applies necromance level bonus to crit damage and all elemental damage', () => {
+  test('does not apply necromance level bonuses to the player', () => {
+    const baseProfile = calculateCharacterStatProfile(basePlayer, [
+      {
+        id: 'r1',
+        name: 'Residue',
+        itemId: 'r1',
+        rarity: 'RARE',
+        mainStat: { type: 'ATK%', value: 10 },
+        subOptions: [],
+        level: 1,
+        exp: 0,
+        maxExp: 100,
+      },
+    ]);
     const rankedPlayer: CharacterData = {
       ...basePlayer,
-      necroLevel: 50,
-      necroBaseStatsBonus: 9,
+      necroLevel: 500,
     };
 
     const profile = calculateCharacterStatProfile(rankedPlayer, [
@@ -90,27 +99,8 @@ describe('StatSystem', () => {
     expect(profile.necro.def).toBe(0);
     expect(profile.necro.spd).toBe(0);
     expect(profile.necro.critRate).toBe(0);
-    expect(profile.necro.critDmg).toBe(5);
-    expect(profile.total.hp).toBe(1100);
-    expect(profile.total.atk).toBe(135);
-    expect(profile.total.def).toBe(52);
-    expect(profile.total.spd).toBe(102);
-    expect(profile.total.critDmg).toBe(165);
-    expect(profile.elementDmgBoosts.FIRE).toBe(17);
-    expect(profile.elementDmgBoosts.DARK).toBe(5);
-  });
-
-  test('normalizes invalid legacy necro rank bonuses to neutral contribution', () => {
-    expect(normalizeNecroBaseStatsBonus(undefined)).toBe(1);
-    expect(normalizeNecroBaseStatsBonus(0)).toBe(1);
-    expect(calculateNecroBaseStatsContribution(basePlayer.stats, undefined).atk).toBe(0);
-    expect(calculateNecroBaseStatsContribution(basePlayer.stats, 5).hp).toBe(0);
-  });
-
-  test('calculates necromance level steps every 10 levels', () => {
-    expect(calculateNecromanceLevelBonus(9).step).toBe(0);
-    expect(calculateNecromanceLevelBonus(10).stats.critDmg).toBe(1);
-    expect(calculateNecromanceLevelBonus(99).stats.critDmg).toBe(9);
-    expect(calculateNecromanceLevelBonus(99).elementDmgBoosts.DARK).toBe(9);
+    expect(profile.necro.critDmg).toBe(0);
+    expect(profile.total).toEqual(baseProfile.total);
+    expect(profile.elementDmgBoosts).toEqual(baseProfile.elementDmgBoosts);
   });
 });

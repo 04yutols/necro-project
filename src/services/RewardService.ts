@@ -336,6 +336,7 @@ export class RewardService {
   public processStageNecromance(
     stage: Pick<StageData, 'waves'>,
     ownedMonsterMasterIds: readonly (string | null | undefined)[] = [],
+    necroRank: number = 1,
     rng: () => number = Math.random,
   ): MonsterData[] {
     const mds = MasterDataService.getInstance();
@@ -343,6 +344,8 @@ export class RewardService {
       stage,
       enemies: mds.getAllEnemies(),
       ownedMonsterMasterIds,
+      necroRank,
+      necroConfig: mds.getNecroConfig(),
       rng,
     }).map((result) => result.monster);
   }

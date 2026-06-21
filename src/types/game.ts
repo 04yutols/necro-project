@@ -246,10 +246,8 @@ export interface CharacterData {
   currentJobId: string;
   category: ClassCategory;
   baseStats?: BaseStats;
-  // 死霊術レベル。10レベルごとに全属性ダメージ/会心ダメージ補正へ変換する。
+  // 死霊術レベル。主人公は強化せず、味方モンスター補正と軍団コスト上限に使う（max 500）。
   necroLevel?: number;
-  // 既存DB互換フィールド。主人公本人のHP/ATK/DEF/SPDには掛けない。
-  necroBaseStatsBonus?: number;
   stats: BaseStats;
   passives: PassiveBonuses;
   equipment: EquipmentSlots;
@@ -435,11 +433,21 @@ export interface StageData {
 }
 
 export interface NecroStatus {
-  level: number;       // Max: 99
-  rank: number;        // Max: 10
+  level: number;       // Max: 500
   maxCost: number;
-  baseStatsBonus: number; // 既存互換値。将来の使役モンスター基礎ステータス補正用。
   exp: number;         // 現在のネクロEXP
+}
+
+// 死霊術Lv/Rank 再設計の調整係数（docs/設計書/120）。将来 src/data/master/necroConfig.json から供給。
+export interface NecroConfigData {
+  // モンスターステ倍率: mult = 1 + min(L,50)*kA + max(0,L-50)*kB + (rank-1)*k2（HP/ATK/DEF/SPDのみ）
+  monsterStatMultiplier: { kA: number; kB: number; k2: number };
+  // maxCost = base + floor(level/d1) + (rank-1)*c2
+  maxCost: { base: number; d1: number; c2: number };
+  // 捕獲率 = clamp(baseRate * rankMultiplier^(rank-1), 0, cap)
+  captureRate: { rankMultiplier: number; cap: number };
+  // necro専用EXP曲線: necroExpForLevel(L) = (L-1)*(L+coefficient)。necroExpRate は職業共有フィードへの倍率。
+  expCurve: { coefficient: number; necroExpRate: number };
 }
 
 export interface BattleState {

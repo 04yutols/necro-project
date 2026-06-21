@@ -95,6 +95,14 @@ describe('NecromanceCaptureSystem', () => {
     expect(results).toHaveLength(0);
   });
 
+  test('applies necro rank multiplier to capture rate', () => {
+    expect(getNecromanceRateForEnemy(enemies.minion_a, 5)).toBeCloseTo(0.1757, 4);
+    expect(getNecromanceRateForEnemy({
+      ...enemies.minion_a,
+      necromance: { captureRate: 0.4 },
+    }, 10)).toBe(0.75);
+  });
+
   test('uses masterId for owned checks with id fallback for legacy local monsters', () => {
     expect(getOwnedMonsterMasterIds([
       { id: 'legacy-goblin' },
@@ -137,8 +145,8 @@ describe('NecromanceCaptureSystem', () => {
     });
   });
 
-  test('custom capture rate is clamped to 0-1', () => {
-    expect(getNecromanceRateForEnemy({ ...enemies.minion_a, necromance: { captureRate: 2 } })).toBe(1);
+  test('custom capture rate is clamped to the necromance cap', () => {
+    expect(getNecromanceRateForEnemy({ ...enemies.minion_a, necromance: { captureRate: 2 } })).toBe(0.75);
     expect(getNecromanceRateForEnemy({ ...enemies.minion_a, necromance: { captureRate: -0.5 } })).toBe(0);
   });
 });

@@ -37,6 +37,10 @@ export type EnemyBalanceContext = {
   skillIds: Set<string>;
   /** skillId → メタ（任意。あれば味方スキルの属性整合を検証する）。 */
   skillMeta?: Record<string, SkillMeta>;
+  /** ネクロマンス捕獲率の上限。省略時は設計既定 0.75。 */
+  necroCapRate?: number;
+  /** Rankごとの捕獲率乗算。省略時は設計既定 1.10。 */
+  necroRankMultiplier?: number;
 };
 
 /** tier ごとの味方化規約（97_モンスターネクロマンス獲得機能設計.md と同期）。 */
@@ -288,13 +292,26 @@ export function validateEnemyDraft(
   } else {
     // captureRate: tier 規約と照合
     const captureRate = getNum(necro, 'captureRate');
+    const necroCapRate = ctx.necroCapRate ?? 0.75;
+    const necroRankMultiplier = ctx.necroRankMultiplier ?? 1.1;
     if (captureRate === null || captureRate < 0 || captureRate > 1) {
       fail('necromance.captureRate', 'captureRate は 0〜1 の数値である必要があります。');
+    } else if (captureRate > necroCapRate) {
+      fail('necromance.captureRate', `captureRate はネクロマンス上限 ${necroCapRate} 以下である必要があります。`);
     } else if (tierConv && Math.abs(captureRate - tierConv.captureRate) > 1e-9) {
       warn(
         'necromance.captureRate',
         `${tier} の捕獲率は規約上 ${tierConv.captureRate} です（現在: ${captureRate}）。意図的でなければ揃えてください。`,
       );
+    }
+    if (captureRate !== null && captureRate >= 0 && captureRate <= necroCapRate) {
+      const rank10Rate = captureRate * Math.pow(necroRankMultiplier, 9);
+      if (rank10Rate > necroCapRate) {
+        warn(
+          'necromance.captureRate',
+          `R10実効捕獲率が上限 ${necroCapRate} に到達します（理論値: ${rank10Rate.toFixed(4)}）。`,
+        );
+      }
     }
 
     // allyCost: tier 規約と照合
@@ -326,7 +343,7 @@ export function validateEnemyDraft(
           `allyStats.critDmg は%表記です（150前後）。${allyCritDmg} はスケール誤りの可能性が高い。`,
         );
       }
-      // 敵 tier 帯との整合（味方は敵から生成されるため同 tier 帯が妥当）
+      // 敵 tier 帯との整合（allyStats は Lv1/R1 基底値。同 tier 帯が妥当）
       if (typeof tier === 'string') {
         const bands = deriveTierBands(ctx.existingEnemies)[tier];
         if (bands) {

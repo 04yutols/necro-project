@@ -11,7 +11,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { getMasterFile, getAllMasterData, getEntry, auditMasterData, type AuditFinding } from '../actions';
+import { getMasterFile, getAllMasterData, getEntry, auditMasterData, getNecroConfig, type AuditFinding } from '../actions';
 import { runEnemyAgent, type EnemyAgentResult } from '@/lib/agent/enemyAgent';
 import {
   validateRequirements,
@@ -71,6 +71,15 @@ function readDoc15Excerpt(): string {
   return '';
 }
 
+function withAgentNecroConfig(all: unknown, necroConfig: unknown): MasterData {
+  return { ...(all as MasterData), necroConfig } as unknown as MasterData;
+}
+
+async function getAgentMasterData(): Promise<MasterData> {
+  const [all, necroConfig] = await Promise.all([getAllMasterData(), getNecroConfig()]);
+  return withAgentNecroConfig(all, necroConfig);
+}
+
 export type GenerateEnemyActionResult = EnemyAgentResult & {
   /** 草稿に既存IDと衝突する id が含まれる場合 true（保存前にユーザーへ警告）。 */
   idCollision?: boolean;
@@ -91,11 +100,12 @@ export async function generateEnemyDraftAction(
     return { draft: null, validation: null, attempts: 0, log: [], error: reqError };
   }
 
-  const [enemies, items, materials, skills] = await Promise.all([
+  const [enemies, items, materials, skills, necroConfig] = await Promise.all([
     getMasterFile('enemies'),
     getMasterFile('items'),
     getMasterFile('materials'),
     getMasterFile('skills'),
+    getNecroConfig(),
   ]);
 
   // スキルを素性付きカタログに変換（味方スキル選定 + 属性整合検証に使う）
@@ -117,6 +127,8 @@ export async function generateEnemyDraftAction(
     itemIds: Object.keys(items),
     materialIds: Object.keys(materials),
     skills: skillCatalog,
+    necroCapRate: necroConfig.captureRate.cap,
+    necroRankMultiplier: necroConfig.captureRate.rankMultiplier,
     designContext: buildEnemyDesignContext(enemies, readDoc15Excerpt()),
     maxAttempts: options?.maxAttempts ?? 3,
     model: options?.model,
@@ -562,7 +574,7 @@ export async function fixAuditFindingAction(
   }
 
   const [all, currentEntity, baseline] = await Promise.all([
-    getAllMasterData(),
+    getAgentMasterData(),
     getEntry(scope as never, entityId),
     auditMasterData(),
   ]);
@@ -593,7 +605,7 @@ export async function fixAuditFindingAction(
     entityId,
     findings: targetFindings,
     currentEntity,
-    all: all as unknown as MasterData,
+    all,
     auditFn: (override) => auditMasterData(override as never),
     baselineFailKeys,
     maxAttempts: options?.maxAttempts ?? 3,
@@ -999,9 +1011,10 @@ export async function previewBulkChangeAction(instruction: string): Promise<Bulk
     return { spec: null, changes: [], validations: [], newAuditFails: [], missingFields: [], ok: false, attempts: 0, log: [], error: '指示を入力してください（4文字以上）。' };
   }
 
-  const all = (await getAllMasterData()) as unknown as MasterData;
+  const [rawAll, necroConfig] = await Promise.all([getAllMasterData(), getNecroConfig()]);
+  const all = withAgentNecroConfig(rawAll, necroConfig);
 
-  const agentRes = await runBulkAgent({ instruction: instruction.trim(), fieldHints: buildFieldHints(all) });
+  const agentRes = await runBulkAgent({ instruction: instruction.trim(), fieldHints: buildFieldHints(rawAll) });
   if (!agentRes.spec) {
     return { spec: null, changes: [], validations: [], newAuditFails: [], missingFields: [], ok: false, attempts: agentRes.attempts, log: agentRes.log, error: agentRes.error ?? 'Spec を生成できませんでした。' };
   }

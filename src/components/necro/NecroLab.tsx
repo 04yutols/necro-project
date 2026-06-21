@@ -10,6 +10,7 @@ import { useResidueEnhancePixi } from './useResidueEnhancePixi';
 import { useGothicSound } from './useGothicSound';
 import { calculateResidueEnhancement } from '../../logic/ResidueEnhancement';
 import { formatOptionValue, getOptionLabel } from '../../logic/StatSystem';
+import { deriveNecroRank } from '../../logic/NecroGrowthSystem';
 
 /* ──────────────────────────────────────────
    Constants
@@ -807,6 +808,7 @@ export default function NecroLab() {
   const [selectedId, setSelectedId] = useState<string | null>(abyssalResidues[0]?.id ?? null);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [toast, setToast] = useState<ActionToast>(null);
+  const necroRank = deriveNecroRank(necroStatus?.level ?? 1);
 
   const showToast = useCallback((next: NonNullable<ActionToast>) => {
     setToast(next);
@@ -939,7 +941,7 @@ export default function NecroLab() {
             fontFamily: 'monospace',
           }}
         >
-          <span>Rank {necroStatus.rank}</span>
+          <span>Rank {necroRank}</span>
         </div>
       </div>
 

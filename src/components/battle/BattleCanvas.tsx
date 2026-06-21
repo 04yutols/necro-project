@@ -18,6 +18,7 @@ import { RewardService, type StageDropResult } from '../../services/RewardServic
 import { calculateCharacterStatProfile, hasElementDmgBoosts } from '../../logic/StatSystem';
 import { calculateBattleDamage, calculateIncomingEnemyDamage, type BattleDamageResult } from '../../logic/BattleDamage';
 import { calculateInitialEnergy } from '../../logic/EnergySystem';
+import { deriveNecroRank } from '../../logic/NecroGrowthSystem';
 import { canStartPlayerAction, shouldInitializeBattle, type BattlePhase } from '../../logic/BattleFlowSystem';
 import { calculateMonsterAttackProfile } from '../../logic/MonsterAttackSystem';
 import { resolveMonsterCurrentEnergy, resolveMonsterMaxEnergy } from '../../logic/MonsterEnergySystem';
@@ -548,7 +549,9 @@ function convertDropToResultItems(drop: StageDropResult, playerName?: string) {
 }
 
 function buildLocalStageResult(stage?: StageData, clearedStages: readonly string[] = []) {
-  const ownedMonsterMasterIds = getOwnedMonsterMasterIds(useGameStore.getState().inventoryMonsters);
+  const state = useGameStore.getState();
+  const ownedMonsterMasterIds = getOwnedMonsterMasterIds(state.inventoryMonsters);
+  const necroRank = deriveNecroRank(state.necroStatus?.level ?? state.player?.necroLevel ?? 1);
   const dropResult = stage
     ? REWARD_SERVICE.processStageDropTable(stage, clearedStages, 0, Math.random, ownedMonsterMasterIds)
     : REWARD_SERVICE.processDropTable([]);
@@ -556,6 +559,7 @@ function buildLocalStageResult(stage?: StageData, clearedStages: readonly string
     dropResult.monsters.push(...REWARD_SERVICE.processStageNecromance(
       stage,
       [...ownedMonsterMasterIds, ...dropResult.monsters.map(monster => monster.masterId ?? monster.id)],
+      necroRank,
     ));
   }
   return {
@@ -1904,11 +1908,12 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
 export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSave = false, onEnd }: BattleCanvasProps) {
   console.log('[BattleCanvas] render at', Date.now());
   const {
-    player, party, equippedResidueSlots, inventoryItems,
+    player, necroStatus, party, equippedResidueSlots, inventoryItems,
     addExp, addGold, addClearedStage, updateEnergy, updateEnergyBy, restoreEnergy,
     addInventoryItems, setInventoryMonsters, addAbyssalResidues, addResidueMaterials, addWeaponMaterials,
     loadFromServer,
     consumeInventoryItem,
+    getBattleParty,
   } = useGameStore();
   const sfx = useSoundEffects();
   const playerProfile = player ? calculateCharacterStatProfile(player, equippedResidueSlots) : null;
@@ -1916,9 +1921,13 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
   const playerElementDmgBoosts = hasElementDmgBoosts(player?.elementDmgBoosts)
     ? player?.elementDmgBoosts ?? {}
     : playerProfile?.elementDmgBoosts ?? {};
+  const battlePartyMonsters = useMemo(
+    () => getBattleParty(),
+    [getBattleParty, party, necroStatus?.level, player?.necroLevel],
+  );
   const battleSynergyBonus = useMemo(
-    () => calculatePartyTribeSynergy(party.filter(Boolean) as MonsterData[]),
-    [party],
+    () => calculatePartyTribeSynergy(battlePartyMonsters.filter(Boolean) as MonsterData[]),
+    [battlePartyMonsters],
   );
   const battleWaves = useMemo(() => buildBattleWaves(stageId), [stageId]);
   const currentStage = useMemo(() => getStageOrFallback(stageId), [stageId]);
@@ -1992,7 +2001,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
       mp: player?.currentEnergy ?? 0, maxMp: player?.maxEnergy ?? 100,
       color: '#8B00FF', active: phase === 'playerTurn',
     },
-    ...party.slice(0, 3).map((m, i): BattlePartyMember => {
+    ...battlePartyMonsters.slice(0, 3).map((m, i): BattlePartyMember => {
       if (!m) {
         return {
           id: `slot_${i}`, name: `使役魔${i+1}`, icon: '💀',
@@ -2043,7 +2052,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
   );
   const demonUltimateSkill = toDemonUltimateSkill(demonForm);
   const activeMonster = activeMonsterTurnId
-    ? party.find((monster): monster is MonsterData => Boolean(monster && monster.id === activeMonsterTurnId)) ?? null
+    ? battlePartyMonsters.find((monster): monster is MonsterData => Boolean(monster && monster.id === activeMonsterTurnId)) ?? null
     : null;
   const activeMonsterEnergy = activeMonster
     ? monsterEnergy[activeMonster.id] ?? getMonsterEnergyState(activeMonster)
@@ -2092,7 +2101,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
   }
 
   function getActivePartyMonsters() {
-    return party.slice(0, 3).filter((monster): monster is MonsterData => Boolean(monster));
+    return battlePartyMonsters.slice(0, 3).filter((monster): monster is MonsterData => Boolean(monster));
   }
 
   function createInitialAvState(nextEnemies: EnemyState[]): BattleAvState {
@@ -2342,7 +2351,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
     enemiesRef.current = firstEnemies;
     commitBattleAvState(createInitialAvState(firstEnemies), firstEnemies);
     setActiveMonsterTurnId(null);
-    setMonsterEnergy(buildMonsterEnergyState(party.slice(0, 3)));
+    setMonsterEnergy(buildMonsterEnergyState(battlePartyMonsters.slice(0, 3)));
     bossGimmickFiredRef.current = new Set();
     playerHpRef.current = playerMaxHp;
     setPlayerHp(playerMaxHp);
@@ -2370,7 +2379,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
       ...(areaGimmick !== 'NONE' ? [`エリアギミック発生：${areaGimmickMeta.label} — ${areaGimmickMeta.description}`] : []),
       `${battleWaves[0].label} 開始。骸骨騎士のターン。MP ${initialEnergy}/${player?.maxEnergy ?? currentJobData.energyCurve?.baseMaxEnergy ?? 100} で開戦。`,
     ]);
-  }, [areaGimmick, areaGimmickMeta.description, areaGimmickMeta.label, battleWaves, currentJobData, currentJobLevel, party, player?.maxEnergy, playerMaxHp, stageId, updateEnergy]);
+  }, [areaGimmick, areaGimmickMeta.description, areaGimmickMeta.label, battlePartyMonsters, battleWaves, currentJobData, currentJobLevel, player?.maxEnergy, playerMaxHp, stageId, updateEnergy]);
 
   useEffect(() => { waveIndexRef.current = waveIndex; }, [waveIndex]);
   useEffect(() => {
@@ -2615,7 +2624,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
   function spendMonsterEnergy(monsterId: string, cost: number) {
     if (cost <= 0) return;
     setMonsterEnergy(prev => {
-      const monster = party.find(candidate => candidate?.id === monsterId) ?? null;
+      const monster = battlePartyMonsters.find(candidate => candidate?.id === monsterId) ?? null;
       const current = prev[monsterId] ?? (monster ? getMonsterEnergyState(monster) : { currentEnergy: 0, maxEnergy: 1 });
       return {
         ...prev,

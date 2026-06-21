@@ -22,6 +22,13 @@ import { calculateEnergyState } from '../logic/EnergySystem';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 import { levelFromTotalExp } from '../logic/ExperienceSystem';
 import { getJobUnlockStatus } from '../logic/JobSystem';
+import {
+  calcNecroMaxCost,
+  clampNecroLevel,
+  deriveNecroRank,
+  necroExpFromGain,
+  necroLevelFromExp,
+} from '../logic/NecroGrowthSystem';
 
 const EMPTY_EQUIPMENT_IDS: PlayerSaveV1['player']['equipmentIds'] = {
   weapon: null,
@@ -53,9 +60,7 @@ export function emptyPlayerSave(): PlayerSaveV1 {
       },
       necroStatus: {
         level: 1,
-        rank: 1,
-        maxCost: 10,
-        baseStatsBonus: 1,
+        maxCost: calcNecroMaxCost(1),
         exp: 0,
       },
       equipmentIds: { ...EMPTY_EQUIPMENT_IDS },
@@ -139,11 +144,12 @@ export function normalizeNecroStatus(
   fallback: NecroStatus = emptyPlayerSave().player.necroStatus,
 ): NecroStatus {
   const source = isRecord(value) ? value : {};
+  const level = clampNecroLevel(normalizePositiveInt(source.level, fallback.level));
+  const derivedMaxCost = calcNecroMaxCost(level, MasterDataService.getInstance().getNecroConfig());
+  const savedMaxCost = normalizePositiveInt(source.maxCost, fallback.maxCost);
   return {
-    level: Math.max(1, normalizePositiveInt(source.level, fallback.level)),
-    rank: Math.max(1, normalizePositiveInt(source.rank, fallback.rank)),
-    maxCost: Math.max(1, normalizePositiveInt(source.maxCost, fallback.maxCost)),
-    baseStatsBonus: Number.isFinite(Number(source.baseStatsBonus)) ? Number(source.baseStatsBonus) : fallback.baseStatsBonus,
+    level,
+    maxCost: Math.max(derivedMaxCost, savedMaxCost),
     exp: normalizePositiveInt(source.exp, fallback.exp ?? 0),
   };
 }
@@ -254,6 +260,27 @@ const PLAYER_SAVE_MIGRATIONS: Record<number, PlayerSaveMigration> = {
     ...state,
     schemaVersion: 2,
   }),
+  2: (state) => {
+    const player = isRecord(state.player) ? state.player : {};
+    const oldStatus = isRecord(player.necroStatus) ? player.necroStatus : {};
+    const oldLevel = clampNecroLevel(normalizePositiveInt(oldStatus.level, 1));
+    const oldRank = Math.max(1, Math.min(10, normalizePositiveInt(oldStatus.rank, deriveNecroRank(oldLevel))));
+    const newLevel = clampNecroLevel((oldRank - 1) * 50 + oldLevel);
+    const oldMaxCost = normalizePositiveInt(oldStatus.maxCost, 0);
+    const nextStatus: NecroStatus = {
+      level: newLevel,
+      maxCost: Math.max(calcNecroMaxCost(newLevel), oldMaxCost),
+      exp: normalizePositiveInt(oldStatus.exp, 0),
+    };
+    return {
+      ...state,
+      schemaVersion: 3,
+      player: {
+        ...player,
+        necroStatus: nextStatus,
+      },
+    };
+  },
 };
 
 function readSchemaVersion(value: unknown): number | null {
@@ -502,17 +529,18 @@ export function applyNecroExpGainToSave(
   expGain: number,
 ): PlayerSaveV1 {
   const current = normalizeNecroStatus(save.player.necroStatus);
-  const newExp = current.exp + normalizePositiveInt(expGain);
-  const newLevel = Math.min(99, Math.max(current.level, levelFromTotalExp(newExp)));
+  const cfg = MasterDataService.getInstance().getNecroConfig();
+  const newExp = current.exp + necroExpFromGain(expGain, cfg);
+  const newLevel = Math.max(current.level, necroLevelFromExp(newExp, cfg));
 
   return {
     ...save,
     player: {
       ...save.player,
       necroStatus: {
-        ...current,
         exp: newExp,
         level: newLevel,
+        maxCost: Math.max(current.maxCost, calcNecroMaxCost(newLevel, cfg)),
       },
     },
   };
@@ -538,24 +566,6 @@ export function changeJobInSave(
       ...save.player,
       currentJobId: nextJobId,
       jobs,
-    },
-  };
-}
-
-export function rankUpNecroInSave(save: PlayerSaveV1): PlayerSaveV1 {
-  const current = save.player.necroStatus;
-  if (current.level < 99) throw new Error('ランクアップにはLv.99到達が必要です。');
-  return {
-    ...save,
-    player: {
-      ...save.player,
-      necroStatus: {
-        level: 1,
-        rank: Math.min(10, current.rank + 1),
-        maxCost: current.maxCost + 5,
-        baseStatsBonus: current.baseStatsBonus + 0.5,
-        exp: 0,
-      },
     },
   };
 }
@@ -779,7 +789,6 @@ export function toCharacterDataForSave(character: any, save: PlayerSaveV1): Char
     category: currentJob.category,
     baseStats,
     necroLevel: save.player.necroStatus.level,
-    necroBaseStatsBonus: save.player.necroStatus.baseStatsBonus,
     stats: baseStats,
     passives: save.player.passives,
     equipment,

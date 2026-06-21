@@ -6,7 +6,7 @@ import {
   Tribe
 } from '../types/game';
 import { MasterDataService } from './MasterDataService';
-import { rankUpNecroInSave, updatePlayerSaveSnapshot } from './PlayerSaveService';
+import { updatePlayerSaveSnapshot } from './PlayerSaveService';
 
 export class NecroService {
   private masterData: MasterDataService;
@@ -77,36 +77,6 @@ export class NecroService {
     const totalCost = slots.reduce((sum, m) => sum + (m?.cost ?? 0), 0);
     if (totalCost > necroStatus.maxCost) throw new Error('コスト超過です');
     return true;
-  }
-
-  // ── ランクアップ ──────────────────────────────────────────────────────────
-
-  public performRankUp(status: NecroStatus, isTrialCompleted: boolean): NecroStatus;
-  public performRankUp(characterId: string, isTrialCompleted: boolean): Promise<void>;
-  public performRankUp(
-    arg: NecroStatus | string,
-    isTrialCompleted: boolean,
-  ): NecroStatus | Promise<void> {
-    if (typeof arg !== 'string') {
-      const status = arg;
-      if (status.level < 99) throw new Error('Lv.99到達が必要です。');
-      if (!isTrialCompleted) throw new Error('試練のクリアが必要です。');
-      return {
-        level: 1,
-        rank: Math.min(10, status.rank + 1),
-        maxCost: status.maxCost + 5,
-        baseStatsBonus: status.baseStatsBonus + 0.5,
-        exp: 0,
-      };
-    }
-
-    // DB版
-    if (!this.prisma) throw new Error('PrismaClient is required for DB performRankUp.');
-    const characterId = arg;
-    return this.prisma.$transaction(async (tx: any) => {
-      if (!isTrialCompleted) throw new Error('ランクアップには試練のクリアが必要です。');
-      await updatePlayerSaveSnapshot(tx, characterId, rankUpNecroInSave);
-    });
   }
 
   // ── ソウルシャード装備（DB のみ）─────────────────────────────────────────

@@ -17,7 +17,8 @@ import DependenciesTab from './shared/DependenciesTab';
 import { validateEntryId } from './shared/entryId';
 import AIEnemyDraftPanel from '../AIEnemyDraftPanel';
 import type { DependencyRef } from '@/app/admin/actions';
-import type { SkillData } from '@/types/game';
+import { applyNecroRankToCaptureRate, DEFAULT_NECRO_CONFIG } from '@/logic/NecroGrowthSystem';
+import type { NecroConfigData, SkillData } from '@/types/game';
 
 const TABS = ['基本情報', 'ステータス', '属性耐性', 'ネクロマンス', 'ギミック', 'ドロップ', 'バトル', '依存関係'];
 const TIERS = ['MINION', 'ELITE', 'BOSS'];
@@ -214,10 +215,33 @@ type Props = {
   isNew: boolean;
   itemIds: string[];
   materialIds: string[];
+  necroConfig?: NecroConfigData;
   dependencies?: DependencyRef[];
 };
 
-export default function EnemyForm({ initialData, entryKey, isNew, itemIds, materialIds, dependencies = [] }: Props) {
+function CaptureRatePreview({ basePercent, config }: { basePercent: number; config: NecroConfigData }) {
+  const baseRate = clampRatePercent(basePercent) / 100;
+  const rows = [1, 5, 10].map((rank) => {
+    const rate = applyNecroRankToCaptureRate(baseRate, rank, config);
+    return { rank, rate, capped: rate >= config.captureRate.cap && baseRate > 0 };
+  });
+  return (
+    <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 8, background: 'rgba(139,0,255,0.08)', border: '1px solid rgba(139,0,255,0.18)' }}>
+      <div style={{ color: '#9183ad', fontSize: 11, fontFamily: 'Space Grotesk, sans-serif', marginBottom: 8 }}>
+        実効捕獲率 preview
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+        {rows.map((row) => (
+          <div key={row.rank} style={{ fontFamily: 'monospace', fontSize: 12, color: '#e0d0ff' }}>
+            R{row.rank}: {(row.rate * 100).toFixed(row.rate < 0.01 ? 3 : 2)}%{row.capped ? '*' : ''}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function EnemyForm({ initialData, entryKey, isNew, itemIds, materialIds, necroConfig = DEFAULT_NECRO_CONFIG, dependencies = [] }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [form, setForm] = useState<EnemyFormState>(() => initForm(initialData, entryKey));
@@ -413,6 +437,7 @@ export default function EnemyForm({ initialData, entryKey, isNew, itemIds, mater
                     step={0.001}
                     style={inputStyle}
                   />
+                  <CaptureRatePreview basePercent={form.necromance.captureRatePercent} config={necroConfig} />
                 </FormField>
                 <FormField label="味方化後 cost">
                   <input
@@ -428,6 +453,9 @@ export default function EnemyForm({ initialData, entryKey, isNew, itemIds, mater
 
               <div>
                 <p style={{ color: '#7878a8', fontSize: 11, marginBottom: 10, fontFamily: 'Space Grotesk, sans-serif' }}>味方化後ステータス</p>
+                <p style={{ color: '#8b7da8', fontSize: 11, marginBottom: 10, lineHeight: 1.5 }}>
+                  Lv1/R1 の基底値です。死霊術Lv/Rank倍率は戦闘投入時に自動適用されます。
+                </p>
                 <StatInputGrid value={form.necromance.allyStats} onChange={updateNecromanceStat} />
               </div>
 

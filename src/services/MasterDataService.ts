@@ -7,6 +7,7 @@ import stages from '../data/master/stages.json';
 import areas from '../data/master/areas.json';
 import skills from '../data/master/skills.json';
 import demonForms from '../data/master/demonForms.json';
+import necroConfig from '../data/master/necroConfig.json';
 import type {
   AreaData,
   DemonFormData,
@@ -14,6 +15,7 @@ import type {
   ItemData,
   JobData,
   MonsterData,
+  NecroConfigData,
   ResidueMatData,
   SkillData,
   StageData,
@@ -32,6 +34,7 @@ const STAGES = stages as unknown as MasterRecord<StageData>;
 const AREAS = areas as unknown as MasterRecord<AreaData>;
 const SKILLS = skills as unknown as MasterRecord<SkillData>;
 const DEMON_FORMS = demonForms as unknown as MasterRecord<DemonFormData>;
+const NECRO_CONFIG = necroConfig as NecroConfigData;
 
 function withMonsterId(id: string, monster: MonsterMasterEntry): MonsterData {
   return hydrateMonsterEnergy({ ...monster, id: monster.id ?? id });
@@ -114,6 +117,10 @@ export class MasterDataService {
 
   public getAllDemonForms(): MasterRecord<DemonFormData> {
     return DEMON_FORMS;
+  }
+
+  public getNecroConfig(): NecroConfigData {
+    return NECRO_CONFIG;
   }
 
   public getMaterial(id: string): ResidueMatData | undefined {

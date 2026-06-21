@@ -6,6 +6,7 @@ import { BattleEngine } from './BattleEngine';
 import { getJobBaseStatsAtLevel } from './JobGrowthSystem';
 import { calculateEnergyState } from './EnergySystem';
 import { hydrateMonsterEnergy } from './MonsterEnergySystem';
+import { applyNecroToMonster, deriveNecroRank } from './NecroGrowthSystem';
 import { prisma } from '../lib/prisma';
 import { CharacterData, MonsterData } from '../types/game';
 import {
@@ -46,12 +47,9 @@ export class GameManager {
   /**
    * 拠点での成長フェーズ (GDD-002)
    */
-  public async processGrowth(characterId: string, action: { type: 'CHANGE_JOB' | 'RANK_UP', targetId?: string }): Promise<void> {
+  public async processGrowth(characterId: string, action: { type: 'CHANGE_JOB', targetId?: string }): Promise<void> {
     if (action.type === 'CHANGE_JOB' && action.targetId) {
       await this.jobService.changeJob(characterId, action.targetId);
-    } else if (action.type === 'RANK_UP') {
-      // 試練クリアフラグは本来外部から取得する
-      await this.necroService.performRankUp(characterId, true);
     }
   }
 
@@ -90,7 +88,6 @@ export class GameManager {
       category: currentJob?.category ?? 'PHYSICAL',
       baseStats,
       necroLevel: playerSave.player.necroStatus.level,
-      necroBaseStatsBonus: playerSave.player.necroStatus.baseStatsBonus,
       stats: baseStats,
       passives: playerSave.player.passives,
       baseResistances: {},
@@ -104,7 +101,7 @@ export class GameManager {
       elementDmgBoosts: {},
     };
 
-    const monsterList = monsterData.map((m: any) => {
+    const rawMonsterList = monsterData.map((m: any) => {
       const mMaster = this.masterData.getMonster(m.id);
       return hydrateMonsterEnergy({
         id: m.id,
@@ -123,6 +120,9 @@ export class GameManager {
         maxEnergy: m.maxEnergy ?? undefined,
       });
     });
+    const monsterList = rawMonsterList.map((monster: MonsterData) =>
+      applyNecroToMonster(monster, playerSave.player.necroStatus.level, this.masterData.getNecroConfig()),
+    );
 
     const engine = new BattleEngine(player, monsterList);
     return { engine, stageData };
@@ -153,6 +153,7 @@ export class GameManager {
     rewards.monsters.push(...this.rewardService.processStageNecromance(
       stage,
       [...ownedMonsterMasterIds, ...rewards.monsters.map(monster => monster.masterId ?? monster.id)],
+      deriveNecroRank(playerSave.player.necroStatus.level),
     ));
 
     // 2. DBへの反映 (トランザクション)
@@ -209,7 +210,6 @@ export class GameManager {
       category: currentJob?.category ?? 'PHYSICAL',
       baseStats,
       necroLevel: playerSave.player.necroStatus.level,
-      necroBaseStatsBonus: playerSave.player.necroStatus.baseStatsBonus,
       stats: baseStats,
       passives: playerSave.player.passives,
       baseResistances: {},

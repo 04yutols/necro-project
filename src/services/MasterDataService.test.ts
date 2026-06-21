@@ -6,6 +6,7 @@ import type {
   ItemData,
   JobData,
   MonsterData,
+  NecroConfigData,
   ResidueMatData,
   SkillData,
   StageData,
@@ -31,6 +32,7 @@ type _MasterDataGetterReturnTypesAreNotAny = [
   AssertFalse<IsAny<ReturnType<MasterDataService['getAllAreas']>>>,
   AssertFalse<IsAny<ReturnType<MasterDataService['getAllSkills']>>>,
   AssertFalse<IsAny<ReturnType<MasterDataService['getAllDemonForms']>>>,
+  AssertFalse<IsAny<ReturnType<MasterDataService['getNecroConfig']>>>,
   AssertFalse<IsAny<ReturnType<MasterDataService['getMaterial']>>>,
   AssertFalse<IsAny<ReturnType<MasterDataService['getAllMaterials']>>>,
 ];
@@ -48,6 +50,7 @@ describe('MasterDataService typed accessors', () => {
     const skill: SkillData | undefined = svc.getSkill('skill_warrior_1');
     const demonForm: DemonFormData | undefined = svc.getDemonForm('warrior');
     const material: ResidueMatData | undefined = svc.getMaterial('bone_chip');
+    const necroConfig: NecroConfigData = svc.getNecroConfig();
 
     expect(job?.category).toBe('PHYSICAL');
     expect(monster?.id).toBe('goblin');
@@ -59,6 +62,7 @@ describe('MasterDataService typed accessors', () => {
     expect(skill?.id).toBe('skill_warrior_1');
     expect(demonForm?.jobId).toBe('warrior');
     expect(material?.expValue).toBe(120);
+    expect(necroConfig.captureRate.cap).toBe(0.75);
     expect(svc.getJob('missing_job')).toBeUndefined();
   });
 

@@ -36,6 +36,10 @@ export type EnemyAgentInput = {
   materialIds: string[];
   /** スキルカタログ（素性付き）。味方スキル選定と参照検証に使う。 */
   skills: SkillCatalogEntry[];
+  /** ネクロマンス捕獲率の上限。管理画面の necroConfig から注入する。 */
+  necroCapRate?: number;
+  /** Rankごとの捕獲率乗算。管理画面の necroConfig から注入する。 */
+  necroRankMultiplier?: number;
   /** 設計指針の抜粋（呼び出し側で設計書から読み込んで渡す）。 */
   designContext: string;
   /** 最大再生成回数。 */
@@ -110,7 +114,7 @@ const ENEMY_SCHEMA_HINT = `{
   ],
   "description": "設計意図を日本語で1〜2文",
   "necromance": {
-    "captureRate": "0〜1。tier規約: MINION 0.12 / ELITE 0.04 / BOSS 0.001",
+    "captureRate": "0〜0.75。R1基底捕獲率。tier規約: MINION 0.12 / ELITE 0.04 / BOSS 0.001。R10で1.10^9倍、上限0.75超え注意",
     "allyCost": "整数。tier規約: MINION 1 / ELITE 2 / BOSS 4",
     "allyStats": { "hp": int, "atk": int, "def": int, "spd": int, "critRate": number, "critDmg": number, "effectHit": number, "effectRes": number },
     "skillIds": ["味方化時に使うスキルID（素性に合うものを選ぶ。下のスキルカタログから）"]
@@ -163,7 +167,7 @@ ${ENEMY_SCHEMA_HINT}
 - critRate / effectHit / effectRes: %の整数表記。例: 5% → 5（0.05 ではない）。既存は 0〜30。
 - critDmg: %の整数表記。基準 150。例: 150（1.5 ではない）。既存は 150〜175。
 - resistances: %の整数表記。弱点は負、耐性は正。例: 弱点 ICE → -30、耐性 FIRE → +20（-0.3 や 0.2 ではない）。既存は -40〜45。
-- captureRate と dropTable.rate のみ 0〜1 の小数。例: 0.12, 0.8。
+- captureRate と dropTable.rate のみ小数。captureRate はR1基底で0〜0.75、dropTable.rate は0〜1。例: 0.12, 0.8。
 
 # ギミック設計（重要）
 - 「激昂/蘇生/召喚/フェーズ/シールド破壊で〜」のような挙動は、文章(description)だけで済ませず必ず構造化された gimmicks に落とすこと。
@@ -176,8 +180,8 @@ ${ENEMY_SCHEMA_HINT}
 
 # 味方化（necromance）設計（重要・敵性能と同じくらい丁寧に）
 - この魔物を味方にしたときの性能。allyStats と skillIds がそのまま使役モンスターの戦闘性能になる。
-- **allyStats**: 敵 stats と同じ tier 帯に収める（インフレ厳禁）。基本は敵 stats を踏襲しつつ、味方として自然な値にする。critDmg は%表記(150前後)。
-- **captureRate / allyCost**: 上記 tier 規約（MINION 0.12/1, ELITE 0.04/2, BOSS 0.001/4）に必ず合わせる。
+- **allyStats**: Lv1/R1 の基底値。敵 stats と同じ tier 帯に収める（インフレ厳禁）。死霊術Lv/Rank倍率は実行時に自動適用される。critDmg は%表記(150前後)。
+- **captureRate / allyCost**: captureRate はR1基底値。上記 tier 規約（MINION 0.12/1, ELITE 0.04/2, BOSS 0.001/4）に必ず合わせる。R10で captureRate * 1.10^9、上限0.75。
 - **skillIds（最重要）**: 味方の戦闘行動そのもの。空にしない。
   - 魔物の素性に合う属性のスキルを選ぶ。例: 闇耐性の高いアンデッド→DARK系、火を操る魔物→FIRE系、素早い物理系→PHYSICAL/SINGLE。
   - この魔物の弱点属性のスキルは選ばない（弱点を自ら振るうのは不自然）。
@@ -284,6 +288,8 @@ export async function runEnemyAgent(input: EnemyAgentInput): Promise<EnemyAgentR
     materialIds: new Set(input.materialIds),
     skillIds: new Set(input.skills.map((s) => s.id)),
     skillMeta,
+    necroCapRate: input.necroCapRate,
+    necroRankMultiplier: input.necroRankMultiplier,
   };
 
   const final = await getGraph().invoke({

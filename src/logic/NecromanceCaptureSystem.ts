@@ -1,4 +1,5 @@
-import type { BaseStats, EnemyData, EnemyTier, MonsterData, StageData } from '../types/game';
+import type { BaseStats, EnemyData, EnemyTier, MonsterData, NecroConfigData, StageData } from '../types/game';
+import { applyNecroRankToCaptureRate } from './NecroGrowthSystem';
 import { resolveNecromanceMaxEnergy } from './MonsterEnergySystem';
 
 export const NECROMANCE_RATE_BY_TIER: Record<EnemyTier, number> = {
@@ -24,6 +25,8 @@ export interface RollStageNecromanceInput {
   stage: Pick<StageData, 'waves'>;
   enemies: Record<string, EnemyData>;
   ownedMonsterMasterIds?: readonly (string | null | undefined)[];
+  necroRank?: number;
+  necroConfig?: NecroConfigData;
   rng?: () => number;
   idFactory?: (enemyId: string) => string;
 }
@@ -52,10 +55,6 @@ export function getNecromanceRateForTier(tier: EnemyTier): number {
   return NECROMANCE_RATE_BY_TIER[tier] ?? 0;
 }
 
-function clampRate(rate: number): number {
-  return Math.max(0, Math.min(1, rate));
-}
-
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
@@ -67,9 +66,14 @@ function resolveAllyStats(enemy: EnemyData): BaseStats {
   };
 }
 
-export function getNecromanceRateForEnemy(enemy: EnemyData): number {
+export function getNecromanceRateForEnemy(
+  enemy: EnemyData,
+  necroRank: number = 1,
+  necroConfig?: NecroConfigData,
+): number {
   const customRate = enemy.necromance?.captureRate;
-  return clampRate(isFiniteNumber(customRate) ? customRate : getNecromanceRateForTier(enemy.tier));
+  const baseRate = isFiniteNumber(customRate) ? customRate : getNecromanceRateForTier(enemy.tier);
+  return applyNecroRankToCaptureRate(baseRate, necroRank, necroConfig);
 }
 
 export function getNecromanceCostForEnemy(enemy: EnemyData): number {
@@ -123,6 +127,8 @@ export function rollStageNecromance({
   stage,
   enemies,
   ownedMonsterMasterIds = [],
+  necroRank = 1,
+  necroConfig,
   rng = Math.random,
   idFactory = createNecromancedMonsterId,
 }: RollStageNecromanceInput): NecromanceRollResult[] {
@@ -134,7 +140,7 @@ export function rollStageNecromance({
     const enemy = enemies[enemyId];
     if (!enemy) continue;
 
-    const rate = getNecromanceRateForEnemy(enemy);
+    const rate = getNecromanceRateForEnemy(enemy, necroRank, necroConfig);
     const roll = rng();
     if (roll >= rate) continue;
 
