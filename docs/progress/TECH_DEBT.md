@@ -346,6 +346,65 @@ BattleCanvas は `isAwakened` を参照していない。現在は常に `false`
 
 ---
 
+## 🟢 Low（ストーリー発火 / 永続化スコープ）— 2026-06-21 追加
+
+> 「新規登録時にプロローグ未発火」バグ修正（`docs/progress/BUGFIX_プロローグ未発火_2026-06-21.md`）の
+> レビューで洗い出した非ブロッカーのエッジケース。実害は小さく現状スコープでは対応不要だが、
+> 将来 reload 経路やマルチアカウント運用を増やす際に再検討する。
+
+### ST-1. `reload` 毎に再生中ストーリーが中断され得る
+
+**問題：**
+`useAuthFlow.boot()` は `necro-auth-changed` / セッション復帰 / キャラ作成のたびに走り、その中で
+`switchStoryPersistenceScope()` が毎回 `activeScene` / `sceneQueue` をクリアする。
+ストーリーシーン再生中に何らかの理由で reload が走ると、再生が途中で打ち切られる。
+
+**現状の影響：** 低。reload は認証遷移時に集中し、ストーリー再生中と重なる可能性は低い。
+
+**対応方針：** 再生中（`activeScene != null`）はスコープが同一なら `activeScene`/`sceneQueue` のクリアをスキップする、
+あるいはスコープ変更が実際に発生したときのみクリアする。
+
+**関連ファイル：**
+- `src/store/useStoryStore.ts` — `switchStoryPersistenceScope()`
+- `src/hooks/useAuthFlow.ts` — `boot()`
+
+---
+
+### ST-2. 並行 boot 時の永続化スコープ競合
+
+**問題：**
+`switchStoryPersistenceScope()` は `cancelled` に関係なくストア / `localStorage` を変更する
+（認証確定パスのみ await 後に `cancelled` チェックあり）。短時間に reload が二重発火すると、
+`useStoryStore.persist.rehydrate()` が交錯し得る。
+
+**現状の影響：** 低。プロローグ発火は `hasPlayer`（player ロード後）でゲートされるため、ユーザーに見える破綻は起きにくい。
+
+**対応方針：** `switchStoryPersistenceScope()` 呼び出し側で世代トークン（version / cancelled）を渡し、
+古い boot からの rehydrate 反映を破棄する。
+
+**関連ファイル：**
+- `src/hooks/useAuthFlow.ts` — guest / no-user / 失敗パスの `await switchStoryPersistenceScope(null)`
+- `src/store/useStoryStore.ts` — `switchStoryPersistenceScope()`
+
+---
+
+### ST-3. 初回オートハイドレートが「前回スコープ」のデータを一瞬読む
+
+**問題：**
+フルリロード時、persist のオートハイドレートは永続スコープマーカー（`necro-story-store-scope-v1`）を見て
+前回アクティブだったユーザーの `viewedScenes` / `storyFlags` を先に読み込み、その後 `boot()` の
+`switchStoryPersistenceScope()` で実セッションのユーザーに再確定する。別タブでアカウント切替した直後などに
+一瞬だけ前ユーザーの flags がメモリに載る。
+
+**現状の影響：** 低。画面表示・プロローグ判定は `hasPlayer` ゲート後にしか走らないため、視覚的なリークは無い。
+
+**対応方針：** 必要なら `skipHydration: true` にして、`boot()` でユーザー確定後にのみ初回ハイドレートする。
+
+**関連ファイル：**
+- `src/store/useStoryStore.ts` — persist 設定（`storage` / `onRehydrateStorage`）
+
+---
+
 ## 監査スコープ外（確認済み・問題なし）
 
 - スキルテーブル (`skills.json`) — 全スターター職 + 2次職スキル全件存在、power/mpCost/elementのバランス適切 ✅

@@ -1,7 +1,10 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import type { StoryScene } from '../types/story';
 import { findScene } from '../data/story';
+
+export const STORY_STORE_STORAGE_KEY = 'necro-story-store-v2';
+export const STORY_STORE_SCOPE_STORAGE_KEY = 'necro-story-store-scope-v1';
 
 type EnqueueOptions = {
   replay?: boolean;
@@ -28,6 +31,66 @@ interface StoryStoreState {
   resetStoryProgress: () => void;
   setHasHydrated: (value: boolean) => void;
 }
+
+const memoryStorage: StateStorage = (() => {
+  const storage = new Map<string, string>();
+  return {
+    getItem: (name) => storage.get(name) ?? null,
+    setItem: (name, value) => {
+      storage.set(name, value);
+    },
+    removeItem: (name) => {
+      storage.delete(name);
+    },
+  };
+})();
+
+function getBaseStoryStorage(): StateStorage {
+  if (typeof window === 'undefined') return memoryStorage;
+  try {
+    return window.localStorage;
+  } catch {
+    return memoryStorage;
+  }
+}
+
+function getSyncStoryStorageItem(name: string): string | null {
+  const value = getBaseStoryStorage().getItem(name);
+  return typeof value === 'string' ? value : null;
+}
+
+export function getStoryPersistenceScope(userId: string | null | undefined): string | null {
+  const normalized = userId?.trim();
+  return normalized ? `user:${encodeURIComponent(normalized)}` : null;
+}
+
+export function getStoryStorageKeyForScope(scope: string | null, baseName = STORY_STORE_STORAGE_KEY): string {
+  return scope ? `${baseName}:${scope}` : baseName;
+}
+
+function getActiveStoryScope(): string | null {
+  const scope = getSyncStoryStorageItem(STORY_STORE_SCOPE_STORAGE_KEY);
+  return scope && scope.trim() ? scope : null;
+}
+
+function setActiveStoryScope(scope: string | null) {
+  const storage = getBaseStoryStorage();
+  if (scope) {
+    storage.setItem(STORY_STORE_SCOPE_STORAGE_KEY, scope);
+    return;
+  }
+  storage.removeItem(STORY_STORE_SCOPE_STORAGE_KEY);
+}
+
+const scopedStoryStorage: StateStorage = {
+  getItem: (name) => getBaseStoryStorage().getItem(getStoryStorageKeyForScope(getActiveStoryScope(), name)),
+  setItem: (name, value) => {
+    getBaseStoryStorage().setItem(getStoryStorageKeyForScope(getActiveStoryScope(), name), value);
+  },
+  removeItem: (name) => {
+    getBaseStoryStorage().removeItem(getStoryStorageKeyForScope(getActiveStoryScope(), name));
+  },
+};
 
 function uniqueAppend(current: string[], next: string[]) {
   const seen = new Set(current);
@@ -156,7 +219,8 @@ export const useStoryStore = create<StoryStoreState>()(
       setHasHydrated: (value) => set({ hasHydrated: value }),
     }),
     {
-      name: 'necro-story-store-v2',
+      name: STORY_STORE_STORAGE_KEY,
+      storage: createJSONStorage(() => scopedStoryStorage),
       partialize: state => ({
         viewedScenes: state.viewedScenes,
         storyFlags: state.storyFlags,
@@ -167,3 +231,29 @@ export const useStoryStore = create<StoryStoreState>()(
     }
   )
 );
+
+export async function switchStoryPersistenceScope(userId: string | null | undefined): Promise<void> {
+  const nextScope = getStoryPersistenceScope(userId);
+  const nextStorageKey = getStoryStorageKeyForScope(nextScope);
+  const hasPersistedState = getSyncStoryStorageItem(nextStorageKey) != null;
+
+  setActiveStoryScope(nextScope);
+
+  if (!hasPersistedState) {
+    useStoryStore.setState({
+      activeScene: null,
+      sceneQueue: [],
+      viewedScenes: [],
+      storyFlags: {},
+      hasHydrated: true,
+    });
+    return;
+  }
+
+  await useStoryStore.persist.rehydrate();
+  useStoryStore.setState({
+    activeScene: null,
+    sceneQueue: [],
+    hasHydrated: true,
+  });
+}

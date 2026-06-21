@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
+import { switchStoryPersistenceScope } from '../store/useStoryStore';
 import type { LoadCharacterResult, ServerGameUser } from '../types/serverGame';
 
 type AuthFlowStatus =
@@ -101,6 +102,7 @@ export function useAuthFlow(): AuthFlowState {
         console.log('[AuthFlow] fetchAuthSession result:', JSON.stringify(authSession));
 
         if (!authSession.available) {
+          await switchStoryPersistenceScope(null);
           if (!bootedGuestRef.current && !useGameStore.getState().player) {
             initialize();
             bootedGuestRef.current = true;
@@ -116,6 +118,7 @@ export function useAuthFlow(): AuthFlowState {
         console.log('[AuthFlow] session.user:', JSON.stringify(session.user ?? null));
 
         if (!session.user?.id) {
+          await switchStoryPersistenceScope(null);
           clearServerData();
           if (!cancelled) {
             setUser(null);
@@ -125,6 +128,9 @@ export function useAuthFlow(): AuthFlowState {
           return;
         }
 
+        await switchStoryPersistenceScope(session.user.id);
+        if (cancelled) return;
+
         setUser(session.user);
         setStatus('loadingCharacter');
 
@@ -133,6 +139,7 @@ export function useAuthFlow(): AuthFlowState {
         if (cancelled) return;
 
         if (!result.success) {
+          await switchStoryPersistenceScope(null);
           clearServerData();
           setUser(null);
           const nextStatus = result.status === 'UNAUTHENTICATED' ? 'authRequired' : 'error';

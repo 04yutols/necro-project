@@ -106,7 +106,8 @@ function GameContent() {
   } = useGameStore();
   const authFlow = useAuthFlow();
 
-  const { triggerStageEnter } = useStoryTrigger();
+  const canPresentStory = authFlow.status === 'ready' || authFlow.status === 'guest';
+  const { triggerStageEnter } = useStoryTrigger(canPresentStory);
   const activeStoryScene = useStoryStore(s => s.activeScene);
   const storyQueueLength = useStoryStore(s => s.sceneQueue.length);
 
