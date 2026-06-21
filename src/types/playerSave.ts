@@ -6,10 +6,11 @@ import type {
   WeaponMaterialData,
 } from './game';
 
-export const PLAYER_SAVE_SCHEMA_VERSION = 2 as const;
+export const PLAYER_SAVE_SCHEMA_VERSION = 3 as const;
 export const MIN_SUPPORTED_PLAYER_SAVE_SCHEMA_VERSION = 1 as const;
 export type PlayerSaveSchemaVersion =
   typeof MIN_SUPPORTED_PLAYER_SAVE_SCHEMA_VERSION
+  | 2
   | typeof PLAYER_SAVE_SCHEMA_VERSION;
 
 export interface PlayerSaveData {

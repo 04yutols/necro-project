@@ -231,6 +231,13 @@ describe('validateEnemyDraft - necromance (ally) design', () => {
     expect(res.findings.some((f) => f.field === 'necromance.captureRate' && f.level === 'WARN')).toBe(true);
   });
 
+  it('uses injected necro cap for captureRate validation', () => {
+    const d = validDraft();
+    (d.necromance as Record<string, unknown>).captureRate = 0.4;
+    const res = validateEnemyDraft(d, { ...CTX, necroCapRate: 0.3 });
+    expect(res.findings.some((f) => f.field === 'necromance.captureRate' && f.level === 'FAIL')).toBe(true);
+  });
+
   it('WARNs when allyCost does not match tier convention', () => {
     const d = validDraft();
     (d.necromance as Record<string, unknown>).allyCost = 4; // ELITE は 2

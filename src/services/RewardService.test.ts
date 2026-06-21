@@ -308,7 +308,7 @@ describe('RewardService.processStageNecromance', () => {
       waves: [
         { label: 'WAVE 1', role: 'WARMUP', enemyIds: ['grave_soldier', 'rot_hound'], intent: '' },
       ],
-    }, [], makeSeqRng([0.0, 0.0]));
+    }, [], 1, makeSeqRng([0.0, 0.0]));
 
     expect(result.map(monster => monster.masterId)).toEqual(['grave_soldier', 'rot_hound']);
     expect(result[0]).toMatchObject({
@@ -324,7 +324,7 @@ describe('RewardService.processStageNecromance', () => {
       waves: [
         { label: 'WAVE 1', role: 'WARMUP', enemyIds: ['grave_soldier', 'rot_hound'], intent: '' },
       ],
-    }, ['grave_soldier'], makeSeqRng([0.0]));
+    }, ['grave_soldier'], 1, makeSeqRng([0.0]));
 
     expect(result.map(monster => monster.masterId)).toEqual(['rot_hound']);
   });
@@ -334,12 +334,12 @@ describe('RewardService.processStageNecromance', () => {
       waves: [
         { label: 'WAVE 1', role: 'BOSS', enemyIds: ['ossuary_wyrm_lord'], intent: '' },
       ],
-    }, [], makeSeqRng([0.001]));
+    }, [], 1, makeSeqRng([0.001]));
     const hit = svc.processStageNecromance({
       waves: [
         { label: 'WAVE 1', role: 'BOSS', enemyIds: ['ossuary_wyrm_lord'], intent: '' },
       ],
-    }, [], makeSeqRng([0.0009]));
+    }, [], 1, makeSeqRng([0.0009]));
 
     expect(miss).toHaveLength(0);
     expect(hit).toHaveLength(1);

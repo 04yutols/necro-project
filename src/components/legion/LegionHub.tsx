@@ -51,6 +51,7 @@ import {
   WEAPON_ARCHETYPE_LABEL,
   WEAPON_RARITY_LABEL,
 } from '../../logic/WeaponSystem';
+import { calcNecroMaxCost } from '../../logic/NecroGrowthSystem';
 
 /* ──────────────────────────────────────────
    HAPTIC
@@ -3973,7 +3974,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
   const [costFeedbackMessage, setCostFeedbackMessage] = useState<string | null>(null);
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const totalCost = (party as (MonsterData | null)[]).reduce((s, m) => s + (m?.cost ?? 0), 0);
-  const maxCost = necroStatus?.maxCost ?? 10;
+  const maxCost = necroStatus?.maxCost ?? calcNecroMaxCost(1);
 
   const selectedPosition = POSITION_META[selectedSlotIndex];
 

@@ -2,6 +2,7 @@ import { GAME_STORE_STORAGE_KEY, useGameStore } from './useGameStore';
 import jobsData from '../data/master/jobs.json';
 import { calculateEnergyState } from '../logic/EnergySystem';
 import { levelFromTotalExp } from '../logic/ExperienceSystem';
+import { calcNecroMaxCost, necroMonsterMultiplier } from '../logic/NecroGrowthSystem';
 import type { JobData } from '../types/game';
 import type { ServerGameData } from '../types/serverGame';
 
@@ -96,6 +97,23 @@ describe('useGameStore party formation actions', () => {
     expect(party[0]?.name).toBe('ゴブリン');
     expect(party[1]).toBeNull();
     expect(party[2]?.name).toBe('ゾンビ');
+  });
+
+  test('getBattleParty applies necro growth without mutating saved monster stats', () => {
+    const level = 50;
+    useGameStore.getState().setNecroStatus({
+      level,
+      maxCost: calcNecroMaxCost(level),
+      exp: 0,
+    });
+
+    const rawMonster = useGameStore.getState().party[0]!;
+    const rawHp = rawMonster.stats.hp;
+    const battleMonster = useGameStore.getState().getBattleParty()[0]!;
+    const expectedHp = Math.round(rawHp * necroMonsterMultiplier(level));
+
+    expect(battleMonster.stats.hp).toBe(expectedHp);
+    expect(useGameStore.getState().party[0]?.stats.hp).toBe(rawHp);
   });
 
   test('consumables stack in inventory and are consumed one by one', () => {

@@ -17,9 +17,7 @@ describe('NecroService', () => {
 
   const createNecroStatus = (overrides: Partial<NecroStatus> = {}): NecroStatus => ({
     level: 1,
-    rank: 1,
     maxCost: 10,
-    baseStatsBonus: 1.0,
     exp: 0,
     ...overrides,
   });
@@ -55,21 +53,4 @@ describe('NecroService', () => {
     });
   });
 
-  describe('performRankUp', () => {
-    test('resets level and increases maxCost', () => {
-      const status = createNecroStatus({ level: 99, exp: 999 });
-      const nextStatus = necroService.performRankUp(status, true);
-      
-      expect(nextStatus.level).toBe(1);
-      expect(nextStatus.rank).toBe(2);
-      expect(nextStatus.maxCost).toBe(15);
-      expect(nextStatus.baseStatsBonus).toBe(1.5);
-      expect(nextStatus.exp).toBe(0);
-    });
-
-    test('fails if level is below 99', () => {
-      const status = createNecroStatus({ level: 98 });
-      expect(() => necroService.performRankUp(status, true)).toThrow('Lv.99到達が必要です。');
-    });
-  });
 });

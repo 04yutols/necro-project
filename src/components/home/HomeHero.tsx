@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Map, Skull, Sword, Terminal, Activity, Settings, Sparkles, Lock, HeartPulse, ShieldCheck, Gauge, Target, type LucideIcon } from 'lucide-react';
 import { AuthPanel } from '../auth/AuthPanel';
 import { getJobLevelProgress } from '../../logic/ExperienceSystem';
+import { calcNecroMaxCost, deriveNecroRank, necroLevelFromExp, reqNecroExp } from '../../logic/NecroGrowthSystem';
 import { isAbyssalResidueUnlocked } from '../../logic/AbyssalResidueUnlockSystem';
 import { MOTION } from '../../lib/motion';
 
@@ -101,13 +102,17 @@ export function HomeHero() {
   const jobExpPercent = Math.round(jobProgress.progressRatio * 100);
 
   const necroExp = necroStatus?.exp ?? 0;
-  const necroProgress = getJobLevelProgress(necroExp);
-  const necroLevel = necroStatus?.level ?? necroProgress.level;
-  const necroExpRemain = necroProgress.expToNextLevel;
-  const necroExpPercent = Math.round(necroProgress.progressRatio * 100);
+  const necroLevel = necroStatus?.level ?? necroLevelFromExp(necroExp);
+  const necroRank = deriveNecroRank(necroLevel);
+  const necroCurrentLevelExp = reqNecroExp(necroLevel);
+  const necroNextLevelExp = reqNecroExp(Math.min(500, necroLevel + 1));
+  const necroExpRemain = Math.max(0, necroNextLevelExp - necroExp);
+  const necroExpPercent = necroNextLevelExp > necroCurrentLevelExp
+    ? Math.max(0, Math.min(100, Math.round(((necroExp - necroCurrentLevelExp) / (necroNextLevelExp - necroCurrentLevelExp)) * 100)))
+    : 100;
 
   const currentCost = party.reduce((sum, monster) => sum + (monster ? monster.cost : 0), 0);
-  const maxCost = necroStatus?.maxCost || 10;
+  const maxCost = necroStatus?.maxCost || calcNecroMaxCost(1);
   const goldAmount = player.gold;
   const residueUnlocked = isAbyssalResidueUnlocked(player.clearedStages);
   const combatStats = [
@@ -245,7 +250,7 @@ export function HomeHero() {
                   </div>
                   <span style={{ color: '#A5A9B4' }}>死霊術：</span>
                   <div>
-                    <span style={{ color: THEME.tertiary, display: 'inline-block', width: '70px', letterSpacing: '0.05em' }}>RANK {necroStatus?.rank || 1}</span>
+                    <span style={{ color: THEME.tertiary, display: 'inline-block', width: '70px', letterSpacing: '0.05em' }}>RANK {necroRank}</span>
                     <span style={{ color: '#FFF' }}>Lv. {necroLevel}</span>
                   </div>
                 </div>

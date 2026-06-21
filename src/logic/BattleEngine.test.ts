@@ -324,12 +324,11 @@ describe('BattleEngine', () => {
     expect(player.stats.hp).toBe(13);
   });
 
-  test('Necromance level bonus increases critical outgoing battle damage', () => {
+  test('Necromance level does not increase player critical outgoing battle damage', () => {
     const basePlayer: CharacterData = {
       ...mockPlayer,
       stats: { ...mockPlayer.stats, critRate: 100 },
       necroLevel: 1,
-      necroBaseStatsBonus: 9,
     };
     const rankedPlayer: CharacterData = {
       ...basePlayer,
@@ -350,10 +349,10 @@ describe('BattleEngine', () => {
     const baseDamage = baseLogs.find(l => l.action === 'PHYSICAL_ATTACK')?.damage ?? 0;
     const rankedDamage = rankedLogs.find(l => l.action === 'PHYSICAL_ATTACK')?.damage ?? 0;
 
-    expect(rankedDamage).toBeGreaterThan(baseDamage);
+    expect(rankedDamage).toBe(baseDamage);
   });
 
-  test('Necromance level bonus increases elemental skill damage', () => {
+  test('Necromance level does not increase player elemental skill damage', () => {
     const basePlayer: CharacterData = {
       ...mockPlayer,
       currentJobId: 'mage',
@@ -384,7 +383,7 @@ describe('BattleEngine', () => {
     const baseDamage = baseLogs.find(l => l.action === 'MAGIC_SKILL')?.damage ?? 0;
     const rankedDamage = rankedLogs.find(l => l.action === 'MAGIC_SKILL')?.damage ?? 0;
 
-    expect(rankedDamage).toBeGreaterThan(baseDamage);
+    expect(rankedDamage).toBe(baseDamage);
   });
 
   test('direct enemy damage can defeat the player when no party monsters remain', () => {

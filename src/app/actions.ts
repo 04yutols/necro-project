@@ -17,7 +17,6 @@ import {
   lockCharacterForUpdate,
   playerSaveToJson,
   PlayerSaveSchemaError,
-  rankUpNecroInSave,
   readPlayerSave,
   spendWeaponMaterialsInSave,
   toBaseStats,
@@ -27,6 +26,7 @@ import { calculateResidueEnhancement, spendResidueMaterials } from '@/logic/Resi
 import { calculateResidueScore, RESIDUE_SLOT_ORDER } from '@/logic/ResidueScore';
 import { calculateEnergyState } from '@/logic/EnergySystem';
 import { hydrateMonsterEnergy } from '@/logic/MonsterEnergySystem';
+import { deriveNecroRank } from '@/logic/NecroGrowthSystem';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
 import { isAbyssalResidueUnlocked } from '@/logic/AbyssalResidueUnlockSystem';
 import { isStageUnlocked } from '@/logic/DungeonSystem';
@@ -108,7 +108,7 @@ export type StageStartPayload =
   | { success: true; stageAttemptId: string; tokenId: string; expiresAt: string }
   | { success: false; error: string };
 
-export type GrowthActionType = 'RANK_UP' | 'CHANGE_JOB';
+export type GrowthActionType = 'CHANGE_JOB';
 
 export type SoulStoneActionResult =
   | { success: false; error: string }
@@ -338,7 +338,6 @@ function toServerGameData(character: any, inventoryItems: any[], inventoryMonste
     category: currentJob.category,
     baseStats,
     necroLevel: playerSave.player.necroStatus.level,
-    necroBaseStatsBonus: playerSave.player.necroStatus.baseStatsBonus,
     stats: baseStats,
     passives: playerSave.player.passives,
     equipment: {
@@ -523,16 +522,6 @@ function jobChangeErrorMessage(error: unknown): string {
   if (message.includes('is locked')) return '解放条件を満たしていません';
   if (message.includes('Character') && message.includes('not found')) return 'キャラクターが見つかりません';
   return '転職の保存に失敗しました';
-}
-
-function rankUpErrorMessage(error: unknown): string {
-  const saveError = playerSaveSchemaErrorMessage(error, { action: 'processGrowthForUser' });
-  if (saveError) return saveError;
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.includes('Lv.99') || message.includes('99')) return 'ランクアップには死霊術Lv.99到達が必要です';
-  if (message.includes('試練')) return 'ランクアップには試練のクリアが必要です';
-  if (message.includes('Character') && message.includes('not found')) return 'キャラクターが見つかりません';
-  return 'ランクアップに失敗しました';
 }
 
 function weaponEnhancementErrorMessage(error: unknown): string {
@@ -746,6 +735,7 @@ export async function processStageResultForUser(
     dropResult.monsters.push(...svc.processStageNecromance(
       stage,
       [...ownedMonsterMasterIds, ...dropResult.monsters.map(monster => monster.masterId ?? monster.id)],
+      deriveNecroRank(lockedSave.player.necroStatus.level),
     ));
     bestResidueScore = Math.max(0, ...dropResult.residues.map(residue => calculateResidueScore(residue)));
 
@@ -1187,15 +1177,7 @@ export async function processGrowthForUser(
     return { success: false, error: '転職は changeJobAction(characterId, jobId) を使用してください' };
   }
 
-  try {
-    await prisma.$transaction(async (tx) => {
-      await updatePlayerSaveBlob(tx, character.id, rankUpNecroInSave);
-    });
-  } catch (error) {
-    return { success: false, error: rankUpErrorMessage(error) };
-  }
-
-  return toReadyResult(await loadCharacterForUser(authorizedUser));
+  return { success: false, error: '死霊術RankはLvから自動昇格します。' };
 }
 
 export async function soulStoneAction(monsterId: string): Promise<SoulStoneActionResult> {

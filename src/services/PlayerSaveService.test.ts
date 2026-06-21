@@ -1,4 +1,5 @@
 import { expForLevel } from '../logic/ExperienceSystem';
+import { calcNecroMaxCost, necroExpFromGain, necroLevelFromExp } from '../logic/NecroGrowthSystem';
 import { MasterDataService } from './MasterDataService';
 import {
   applyJobExpGainToSave,
@@ -55,6 +56,33 @@ describe('PlayerSaveService', () => {
     expect(migrated.player.name).toBe('移行前アルド');
     expect(migrated.player.gold).toBe(12345);
     expect(migrated.player.clearedStages).toEqual(['area1_node1']);
+  });
+
+  test('migrates legacy v2 necro rank into continuous level v3', () => {
+    const save = emptyPlayerSave();
+    const legacy = {
+      ...(playerSaveToJson(save) as Record<string, unknown>),
+      schemaVersion: 2,
+      player: {
+        ...(playerSaveToJson(save) as any).player,
+        necroStatus: {
+          level: 99,
+          rank: 2,
+          maxCost: 15,
+          baseStatsBonus: 1.5,
+          exp: 999,
+        },
+      },
+    };
+
+    const migrated = readPlayerSave(legacy);
+
+    expect(migrated.schemaVersion).toBe(PLAYER_SAVE_SCHEMA_VERSION);
+    expect(migrated.player.necroStatus).toEqual({
+      level: 149,
+      maxCost: Math.max(calcNecroMaxCost(149), 15),
+      exp: 999,
+    });
   });
 
   test('rejects malformed or future playerState instead of silently resetting progress', () => {
@@ -121,17 +149,18 @@ describe('PlayerSaveService', () => {
     expect(leveled.player.passives.passiveAtkBonus).toBe(1);
   });
 
-  test('applies necro exp without requiring a schema change', () => {
+  test('applies necro exp using the dedicated curve and derived maxCost', () => {
     const save = emptyPlayerSave();
+    const expGain = expForLevel(12);
 
-    const leveled = applyNecroExpGainToSave(save, expForLevel(12));
+    const leveled = applyNecroExpGainToSave(save, expGain);
+    const expectedExp = necroExpFromGain(expGain);
+    const expectedLevel = necroLevelFromExp(expectedExp);
 
-    expect(leveled.player.necroStatus).toMatchObject({
-      rank: 1,
-      maxCost: 10,
-      baseStatsBonus: 1,
-      level: 12,
-      exp: expForLevel(12),
+    expect(leveled.player.necroStatus).toEqual({
+      level: expectedLevel,
+      maxCost: calcNecroMaxCost(expectedLevel),
+      exp: expectedExp,
     });
   });
 });

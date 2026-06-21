@@ -13,6 +13,8 @@ import { isAbyssalResidueUnlocked } from '../logic/AbyssalResidueUnlockSystem';
 import { applyResidueEnhancement, spendResidueMaterials } from '../logic/ResidueEnhancement';
 import { isResidueSlotCompatible } from '../logic/ResidueScore';
 import { calculateCharacterStatProfile } from '../logic/StatSystem';
+import { applyNecroToMonster, calcNecroMaxCost } from '../logic/NecroGrowthSystem';
+import { MasterDataService } from '../services/MasterDataService';
 import {
   calculateDismantleRewards,
   calculateReforgedWeapon,
@@ -177,8 +179,21 @@ function withNecroProgression(player: CharacterData, necroStatus?: NecroStatus |
   return {
     ...player,
     necroLevel: necroStatus?.level ?? player.necroLevel ?? 1,
-    necroBaseStatsBonus: necroStatus?.baseStatsBonus ?? player.necroBaseStatsBonus ?? 1,
   };
+}
+
+function buildBattlePartyFromState(
+  party: (MonsterData | null)[],
+  necroStatus: NecroStatus | null,
+  player: CharacterData | null,
+): (MonsterData | null)[] {
+  const level = necroStatus?.level ?? player?.necroLevel ?? 1;
+  const necroConfig = MasterDataService.getInstance().getNecroConfig();
+  return [
+    party[0] ? hydrateMonsterEnergy(applyNecroToMonster(party[0], level, necroConfig)) : null,
+    party[1] ? hydrateMonsterEnergy(applyNecroToMonster(party[1], level, necroConfig)) : null,
+    party[2] ? hydrateMonsterEnergy(applyNecroToMonster(party[2], level, necroConfig)) : null,
+  ];
 }
 
 function withDerivedElementBoosts(
@@ -243,6 +258,7 @@ interface GameState {
   setPlayer: (player: CharacterData) => void;
   setNecroStatus: (status: NecroStatus) => void;
   setParty: (party: (MonsterData | null)[]) => void;
+  getBattleParty: () => (MonsterData | null)[];
   setInventoryMonsters: (monsters: MonsterData[]) => void;
   setSoulShards: (shards: SoulShardData[]) => void;
   setInventoryItems: (items: ItemData[]) => void;
@@ -464,7 +480,7 @@ function mergePersistedGameState(persistedState: unknown, currentState: GameStat
 
 export const useGameStore = create<GameState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
   player: null,
   necroStatus: null,
   party: [null, null, null],
@@ -567,6 +583,10 @@ export const useGameStore = create<GameState>()(
       : state.player,
   })),
   setParty: (party) => set({ party }),
+  getBattleParty: () => {
+    const state = get();
+    return buildBattlePartyFromState(state.party, state.necroStatus, state.player);
+  },
   setInventoryMonsters: (monsters) => set({ inventoryMonsters: monsters }),
   setSoulShards: (shards) => set({ soulShards: shards }),
   setInventoryItems: (items) => set({ inventoryItems: items }),
@@ -797,7 +817,9 @@ export const useGameStore = create<GameState>()(
 
   resetMonsterHp: () => set((state) => ({
     monsterCurrentHp: Object.fromEntries(
-      state.party.filter(Boolean).map((m) => [m!.id, m!.stats.hp])
+      buildBattlePartyFromState(state.party, state.necroStatus, state.player)
+        .filter(Boolean)
+        .map((m) => [m!.id, m!.stats.hp])
     ),
   })),
 
@@ -939,7 +961,6 @@ export const useGameStore = create<GameState>()(
       category: 'PHYSICAL',
       baseStats: warriorBaseStats,
       necroLevel: 1,
-      necroBaseStatsBonus: 1.0,
       stats: warriorBaseStats,
       baseResistances: {},
       passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveSpdBonus: 0, passiveCritRateBonus: 0, passiveCritDmgBonus: 0, passiveHpBonus: 0 },
@@ -966,9 +987,7 @@ export const useGameStore = create<GameState>()(
     },
     necroStatus: {
       level: 1,
-      rank: 1,
-      maxCost: 10,
-      baseStatsBonus: 1.0,
+      maxCost: calcNecroMaxCost(1),
       exp: 0,
     },
     inventoryMonsters: [

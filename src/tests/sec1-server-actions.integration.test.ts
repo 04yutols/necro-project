@@ -9,8 +9,6 @@ import {
   soulStoneForUser,
 } from '../app/actions';
 import { createCredentialsUser } from '../services/AuthService';
-import { playerSaveToJson, readPlayerSave } from '../services/PlayerSaveService';
-import { PLAYER_SAVE_SCHEMA_VERSION } from '../types/playerSave';
 import type { ServerGameUser } from '../types/serverGame';
 
 jest.mock('@/auth', () => ({
@@ -81,7 +79,7 @@ describe('SEC-1 authenticated Server Actions', () => {
     await prisma.$disconnect();
   });
 
-  test('rejects unauthenticated and cross-owner calls, then persists soul stone, shard equip, and rank up', async () => {
+  test('rejects unauthenticated and cross-owner calls, then persists soul stone and shard equip', async () => {
     await cleanupUser(emailA);
     await cleanupUser(emailB);
 
@@ -130,33 +128,6 @@ describe('SEC-1 authenticated Server Actions', () => {
     expect(equippedMonster.soulShardId).toBe(soulStone.data.id);
     expect(shardEquipped.data.inventoryMonsters.find((monster) => monster.id === targetMonster.id)?.equippedShardId).toBe(soulStone.data.id);
 
-    const rankUpCharacter = await prisma.character.findUniqueOrThrow({
-      where: { id: characterAId },
-      select: { playerState: true },
-    });
-    const rankUpSave = readPlayerSave(rankUpCharacter.playerState);
-    rankUpSave.player.necroStatus = {
-      level: 99,
-      rank: 1,
-      maxCost: 10,
-      baseStatsBonus: 1,
-      exp: 0,
-    };
-    await prisma.character.update({
-      where: { id: characterAId },
-      data: {
-        playerState: playerSaveToJson(rankUpSave),
-        saveVersion: PLAYER_SAVE_SCHEMA_VERSION,
-      },
-    });
-    const rankUp = await processGrowthForUser(userA, characterAId, 'RANK_UP');
-    expect(rankUp.success).toBe(true);
-    if (!rankUp.success) throw new Error(rankUp.error);
-    expect(rankUp.data.necroStatus.level).toBe(1);
-    expect(rankUp.data.necroStatus.rank).toBe(2);
-    expect(rankUp.data.necroStatus.maxCost).toBe(15);
-    expect(rankUp.data.necroStatus.baseStatsBonus).toBe(1.5);
-
     const legacyChangeJob = await processGrowthForUser(userA, characterAId, 'CHANGE_JOB');
     expect(legacyChangeJob.success).toBe(false);
 
@@ -180,7 +151,5 @@ describe('SEC-1 authenticated Server Actions', () => {
     const forbiddenEquip = await equipShardForUser(userA, targetMonster.id, foreignSoulStone.data.id);
     expect(forbiddenEquip.success).toBe(false);
 
-    const forbiddenRankUp = await processGrowthForUser(userA, characterBId, 'RANK_UP');
-    expect(forbiddenRankUp.success).toBe(false);
   });
 });

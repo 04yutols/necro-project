@@ -66,6 +66,28 @@ export default async function AdminDashboard() {
             </Link>
           );
         })}
+        <Link
+          href="/admin/necro-config"
+          className="block rounded-lg p-4"
+          style={{
+            background: '#111118',
+            border: '1px solid rgba(139,0,255,0.28)',
+            textDecoration: 'none',
+          }}
+        >
+          <div className="flex items-start justify-between mb-2">
+            <span className="text-lg" style={{ color: '#8B00FF' }}>R</span>
+            <span className="text-2xl font-cinzel font-bold" style={{ color: '#c8b4f8' }}>
+              1
+            </span>
+          </div>
+          <div className="text-sm font-space font-semibold mb-1" style={{ color: '#e0d0ff' }}>
+            死霊術
+          </div>
+          <div className="text-[10px] font-mono" style={{ color: '#7878a8' }}>
+            necroConfig.json
+          </div>
+        </Link>
         {/* Story card */}
         <Link
           href="/admin/story"

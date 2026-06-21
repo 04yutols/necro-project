@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma';
 import jobsData from '../data/master/jobs.json';
 import { calculateEnergyState } from '../logic/EnergySystem';
 import { levelFromTotalExp } from '../logic/ExperienceSystem';
+import { calcNecroMaxCost, necroExpFromGain, necroLevelFromExp } from '../logic/NecroGrowthSystem';
 import { getJobBaseStatsAtLevel } from '../logic/JobGrowthSystem';
 import { calculateResidueEnhancement } from '../logic/ResidueEnhancement';
 import { RESIDUE_SLOT_ORDER } from '../logic/ResidueScore';
@@ -95,9 +96,8 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     if (!created.success) throw new Error(created.error);
 
     expect(created.data.necroStatus.level).toBe(1);
-    expect(created.data.necroStatus.rank).toBe(1);
+    expect(created.data.necroStatus.maxCost).toBe(calcNecroMaxCost(1));
     expect(created.data.necroStatus.exp).toBe(0);
-    expect(created.data.player.necroBaseStatsBonus).toBe(created.data.necroStatus.baseStatsBonus);
     expect(created.data.player.currentJobId).toBe('warrior');
     expect(created.data.player.jobs).toEqual([{ jobId: 'warrior', level: 1, exp: 0 }]);
     const warriorEnergy = calculateEnergyState(JOBS.warrior, 1);
@@ -260,8 +260,9 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(warriorJob?.exp).toBeGreaterThan(0);
     expect(warriorJob?.level).toBeGreaterThan(1);
     expect(warriorJob?.level).toBe(levelFromTotalExp(warriorJob?.exp ?? 0));
-    expect(afterClear.data.necroStatus.exp).toBe(clearResult.expGain);
-    expect(afterClear.data.necroStatus.level).toBe(levelFromTotalExp(afterClear.data.necroStatus.exp));
+    const expectedNecroExp = necroExpFromGain(clearResult.expGain);
+    expect(afterClear.data.necroStatus.exp).toBe(expectedNecroExp);
+    expect(afterClear.data.necroStatus.level).toBe(necroLevelFromExp(afterClear.data.necroStatus.exp));
     const expectedWarriorStats = getJobBaseStatsAtLevel(JOBS.warrior, warriorJob?.level ?? 1);
     expect(afterClear.data.player.baseStats).toEqual(expectedWarriorStats);
     expect(afterClear.data.player.clearedStages).toContain('area1_node1');
@@ -312,7 +313,7 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
         masterId: 'test_formation_demon',
         characterId: afterClear.data.player.id,
         tribe: 'DEMON',
-        cost: 4,
+        cost: 3,
         hp: 90,
         atk: 26,
         def: 12,

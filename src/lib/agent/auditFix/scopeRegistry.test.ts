@@ -31,6 +31,21 @@ describe('buildContext self-exclusion', () => {
     expect('bone_colossus' in ctx.existingEnemies).toBe(true);
   });
 
+  it('passes necro capture config into enemy validation context', () => {
+    const entry = getScopeEntry('enemies')!;
+    const all = {
+      ...ALL,
+      necroConfig: { captureRate: { cap: 0.5, rankMultiplier: 1.2 } },
+    } as unknown as MasterData;
+    const ctx = entry.buildContext(all, 'grave_soldier', ALL.enemies.grave_soldier) as {
+      necroCapRate?: number;
+      necroRankMultiplier?: number;
+    };
+
+    expect(ctx.necroCapRate).toBe(0.5);
+    expect(ctx.necroRankMultiplier).toBe(1.2);
+  });
+
   it('excludes the target id from materials id set', () => {
     const entry = getScopeEntry('materials')!;
     const ctx = entry.buildContext(ALL, 'bone_chip', ALL.materials.bone_chip) as { materialIds: Set<string> };

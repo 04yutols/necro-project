@@ -18,8 +18,27 @@ function enqueueUnviewed(sceneIds: string[]) {
   return store.enqueueScenes(sceneIds.filter(id => !store.isViewed(id)));
 }
 
-export function useStoryTrigger() {
+export function enqueueInitialStoryScenes(hasPlayer: boolean, canPresentStory = true) {
+  if (!hasPlayer || !canPresentStory) return [];
+
+  const store = useStoryStore.getState();
+  if (!store.isViewed('PROLOGUE_00')) {
+    return store.enqueueScenes(getPrologueSceneIds());
+  }
+
+  const enqueued: string[] = [];
+  if (store.hasFlag('LINE_DEATH_SEEN')) {
+    enqueued.push(...enqueueUnviewed(getFlagSceneIds('LINE_DEATH_SEEN')));
+  }
+  if (store.hasFlag('CH1_STARTED')) {
+    enqueued.push(...enqueueUnviewed(getFlagSceneIds('CH1_STARTED')));
+  }
+  return enqueued;
+}
+
+export function useStoryTrigger(canPresentStory = true) {
   const clearedStages = useGameStore(state => state.player?.clearedStages ?? EMPTY_CLEARED_STAGES);
+  const hasPlayer = useGameStore(state => state.player != null);
   const currentTab = useGameStore(state => state.currentTab);
   const isDemonMode = useGameStore(state => state.isDemonMode);
   const hasHydrated = useStoryStore(state => state.hasHydrated);
@@ -29,22 +48,12 @@ export function useStoryTrigger() {
   const demonSeenRef = useRef(false);
 
   useEffect(() => {
-    if (!hasHydrated) return;
-    const store = useStoryStore.getState();
-    if (!store.isViewed('PROLOGUE_00')) {
-      store.enqueueScenes(getPrologueSceneIds());
-      return;
-    }
-    if (store.hasFlag('LINE_DEATH_SEEN')) {
-      enqueueUnviewed(getFlagSceneIds('LINE_DEATH_SEEN'));
-    }
-    if (store.hasFlag('CH1_STARTED')) {
-      enqueueUnviewed(getFlagSceneIds('CH1_STARTED'));
-    }
-  }, [hasHydrated]);
+    if (!hasHydrated || !canPresentStory) return;
+    enqueueInitialStoryScenes(hasPlayer, canPresentStory);
+  }, [canPresentStory, hasHydrated, hasPlayer]);
 
   useEffect(() => {
-    if (!hasHydrated) return;
+    if (!hasHydrated || !canPresentStory) return;
     const previous = prevFlagsRef.current;
     prevFlagsRef.current = storyFlags;
 
@@ -52,10 +61,10 @@ export function useStoryTrigger() {
       if (!enabled || previous[flagKey]) return;
       enqueueUnviewed(getFlagSceneIds(flagKey));
     });
-  }, [hasHydrated, storyFlags]);
+  }, [canPresentStory, hasHydrated, storyFlags]);
 
   useEffect(() => {
-    if (!hasHydrated || currentTab === 'BATTLE') return;
+    if (!hasHydrated || !canPresentStory || currentTab === 'BATTLE') return;
     const previous = prevClearedRef.current;
     const nextCleared = clearedStages.filter(stageId => !previous.includes(stageId));
     prevClearedRef.current = clearedStages;
@@ -64,20 +73,21 @@ export function useStoryTrigger() {
     nextCleared.forEach(stageId => {
       enqueueUnviewed(getStageClearSceneIds(stageId));
     });
-  }, [clearedStages, currentTab, hasHydrated]);
+  }, [canPresentStory, clearedStages, currentTab, hasHydrated]);
 
   useEffect(() => {
-    if (!hasHydrated || !isDemonMode || demonSeenRef.current) return;
+    if (!hasHydrated || !canPresentStory || !isDemonMode || demonSeenRef.current) return;
     const store = useStoryStore.getState();
     if (store.hasFlag('DEMONIZE_STORY_SEEN') || store.isViewed('CH1_DEMONIZE_FIRST')) return;
     demonSeenRef.current = true;
     store.enqueueScenes(getDemonizeFirstSceneIds());
-  }, [hasHydrated, isDemonMode]);
+  }, [canPresentStory, hasHydrated, isDemonMode]);
 
   const triggerStageEnter = useCallback((stageId: string) => {
+    if (!canPresentStory) return false;
     if (!useStoryStore.getState().hasHydrated) return false;
     return enqueueUnviewed(getStageEnterSceneIds(stageId)).length > 0;
-  }, []);
+  }, [canPresentStory]);
 
   return { triggerStageEnter };
 }

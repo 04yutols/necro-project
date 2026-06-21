@@ -21,6 +21,14 @@ import { validateMonsterDraft } from '../monsterBalance';
 
 /** マスターデータ全体（プレーンな record。Server Action 側で getAllMasterData() から渡す）。 */
 export type MasterData = Record<string, Record<string, Record<string, unknown>>>;
+type MasterDataWithNecroConfig = MasterData & {
+  necroConfig?: {
+    captureRate?: {
+      cap?: unknown;
+      rankMultiplier?: unknown;
+    };
+  };
+};
 
 export type ScopeValidationFinding = { level: string; field: string; message: string };
 export type ScopeValidationResult = { ok: boolean; findings: ScopeValidationFinding[] };
@@ -61,6 +69,15 @@ function enemyTiersOf(enemies: Record<string, Record<string, unknown>> | undefin
   for (const [id, e] of Object.entries(enemies ?? {})) if (typeof e.tier === 'string') t[id] = e.tier;
   return t;
 }
+function necroCaptureConfigOf(all: MasterData): { necroCapRate?: number; necroRankMultiplier?: number } {
+  const captureRate = (all as MasterDataWithNecroConfig).necroConfig?.captureRate;
+  const cap = captureRate?.cap;
+  const rankMultiplier = captureRate?.rankMultiplier;
+  return {
+    ...(typeof cap === 'number' && Number.isFinite(cap) ? { necroCapRate: cap } : {}),
+    ...(typeof rankMultiplier === 'number' && Number.isFinite(rankMultiplier) ? { necroRankMultiplier: rankMultiplier } : {}),
+  };
+}
 /** スキルの owner を jobs から逆引き（このスキルを習得する職業）。 */
 function deriveSkillOwner(all: MasterData, skillId: string): SkillOwner | undefined {
   for (const [jid, job] of Object.entries(all.jobs ?? {})) {
@@ -88,6 +105,7 @@ export const SCOPE_REGISTRY: Record<string, ScopeEntry> = {
       materialIds: new Set(Object.keys(all.materials ?? {})),
       skillIds: new Set(Object.keys(all.skills ?? {})),
       skillMeta: skillMetaOf(all.skills),
+      ...necroCaptureConfigOf(all),
     }),
     validate: (p, ctx) => validateEnemyDraft(p, ctx as never),
     referenceHint: (all) =>

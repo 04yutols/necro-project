@@ -1,10 +1,11 @@
-import { getMasterFile } from '../../actions';
+import { getMasterFile, getNecroConfig } from '../../actions';
 import EnemyForm from '@/components/admin/forms/EnemyForm';
 
 export default async function NewEnemyPage() {
-  const [items, materials] = await Promise.all([
+  const [items, materials, necroConfig] = await Promise.all([
     getMasterFile('items'),
     getMasterFile('materials'),
+    getNecroConfig(),
   ]);
   return (
     <EnemyForm
@@ -13,6 +14,7 @@ export default async function NewEnemyPage() {
       isNew={true}
       itemIds={Object.keys(items)}
       materialIds={Object.keys(materials)}
+      necroConfig={necroConfig}
     />
   );
 }

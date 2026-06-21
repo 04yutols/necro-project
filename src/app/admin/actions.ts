@@ -2,6 +2,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import type { NecroConfigData } from '@/types/game';
 import type { StoryScene, StoryCharacter } from '@/types/story';
 import {
   STORY_PACKS,
@@ -76,6 +77,56 @@ function readMasterJson(filename: string): Record<string, Record<string, unknown
   return JSON.parse(raw) as Record<string, Record<string, unknown>>;
 }
 
+function readNecroConfigJson(): NecroConfigData {
+  const raw = fs.readFileSync(path.join(MASTER_DIR, 'necroConfig.json'), 'utf-8');
+  return JSON.parse(raw) as NecroConfigData;
+}
+
+function getNestedNumber(obj: unknown, pathKeys: string[]): number | null {
+  let current: unknown = obj;
+  for (const key of pathKeys) {
+    if (!isRecord(current)) return null;
+    current = current[key];
+  }
+  return typeof current === 'number' && Number.isFinite(current) ? current : null;
+}
+
+function validateNecroConfigData(config: unknown): AuditFinding[] {
+  const findings: AuditFinding[] = [];
+  const check = (pathKey: string, min: number, max: number, options: { minExclusive?: boolean; maxInclusive?: boolean } = {}) => {
+    const value = getNestedNumber(config, pathKey.split('.'));
+    const minOk = options.minExclusive ? (value !== null && value > min) : (value !== null && value >= min);
+    const maxOk = options.maxInclusive === false ? (value !== null && value < max) : (value !== null && value <= max);
+    if (!minOk || !maxOk) {
+      const left = options.minExclusive ? `>${min}` : `>=${min}`;
+      const right = options.maxInclusive === false ? `<${max}` : `<=${max}`;
+      findings.push({ level: 'FAIL', scope: 'necroConfig', id: pathKey, message: `${pathKey} は ${left} かつ ${right} の数値である必要があります。` });
+    } else {
+      findings.push({ level: 'PASS', scope: 'necroConfig', id: pathKey, message: `${pathKey} OK` });
+    }
+  };
+
+  check('monsterStatMultiplier.kA', 0, 0.1);
+  check('monsterStatMultiplier.kB', 0, 0.05);
+  check('monsterStatMultiplier.k2', 0, 1);
+  check('maxCost.base', 1, 100);
+  check('maxCost.d1', 1, 100);
+  check('maxCost.c2', 0, 20);
+  check('captureRate.rankMultiplier', 1, 2);
+  check('captureRate.cap', 0, 1, { minExclusive: true });
+  check('expCurve.coefficient', 1, 50);
+  check('expCurve.necroExpRate', 1, 3);
+
+  return findings;
+}
+
+function assertValidNecroConfig(config: unknown): asserts config is NecroConfigData {
+  const fails = validateNecroConfigData(config).filter((finding) => finding.level === 'FAIL');
+  if (fails.length > 0) {
+    throw new Error(fails.map((finding) => finding.message).join('\n'));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Public: read all master data
 // ---------------------------------------------------------------------------
@@ -92,6 +143,24 @@ export async function getAllMasterData(): Promise<MasterDataCollection> {
     monsters: readMasterJson('monsters.json'),
     demonForms: readMasterJson('demonForms.json'),
   };
+}
+
+export async function getNecroConfig(): Promise<NecroConfigData> {
+  assertDev();
+  return readNecroConfigJson();
+}
+
+export async function saveNecroConfig(
+  config: NecroConfigData,
+): Promise<{ success: boolean; error?: string }> {
+  assertDev();
+  try {
+    assertValidNecroConfig(config);
+    writeJsonAtomic(path.join(MASTER_DIR, 'necroConfig.json'), config);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -187,6 +256,8 @@ export async function auditMasterData(
   const itemIds = new Set(Object.keys(data.items));
   const materialIds = new Set(Object.keys(data.materials));
   const demonFormJobIds = new Set(Object.keys(data.demonForms));
+
+  findings.push(...validateNecroConfigData(readNecroConfigJson()));
 
   // ---------------------------------------------------------------------------
   // 1. ID integrity: each entry's `id` field must match its key (when present)

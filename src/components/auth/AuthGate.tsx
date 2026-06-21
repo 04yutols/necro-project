@@ -4,7 +4,6 @@ import React, { FormEvent, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Cloud, LogIn, UserPlus } from 'lucide-react';
 import { emitAuthChanged, signInWithCredentials, signUpWithCredentials } from './authClient';
-import { useStoryStore } from '../../store/useStoryStore';
 
 type AuthMode = 'login' | 'signup';
 
@@ -19,7 +18,6 @@ export function AuthGate({ onAuthenticated }: AuthGateProps) {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const resetStoryProgress = useStoryStore((state) => state.resetStoryProgress);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -29,7 +27,6 @@ export function AuthGate({ onAuthenticated }: AuthGateProps) {
     try {
       if (mode === 'signup') {
         await signUpWithCredentials(email, password, displayName);
-        resetStoryProgress();
       }
       await signInWithCredentials(email, password);
       emitAuthChanged();
