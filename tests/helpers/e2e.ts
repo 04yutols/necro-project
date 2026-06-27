@@ -56,7 +56,7 @@ export async function prepareE2EPage(page: Page, options: PrepareE2EPageOptions 
       version: 0,
     }));
 
-    window.localStorage.setItem('necro-tutorial-store-v1', JSON.stringify({
+    window.localStorage.setItem('necro-tutorial-store-v2', JSON.stringify({
       state: {
         completedPhases: tutorialPhases,
         activePhase: null,

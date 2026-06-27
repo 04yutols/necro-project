@@ -6,17 +6,18 @@ test.describe('Legion formation UX', () => {
 
   test.beforeEach(async ({ page }) => {
     await prepareE2EPage(page);
-    await openHomeSection(page, '軍団編成');
+    await openHomeSection(page, '装備・編成');
   });
 
   test('shows the current cost and opens the full-screen monster picker from a slot', async ({ page }) => {
     await expect(page.locator('#tut-cost-display')).toContainText('COST');
-    await expect(page.locator('#tut-cost-display')).toContainText('8/10');
+    await expect(page.locator('#tut-cost-display')).toContainText('8/6');
+    await expect(page.locator('#tut-cost-display')).toContainText('OVER');
 
     await page.getByRole('button', { name: '魔物選択' }).click();
 
     await expect(page.getByText('魔物選択')).toBeVisible();
-    await expect(page.getByText('COST 8/10')).toBeVisible();
+    await expect(page.getByText('COST 8/6')).toBeVisible();
     await expect(page.getByText('SORT')).toBeVisible();
     await expect(page.getByText('ゴブリン')).toBeVisible();
     await expect(page.getByText('COST').first()).toBeVisible();

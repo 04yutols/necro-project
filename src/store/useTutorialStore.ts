@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { type TutorialPhase, ALL_PHASES, PHASE_STEPS } from '../data/tutorial/phases';
 
+export const TUTORIAL_STORE_STORAGE_KEY = 'necro-tutorial-store-v2';
+export const TUTORIAL_STORE_SCOPE_STORAGE_KEY = 'necro-tutorial-store-scope-v1';
+
 interface TutorialState {
   completedPhases: TutorialPhase[];
   activePhase: TutorialPhase | null;
@@ -38,11 +41,54 @@ const memoryStorage: StateStorage = (() => {
   };
 })();
 
-const getTutorialStorage = (): StateStorage => {
-  if (typeof window !== 'undefined' && window.localStorage) {
+function getBaseTutorialStorage(): StateStorage {
+  if (typeof window === 'undefined') return memoryStorage;
+  try {
     return window.localStorage;
+  } catch {
+    return memoryStorage;
   }
-  return memoryStorage;
+}
+
+function getSyncTutorialStorageItem(name: string): string | null {
+  const value = getBaseTutorialStorage().getItem(name);
+  return typeof value === 'string' ? value : null;
+}
+
+export function getTutorialPersistenceScope(userId: string | null | undefined): string | null {
+  const normalized = userId?.trim();
+  return normalized ? `user:${encodeURIComponent(normalized)}` : null;
+}
+
+export function getTutorialStorageKeyForScope(
+  scope: string | null,
+  baseName = TUTORIAL_STORE_STORAGE_KEY,
+): string {
+  return scope ? `${baseName}:${scope}` : baseName;
+}
+
+function getActiveTutorialScope(): string | null {
+  const scope = getSyncTutorialStorageItem(TUTORIAL_STORE_SCOPE_STORAGE_KEY);
+  return scope && scope.trim() ? scope : null;
+}
+
+function setActiveTutorialScope(scope: string | null) {
+  const storage = getBaseTutorialStorage();
+  if (scope) {
+    storage.setItem(TUTORIAL_STORE_SCOPE_STORAGE_KEY, scope);
+    return;
+  }
+  storage.removeItem(TUTORIAL_STORE_SCOPE_STORAGE_KEY);
+}
+
+const scopedTutorialStorage: StateStorage = {
+  getItem: (name) => getBaseTutorialStorage().getItem(getTutorialStorageKeyForScope(getActiveTutorialScope(), name)),
+  setItem: (name, value) => {
+    getBaseTutorialStorage().setItem(getTutorialStorageKeyForScope(getActiveTutorialScope(), name), value);
+  },
+  removeItem: (name) => {
+    getBaseTutorialStorage().removeItem(getTutorialStorageKeyForScope(getActiveTutorialScope(), name));
+  },
 };
 
 export const useTutorialStore = create<TutorialState>()(
@@ -138,8 +184,8 @@ export const useTutorialStore = create<TutorialState>()(
       setHasHydrated: (value) => set({ hasHydrated: value }),
     }),
     {
-      name: 'necro-tutorial-store-v2',
-      storage: createJSONStorage(getTutorialStorage),
+      name: TUTORIAL_STORE_STORAGE_KEY,
+      storage: createJSONStorage(() => scopedTutorialStorage),
       partialize: s => ({
         completedPhases: s.completedPhases,
         tutorialCompleted: s.tutorialCompleted,
@@ -152,3 +198,33 @@ export const useTutorialStore = create<TutorialState>()(
     }
   )
 );
+
+export async function switchTutorialPersistenceScope(userId: string | null | undefined): Promise<void> {
+  const nextScope = getTutorialPersistenceScope(userId);
+  const nextStorageKey = getTutorialStorageKeyForScope(nextScope);
+  const hasPersistedState = getSyncTutorialStorageItem(nextStorageKey) != null;
+
+  setActiveTutorialScope(nextScope);
+
+  if (!hasPersistedState) {
+    useTutorialStore.setState({
+      completedPhases: [],
+      activePhase: null,
+      activeStepIndex: 0,
+      tutorialCompleted: false,
+      viewedHints: [],
+      bannerQueue: [],
+      visitedTabs: [],
+      hasHydrated: true,
+    });
+    return;
+  }
+
+  await useTutorialStore.persist.rehydrate();
+  useTutorialStore.setState({
+    activePhase: null,
+    activeStepIndex: 0,
+    bannerQueue: [],
+    hasHydrated: true,
+  });
+}
