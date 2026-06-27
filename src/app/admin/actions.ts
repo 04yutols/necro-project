@@ -11,6 +11,8 @@ import {
 } from '@/data/story/packs';
 import type { StoryPack, StoryPackSummary } from '@/data/story/packs';
 import { assertDev, withDevGuard } from './adminGuard';
+import { validateCodeReferencedStageIds } from '@/data/stageRefs';
+import { validateStageGraph } from '@/lib/agent/stageGraph';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -199,6 +201,7 @@ const WEAPON_SUBOPTION_RULES: Record<string, { optionCount: number; elementDamag
   SSR: { optionCount: 2, elementDamageOptionCount: 1 },
   UR: { optionCount: 2, elementDamageOptionCount: 1 },
 };
+const BASE_STAT_KEYS = ['hp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
 const JOB_STAT_KEYS = ['hp', 'mp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
 const JOB_POSITIVE_STAT_KEYS = new Set(['hp', 'mp', 'atk', 'spd']);
 const WEAPON_MATERIAL_TYPES = new Set(['IDEA_COMMON', 'IDEA_SR', 'IDEA_SSR', 'ABYSSAL_OBSIDIAN']);
@@ -258,6 +261,24 @@ export async function auditMasterData(
   const demonFormJobIds = new Set(Object.keys(data.demonForms));
 
   findings.push(...validateNecroConfigData(readNecroConfigJson()));
+
+  validateStageGraph(data.stages).forEach((finding) => {
+    findings.push({
+      level: finding.level,
+      scope: 'stages',
+      id: finding.id,
+      message: `G1 解放グラフ: ${finding.message}`,
+    });
+  });
+
+  validateCodeReferencedStageIds(stageIds).forEach((finding) => {
+    findings.push({
+      level: finding.level,
+      scope: 'stages',
+      id: finding.id,
+      message: `G2 コード参照: ${finding.message}`,
+    });
+  });
 
   // ---------------------------------------------------------------------------
   // 1. ID integrity: each entry's `id` field must match its key (when present)
@@ -428,7 +449,7 @@ export async function auditMasterData(
     if (!isRecord(necromance.allyStats)) {
       findings.push({ level: 'FAIL', scope: 'enemies', id: enemyKey, message: 'necromance.allyStats が存在しません。' });
     } else {
-      for (const statKey of JOB_STAT_KEYS) {
+      for (const statKey of BASE_STAT_KEYS) {
         const value = necromance.allyStats[statKey];
         if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
           findings.push({ level: 'FAIL', scope: 'enemies', id: enemyKey, message: `necromance.allyStats.${statKey} は 0 以上の数値である必要があります。` });

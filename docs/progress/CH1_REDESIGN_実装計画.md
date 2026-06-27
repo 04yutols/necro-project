@@ -24,26 +24,32 @@
 **ゴール**: 多ノード章で壊れやすい2点を `/admin/audit` で機械検知できるようにする。データ変更は無し（純粋なツール追加）。
 
 ### A1. G1 — 解放チェーングラフ健全性
-- [ ] `src/lib/agent/stageGraph.ts`（新規・純関数）に `validateStageGraph(stages): StageGraphFinding[]` を実装
+- [x] `src/lib/agent/stageGraph.ts`（新規・純関数）に `validateStageGraph(stages): StageGraphFinding[]` を実装
   - ルート（`unlockRequires: []`）からの **到達可能性**（未到達ノード = FAIL）
   - **循環検出**（DFS、`A→B→A` = FAIL）
   - **孤立ノード**（誰からも参照されず自身も何も要求しない非ルート = WARN）
   - dangling 参照は既存 `stageBalance` がノード単位で見るので、ここはグラフ全体の健全性に限定
-- [ ] `src/app/admin/actions.ts` の `auditMasterData`（`:235` 付近）にグラフ検査を組み込み、`scope:'stages'` の findings として `/admin/audit` に出す
-- [ ] `src/lib/agent/stageGraph.test.ts`：到達不能・循環・正常チェーンの3系統
+- [x] `src/app/admin/actions.ts` の `auditMasterData`（`:235` 付近）にグラフ検査を組み込み、`scope:'stages'` の findings として `/admin/audit` に出す
+- [x] `src/lib/agent/stageGraph.test.ts`：到達不能・循環・正常チェーンの3系統
 
 ### A2. G2 — コード↔マスター stage ID 相互参照
-- [ ] コード内ハードコード stage ID を **各モジュールから named export** に整理
+- [x] コード内ハードコード stage ID を **各モジュールから named export** に整理
   - `src/logic/AbyssalResidueUnlockSystem.ts`：`ABYSSAL_RESIDUE_UNLOCK_STAGE_ID`（既に export 済み）
   - `src/data/tutorial/triggers.ts`：`TUTORIAL_BATTLE_STAGE_IDS` ＋ `getTutorialPhaseAfterClear` 内の生文字列（`area1_node1/node2/boss`）を `TUTORIAL_CHAIN_STAGE_IDS` 定数に抽出
-- [ ] `src/data/stageRefs.ts`（新規）で上記を集約：`CODE_REFERENCED_STAGE_IDS: { id; referencedBy }[]`
-- [ ] `auditMasterData` に「`CODE_REFERENCED_STAGE_IDS` の各 id が stages.json に存在するか」を追加（欠落 = **FAIL**、`referencedBy` をメッセージに出す）
-- [ ] `src/data/stageRefs.test.ts`：存在/欠落の検出
+- [x] `src/data/stageRefs.ts`（新規）で上記を集約：`CODE_REFERENCED_STAGE_IDS: { id; referencedBy }[]`
+- [x] `auditMasterData` に「`CODE_REFERENCED_STAGE_IDS` の各 id が stages.json に存在するか」を追加（欠落 = **FAIL**、`referencedBy` をメッセージに出す）
+- [x] `src/data/stageRefs.test.ts`：存在/欠落の検出
 
 ### A 完了条件
-- `npx tsc --noEmit` クリーン
-- 新規 `*.test.ts` グリーン ＋ 既存テスト非破壊
-- `/admin/audit` に G1/G2 の結果が表示され、現状データで **FAIL=0**（＝今の参照が全部生きている確認）
+- [x] `npx tsc --noEmit` クリーン
+- [x] 新規 `*.test.ts` グリーン ＋ 既存テスト非破壊
+- [x] `/admin/audit` に G1/G2 の結果が表示され、現状データで **FAIL=0**（＝今の参照が全部生きている確認）
+
+実装証跡（2026-06-27）:
+- 詳細設計: `docs/設計書/121_CH1再設計マイルストーンA検証ゲート設計.md`
+- 追加実装: `src/lib/agent/stageGraph.ts`, `src/data/stageRefs.ts`, `src/app/admin/actions.ts`
+- 追加テスト: `src/lib/agent/stageGraph.test.ts`, `src/data/stageRefs.test.ts`
+- 検証: `npx tsc --noEmit` PASS / 関連 Jest 25 tests PASS / 外部DB統合を除く既存 Jest 82 suites・762 tests PASS / `auditMasterData()` FAIL=0 / `git diff --exit-code src/data/master` PASS
 
 ---
 
