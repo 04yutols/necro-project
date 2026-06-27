@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { switchStoryPersistenceScope } from '../store/useStoryStore';
+import { switchTutorialPersistenceScope } from '../store/useTutorialStore';
 import type { LoadCharacterResult, ServerGameUser } from '../types/serverGame';
 
 type AuthFlowStatus =
@@ -43,6 +44,13 @@ async function fetchAuthSession(): Promise<{ available: boolean; session: AuthSe
 
 function delay(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function switchPersistenceScopes(userId: string | null | undefined) {
+  await Promise.all([
+    switchStoryPersistenceScope(userId),
+    switchTutorialPersistenceScope(userId),
+  ]);
 }
 
 async function loadCharacterWithRetry(maxAttempts = 3): Promise<LoadCharacterResult> {
@@ -102,7 +110,7 @@ export function useAuthFlow(): AuthFlowState {
         console.log('[AuthFlow] fetchAuthSession result:', JSON.stringify(authSession));
 
         if (!authSession.available) {
-          await switchStoryPersistenceScope(null);
+          await switchPersistenceScopes(null);
           if (!bootedGuestRef.current && !useGameStore.getState().player) {
             initialize();
             bootedGuestRef.current = true;
@@ -118,7 +126,7 @@ export function useAuthFlow(): AuthFlowState {
         console.log('[AuthFlow] session.user:', JSON.stringify(session.user ?? null));
 
         if (!session.user?.id) {
-          await switchStoryPersistenceScope(null);
+          await switchPersistenceScopes(null);
           clearServerData();
           if (!cancelled) {
             setUser(null);
@@ -128,7 +136,7 @@ export function useAuthFlow(): AuthFlowState {
           return;
         }
 
-        await switchStoryPersistenceScope(session.user.id);
+        await switchPersistenceScopes(session.user.id);
         if (cancelled) return;
 
         setUser(session.user);
@@ -139,7 +147,7 @@ export function useAuthFlow(): AuthFlowState {
         if (cancelled) return;
 
         if (!result.success) {
-          await switchStoryPersistenceScope(null);
+          await switchPersistenceScopes(null);
           clearServerData();
           setUser(null);
           const nextStatus = result.status === 'UNAUTHENTICATED' ? 'authRequired' : 'error';

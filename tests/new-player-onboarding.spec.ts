@@ -106,7 +106,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
         },
         version: 0,
       }));
-      window.localStorage.setItem('necro-tutorial-store-v1', JSON.stringify({
+      window.localStorage.setItem('necro-tutorial-store-v2', JSON.stringify({
         state: {
           completedPhases: ['BATTLE_BASICS', 'NECRO_LAB', 'PARTY_FORMATION', 'JOB_CHANGE', 'ABYSSAL_RESIDUE', 'DEMONIZATION'],
           activePhase: null,
@@ -123,7 +123,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
 
     // 主要ナビゲーションボタン/セクション確認
     await expect(page.getByRole('button', { name: /出撃・マップ/ })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: /軍団編成/ }).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: /転職・職業/ })).toBeVisible({ timeout: 5000 });
     await expect(page.getByRole('button', { name: /装備・編成/ })).toBeVisible({ timeout: 5000 });
   });
 
@@ -136,7 +136,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
         state: { viewedScenes: ['PROLOGUE_00','PROLOGUE_01','PROLOGUE_02','PROLOGUE_03','CH1_TITLE','CH1_SAFE_INTRO','CH1_OPEN'], storyFlags: { LINE_DEATH_SEEN: true, CH1_STARTED: true } },
         version: 0,
       }));
-      window.localStorage.setItem('necro-tutorial-store-v1', JSON.stringify({
+      window.localStorage.setItem('necro-tutorial-store-v2', JSON.stringify({
         state: { completedPhases: ['BATTLE_BASICS','NECRO_LAB','PARTY_FORMATION','JOB_CHANGE','ABYSSAL_RESIDUE','DEMONIZATION'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
         version: 0,
       }));
@@ -168,7 +168,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
         },
         version: 0,
       }));
-      window.localStorage.setItem('necro-tutorial-store-v1', JSON.stringify({
+      window.localStorage.setItem('necro-tutorial-store-v2', JSON.stringify({
         state: { completedPhases: ['BATTLE_BASICS','NECRO_LAB','PARTY_FORMATION','JOB_CHANGE','ABYSSAL_RESIDUE','DEMONIZATION'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
         version: 0,
       }));
@@ -223,7 +223,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
         },
         version: 0,
       }));
-      window.localStorage.setItem('necro-tutorial-store-v1', JSON.stringify({
+      window.localStorage.setItem('necro-tutorial-store-v2', JSON.stringify({
         state: { completedPhases: ['BATTLE_BASICS','NECRO_LAB','PARTY_FORMATION','JOB_CHANGE','ABYSSAL_RESIDUE','DEMONIZATION'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
         version: 0,
       }));
@@ -280,7 +280,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
         },
         version: 0,
       }));
-      window.localStorage.setItem('necro-tutorial-store-v1', JSON.stringify({
+      window.localStorage.setItem('necro-tutorial-store-v2', JSON.stringify({
         state: { completedPhases: ['BATTLE_BASICS','NECRO_LAB','PARTY_FORMATION','JOB_CHANGE','ABYSSAL_RESIDUE','DEMONIZATION'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
         version: 0,
       }));
@@ -361,11 +361,11 @@ test.describe('新規プレイヤー オンボーディング', () => {
   });
 
   // ─────────────────────────────────────────────────────────────
-  // T-09: 軍団編成 — パーティスロットが表示される
+  // T-09: 装備・編成 — パーティスロットが表示される
   // ─────────────────────────────────────────────────────────────
-  test('T-09: 軍団編成タブでパーティスロットが表示される', async ({ page }) => {
+  test('T-09: 装備・編成タブでパーティスロットが表示される', async ({ page }) => {
     await prepareE2EPage(page);
-    await openHomeSection(page, '軍団編成');
+    await openHomeSection(page, '装備・編成');
 
     await expect(page.locator('#tut-cost-display')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('#tut-cost-display')).toContainText('COST');

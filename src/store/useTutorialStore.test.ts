@@ -1,5 +1,15 @@
 import { ALL_PHASES, PHASE_STEPS, type TutorialPhase } from '../data/tutorial/phases';
-import { useTutorialStore } from './useTutorialStore';
+import {
+  getTutorialPersistenceScope,
+  getTutorialStorageKeyForScope,
+  switchTutorialPersistenceScope,
+  useTutorialStore,
+} from './useTutorialStore';
+
+async function clearTutorialScope(userId: string | null) {
+  await switchTutorialPersistenceScope(userId);
+  useTutorialStore.getState().resetTutorial();
+}
 
 function resetStore() {
   useTutorialStore.setState({
@@ -13,6 +23,63 @@ function resetStore() {
     hasHydrated: true,
   });
 }
+
+describe('useTutorialStore persistence scopes', () => {
+  beforeEach(async () => {
+    await clearTutorialScope(null);
+    await clearTutorialScope('tutorial-user-a');
+    await clearTutorialScope('tutorial-user-b');
+    await switchTutorialPersistenceScope(null);
+  });
+
+  test('builds stable storage keys for authenticated users', () => {
+    const scope = getTutorialPersistenceScope(' user/a@example.test ');
+
+    expect(scope).toBe(`user:${encodeURIComponent('user/a@example.test')}`);
+    expect(getTutorialStorageKeyForScope(scope)).toBe(`necro-tutorial-store-v2:${scope}`);
+    expect(getTutorialStorageKeyForScope(null)).toBe('necro-tutorial-store-v2');
+  });
+
+  test('does not carry guest tutorial progress into an authenticated user scope', async () => {
+    await switchTutorialPersistenceScope(null);
+    expect(useTutorialStore.getState().startPhase('BATTLE_BASICS')).toBe(true);
+    useTutorialStore.getState().skipPhase();
+    useTutorialStore.getState().markHintViewed('guest_hint');
+    useTutorialStore.getState().markTabVisited('EQUIP');
+
+    await switchTutorialPersistenceScope('tutorial-user-a');
+
+    expect(useTutorialStore.getState().completedPhases).toEqual([]);
+    expect(useTutorialStore.getState().tutorialCompleted).toBe(false);
+    expect(useTutorialStore.getState().viewedHints).toEqual([]);
+    expect(useTutorialStore.getState().visitedTabs).toEqual([]);
+    expect(useTutorialStore.getState().startPhase('BATTLE_BASICS')).toBe(true);
+  });
+
+  test('isolates completed phases and hints between authenticated users', async () => {
+    await switchTutorialPersistenceScope('tutorial-user-a');
+    expect(useTutorialStore.getState().startPhase('BATTLE_BASICS')).toBe(true);
+    useTutorialStore.getState().skipPhase();
+    useTutorialStore.getState().markHintViewed('user-a-hint');
+    useTutorialStore.getState().markTabVisited('EQUIP');
+
+    await switchTutorialPersistenceScope('tutorial-user-b');
+    expect(useTutorialStore.getState().completedPhases).toEqual([]);
+    expect(useTutorialStore.getState().tutorialCompleted).toBe(false);
+    expect(useTutorialStore.getState().viewedHints).toEqual([]);
+    expect(useTutorialStore.getState().visitedTabs).toEqual([]);
+
+    expect(useTutorialStore.getState().startPhase('JOB_CHANGE')).toBe(true);
+    useTutorialStore.getState().skipPhase();
+    useTutorialStore.getState().markHintViewed('user-b-hint');
+
+    await switchTutorialPersistenceScope('tutorial-user-a');
+    expect(useTutorialStore.getState().completedPhases).toEqual(['BATTLE_BASICS']);
+    expect(useTutorialStore.getState().completedPhases).not.toContain('JOB_CHANGE');
+    expect(useTutorialStore.getState().viewedHints).toEqual(['user-a-hint']);
+    expect(useTutorialStore.getState().visitedTabs).toEqual(['EQUIP']);
+  });
+});
 
 describe('useTutorialStore', () => {
   beforeEach(() => {
