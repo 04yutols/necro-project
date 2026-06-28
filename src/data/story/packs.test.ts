@@ -33,7 +33,7 @@ describe('Story packs', () => {
         fileName: 'ch1_scenes.json',
         label: '第1章 亡国の王都',
         archiveChapterRange: [0, 1],
-        sceneCount: 17,
+        sceneCount: 19,
       },
       {
         id: 'act1_ch2',

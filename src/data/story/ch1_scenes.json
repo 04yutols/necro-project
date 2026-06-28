@@ -217,6 +217,46 @@
       ]
     },
     {
+      "id": "CH1_DEADCITY_ENTRY",
+      "type": "DIALOGUE",
+      "sequence": 13.5,
+      "trigger": { "type": "STAGE_CLEAR", "stageId": "area1_a2" },
+      "background": "BLUR_MAP",
+      "isSkippable": true,
+      "archiveTitle": "死都への入城",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "narrator",
+          "text": "墓道を抜けると、崩れた尖塔の群れが沈黙して並んでいた。\n亡国の王都――かつて世界の中心だった場所が、冷たい霧の奥に横たわっている。",
+          "textEn": "Beyond the grave road, broken spires stood in silence. The fallen royal capital, once the center of the world, lay within the cold mist.",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "determined" },
+            { "characterId": "line", "position": "RIGHT", "expression": "sad", "isDimmed": true }
+          ]
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「……ここが、お前の生まれた国か。ライン」",
+          "textEn": "\"...So this is the country where you were born, Line.\"",
+          "expression": "sad"
+        },
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「懐かしいって、言えたらよかったのにね」",
+          "textEn": "\"I wish I could have called it nostalgic.\"",
+          "expression": "sad"
+        },
+        {
+          "speaker": "narrator",
+          "text": "答えは記憶の残響にすぎなかった。それでもアルドは、城壁の裂け目へ歩を進めた。",
+          "textEn": "The answer was only an echo of memory. Even so, Aldo stepped toward the breach in the wall."
+        }
+      ]
+    },
+    {
       "id": "CH1_NODE2_ENTER",
       "type": "ENVIRONMENT",
       "sequence": 14,
@@ -263,6 +303,49 @@
           "speakerJa": "アルド",
           "text": "「……行こう。王都の中枢は近い」",
           "textEn": "\"Let's go. The heart of the capital is close.\"",
+          "expression": "determined"
+        }
+      ]
+    },
+    {
+      "id": "CH1_FALLEN_TRUTH",
+      "type": "DIALOGUE",
+      "sequence": 15.5,
+      "trigger": { "type": "STAGE_CLEAR", "stageId": "area1_b3" },
+      "background": "STAGE_DARK",
+      "isSkippable": true,
+      "archiveTitle": "亡国の真実",
+      "archiveChapter": 1,
+      "lines": [
+        {
+          "speaker": "line",
+          "speakerJa": "ライン",
+          "text": "「この国を壊したのは……魔族じゃない。俺たちが、選んだんだ」",
+          "textEn": "\"It was not demon-kind that broke this country. We chose it ourselves.\"",
+          "portraits": [
+            { "characterId": "aldo", "position": "LEFT", "expression": "shocked" },
+            { "characterId": "line", "position": "RIGHT", "expression": "dying", "isDimmed": true }
+          ],
+          "expression": "dying"
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「……どういう意味だ。最後まで聞かせろ、ライン」",
+          "textEn": "\"...What do you mean? Tell me the rest, Line.\"",
+          "expression": "shocked"
+        },
+        {
+          "speaker": "narrator",
+          "text": "王城の奥で、竜骨が低く鳴いた。\nそれは弔鐘ではなく、まだ終わっていない罪の音だった。",
+          "textEn": "Deep within the castle, dragon bones groaned. It was not a funeral bell, but the sound of a sin that had not yet ended.",
+          "vfx": "demonRingConverge"
+        },
+        {
+          "speaker": "aldo",
+          "speakerJa": "アルド",
+          "text": "「なら、俺が見届ける。お前が背負ったものも、この王都の終わりも」",
+          "textEn": "\"Then I will see it through. What you carried, and how this capital ended.\"",
           "expression": "determined"
         }
       ]

@@ -30,11 +30,18 @@ function getViewportSize() {
 }
 
 export function BubbleHint({ hint }: Props) {
-  const { isHintViewed, markHintViewed } = useTutorialStore();
+  const activePhase = useTutorialStore(s => s.activePhase);
+  const isHintViewed = useTutorialStore(s => s.isHintViewed);
+  const markHintViewed = useTutorialStore(s => s.markHintViewed);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [show, setShow] = useState(false);
 
   useEffect(() => {
+    if (activePhase) {
+      setShow(false);
+      setPos(null);
+      return;
+    }
     if (isHintViewed(hint.id)) return;
     let raf = 0;
     let timer = 0;
@@ -94,14 +101,14 @@ export function BubbleHint({ hint }: Props) {
       window.visualViewport?.removeEventListener('resize', scheduleMeasure);
       window.visualViewport?.removeEventListener('scroll', scheduleMeasure);
     };
-  }, [hint.id, hint.position, hint.targetId, isHintViewed]);
+  }, [activePhase, hint.id, hint.position, hint.targetId, isHintViewed]);
 
   const dismiss = () => {
     setShow(false);
     markHintViewed(hint.id);
   };
 
-  if (isHintViewed(hint.id)) return null;
+  if (activePhase || isHintViewed(hint.id)) return null;
 
   return (
     <AnimatePresence>
