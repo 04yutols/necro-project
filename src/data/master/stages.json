@@ -208,7 +208,7 @@
     "element": "EARTH",
     "difficulty": 2,
     "sortOrder": 140,
-    "description": "死都への門を塞ぐ骨巨人の守り。新規ミニボス投入前の仮構成として、既存精鋭を強めて配置する。",
+    "description": "死都への門を塞ぐ墓守の巨像。霊的防壁を割った先で増援を呼ぶ、魔神化解放前の山場。",
     "waveCount": 3,
     "areaGimmick": "NONE",
     "unlockRequires": [
@@ -236,12 +236,12 @@
       },
       {
         "label": "WAVE 3",
-        "role": "ELITE",
+        "role": "BOSS",
         "enemyIds": [
-          "bone_colossus",
-          "grave_knight"
+          "gravewarden_colossus",
+          "grave_soldier"
         ],
-        "intent": "Zone A の締め。高耐久2体を置き、魔神化前の最初の壁にする。",
+        "intent": "Zone A の締め。巨像の防壁と増援で、魔神化前の最初の壁にする。",
         "statScale": {
           "hp": 1.2,
           "atk": 1.1,
@@ -463,7 +463,7 @@
     "element": "LIGHT",
     "difficulty": 3,
     "sortOrder": 170,
-    "description": "かつて王を守った近衛たちの兵舎。彷徨う近衛霊の本実装までは、墓騎士で役割を代替する。",
+    "description": "かつて王を守った近衛たちの兵舎。彷徨う近衛霊が残留し、王城後半の消耗戦を仕掛ける。",
     "waveCount": 3,
     "areaGimmick": "NONE",
     "unlockRequires": [
@@ -493,10 +493,10 @@
         "label": "WAVE 3",
         "role": "ELITE",
         "enemyIds": [
-          "grave_knight",
+          "wandering_guard_wraith",
           "bone_colossus"
         ],
-        "intent": "Zone B の山場前。単体火力と防壁破壊の両方を求める。",
+        "intent": "Zone B の山場前。近衛霊の攻撃圧と骨巨人の防壁破壊を同時に求める。",
         "statScale": {
           "hp": 1.25,
           "atk": 1.12,
@@ -557,10 +557,10 @@
         "label": "WAVE 1",
         "role": "WARMUP",
         "enemyIds": [
-          "earthbound_grudge",
-          "bloodmire_leech"
+          "wandering_guard_wraith",
+          "dragonbone_spawn"
         ],
-        "intent": "怨霊と血沼の敵を混ぜ、終盤ゾーンへの空気を切り替える。"
+        "intent": "近衛霊と竜骨の眷属を並べ、祭壇ゾーンの敵種を導入する。"
       },
       {
         "label": "WAVE 2",
@@ -576,10 +576,10 @@
         "role": "ELITE",
         "enemyIds": [
           "bone_colossus",
-          "bloodmire_leech",
-          "bloodmire_leech"
+          "dragonbone_spawn",
+          "wandering_guard_wraith"
         ],
-        "intent": "高耐久の骨巨人を軸に、血沼の高速圧力で消耗を作る。",
+        "intent": "高耐久の骨巨人を軸に、竜骨と近衛の複合弱点で終盤の判断を作る。",
         "statScale": {
           "hp": 1.25,
           "atk": 1.15
@@ -628,7 +628,7 @@
     "element": "THUNDER",
     "difficulty": 4,
     "sortOrder": 200,
-    "description": "王妃の私室に残った呪詛の間。新規エリート実装前は、女官と既存精鋭で術師戦の圧を代替する。",
+    "description": "王妃の私室に残った呪詛の間。呪詛の女官長が薄い防壁をまとい、術師戦の圧を作る。",
     "waveCount": 3,
     "areaGimmick": "STATUS_AILMENT",
     "unlockRequires": [
@@ -659,11 +659,11 @@
         "label": "WAVE 3",
         "role": "ELITE",
         "enemyIds": [
-          "hollow_handmaid",
+          "cursed_head_maid",
           "abyss_warden",
           "bone_colossus"
         ],
-        "intent": "1-10 エリート相当。支援役を先に倒さないと長引く構成にする。",
+        "intent": "1-10 エリート相当。女官長の高ATK術師圧を先に処理するか、防壁を割るか選ばせる。",
         "statScale": {
           "hp": 1.35,
           "atk": 1.2,
@@ -723,20 +723,20 @@
         "label": "WAVE 1",
         "role": "WARMUP",
         "enemyIds": [
-          "bloodmire_leech",
+          "dragonbone_spawn",
           "bloodmire_leech",
           "earthbound_grudge"
         ],
-        "intent": "血沼の高速圧力を前座として提示する。"
+        "intent": "竜骨の眷属と血沼の高速圧力を並べ、女王前の複合弱点を提示する。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
         "enemyIds": [
           "abyss_warden",
-          "bloodmire_leech"
+          "dragonbone_spawn"
         ],
-        "intent": "女王戦前に水・雷・光の弱点幅を確認させる。"
+        "intent": "女王戦前に防壁処理とICE弱点の竜骨処理を確認させる。"
       },
       {
         "label": "WAVE 3",

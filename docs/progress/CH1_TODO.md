@@ -42,7 +42,7 @@
 バトルが動いた後に並行実装。
 
 ### ストーリーシステム
-- [x] `src/data/story/ch1_scenes.json` — 第1章17シーン（PROLOGUE 4 + CH1 13）JSONデータ作成 → 台詞: `22_ストーリー進行システム.md §6`
+- [x] `src/data/story/ch1_scenes.json` — 第1章19シーン（PROLOGUE 4 + CH1 15）JSONデータ作成 → 台詞: `22_ストーリー進行システム.md §6` + Phase 4中盤2シーン
 - [x] `src/components/story/DialogueScene.tsx` — 原神スタイル会話UI
 - [x] `src/components/story/MonologueOverlay.tsx` — 全画面モノローグ
 - [x] `src/components/story/ChapterTitleCard.tsx` — スタレスタイル章タイトル
@@ -105,7 +105,7 @@
 > E2E補足: `tests/helpers/e2e.ts` で初回ストーリー/チュートリアルを完了済みにする共通初期化を追加し、全specを現行UXセレクタへ更新。Vite E2EでBattleCanvasが空白化していたServer Action静的importも動的importへ修正。Playwrightの最終再実行は通常権限でChromium起動権限により失敗、権限付き実行も利用上限で拒否されたため未完了。
 
 - [x] PROLOGUE → 第1章 全シーンが正常に再生される
-  - 根拠: `StoryRegistry.test.ts` で 17シーン（PROLOGUE 4 + CH1 13）と各トリガー解決を確認済み。
+  - 根拠: `StoryRegistry.test.ts` で 19シーン（PROLOGUE 4 + CH1 15）と各トリガー解決を確認済み。
 - [x] area1_safe → area1_node3 まで全ステージがクリア可能
   - 根拠: master data に `area1_safe → area1_node1 → area1_node2 → area1_boss → area1_node3` の解放順を確認。`DungeonSystem.test.ts` で進行順・WAVE・ボス/精鋭データを確認済み。
   - 注意: UI E2E specは現行UXへ更新済み。ブラウザ実走の最終確認は利用上限解除後に再実行。

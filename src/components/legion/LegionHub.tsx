@@ -7,6 +7,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { useTutorialStore } from '../../store/useTutorialStore';
 import { useGothicSound } from '../necro/useGothicSound';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
+import { BubbleHint } from '../tutorial/BubbleHint';
 import { CharacterData, MonsterData, ItemData, AbyssalResidueData, SoulShardData, ResidueMatData, BaseStats, WeaponMaterialData, type Tribe } from '../../types/game';
 import { getActiveSynergies, type ActiveSynergy } from '../../logic/TribeSynergySystem';
 import { isAbyssalResidueUnlocked } from '../../logic/AbyssalResidueUnlockSystem';
@@ -2335,10 +2336,6 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
       const unequipped = filteredItems.find(item => item.id !== info.weapon?.id);
       setSelectedItemId(unequipped?.id ?? filteredItems[0]?.id ?? null);
     }
-    if (activeTutorialPhase === 'WEAPON_ENHANCE') {
-      setTab('ENHANCE');
-      setSelectedItemId(info.weapon?.id ?? filteredItems[0]?.id ?? null);
-    }
   }, [activeTutorialPhase, filteredItems, info.weapon?.id, isResidueSlot]);
 
   const canPersistToServer = () => isServerBacked;
@@ -2586,6 +2583,17 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
           </button>
         ))}
       </div>
+      {!isResidueSlot && (
+        <BubbleHint
+          hint={{
+            id: 'hint_weapon_enhance',
+            targetId: 'tut-weapon-enhance-tab',
+            title: '武器強化',
+            body: '武器は「共鳴」と「打ち直し」で鍛えられる。黒鋼を使うとILvが上がり、ATKが確実に伸びる。',
+            position: 'below',
+          }}
+        />
+      )}
 
       {/* Content */}
       <div className="flex-1 min-h-0 relative mt-2" style={{ width: '100%', alignSelf: 'stretch' }}>
@@ -4276,7 +4284,7 @@ export default function LegionHub() {
     if (activeTutorialPhase === 'PARTY_FORMATION') {
       setView('LIST');
     }
-    if (activeTutorialPhase === 'WEAPON_EQUIP' || activeTutorialPhase === 'WEAPON_ENHANCE') {
+    if (activeTutorialPhase === 'WEAPON_EQUIP') {
       setSelKey('PLAYER');
       setGearCtx({ mk: 'PLAYER', slotType: 'WEAPON', slotIndex: 0 });
       setView('GEAR');

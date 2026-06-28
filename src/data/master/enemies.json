@@ -680,5 +680,283 @@
         "skill_darkpriest_1"
       ]
     }
+  },
+  "gravewarden_colossus": {
+    "id": "gravewarden_colossus",
+    "name": "Gravewarden Colossus",
+    "nameJa": "墓守の巨像",
+    "nameEn": "GRAVEWARDEN COLOSSUS",
+    "tier": "BOSS",
+    "tribe": "UNDEAD",
+    "stats": {
+      "hp": 95,
+      "atk": 14,
+      "def": 13,
+      "spd": 55,
+      "critRate": 8,
+      "critDmg": 175,
+      "effectHit": 4,
+      "effectRes": 30
+    },
+    "resistances": {
+      "LIGHT": -30,
+      "EARTH": 10,
+      "DARK": 25
+    },
+    "weaknesses": [
+      "LIGHT"
+    ],
+    "shieldHp": 30,
+    "maxShieldHp": 30,
+    "gimmicks": [
+      {
+        "trigger": "ON_SHIELD_BREAK",
+        "effect": "SUMMON_MINIONS",
+        "value": 1
+      }
+    ],
+    "necromance": {
+      "captureRate": 0.001,
+      "allyCost": 4,
+      "allyStats": {
+        "hp": 95,
+        "atk": 14,
+        "def": 13,
+        "spd": 55,
+        "critRate": 8,
+        "critDmg": 175,
+        "effectHit": 4,
+        "effectRes": 30
+      },
+      "allyMaxEnergy": 48,
+      "skillIds": [
+        "skill_berserker_earth_breaker",
+        "skill_necromancer_grave_command"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bleed_reaver",
+        "rarity": "SR",
+        "rate": 0.14
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "grave_crystal",
+        "rarity": "COMMON",
+        "rate": 0.68
+      }
+    ],
+    "battle": {
+      "color": "#8b5cf6",
+      "sprite": "GIANT",
+      "size": 0.96
+    },
+    "description": "1-4のミニボス。霊的防壁を割ると骸兵を呼び、魔神化解放前の山場を作る。"
+  },
+  "wandering_guard_wraith": {
+    "id": "wandering_guard_wraith",
+    "name": "Wandering Guard Wraith",
+    "nameJa": "彷徨う近衛霊",
+    "nameEn": "WANDERING GUARD WRAITH",
+    "tier": "MINION",
+    "tribe": "UNDEAD",
+    "stats": {
+      "hp": 35,
+      "atk": 6,
+      "def": 4,
+      "spd": 85,
+      "critRate": 5,
+      "critDmg": 150,
+      "effectHit": 4,
+      "effectRes": 5
+    },
+    "resistances": {
+      "LIGHT": -25,
+      "FIRE": -15,
+      "DARK": 20
+    },
+    "weaknesses": [
+      "LIGHT",
+      "FIRE"
+    ],
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 35,
+        "atk": 6,
+        "def": 4,
+        "spd": 85,
+        "critRate": 5,
+        "critDmg": 150,
+        "effectHit": 4,
+        "effectRes": 5
+      },
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_darkknight_shadow_edge"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "grave_thorn_dagger",
+        "rarity": "R",
+        "rate": 0.38
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "grave_crystal",
+        "rarity": "COMMON",
+        "rate": 0.62
+      }
+    ],
+    "battle": {
+      "color": "#c4b5fd",
+      "sprite": "WRAITH",
+      "size": 0.76
+    },
+    "description": "王城後半の攻撃寄りミニオン。墓兵より鋭く、血沼の蛭より遅い近衛霊。"
+  },
+  "cursed_head_maid": {
+    "id": "cursed_head_maid",
+    "name": "Cursed Head Maid",
+    "nameJa": "呪詛の女官長",
+    "nameEn": "CURSED HEAD MAID",
+    "tier": "ELITE",
+    "tribe": "HUMANOID",
+    "stats": {
+      "hp": 44,
+      "atk": 7,
+      "def": 5,
+      "spd": 72,
+      "critRate": 6,
+      "critDmg": 150,
+      "effectHit": 18,
+      "effectRes": 12
+    },
+    "resistances": {
+      "THUNDER": -25,
+      "WIND": -20,
+      "DARK": 15,
+      "LIGHT": 10
+    },
+    "weaknesses": [
+      "THUNDER",
+      "WIND"
+    ],
+    "shieldHp": 12,
+    "maxShieldHp": 12,
+    "necromance": {
+      "captureRate": 0.04,
+      "allyCost": 2,
+      "allyStats": {
+        "hp": 44,
+        "atk": 7,
+        "def": 5,
+        "spd": 72,
+        "critRate": 6,
+        "critDmg": 150,
+        "effectHit": 18,
+        "effectRes": 12
+      },
+      "allyMaxEnergy": 42,
+      "skillIds": [
+        "skill_warlock_abyss_hex",
+        "skill_darkpriest_1"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "mourning_bell_crozier",
+        "rarity": "R",
+        "rate": 0.34
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "ash_scroll",
+        "rarity": "COMMON",
+        "rate": 0.72
+      },
+      {
+        "type": "WEAPON",
+        "itemId": "spirit_silver_saber",
+        "rarity": "SSR",
+        "rate": 0.008
+      }
+    ],
+    "battle": {
+      "color": "#d946ef",
+      "sprite": "WRAITH",
+      "size": 0.8
+    },
+    "description": "廃城の侍女の上位個体。高ATK・低DEFの術師として1-10最終WAVEを尖らせる。"
+  },
+  "dragonbone_spawn": {
+    "id": "dragonbone_spawn",
+    "name": "Dragonbone Spawn",
+    "nameJa": "竜骨の眷属",
+    "nameEn": "DRAGONBONE SPAWN",
+    "tier": "MINION",
+    "tribe": "DRAGON",
+    "stats": {
+      "hp": 32,
+      "atk": 6,
+      "def": 5,
+      "spd": 68,
+      "critRate": 4,
+      "critDmg": 150,
+      "effectHit": 0,
+      "effectRes": 8
+    },
+    "resistances": {
+      "ICE": -30,
+      "FIRE": 15,
+      "EARTH": 10
+    },
+    "weaknesses": [
+      "ICE"
+    ],
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 32,
+        "atk": 6,
+        "def": 5,
+        "spd": 68,
+        "critRate": 4,
+        "critDmg": 150,
+        "effectHit": 0,
+        "effectRes": 8
+      },
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_berserker_earth_breaker"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bleed_reaver",
+        "rarity": "SR",
+        "rate": 0.1
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "ossuary_memory",
+        "rarity": "RARE",
+        "rate": 0.24
+      }
+    ],
+    "battle": {
+      "color": "#f97316",
+      "sprite": "WYRM",
+      "size": 0.72
+    },
+    "description": "竜骨祭壇ゾーンの小型竜骨。第1章で捕獲できるDRAGON種族の導入役。"
   }
 }

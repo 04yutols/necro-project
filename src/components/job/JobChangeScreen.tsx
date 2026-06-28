@@ -9,6 +9,7 @@ import { addPassiveBonuses, getJobLevel, getJobStyle, getJobUnlockStatus, JOB_OR
 import { getJobBaseStatsAtLevel } from '../../logic/JobGrowthSystem';
 import { useGameStore } from '../../store/useGameStore';
 import type { BaseStats, JobData, SkillAttackType, SkillData } from '../../types/game';
+import { BubbleHint } from '../tutorial/BubbleHint';
 
 const JOBS = jobsData as Record<string, JobData>;
 const SKILLS = skillsData as Record<string, SkillData>;
@@ -414,6 +415,15 @@ export default function JobChangeScreen() {
                 })}
               </div>
             </section>
+            <BubbleHint
+              hint={{
+                id: 'hint_job_change',
+                targetId: 'tut-job-rail',
+                title: '転職',
+                body: '横にスクロールして職業を選び、ステータス変化を確認してから「転職」。前職の経験は消えずに引き継がれる。',
+                position: 'below',
+              }}
+            />
 
             <section id="tut-stat-change" style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
               <div

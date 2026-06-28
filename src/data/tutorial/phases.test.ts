@@ -6,8 +6,6 @@ describe('tutorial phases', () => {
       'BATTLE_BASICS',
       'PARTY_FORMATION',
       'WEAPON_EQUIP',
-      'JOB_CHANGE',
-      'WEAPON_ENHANCE',
       'DEMONIZATION',
       'ABYSSAL_RESIDUE',
     ]);
