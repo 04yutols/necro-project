@@ -10,11 +10,12 @@
 
 | 順 | マイルストーン | 内容 | なぜこの順か |
 |---|---|---|---|
-| **A** | 検証ゲート整備 | G1 解放チェーングラフ健全性 / G2 コード↔マスター stage ID 相互参照 | 既存ノードを再配置する前に「壊れたら検知できる網」を張る。G2が無いとチュート発火・残滓解放が黙って壊れる |
-| **C** | 設計判断の確定＋基盤実装 | 物語ノードの扱い / 残滓ノード / ノード数 / **難易度スケール方式** | Bでステージを組む前に、データモデル（nodeType・スケールフィールド）と参照方針を固定する必要がある |
-| **B** | ステージ背骨（JSON） | 新規戦闘ノード作成＋既存4ノード再配置、通しプレイ可能化 | A の網と C の確定の上に積むので事故らない |
+| ✅ **A** | 検証ゲート整備 | G1 解放チェーングラフ健全性 / G2 コード↔マスター stage ID 相互参照 | 既存ノードを再配置する前に「壊れたら検知できる網」を張る。G2が無いとチュート発火・残滓解放が黙って壊れる |
+| ✅ **C** | 設計判断の確定＋基盤実装 | 物語ノードの扱い / 残滓ノード / ノード数 / **難易度スケール方式（M2 `statScale`）** | Bでステージを組む前に、データモデル（nodeType・スケールフィールド）と参照方針を固定する必要がある |
+| ✅ **B** | ステージ背骨（JSON） | **B0** 順序機構(コード) → **B1** 新ノード作成 → **B2** 既存ノード再結線＋sortOrder。通しプレイ可能化 | A の網と C の確定の上に積むので事故らない |
 | 後続 | 新規敵 → チュート再配線 → 物語 → 最終監査 | 仕様書 §6 Phase 2〜5 | Bの背骨が通った後 |
 
+> **進捗（2026-06-28）**: A ✅完了 / C ✅完了 / **B ✅完了** / 後続 未着手。
 > **G3（STORYノード型）は A ではなく C で扱う**。型を足すか否かは C1 の設計判断そのものなので、決めてから実装する。
 
 ---
@@ -143,38 +144,65 @@
 
 ## マイルストーン B — ステージ背骨（JSON）
 
-**ゴール**: 章を最後まで通しプレイ可能にする。新規敵・物語・チュート再配線は後続なので、ここでは **既存敵の再構成（＋C4のスケール）** で全戦闘ノードを成立させる。
+**ゴール**: 章を最後まで通しプレイ可能にする。新規敵・物語・チュート再配線は後続なので、ここでは **既存敵の再構成（＋C4の `statScale`）** で全戦闘ノードを成立させる。
+
+**実装順（必ずこの順）**:
+1. **B0 順序機構（コード）** — これが無いと B1/B2 のデータが正しい順序で並ばない
+2. **B1 新ノード作成（データ）** — sortOrder/position 込み
+3. **B2 既存ノード再結線＋sortOrder 付与（データ）**
+4. **B 完了条件チェック**（validator / A1・A2 / 順序 / 通しプレイ / tsc・test）
+
+### B0. 前提整備：ノード順序機構（← 2026-06-28 A・C実装後の照合 D1 で追加）
+**問題**: エリア内ノードの並び順は `WorldMapSystem`（`getWorldAreaStages` / `buildWorldAreas` / `getNextAvailableStage`）が `getStageList` 順 = chapter→**difficulty→id** で決める。新ID（`area1_a2`/`area1_boss`/`area1_c1`…）は辞書順が play 順にならず、`difficulty`(0-5) も10ノードに一意付与できないため、このままでは**エリア一覧順・next stage 判定が誤順**になる（※マップ座標は `position.x/y` 駆動で別問題）。
+- [x] `src/logic/DungeonSystem.ts` `getStageList` のソートを **`sortOrder`(あれば昇順)→difficulty→id** に拡張（`sortOrder` 未設定は従来通り）
+- [x] `src/lib/agent/knownFields.ts` の `stages` に **`sortOrder`** を追加（型にはあるが未登録＝stage に付与すると未知フィールドWARN になる）
+- [x] `DungeonSystem` のソートテスト追加（sortOrder 優先・未設定フォールバック・混在）
+- 関所: `npx tsc --noEmit` / テスト green。
 
 ### B1. 新規戦闘ノード作成（`/admin/stages/new` 経由＝保存時に `validateStageDraft`）
-- [ ] `area1_a2`(1-2) / `area1_a_mini`(1-4) / `area1_b2`(1-6) / `area1_b3`(1-7) / `area1_c1`(1-9) / `area1_c2`(1-10) / `area1_c3`(1-11)
-- [ ] 各ノード: `chapter:1 / area:1`、`nodeType:DUNGEON`、3WAVE、最終WAVE は `role:ELITE`（1-4/1-10/1-11）
-- [ ] WAVE は既存敵で構成、難所は `enemyStatScale` で調整（C4採用時）
-- [ ] `position.x/y` を 3ゾーンに沿って配置
+- [x] `area1_a2`(1-2) / `area1_a_mini`(1-4) / `area1_b2`(1-6) / `area1_b3`(1-7) / `area1_c1`(1-9) / `area1_c2`(1-10) / `area1_c3`(1-11)
+- [x] 各ノード: `chapter:1 / area:1`、`chapterName:'亡国の王都'`、`nodeType:DUNGEON`、3WAVE、最終WAVE は `role:ELITE`（1-4/1-10/1-11）
+- [x] WAVE は**既存10体**で構成、難所は wave `statScale`（C4実装済み）で調整。新規敵は Phase 2（1-4ミニボス/1-11エリートは既存強敵＋statScale で仮組み）
+- [x] **`sortOrder` を play 順で付与**（B0必須・下表）＋ `position.x/y` を3ゾーンに沿って配置
 
-### B2. 既存ノードの unlockRequires 再結線（リニアチェーン）
-| ノード | ID | unlockRequires |
-|---|---|---|
-| 1-1 | `area1_node1` | `[]`（不変） |
-| 1-2 | `area1_a2` | `[area1_node1]` |
-| 1-4 | `area1_a_mini` | `[area1_a2]` |
-| 1-5 | `area1_node2` | `[area1_a_mini]` ← **変更**（旧 `[area1_node1]`） |
-| 1-6 | `area1_b2` | `[area1_node2]` |
-| 1-7 | `area1_b3` | `[area1_b2]` |
-| 1-9 | `area1_c1` | `[area1_b3]` |
-| 1-10 | `area1_c2` | `[area1_c1]` |
-| 1-11 | `area1_c3` | `[area1_c2]` |
-| 1-12 | `area1_boss` | `[area1_c3]` ← **変更**（旧 `[area1_node2]`） |
-| 残滓 | `area1_node3` | `[area1_boss]`（不変） |
+### B2. 既存ノードの unlockRequires 再結線＋全 area1 ノードへ sortOrder 付与（リニアチェーン）
 
-> 既存IDの再配置は **2件のみ**（node2 / boss の unlockRequires 変更）。node1 / node3 は不変。残滓解放コード（`area1_node3`）に触れない。
-> B向け申し送り: 現行 `stages.json` には `area2_gate` が存在し、`area1_node3` から到達可能。B の再結線後も Chapter 2 ゲートの解放条件が崩れていないことを A1 グラフ検査と通しプレイで確認する。
+sortOrder 採番規則: `章×100 + 表示番号×10`（隙間で 1-3/1-8 の物語や将来追加に対応。野営=0）。
+
+| 表示 | ID | unlockRequires | sortOrder |
+|---|---|---|---|
+| 野営 | `area1_safe` | `[]`（不変） | 0 |
+| 1-1 | `area1_node1` | `[]`（不変） | 110 |
+| 1-2 | `area1_a2` | `[area1_node1]` | 120 |
+| 1-4 | `area1_a_mini` | `[area1_a2]` | 140 |
+| 1-5 | `area1_node2` | `[area1_a_mini]` ← **変更**（旧 `[area1_node1]`） | 150 |
+| 1-6 | `area1_b2` | `[area1_node2]` | 160 |
+| 1-7 | `area1_b3` | `[area1_b2]` | 170 |
+| 1-9 | `area1_c1` | `[area1_b3]` | 190 |
+| 1-10 | `area1_c2` | `[area1_c1]` | 200 |
+| 1-11 | `area1_c3` | `[area1_c2]` | 210 |
+| 1-12 | `area1_boss` | `[area1_c3]` ← **変更**（旧 `[area1_node2]`） | 220 |
+| 残滓 | `area1_node3` | `[area1_boss]`（不変） | 230 |
+
+> unlockRequires の再配置は **2件のみ**（node2 / boss）。node1 / node3 は不変、残滓解放コード（`area1_node3`）に触れない。
+> **既存ノード（safe/node1/node2/boss/node3）にも sortOrder を付与**して全 area1 の並び順を明示（一部のみ設定の混在を避ける）。
+> 申し送り①: `area2_gate` は `area1_node3` から到達可能。再結線後も ch2 ゲート解放が崩れないことを A1 グラフ＋通しプレイで確認。
+> 申し送り②（D2・既知）: チュートは旧ID（node1/node2/boss クリア）キーのまま発火するため、B 時点では WEAPON_EQUIP/JOB_CHANGE=中盤・強化/魔神化=最終ノードでズレて出る。**Phase 3 で再配線して正す前提**。B 単体の通しプレイは可能、G2 は ID 存在のみ見るので緑のまま。
 
 ### B 完了条件
-- 全新規ノードで `validateStageDraft` PASS
-- **A1 グラフ検査で到達可能・循環なし**、**A2 で `area1_node1/node2/boss/node3` が全て存在**
-- `/admin/audit` **FAIL=0**
-- 実機で 1-1 → 残滓ノードまで通しクリア可能
-- `npx tsc --noEmit` ＋ 既存テスト非破壊（テストが master を mutate しないこと＝CI `git diff --exit-code src/data/master`）
+- [x] 全新規ノードで `validateStageDraft` PASS
+- [x] **A1 グラフ：到達可能・循環なし** / **A2：`area1_node1/node2/boss/node3` 存在**
+- [x] **エリア一覧順・next stage が play 順（野営→1-1→…→1-12→残滓）になる**（B0＋sortOrder）
+- [x] `/admin/audit` **FAIL=0**
+- [x] 1-1 → 残滓ノード → area2_gate まで通しクリア可能
+- [x] `npx tsc --noEmit` ＋ 既存テスト非破壊
+
+実装証跡（2026-06-28）:
+- B0: `StageData.sortOrder` を追加し、`getStageList()` を sortOrder 優先・未設定フォールバックに変更。`knownFields.stages` に `sortOrder` を登録。
+- B1/B2: `src/data/master/stages.json` に新規7戦闘ノードを追加し、既存 `area1_node2` / `area1_boss` の `unlockRequires` を新チェーンへ再結線。`area1_node3` は残滓ノードとして据え置き、`blood_mire_queen` は `area1_c3` へ移動。
+- 追加/更新テスト: `DungeonSystem.test.ts`（sortOrder/next stage）、`WorldMapSystem.test.ts`（area stage順）、`knownFields.test.ts`、`account-progression.integration.test.ts`（新チェーン通しクリア）。
+- 検証: `npx tsc --noEmit` PASS / 関連 Jest 6 suites・55 tests PASS / DB統合 `account-progression.integration.test.ts` PASS / 全 Jest 87 suites・780 tests PASS / `auditMasterData()` FAIL=0（WARN=17）/ 新規7ノード `validateStageDraft` FAIL=0 WARN=0 / `git diff --check` PASS。
+- 補足: `git diff --exit-code src/data/master` は今回 `stages.json` の意図的なB実装差分があるため、ローカル作業ツリーでは不合格になる。CI上はコミット後のクリーンツリーで「テストが master data を破壊しない」チェックとして有効。
 
 ---
 

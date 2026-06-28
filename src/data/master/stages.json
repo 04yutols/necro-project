@@ -10,6 +10,7 @@
     "nodeType": "SAFE",
     "element": "DARK",
     "difficulty": 0,
+    "sortOrder": 0,
     "description": "亡国の王都へ侵攻するための拠点。ここでは戦闘は発生せず、軍団編成と装備確認に戻れる。",
     "waveCount": 0,
     "areaGimmick": "NONE",
@@ -36,6 +37,7 @@
     "nodeType": "DUNGEON",
     "element": "DARK",
     "difficulty": 1,
+    "sortOrder": 110,
     "description": "英雄に滅ぼされた亡国の外縁。墓荒らしの骸兵と腐肉喰らいを倒し、魂ゲージを温める導入ダンジョン。",
     "waveCount": 3,
     "areaGimmick": "NONE",
@@ -112,6 +114,171 @@
       "y": 422
     }
   },
+  "area1_a2": {
+    "id": "area1_a2",
+    "name": "Inner Grave Road",
+    "nameJa": "王都墓道・内郭",
+    "nameEn": "INNER GRAVE ROAD",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 1,
+    "sortOrder": 120,
+    "description": "城壁の裂け目へ続く内郭の墓道。女官の亡霊と腐肉喰らいが混ざり、通常攻撃だけでは押し切りにくくなる。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_node1"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "grave_soldier",
+          "hollow_handmaid"
+        ],
+        "intent": "墓道の延長としてHUMANOIDを混ぜ、雷・風弱点の確認を促す。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "rot_hound",
+          "hollow_handmaid",
+          "earthbound_grudge"
+        ],
+        "intent": "軽量3体でターゲット選択と属性幅を確認する。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "abyss_warden",
+          "hollow_handmaid"
+        ],
+        "intent": "防壁持ち精鋭に支援役を添え、次のミニボス前の小さな山を作る。",
+        "statScale": {
+          "hp": 1.1,
+          "atk": 1.05
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 14,
+      "baseGold": 1320,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "apprentice_cinder_staff",
+          "rarity": "R",
+          "rate": 0.42
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "ash_scroll",
+          "rarity": "COMMON",
+          "quantity": 1,
+          "rate": 0.62
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "underworld_potion",
+          "quantity": 1,
+          "rate": 0.72
+        }
+      ]
+    },
+    "position": {
+      "x": 254,
+      "y": 382
+    }
+  },
+  "area1_a_mini": {
+    "id": "area1_a_mini",
+    "name": "Gravewarden Gate",
+    "nameJa": "墓守巨像の門",
+    "nameEn": "GRAVEWARDEN GATE",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "EARTH",
+    "difficulty": 2,
+    "sortOrder": 140,
+    "description": "死都への門を塞ぐ骨巨人の守り。新規ミニボス投入前の仮構成として、既存精鋭を強めて配置する。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_a2"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "grave_soldier",
+          "grave_soldier",
+          "rot_hound"
+        ],
+        "intent": "ミニオン数を増やし、範囲攻撃と撃破順を意識させる。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "abyss_warden",
+          "earthbound_grudge"
+        ],
+        "intent": "防壁持ちと怨霊で、光弱点への集中を促す。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "bone_colossus",
+          "grave_knight"
+        ],
+        "intent": "Zone A の締め。高耐久2体を置き、魔神化前の最初の壁にする。",
+        "statScale": {
+          "hp": 1.2,
+          "atk": 1.1,
+          "def": 1.1
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 18,
+      "baseGold": 1700,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.13
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "grave_crystal",
+          "rarity": "COMMON",
+          "quantity": 1,
+          "rate": 0.58
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "ether_shard",
+          "quantity": 1,
+          "rate": 0.16
+        }
+      ]
+    },
+    "position": {
+      "x": 308,
+      "y": 326
+    }
+  },
   "area1_node2": {
     "id": "area1_node2",
     "name": "Sooted Royal Dungeon",
@@ -123,11 +290,12 @@
     "nodeType": "DUNGEON",
     "element": "EARTH",
     "difficulty": 2,
+    "sortOrder": 150,
     "description": "王城の地下に残る処刑場。骨巨人の高耐久と霊的防壁が、属性スキルの選択を要求する。",
     "waveCount": 3,
     "areaGimmick": "NONE",
     "unlockRequires": [
-      "area1_node1"
+      "area1_a_mini"
     ],
     "waves": [
       {
@@ -159,8 +327,8 @@
       }
     ],
     "rewards": {
-      "baseExp": 16,
-      "baseGold": 1460,
+      "baseExp": 20,
+      "baseGold": 1900,
       "dropTable": [
         {
           "type": "WEAPON",
@@ -202,6 +370,418 @@
       "y": 326
     }
   },
+  "area1_b2": {
+    "id": "area1_b2",
+    "name": "Burnt Audience Hall",
+    "nameJa": "焼け落ちた謁見の間",
+    "nameEn": "BURNT AUDIENCE HALL",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "FIRE",
+    "difficulty": 3,
+    "sortOrder": 160,
+    "description": "煤に覆われた謁見の間。怨霊と監獄守が残り火をまとい、王城内部の消耗戦が始まる。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_node2"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "hollow_handmaid",
+          "earthbound_grudge"
+        ],
+        "intent": "王城側の敵種を再提示し、状態異常命中への警戒を作る。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "abyss_warden",
+          "rot_hound"
+        ],
+        "intent": "防壁と高速ミニオンで、行動順の圧を出す。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "abyss_warden",
+          "grave_knight"
+        ],
+        "intent": "精鋭2体で中盤の硬さを作り、魔神化ゲージの使いどころを増やす。",
+        "statScale": {
+          "hp": 1.2,
+          "atk": 1.1
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 22,
+      "baseGold": 2200,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "mourning_bell_crozier",
+          "rarity": "R",
+          "rate": 0.4
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "bone_chip",
+          "rarity": "COMMON",
+          "quantity": 2,
+          "rate": 0.66
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "underworld_potion",
+          "quantity": 1,
+          "rate": 0.62
+        }
+      ]
+    },
+    "position": {
+      "x": 164,
+      "y": 278
+    }
+  },
+  "area1_b3": {
+    "id": "area1_b3",
+    "name": "Hollow Guard Barracks",
+    "nameJa": "虚ろな近衛兵舎",
+    "nameEn": "HOLLOW GUARD BARRACKS",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "LIGHT",
+    "difficulty": 3,
+    "sortOrder": 170,
+    "description": "かつて王を守った近衛たちの兵舎。彷徨う近衛霊の本実装までは、墓騎士で役割を代替する。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_b2"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "grave_knight",
+          "grave_soldier"
+        ],
+        "intent": "近衛兵舎の導入として、騎士と骸兵の組み合わせを見せる。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "hollow_handmaid",
+          "abyss_warden",
+          "earthbound_grudge"
+        ],
+        "intent": "支援役・防壁・怨霊を混ぜ、優先撃破の判断を要求する。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "grave_knight",
+          "bone_colossus"
+        ],
+        "intent": "Zone B の山場前。単体火力と防壁破壊の両方を求める。",
+        "statScale": {
+          "hp": 1.25,
+          "atk": 1.12,
+          "def": 1.08
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 24,
+      "baseGold": 2500,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "grave_thorn_dagger",
+          "rarity": "R",
+          "rate": 0.4
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.15
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "beast_fang",
+          "rarity": "COMMON",
+          "quantity": 1,
+          "rate": 0.5
+        }
+      ]
+    },
+    "position": {
+      "x": 226,
+      "y": 240
+    }
+  },
+  "area1_c1": {
+    "id": "area1_c1",
+    "name": "Dragonbone Procession",
+    "nameJa": "竜骨の参道",
+    "nameEn": "DRAGONBONE PROCESSION",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "EARTH",
+    "difficulty": 4,
+    "sortOrder": 190,
+    "description": "竜骨祭壇へ続く白骨の参道。骨巨人と血沼の魔物が混じり、終盤の複合弱点を試す。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_b3"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "earthbound_grudge",
+          "bloodmire_leech"
+        ],
+        "intent": "怨霊と血沼の敵を混ぜ、終盤ゾーンへの空気を切り替える。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "bone_colossus",
+          "hollow_handmaid"
+        ],
+        "intent": "高耐久と支援役で、敵ごとの処理順をはっきりさせる。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "bone_colossus",
+          "bloodmire_leech",
+          "bloodmire_leech"
+        ],
+        "intent": "高耐久の骨巨人を軸に、血沼の高速圧力で消耗を作る。",
+        "statScale": {
+          "hp": 1.25,
+          "atk": 1.15
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 26,
+      "baseGold": 2800,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.16
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "rarity": "RARE",
+          "quantity": 1,
+          "rate": 0.38
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "ether_shard",
+          "quantity": 1,
+          "rate": 0.2
+        }
+      ]
+    },
+    "position": {
+      "x": 292,
+      "y": 202
+    }
+  },
+  "area1_c2": {
+    "id": "area1_c2",
+    "name": "Cursed Head Maid Chamber",
+    "nameJa": "呪詛女官の間",
+    "nameEn": "CURSED MAID CHAMBER",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "THUNDER",
+    "difficulty": 4,
+    "sortOrder": 200,
+    "description": "王妃の私室に残った呪詛の間。新規エリート実装前は、女官と既存精鋭で術師戦の圧を代替する。",
+    "waveCount": 3,
+    "areaGimmick": "STATUS_AILMENT",
+    "unlockRequires": [
+      "area1_c1"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "hollow_handmaid",
+          "hollow_handmaid",
+          "earthbound_grudge"
+        ],
+        "intent": "女官長の前座として支援役を重ね、状態異常への警戒を高める。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "abyss_warden",
+          "hollow_handmaid",
+          "rot_hound"
+        ],
+        "intent": "防壁と高速敵を混ぜ、回復・防御の判断を促す。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "hollow_handmaid",
+          "abyss_warden",
+          "bone_colossus"
+        ],
+        "intent": "1-10 エリート相当。支援役を先に倒さないと長引く構成にする。",
+        "statScale": {
+          "hp": 1.35,
+          "atk": 1.2,
+          "def": 1.1
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 28,
+      "baseGold": 3200,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "mourning_bell_crozier",
+          "rarity": "R",
+          "rate": 0.36
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "spirit_silver_saber",
+          "rarity": "SSR",
+          "rate": 0.01
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "soul_incense",
+          "quantity": 1,
+          "rate": 0.16
+        }
+      ]
+    },
+    "position": {
+      "x": 242,
+      "y": 160
+    }
+  },
+  "area1_c3": {
+    "id": "area1_c3",
+    "name": "Bloodmire Queen's Causeway",
+    "nameJa": "血泥女王の畔",
+    "nameEn": "BLOODMIRE QUEEN'S CAUSEWAY",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "WATER",
+    "difficulty": 4,
+    "sortOrder": 210,
+    "description": "祭壇手前の血泥に沈んだ畔。血沼の女王を章ボス前のエリートとして配置し、残滓ノードから役割を切り離す。",
+    "waveCount": 3,
+    "areaGimmick": "STATUS_AILMENT",
+    "unlockRequires": [
+      "area1_c2"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "bloodmire_leech",
+          "bloodmire_leech",
+          "earthbound_grudge"
+        ],
+        "intent": "血沼の高速圧力を前座として提示する。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "abyss_warden",
+          "bloodmire_leech"
+        ],
+        "intent": "女王戦前に水・雷・光の弱点幅を確認させる。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "blood_mire_queen"
+        ],
+        "intent": "1-11 エリート相当。既存ボス個体を軽く抑えた倍率で仮配置する。",
+        "statScale": {
+          "hp": 0.85,
+          "atk": 0.9,
+          "def": 0.9
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 30,
+      "baseGold": 3600,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.18
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "spirit_silver_saber",
+          "rarity": "SSR",
+          "rate": 0.012
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "bloodmire_essence",
+          "rarity": "RARE",
+          "quantity": 1,
+          "rate": 0.42
+        }
+      ]
+    },
+    "position": {
+      "x": 184,
+      "y": 132
+    }
+  },
   "area1_boss": {
     "id": "area1_boss",
     "name": "Dragonbone Altar",
@@ -213,11 +793,12 @@
     "nodeType": "BOSS",
     "element": "DARK",
     "difficulty": 3,
+    "sortOrder": 220,
     "description": "骸骨山脈の頂。死骨竜王オッサリウスが霊的防壁と怒りを纏い、隠しURの可能性を抱えて待つ。",
     "waveCount": 3,
     "areaGimmick": "NONE",
     "unlockRequires": [
-      "area1_node2"
+      "area1_c3"
     ],
     "waves": [
       {
@@ -249,8 +830,8 @@
       }
     ],
     "rewards": {
-      "baseExp": 24,
-      "baseGold": 3600,
+      "baseExp": 36,
+      "baseGold": 4600,
       "dropTable": [
         {
           "type": "WEAPON",
@@ -300,8 +881,8 @@
       ]
     },
     "position": {
-      "x": 246,
-      "y": 265
+      "x": 310,
+      "y": 146
     },
     "isAreaBoss": true
   },
@@ -316,7 +897,8 @@
     "nodeType": "DUNGEON",
     "element": "WATER",
     "difficulty": 4,
-    "description": "竜骨祭壇の先に広がる赤黒い湿地。水・風弱点を持つ血沼の女王が、次章への門を閉ざす。",
+    "sortOrder": 230,
+    "description": "竜骨祭壇の先に広がる赤黒い湿地。血沼の残響から深淵の残滓を拾い上げる、章クリア後の解放ノード。",
     "waveCount": 3,
     "areaGimmick": "STATUS_AILMENT",
     "unlockRequires": [
@@ -330,27 +912,34 @@
           "bloodmire_leech",
           "bloodmire_leech"
         ],
-        "intent": "高ATK・高SPDの蛭2体が先攻を取る。火・雷での迅速処理を促す圧力WAVEとして機能する。"
+        "intent": "残滓解放前の軽い血沼戦。火・雷での迅速処理を促す。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
         "enemyIds": [
+          "bloodmire_leech",
           "abyss_warden"
         ],
-        "intent": "雷・水弱点の防壁で属性スキルを再確認する。"
+        "intent": "血沼の圧力に防壁持ちを添え、属性スキルの再確認を行う。"
       },
       {
         "label": "WAVE 3",
-        "role": "BOSS",
+        "role": "ELITE",
         "enemyIds": [
-          "blood_mire_queen"
+          "bloodmire_leech",
+          "bloodmire_leech",
+          "earthbound_grudge"
         ],
-        "intent": "水・風弱点のボス。防壁破壊時の増援ギミックを想定する。"
+        "intent": "ボス後の残滓回収ノードとして、女王を置かず短い消耗戦で締める。",
+        "statScale": {
+          "hp": 1.2,
+          "atk": 1.1
+        }
       }
     ],
     "rewards": {
-      "baseExp": 30,
+      "baseExp": 32,
       "baseGold": 4200,
       "dropTable": [
         {

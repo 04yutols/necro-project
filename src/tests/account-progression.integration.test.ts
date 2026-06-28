@@ -37,6 +37,18 @@ import type { StageResultMeta } from '../types/online';
 jest.setTimeout(70000);
 
 const JOBS = jobsData as Record<string, JobData>;
+const CH1_REDESIGNED_SEQUENCE_AFTER_NODE1 = [
+  'area1_a2',
+  'area1_a_mini',
+  'area1_node2',
+  'area1_b2',
+  'area1_b3',
+  'area1_c1',
+  'area1_c2',
+  'area1_c3',
+  'area1_boss',
+  'area1_node3',
+];
 
 async function cleanupUser(email: string) {
   const user = await prisma.user.findUnique({
@@ -395,9 +407,9 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
     expect(afterWeaponEquip.total.atk).toBeGreaterThan(beforeWeaponEquip.total.atk);
 
     const chapterProgressSpy = jest.spyOn(Math, 'random').mockReturnValue(0.01);
-    await clearStageForTest(user, 'area1_node2');
-    await clearStageForTest(user, 'area1_boss');
-    await clearStageForTest(user, 'area1_node3');
+    for (const stageId of CH1_REDESIGNED_SEQUENCE_AFTER_NODE1) {
+      await clearStageForTest(user, stageId);
+    }
     const area2GateResult = await clearStageForTest(user, 'area2_gate');
     const parallelAttemptA = await startStageForUser(user, 'area2_gate');
     const parallelAttemptB = await startStageForUser(user, 'area2_gate');
@@ -451,7 +463,7 @@ describe('new account backend progression: signup -> starter job -> 1-1 clear ->
       schemaVersion: PLAYER_SAVE_SCHEMA_VERSION,
       player: {
         currentJobId: 'warrior',
-        clearedStages: expect.arrayContaining(['area1_node1', 'area1_node2', 'area1_boss', 'area1_node3', 'area2_gate']),
+        clearedStages: expect.arrayContaining(['area1_node1', ...CH1_REDESIGNED_SEQUENCE_AFTER_NODE1, 'area2_gate']),
         jobs: expect.arrayContaining([expect.objectContaining({ jobId: 'warrior' })]),
       },
       weaponMaterials: expect.any(Array),

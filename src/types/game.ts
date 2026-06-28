@@ -420,6 +420,7 @@ export interface StageData {
   nodeType: StageNodeType;
   element: ElementType;
   difficulty: number;
+  sortOrder?: number;
   description: string;
   waveCount: number;
   areaGimmick?: AreaGimmickType;

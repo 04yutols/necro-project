@@ -9,8 +9,20 @@ export interface StageWaveSummary {
   enemies: EnemyData[];
 }
 
+function getExplicitSortOrder(stage: StageData): number | null {
+  return typeof stage.sortOrder === 'number' && Number.isFinite(stage.sortOrder)
+    ? stage.sortOrder
+    : null;
+}
+
 export function getStageList(stages: Record<string, StageData>): StageData[] {
   return Object.values(stages).sort((a, b) => {
+    const aSortOrder = getExplicitSortOrder(a);
+    const bSortOrder = getExplicitSortOrder(b);
+    if (aSortOrder !== null || bSortOrder !== null) {
+      const orderDelta = (aSortOrder ?? Number.POSITIVE_INFINITY) - (bSortOrder ?? Number.POSITIVE_INFINITY);
+      if (orderDelta !== 0) return orderDelta;
+    }
     if (a.chapter !== b.chapter) return a.chapter - b.chapter;
     if (a.difficulty !== b.difficulty) return a.difficulty - b.difficulty;
     return a.id.localeCompare(b.id);
