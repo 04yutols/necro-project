@@ -30,18 +30,14 @@ const TUTORIAL_BATTLE_STAGE_ID_SET = new Set<string>(TUTORIAL_BATTLE_STAGE_IDS);
 
 export const TUTORIAL_CHAIN_STAGE_IDS = {
   PARTY_FORMATION: 'area1_node1',
-  WEAPON_EQUIP: 'area1_node2',
-  JOB_CHANGE: 'area1_node2',
-  WEAPON_ENHANCE: 'area1_boss',
-  DEMONIZATION: 'area1_boss',
+  WEAPON_EQUIP: 'area1_a2',
+  DEMONIZATION: 'area1_a_mini',
 } as const satisfies Partial<Record<TutorialPhase, string>>;
 
 const CLEAR_TUTORIAL_CHAIN_PHASES = new Set<TutorialPhase>([
   'BATTLE_BASICS',
   'PARTY_FORMATION',
   'WEAPON_EQUIP',
-  'JOB_CHANGE',
-  'WEAPON_ENHANCE',
   'DEMONIZATION',
 ]);
 
@@ -79,24 +75,8 @@ export function getTutorialPhaseAfterClear({
   }
 
   if (
-    hasCleared(TUTORIAL_CHAIN_STAGE_IDS.JOB_CHANGE) &&
-    hasCompleted('WEAPON_EQUIP') &&
-    !hasCompleted('JOB_CHANGE')
-  ) {
-    return 'JOB_CHANGE';
-  }
-
-  if (
-    hasCleared(TUTORIAL_CHAIN_STAGE_IDS.WEAPON_ENHANCE) &&
-    hasCompleted('JOB_CHANGE') &&
-    !hasCompleted('WEAPON_ENHANCE')
-  ) {
-    return 'WEAPON_ENHANCE';
-  }
-
-  if (
     hasCleared(TUTORIAL_CHAIN_STAGE_IDS.DEMONIZATION) &&
-    hasCompleted('WEAPON_ENHANCE') &&
+    hasCompleted('WEAPON_EQUIP') &&
     !hasCompleted('DEMONIZATION')
   ) {
     return 'DEMONIZATION';

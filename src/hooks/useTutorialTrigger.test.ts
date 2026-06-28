@@ -36,7 +36,7 @@ describe('tutorial trigger hooks', () => {
   });
 
   test('ignores non-tutorial battle stages', () => {
-    expect(startTutorialBattlePhase('area1_node2')).toBe(false);
+    expect(startTutorialBattlePhase('area1_a2')).toBe(false);
     expect(useTutorialStore.getState().activePhase).toBeNull();
   });
 });

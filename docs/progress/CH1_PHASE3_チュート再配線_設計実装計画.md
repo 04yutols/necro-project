@@ -86,3 +86,26 @@
 - **BubbleHint 初usage**: プロジェクト初の BubbleHint 設置。位置決め（targetId の DOM 存在・スクロール位置）を実機で確認。iOS Safari の overflow+transform 分離ルール遵守。
 - **セーブ互換**: 旧 `completedPhases` に `JOB_CHANGE`/`WEAPON_ENHANCE` が残っていても、型から消えても実害なし（未参照の文字列として無視）。pre-release につき移行処理不要。
 - **A2 の真価**: 本フェーズの再キーは「存在しない stage を参照したら audit FAIL」で守られる。再キー後に `/admin/audit` FAIL=0 を必ず確認。
+
+---
+
+## 6. 実装・検証証跡（2026-06-28）
+
+### 実装内容
+- `TutorialPhase` / `PHASE_STEPS` / `ALL_PHASES` / `BANNER_LABELS` から `JOB_CHANGE` / `WEAPON_ENHANCE` を削除し、強制フェーズを5つへ縮約。
+- `TUTORIAL_CHAIN_STAGE_IDS` を `PARTY_FORMATION: area1_node1` / `WEAPON_EQUIP: area1_a2` / `DEMONIZATION: area1_a_mini` へ再キー。
+- クリア後チェーンを `PARTY_FORMATION → WEAPON_EQUIP → DEMONIZATION → ABYSSAL_RESIDUE` に再順序化し、DEMONIZATION の前提を `WEAPON_EQUIP` 完了へ変更。
+- `JobChangeScreen` に `hint_job_change`、`LegionHub` の武器GEARタブ列に `hint_weapon_enhance` の `BubbleHint` を設置。
+- `stageRefs` / チュートリアル / ストア関連テストを新チェーンへ更新。
+
+### 検証結果
+| コマンド | 結果 |
+|---|---|
+| `npx tsc --noEmit` | PASS |
+| `npm test -- --runInBand src/data/tutorial/phases.test.ts src/data/tutorial/triggers.test.ts src/hooks/useTutorialTrigger.test.ts src/store/useTutorialStore.test.ts src/data/stageRefs.test.ts` | PASS: 5 suites / 30 tests |
+| `npm test -- --runInBand` | PASS: 88 suites / 785 tests |
+| `npm run data:audit` | PASS: 0 fail / 13 warn |
+| `NODE_ENV=development npx tsx -e 'import { runMasterDataAudit } from "./src/app/admin/actions"; ...'` | PASS: `/admin/audit` 相当 0 FAIL（PASS 352 / WARN 17） |
+| `git diff --check` | PASS |
+
+補足: 本番コード（test除外）で `JOB_CHANGE` / `WEAPON_ENHANCE` の残存参照がないことを `rg -n "JOB_CHANGE\|WEAPON_ENHANCE" src --glob '!*.test.ts'` で確認済み。

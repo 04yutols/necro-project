@@ -2,8 +2,6 @@ export type TutorialPhase =
   | 'BATTLE_BASICS'
   | 'PARTY_FORMATION'
   | 'WEAPON_EQUIP'
-  | 'JOB_CHANGE'
-  | 'WEAPON_ENHANCE'
   | 'DEMONIZATION'
   | 'ABYSSAL_RESIDUE';
 
@@ -91,52 +89,6 @@ export const PHASE_STEPS: Record<TutorialPhase, TutorialStep[]> = {
     },
   ],
 
-  JOB_CHANGE: [
-    {
-      id: 'TUT_J_01',
-      targetId: 'tut-job-rail',
-      title: '職業選択',
-      body: '横にスクロールして職業を選ぼう。それぞれ固有スキルとステータスを持つ。',
-      position: 'below',
-      requiredTab: 'JOB',
-    },
-    {
-      id: 'TUT_J_02',
-      targetId: 'tut-stat-change',
-      title: 'ステータス変化',
-      body: '青=上昇 / 赤=低下。転職後のステータスをここで事前確認できる。',
-      position: 'above',
-      requiredTab: 'JOB',
-    },
-    {
-      id: 'TUT_J_03',
-      targetId: 'tut-job-confirm',
-      title: '転職',
-      body: '「転職」ボタンで職業を変更。前職の経験は消えずに引き継がれる。',
-      position: 'above',
-      requiredTab: 'JOB',
-    },
-  ],
-
-  WEAPON_ENHANCE: [
-    {
-      id: 'TUT_H_01',
-      targetId: 'tut-weapon-enhance-tab',
-      title: '強化',
-      body: '武器は「共鳴」と「打ち直し」で鍛えられる。まず強化タブを開こう。',
-      position: 'below',
-      requiredTab: 'EQUIP',
-    },
-    {
-      id: 'TUT_H_02',
-      targetId: 'tut-weapon-reforge-btn',
-      title: '打ち直し',
-      body: '黒鋼を使ってILvを上げる。ATKが確実に伸び、節目ではサブステータスも強くなる。',
-      position: 'above',
-      requiredTab: 'EQUIP',
-    },
-  ],
-
   ABYSSAL_RESIDUE: [
     {
       id: 'TUT_R_01',
@@ -188,8 +140,6 @@ export const ALL_PHASES: TutorialPhase[] = [
   'BATTLE_BASICS',
   'PARTY_FORMATION',
   'WEAPON_EQUIP',
-  'JOB_CHANGE',
-  'WEAPON_ENHANCE',
   'DEMONIZATION',
   'ABYSSAL_RESIDUE',
 ];
@@ -199,8 +149,6 @@ export const BANNER_LABELS: Record<TutorialPhase, string> = {
   BATTLE_BASICS:   'バトル基礎が解放されました',
   PARTY_FORMATION: '軍団編成が解放されました',
   WEAPON_EQUIP:    '武器の装備が解放されました',
-  JOB_CHANGE:      '職業転職が解放されました',
-  WEAPON_ENHANCE:  '武器の強化が解放されました',
   ABYSSAL_RESIDUE: '深淵の残滓が解放されました',
   DEMONIZATION:    '魔神化システムが解放されました',
 };

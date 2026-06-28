@@ -69,13 +69,13 @@ describe('useTutorialStore persistence scopes', () => {
     expect(useTutorialStore.getState().viewedHints).toEqual([]);
     expect(useTutorialStore.getState().visitedTabs).toEqual([]);
 
-    expect(useTutorialStore.getState().startPhase('JOB_CHANGE')).toBe(true);
+    expect(useTutorialStore.getState().startPhase('DEMONIZATION')).toBe(true);
     useTutorialStore.getState().skipPhase();
     useTutorialStore.getState().markHintViewed('user-b-hint');
 
     await switchTutorialPersistenceScope('tutorial-user-a');
     expect(useTutorialStore.getState().completedPhases).toEqual(['BATTLE_BASICS']);
-    expect(useTutorialStore.getState().completedPhases).not.toContain('JOB_CHANGE');
+    expect(useTutorialStore.getState().completedPhases).not.toContain('DEMONIZATION');
     expect(useTutorialStore.getState().viewedHints).toEqual(['user-a-hint']);
     expect(useTutorialStore.getState().visitedTabs).toEqual(['EQUIP']);
   });
@@ -124,13 +124,13 @@ describe('useTutorialStore', () => {
   test('deduplicates hints, banners, and visited tabs', () => {
     useTutorialStore.getState().markHintViewed('legion_cost_first');
     useTutorialStore.getState().markHintViewed('legion_cost_first');
-    useTutorialStore.getState().enqueueBanner('JOB_CHANGE');
-    useTutorialStore.getState().enqueueBanner('JOB_CHANGE');
+    useTutorialStore.getState().enqueueBanner('DEMONIZATION');
+    useTutorialStore.getState().enqueueBanner('DEMONIZATION');
     useTutorialStore.getState().markTabVisited('EQUIP');
     useTutorialStore.getState().markTabVisited('EQUIP');
 
     expect(useTutorialStore.getState().viewedHints).toEqual(['legion_cost_first']);
-    expect(useTutorialStore.getState().bannerQueue).toEqual(['JOB_CHANGE']);
+    expect(useTutorialStore.getState().bannerQueue).toEqual(['DEMONIZATION']);
     expect(useTutorialStore.getState().visitedTabs).toEqual(['EQUIP']);
   });
 });
