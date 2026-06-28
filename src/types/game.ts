@@ -385,11 +385,14 @@ export interface EnemyData {
   description?: string;
 }
 
+export type EnemyStatScale = Partial<Pick<BaseStats, 'hp' | 'atk' | 'def'>>;
+
 export interface StageWaveData {
   label: string;
   role: 'WARMUP' | 'SHIELD' | 'ELITE' | 'BOSS';
   enemyIds: string[];
   intent: string;
+  statScale?: EnemyStatScale;
 }
 
 export type AreaGimmickType = 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE';

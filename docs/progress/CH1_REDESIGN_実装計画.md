@@ -94,21 +94,21 @@
 
 **① 型** — `src/types/game.ts` の `StageWaveData` に `statScale?: { hp?: number; atk?: number; def?: number }`（各キー省略=1.0、オブジェクト省略=無スケール・後方互換）。
 
-**② 共有ヘルパ（drift防止の核）** — 新規 `src/logic/EnemyScaling.ts` に pure fn `applyEnemyStatScale(enemy: EnemyData, statScale?): EnemyData`。**clone してから** hp/atk/def に倍率→`Math.floor`。spd / %系（critRate等）/ 耐性は不変。`ENEMIES[id]`（MasterDataService singleton）を絶対に mutate しない。
+**② 共有ヘルパ（drift防止の核）** — 新規 `src/logic/EnemyScaling.ts` に pure fn `applyEnemyStatScale(enemy: EnemyData, statScale?): EnemyData`。**clone してから** hp/atk/def に倍率→`Math.floor`。spd / %系（critRate等）/ 耐性は不変。`masterData.getEnemy(id)` / `ENEMIES[id]`（MasterDataService singleton）を絶対に mutate しない。※既存の敵→ランタイム MonsterData 構築（shieldHp/statusEffects 付与）時に通せば clone は実質その中で済む。
 
-**③ 適用サイト（全実体化点で②を通す）**
+**③ 適用サイト（敵を実体化する2経路で②を通す）** ← 2026-06-28 調査で補正
 
 | 経路 | 箇所 |
 |---|---|
-| サーバ戦闘 | `GameManager`（`new BattleEngine(player, monsterList)` の monsterList 構築時） |
-| クライアント戦闘 | `BattleCanvas.tsx:375`（`wave.enemyIds.map(id => ENEMIES[id])`） |
-| シミュレータ | `src/lib/agent/sim/` の敵生成 |
+| **サーバ戦闘** | **`BattleEngine` 内の敵生成**（`masterData.getEnemy(id)` → `activeEnemyCandidates`/`turnEnemies`、`:983`/`:995` 付近）。当該 wave の `statScale` を参照して適用。※`GameManager` の `monsterList`（`:123-127`）は**プレイヤー編成＝味方**で敵ではない |
+| **クライアント戦闘** | `BattleCanvas.tsx:375`（`wave.enemyIds.map(id => ENEMIES[id])`） |
+| ~~シミュレータ~~ | **適用なし**。`sim/` は単体敵 vs スキルの評価（SINGLE/ALL_ENEMIES）で stage wave を実体化しない。スケール後の敵を sim で見たい場合のみ、入力ステ値に手動適用する任意拡張 |
 
-- ⚠️ クライアント/サーバで**同一スケール必須**（不一致だと stage-attempt トークンの戦闘結果検証が崩れ、正当プレイが弾かれる）。
+- ⚠️ クライアント/サーバで**同一スケール必須**（不一致だと stage-attempt トークンの戦闘結果検証が崩れ、正当プレイが弾かれる）。BattleEngine と BattleCanvas が②の同一ヘルパを import すること。
 
 **④ validator / knownFields**
 - `stageBalance.ts`: `statScale` を `{hp?,atk?,def?}` 数値(>0)で検証。過大倍率（目安 >3）は **WARN 止まり**（FAILにしない＝将来アビスの高倍率を阻害しない）。
-- `knownFields.ts`: `stages` の wave 既知フィールドに `statScale` 登録（未知フィールドWARN回避）。
+- `knownFields.ts`: `stages` の既知フィールドは**トップレベルのみ**（`findUnknownFields` は wave 内を走査しない）。wave-level の `statScale` は未知フィールドWARNを誘発しないため **登録は基本不要**（着手時に `findUnknownFields` が waves を再帰しないことだけ確認）。
 
 **⑤ 管理画面 UI（`src/components/admin/forms/StageForm.tsx`）**
 - `WaveRow` 型（`:49`）に statScale 用フィールド（form 上は hp/atk/def の数値3項目）を追加。
@@ -130,7 +130,14 @@
 
 ### C 完了条件
 - C1 / C2 / C3 / C4 / C6 **すべて確定済み（2026-06-28）**。
-- C4 の基盤実装（M2 `statScale`）コード＋テストグリーン、`/admin/audit` FAIL=0 をもって **C 完了**とする。
+- [x] C4 の基盤実装（M2 `statScale`）コード＋テストグリーン、`/admin/audit` FAIL=0 をもって **C 完了**。
+
+実装証跡（2026-06-28）:
+- 型・ヘルパ: `src/types/game.ts` に `EnemyStatScale` / `StageWaveData.statScale` を追加。`src/logic/EnemyScaling.ts` に `applyEnemyStatScale()` を追加し、hp/atk/def のみ clone 後 `Math.floor` スケール。
+- 適用経路: `BattleCanvas` の WAVE敵生成・召喚生成、`BattleEngine` の master enemy 召喚生成、`app/actions.ts` の stage result metric cap HP見積もりに同一ヘルパを適用。
+- 管理/監査: `stageBalance.ts` で wave `statScale` を検証（不正値FAIL、3倍超WARN）。`StageForm.tsx` に HP/ATK/DEF倍率入力を追加し、空/1.0は保存JSONから省略。
+- 追加/更新テスト: `EnemyScaling.test.ts`、`stageBalance.test.ts`、`BattleEngine.test.ts`。
+- 検証: `npx tsc --noEmit` PASS / 関連 Jest 3 suites・69 tests PASS / 全 Jest 87 suites・776 tests PASS / `auditMasterData()` FAIL=0（WARN=17）/ `git diff --exit-code src/data/master` PASS。
 
 ---
 

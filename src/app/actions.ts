@@ -30,6 +30,7 @@ import { deriveNecroRank } from '@/logic/NecroGrowthSystem';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
 import { isAbyssalResidueUnlocked } from '@/logic/AbyssalResidueUnlockSystem';
 import { isStageUnlocked } from '@/logic/DungeonSystem';
+import { applyEnemyStatScale } from '@/logic/EnemyScaling';
 import {
   calculateDismantleRewards,
   calculateReforgedWeapon,
@@ -425,7 +426,7 @@ function stageResultFailure(error: string): StageResultPayload {
 
 function getStageEnemyHpTotal(stage: StageData, enemies: Record<string, EnemyData>): number {
   return stage.waves.reduce((total, wave) => total + wave.enemyIds.reduce((waveTotal, enemyId) => {
-    const enemy = enemies[enemyId];
+    const enemy = enemies[enemyId] ? applyEnemyStatScale(enemies[enemyId], wave.statScale) : undefined;
     const revive = enemy?.gimmicks?.find((gimmick) => gimmick.effect === 'REVIVE');
     const reviveHp = revive && enemy
       ? Math.floor(enemy.stats.hp * Math.max(0, Number(revive.value ?? 0.5)))

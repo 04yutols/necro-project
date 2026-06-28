@@ -34,6 +34,8 @@ export const VALID_ELEMENTS = [
 export const VALID_WAVE_ROLES = ['WARMUP', 'SHIELD', 'ELITE', 'BOSS'] as const;
 export const VALID_AREA_GIMMICKS = ['SLIP_DAMAGE', 'STATUS_AILMENT', 'NONE'] as const;
 export const VALID_DROP_TYPES = ['WEAPON', 'RESIDUE', 'MATERIAL', 'MONSTER', 'CONSUMABLE'] as const;
+const VALID_STAT_SCALE_KEYS = ['hp', 'atk', 'def'] as const;
+const STAT_SCALE_WARN_THRESHOLD = 3;
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -41,6 +43,38 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 function getNum(obj: Record<string, unknown>, key: string): number | null {
   const v = obj[key];
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
+function validateWaveStatScale(
+  statScale: unknown,
+  field: string,
+  fail: (field: string, message: string) => void,
+  warn: (field: string, message: string) => void,
+): void {
+  if (statScale === undefined) return;
+  if (!isRecord(statScale)) {
+    fail(field, 'statScale は { hp?: number; atk?: number; def?: number } のオブジェクトである必要があります。');
+    return;
+  }
+
+  const allowed = new Set<string>(VALID_STAT_SCALE_KEYS);
+  for (const key of Object.keys(statScale)) {
+    if (!allowed.has(key)) {
+      fail(`${field}.${key}`, 'statScale は hp / atk / def のみ指定できます。');
+    }
+  }
+
+  for (const key of VALID_STAT_SCALE_KEYS) {
+    const value = statScale[key];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+      fail(`${field}.${key}`, 'statScale の倍率は 0 より大きい有限数である必要があります。');
+      continue;
+    }
+    if (value > STAT_SCALE_WARN_THRESHOLD) {
+      warn(`${field}.${key}`, `statScale.${key}=${value} は ${STAT_SCALE_WARN_THRESHOLD} 倍を超えています。高難易度用途なら問題ありませんが、通常章では確認してください。`);
+    }
+  }
 }
 
 /** area id 規約: ch{chapter}_area{area} */
@@ -155,6 +189,7 @@ export function validateStageDraft(draft: unknown, ctx: StageBalanceContext): St
       if (typeof w.role !== 'string' || !VALID_WAVE_ROLES.includes(w.role as (typeof VALID_WAVE_ROLES)[number])) {
         fail(`waves[${i}].role`, `role は ${VALID_WAVE_ROLES.join(' / ')} のいずれかである必要があります（現在: ${String(w.role)}）。`);
       }
+      validateWaveStatScale(w.statScale, `waves[${i}].statScale`, fail, warn);
       const eids = w.enemyIds;
       if (!Array.isArray(eids) || eids.length === 0) {
         fail(`waves[${i}].enemyIds`, 'enemyIds は 1 つ以上必要です。');
