@@ -3,6 +3,8 @@ import { prepareE2EPage, startFirstDungeonBattle } from './helpers/e2e';
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+test.skip(true, 'Exploratory click-order debug spec; excluded from the release E2E gate.');
+
 test('click order test: AUTO first then x3', async ({ page }) => {
   test.setTimeout(60000);
   

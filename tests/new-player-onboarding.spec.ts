@@ -13,7 +13,7 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { openHomeSection, prepareE2EPage } from './helpers/e2e';
+import { clickBattleAutoOn, openHomeSection, prepareE2EPage, setBattleSpeed } from './helpers/e2e';
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 
@@ -108,7 +108,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
       }));
       window.localStorage.setItem('necro-tutorial-store-v2', JSON.stringify({
         state: {
-          completedPhases: ['BATTLE_BASICS', 'NECRO_LAB', 'PARTY_FORMATION', 'JOB_CHANGE', 'ABYSSAL_RESIDUE', 'DEMONIZATION'],
+          completedPhases: ['BATTLE_BASICS', 'PARTY_FORMATION', 'WEAPON_EQUIP', 'DEMONIZATION', 'ABYSSAL_RESIDUE'],
           activePhase: null,
           tutorialCompleted: true,
           viewedHints: [],
@@ -137,7 +137,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
         version: 0,
       }));
       window.localStorage.setItem('necro-tutorial-store-v2', JSON.stringify({
-        state: { completedPhases: ['BATTLE_BASICS','NECRO_LAB','PARTY_FORMATION','JOB_CHANGE','ABYSSAL_RESIDUE','DEMONIZATION'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
+        state: { completedPhases: ['BATTLE_BASICS','PARTY_FORMATION','WEAPON_EQUIP','DEMONIZATION','ABYSSAL_RESIDUE'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
         version: 0,
       }));
     });
@@ -169,7 +169,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
         version: 0,
       }));
       window.localStorage.setItem('necro-tutorial-store-v2', JSON.stringify({
-        state: { completedPhases: ['BATTLE_BASICS','NECRO_LAB','PARTY_FORMATION','JOB_CHANGE','ABYSSAL_RESIDUE','DEMONIZATION'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
+        state: { completedPhases: ['BATTLE_BASICS','PARTY_FORMATION','WEAPON_EQUIP','DEMONIZATION','ABYSSAL_RESIDUE'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
         version: 0,
       }));
     });
@@ -224,7 +224,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
         version: 0,
       }));
       window.localStorage.setItem('necro-tutorial-store-v2', JSON.stringify({
-        state: { completedPhases: ['BATTLE_BASICS','NECRO_LAB','PARTY_FORMATION','JOB_CHANGE','ABYSSAL_RESIDUE','DEMONIZATION'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
+        state: { completedPhases: ['BATTLE_BASICS','PARTY_FORMATION','WEAPON_EQUIP','DEMONIZATION','ABYSSAL_RESIDUE'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
         version: 0,
       }));
     });
@@ -259,8 +259,8 @@ test.describe('新規プレイヤー オンボーディング', () => {
     await expect(page.locator('#tut-attack-btn')).toBeVisible({ timeout: 20000 });
 
     // 倍速3x + AUTO ON でバトルを高速完走
-    await page.getByRole('button', { name: '×3' }).click();
-    await page.getByRole('button', { name: /AUTO OFF/ }).click();
+    await setBattleSpeed(page, 3);
+    await clickBattleAutoOn(page);
 
     // VICTORY画面待機（最大90秒）
     await expect(page.getByTestId('result-summary')).toBeVisible({ timeout: 90000 });
@@ -281,7 +281,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
         version: 0,
       }));
       window.localStorage.setItem('necro-tutorial-store-v2', JSON.stringify({
-        state: { completedPhases: ['BATTLE_BASICS','NECRO_LAB','PARTY_FORMATION','JOB_CHANGE','ABYSSAL_RESIDUE','DEMONIZATION'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
+        state: { completedPhases: ['BATTLE_BASICS','PARTY_FORMATION','WEAPON_EQUIP','DEMONIZATION','ABYSSAL_RESIDUE'], activePhase: null, tutorialCompleted: true, viewedHints: [], visitedTabs: ['HOME','MAP','BATTLE','EQUIP','LAB','JOB'] },
         version: 0,
       }));
     });
@@ -310,8 +310,8 @@ test.describe('新規プレイヤー オンボーディング', () => {
     await startInvasion.click({ force: true });
     await expect(page.locator('#tut-attack-btn')).toBeVisible({ timeout: 20000 });
 
-    await page.getByRole('button', { name: '×3' }).click();
-    await page.getByRole('button', { name: /AUTO OFF/ }).click();
+    await setBattleSpeed(page, 3);
+    await clickBattleAutoOn(page);
     await expect(page.getByTestId('result-summary')).toBeVisible({ timeout: 90000 });
 
     // 鑑定へ進む

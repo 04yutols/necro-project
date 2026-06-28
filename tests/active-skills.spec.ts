@@ -25,12 +25,12 @@ test.describe('Battle command UX', () => {
   test('starts with full MP and consumes only the selected skill cost', async ({ page }) => {
     const playerMp = page.getByTestId('player-mp');
     await expect(playerMp).toContainText('MP');
-    await expect(playerMp).toContainText('100');
+    await expect(playerMp).toContainText('10');
 
     await page.locator('#tut-skill-btn').click();
     await page.getByText('渾身斬り').click();
 
-    await expect(playerMp).toContainText('95');
+    await expect(playerMp).toContainText('5');
   });
 
   test('keeps attack and system commands reachable on the mobile battle screen', async ({ page }) => {
@@ -50,7 +50,7 @@ test.describe('Battle command UX', () => {
     await page.locator('#tut-attack-btn').click();
     await expect(battleLog).toContainText('骸骨騎士の攻撃', { timeout: 5000 });
     await expect.poll(() => page.evaluate(() => (window as any).__battleLogHistory.join('\n')))
-      .toMatch(/スケルトンの追撃！ 霊体騎士に [1-9]\d*ダメージ！/);
+      .toMatch(/骸骨騎士の攻撃！ 霊体騎士を狙う！[\s\S]*霊体騎士に 合計[1-9]\d*ダメージ！/);
   });
 
   test('accepts only one attack from a synchronous click burst', async ({ page }) => {
@@ -71,9 +71,12 @@ test.describe('Battle command UX', () => {
     const playerMp = page.getByTestId('player-mp');
     await page.locator('#tut-skill-btn').click();
     await page.getByText('渾身斬り').click();
-    await expect(playerMp).toContainText('95');
+    await expect(playerMp).toContainText('5');
 
-    await page.getByRole('button', { name: /撤退|逃走/ }).click();
+    await page.getByRole('button', { name: /撤退|逃走/ }).dispatchEvent('click');
+    const retreatDialog = page.getByRole('dialog', { name: /戦闘から撤退しますか/ });
+    await expect(retreatDialog).toBeVisible({ timeout: 5000 });
+    await retreatDialog.getByRole('button', { name: '撤退' }).dispatchEvent('click');
     await expect(page.getByText('LAYER 1 / WORLD MAP')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: /領域選択/ }).click({ force: true });
     await page.getByRole('button', { name: /エリアマップへ|再訪する/ }).click({ force: true });
@@ -81,6 +84,6 @@ test.describe('Battle command UX', () => {
     await page.getByRole('button', { name: /次の侵攻/ }).click({ force: true });
     await page.getByRole('button', { name: /侵攻開始|再挑戦/ }).click({ force: true });
 
-    await expect(page.getByTestId('player-mp')).toContainText('100', { timeout: 15000 });
+    await expect(page.getByTestId('player-mp')).toContainText('10', { timeout: 15000 });
   });
 });

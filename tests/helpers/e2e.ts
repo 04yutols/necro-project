@@ -25,9 +25,9 @@ const VIEWED_STORY_SCENES = [
 const COMPLETED_TUTORIAL_PHASES = [
   'BATTLE_BASICS',
   'PARTY_FORMATION',
-  'JOB_CHANGE',
-  'ABYSSAL_RESIDUE',
+  'WEAPON_EQUIP',
   'DEMONIZATION',
+  'ABYSSAL_RESIDUE',
 ];
 
 interface PrepareE2EPageOptions {
@@ -88,6 +88,19 @@ export async function openHomeSection(page: Page, label: string) {
   const section = page.getByRole('button').filter({ hasText: label }).first();
   await expect(section).toBeVisible({ timeout: 10000 });
   await section.click();
+}
+
+export async function clickBattleAutoOn(page: Page) {
+  const autoButton = page.getByRole('button', { name: /AUTO OFF/ }).first();
+  await expect(autoButton).toBeVisible({ timeout: 10000 });
+  await autoButton.dispatchEvent('click');
+  await expect(page.getByRole('button', { name: /AUTO ON/ }).first()).toBeVisible({ timeout: 5000 });
+}
+
+export async function setBattleSpeed(page: Page, speed: 1 | 2 | 3) {
+  const speedButton = page.getByRole('button', { name: `×${speed}` }).first();
+  await expect(speedButton).toBeVisible({ timeout: 10000 });
+  await speedButton.dispatchEvent('click');
 }
 
 export async function startFirstDungeonBattle(page: Page) {
