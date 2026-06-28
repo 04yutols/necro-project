@@ -201,6 +201,7 @@ const WEAPON_SUBOPTION_RULES: Record<string, { optionCount: number; elementDamag
   SSR: { optionCount: 2, elementDamageOptionCount: 1 },
   UR: { optionCount: 2, elementDamageOptionCount: 1 },
 };
+// Enemy necromance allyStats are BaseStats (8 stats); only job base stats include mp.
 const BASE_STAT_KEYS = ['hp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
 const JOB_STAT_KEYS = ['hp', 'mp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
 const JOB_POSITIVE_STAT_KEYS = new Set(['hp', 'mp', 'atk', 'spd']);

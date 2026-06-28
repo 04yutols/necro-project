@@ -15,6 +15,10 @@ function getUnlockRequires(stage: unknown): string[] {
   return stage.unlockRequires.filter((stageId): stageId is string => typeof stageId === 'string');
 }
 
+function isSafeStage(stage: unknown): boolean {
+  return isRecord(stage) && stage.nodeType === 'SAFE';
+}
+
 function buildGraph(stages: Record<string, unknown>): {
   ids: string[];
   dependencies: Map<string, string[]>;
@@ -125,15 +129,16 @@ function findCycleFindings(ids: string[], dependencies: Map<string, string[]>): 
 }
 
 function findIsolatedRootFindings(
+  stages: Record<string, unknown>,
   roots: string[],
   children: Map<string, string[]>,
 ): StageGraphFinding[] {
   return roots
-    .filter(id => (children.get(id) ?? []).length === 0)
+    .filter(id => !isSafeStage(stages[id]) && (children.get(id) ?? []).length === 0)
     .map(id => ({
       level: 'WARN' as const,
       id,
-      message: `他ステージからも他ステージへも接続されていない初期開放ノードです: ${id}`,
+      message: `他ステージからも他ステージへも接続されていない初期開放の戦闘ノードです: ${id}`,
     }));
 }
 
@@ -142,6 +147,6 @@ export function validateStageGraph(stages: Record<string, unknown>): StageGraphF
   return [
     ...findReachabilityFindings(ids, children, roots),
     ...findCycleFindings(ids, dependencies),
-    ...findIsolatedRootFindings(roots, children),
+    ...findIsolatedRootFindings(stages, roots, children),
   ];
 }

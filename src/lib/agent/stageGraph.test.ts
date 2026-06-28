@@ -56,4 +56,16 @@ describe('validateStageGraph', () => {
     expect(levels({ a: { unlockRequires: [] }, b: { unlockRequires: ['a'] }, camp: { unlockRequires: [] } }))
       .not.toContain('FAIL');
   });
+
+  test('does not warn on isolated SAFE root nodes', () => {
+    const findings = validateStageGraph({
+      area1_safe: { id: 'area1_safe', nodeType: 'SAFE', unlockRequires: [] },
+      area1_node1: { id: 'area1_node1', nodeType: 'DUNGEON', unlockRequires: [] },
+      area1_node2: { id: 'area1_node2', nodeType: 'DUNGEON', unlockRequires: ['area1_node1'] },
+    });
+
+    expect(findings).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ level: 'WARN', id: 'area1_safe' }),
+    ]));
+  });
 });
