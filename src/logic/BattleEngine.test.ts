@@ -1,5 +1,6 @@
 import { BattleEngine } from './BattleEngine';
 import { CharacterData, MonsterData, SkillAttackType } from '../types/game';
+import { MasterDataService } from '../services/MasterDataService';
 
 describe('BattleEngine', () => {
   beforeEach(() => {
@@ -654,6 +655,37 @@ describe('BattleEngine', () => {
     expect(engine.consumePendingSummons()).toEqual(summoned.map(enemy => enemy.id));
     expect(engine.getPendingSummons()).toEqual([]);
     expect(summoned.every(enemy => engine.getEnemyCurrentHp(enemy.id) === enemy.stats.hp)).toBe(true);
+  });
+
+  test('SUMMON_MINIONS applies configured enemy stat scale to materialized minions', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      currentEnergy: 100,
+      stats: { ...mockPlayer.stats, critRate: 0 },
+    };
+    const boss: MonsterData = {
+      ...mockTarget,
+      id: 'blood_mire_queen',
+      name: 'Bloodmire Queen',
+      tier: 'BOSS',
+      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+      shieldHp: 20,
+      maxShieldHp: 20,
+      weaknesses: ['FIRE'],
+      resistances: { FIRE: -30 },
+      gimmicks: [{ trigger: 'ON_SHIELD_BREAK', effect: 'SUMMON_MINIONS', value: 1 }],
+    };
+    const master = MasterDataService.getInstance().getEnemy('bloodmire_leech');
+    if (!master) throw new Error('bloodmire_leech fixture missing');
+
+    const engine = new BattleEngine(player, [], 'NONE', undefined, { hp: 1.5, atk: 2, def: 0.5 });
+    engine.simulateAction('MAGIC_SKILL', boss, 'skill_mage_1');
+    const [summoned] = engine.getSummonedEnemies();
+
+    expect(summoned.stats.hp).toBe(Math.floor(master.stats.hp * 1.5));
+    expect(summoned.stats.atk).toBe(Math.floor(master.stats.atk * 2));
+    expect(summoned.stats.def).toBe(Math.floor(master.stats.def * 0.5));
+    expect(master.stats.hp).not.toBe(summoned.stats.hp);
   });
 
   test('summoned minions join later player AoE while monster attacks wait for commands', () => {

@@ -131,6 +131,27 @@ describe('validateStageDraft - structure & rules', () => {
     expect(validateStageDraft(d2, CTX).ok).toBe(false);
   });
 
+  it('FAILs on invalid wave statScale values', () => {
+    const d = validStage();
+    (d.waves as Array<Record<string, unknown>>)[0].statScale = { hp: 0, atk: '2', spd: 1.2 };
+    const res = validateStageDraft(d, CTX);
+
+    expect(res.ok).toBe(false);
+    expect(res.findings.some((f) => f.field === 'waves[0].statScale.hp' && f.level === 'FAIL')).toBe(true);
+    expect(res.findings.some((f) => f.field === 'waves[0].statScale.atk' && f.level === 'FAIL')).toBe(true);
+    expect(res.findings.some((f) => f.field === 'waves[0].statScale.spd' && f.level === 'FAIL')).toBe(true);
+  });
+
+  it('WARNs but does not FAIL on large wave statScale values', () => {
+    const d = validStage();
+    (d.waves as Array<Record<string, unknown>>)[1].statScale = { hp: 3.5, atk: 1.2, def: 1 };
+    const res = validateStageDraft(d, CTX);
+
+    expect(res.ok).toBe(true);
+    expect(res.findings.some((f) => f.field === 'waves[1].statScale.hp' && f.level === 'WARN')).toBe(true);
+    expect(res.findings.filter((f) => f.level === 'FAIL')).toHaveLength(0);
+  });
+
   it('WARNs when a BOSS node has no BOSS-tier enemy', () => {
     const d = validStage();
     d.nodeType = 'BOSS';

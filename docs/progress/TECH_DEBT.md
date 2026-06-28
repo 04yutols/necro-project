@@ -158,6 +158,12 @@ BattleEngineを将来接続したときに挙動が衝突する可能性があ�
 
 ---
 
+### L-3. BattleEngine の `statScale` が per-wave モデルと不整合（2026-06-28 申し送り）
+
+`statScale` は `StageWaveData` / `BattleCanvas` / `stageBalance` では per-wave だが、現状の `BattleEngine` はステージWAVEを受け取らず、エンジン単位の `enemyStatScale` を召喚敵にのみ適用する。production の live battle は `BattleCanvas` 駆動で、stage result metric cap も per-wave のため現時点の実害はない。将来 `BattleEngine` を authoritative battle に接続する場合は、主WAVE敵と召喚敵の両方を `state.wave` に対応する `wave.statScale` で materialize すること。
+
+---
+
 ---
 
 ## 🔴 Critical（追加） — ゲームが壊れる

@@ -20,8 +20,8 @@ export const KNOWN_TOP_LEVEL_FIELDS: Record<string, readonly string[]> = {
   ],
   stages: [
     'id', 'name', 'nameJa', 'nameEn', 'chapter', 'chapterName', 'area', 'nodeType', 'element',
-    'difficulty', 'description', 'waveCount', 'areaGimmick', 'unlockRequires', 'waves', 'rewards',
-    'position', 'isAreaBoss',
+    'difficulty', 'sortOrder', 'description', 'waveCount', 'areaGimmick', 'unlockRequires', 'waves',
+    'rewards', 'position', 'isAreaBoss',
   ],
   jobs: [
     'id', 'name', 'displayName', 'nameEn', 'title', 'tier', 'category', 'baseAttackType', 'role',

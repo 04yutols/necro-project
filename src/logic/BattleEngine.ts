@@ -12,6 +12,7 @@ import {
   AilmentType,
   StatusEffect,
   BossGimmick,
+  EnemyStatScale,
 } from '../types/game';
 import { MasterDataService } from '../services/MasterDataService';
 import { calculateCharacterStatProfile, hasElementDmgBoosts } from './StatSystem';
@@ -55,6 +56,7 @@ import { calculateMonsterAttackProfile } from './MonsterAttackSystem';
 import { resolveMonsterCurrentEnergy, resolveMonsterMaxEnergy } from './MonsterEnergySystem';
 import { applyPlayerDamage as reducePlayerHp, isPlayerDead } from './PlayerDefeat';
 import { getBaseAttackType } from './JobSystem';
+import { applyEnemyStatScale } from './EnemyScaling';
 
 /**
  * Necromance Brave Battle Engine
@@ -76,12 +78,14 @@ export class BattleEngine {
   private summonSequence = 0;
   private demonState: DemonRuntimeState | null = null;
   private playerDefeatLogged = false;
+  private enemyStatScale: EnemyStatScale | undefined;
 
   constructor(
     player: CharacterData,
     monsters: (MonsterData | null)[],
     areaGimmick: BattleState['areaGimmick'] = 'NONE',
     demonState?: DemonRuntimeState,
+    enemyStatScale?: EnemyStatScale,
   ) {
     this.state = {
       player,
@@ -101,6 +105,7 @@ export class BattleEngine {
     );
     this.playerInitialMaxHp = player.stats.hp;
     this.demonState = demonState ?? null;
+    this.enemyStatScale = enemyStatScale;
 
     for (const m of monsters) {
       if (m) this.monsterCurrentHp[m.id] = m.stats.hp;
@@ -996,25 +1001,26 @@ export class BattleEngine {
     if (!enemy) return null;
 
     const runtimeId = `${boss.id}:summon:${sourceId}:${this.summonSequence++}`;
-    return this.enemyDataToMonster(enemy, runtimeId);
+    return this.enemyDataToMonster(enemy, runtimeId, this.enemyStatScale);
   }
 
-  private enemyDataToMonster(enemy: EnemyData, runtimeId: string): MonsterData {
+  private enemyDataToMonster(enemy: EnemyData, runtimeId: string, statScale?: EnemyStatScale): MonsterData {
+    const scaledEnemy = applyEnemyStatScale(enemy, statScale);
     return {
       id: runtimeId,
-      name: enemy.nameJa ?? enemy.name,
-      tribe: enemy.tribe,
+      name: scaledEnemy.nameJa ?? scaledEnemy.name,
+      tribe: scaledEnemy.tribe,
       cost: 0,
-      tier: enemy.tier,
-      stats: { ...enemy.stats },
-      resistances: { ...enemy.resistances },
+      tier: scaledEnemy.tier,
+      stats: { ...scaledEnemy.stats },
+      resistances: { ...scaledEnemy.resistances },
       currentEnergy: 0,
       maxEnergy: 0,
-      weaknesses: [...enemy.weaknesses],
-      shieldHp: enemy.shieldHp,
-      maxShieldHp: enemy.maxShieldHp,
-      shieldBroken: (enemy.shieldHp ?? 0) <= 0,
-      gimmicks: enemy.gimmicks ? enemy.gimmicks.map(gimmick => ({ ...gimmick })) : undefined,
+      weaknesses: [...scaledEnemy.weaknesses],
+      shieldHp: scaledEnemy.shieldHp,
+      maxShieldHp: scaledEnemy.maxShieldHp,
+      shieldBroken: (scaledEnemy.shieldHp ?? 0) <= 0,
+      gimmicks: scaledEnemy.gimmicks ? scaledEnemy.gimmicks.map(gimmick => ({ ...gimmick })) : undefined,
       statusEffects: [],
     };
   }

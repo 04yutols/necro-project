@@ -11,6 +11,19 @@ import {
 
 const AREAS = areasData as Record<string, AreaData>;
 const STAGES = stagesData as Record<string, StageData>;
+const CH1_CLEARED_STAGE_IDS = [
+  'area1_node1',
+  'area1_a2',
+  'area1_a_mini',
+  'area1_node2',
+  'area1_b2',
+  'area1_b3',
+  'area1_c1',
+  'area1_c2',
+  'area1_c3',
+  'area1_boss',
+  'area1_node3',
+];
 
 function makeStage(id: string, chapter: number, area: number, unlockRequires: string[] = []): StageData {
   return {
@@ -42,7 +55,7 @@ describe('WorldMapSystem', () => {
   });
 
   test('builds current area from existing area and stage masters', () => {
-    const worldAreas = buildWorldAreas(AREAS, STAGES, ['area1_node1', 'area1_node2', 'area1_boss', 'area1_node3']);
+    const worldAreas = buildWorldAreas(AREAS, STAGES, CH1_CLEARED_STAGE_IDS);
     const area2 = worldAreas.find(area => area.id === 'ch2_area2');
 
     expect(area2).toMatchObject({
@@ -99,5 +112,25 @@ describe('WorldMapSystem', () => {
   test('selects current area before available or locked areas', () => {
     const worldAreas = buildWorldAreas(AREAS, STAGES, []);
     expect(getCurrentWorldArea(worldAreas)?.id).toBe('ch1_area1');
+  });
+
+  test('orders chapter 1 stages by play sequence sortOrder', () => {
+    const worldAreas = buildWorldAreas(AREAS, STAGES, []);
+    const chapter1 = worldAreas.find(area => area.id === 'ch1_area1');
+
+    expect(chapter1?.stages.map(stage => stage.id)).toEqual([
+      'area1_safe',
+      'area1_node1',
+      'area1_a2',
+      'area1_a_mini',
+      'area1_node2',
+      'area1_b2',
+      'area1_b3',
+      'area1_c1',
+      'area1_c2',
+      'area1_c3',
+      'area1_boss',
+      'area1_node3',
+    ]);
   });
 });

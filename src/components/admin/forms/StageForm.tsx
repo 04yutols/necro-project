@@ -46,7 +46,15 @@ const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer' };
 const textareaStyle: React.CSSProperties = { ...inputStyle, height: undefined, resize: 'vertical', minHeight: 96 };
 
 type EnemyMeta = { id: string; nameJa: string; tier: string; tribe: string };
-type WaveRow = { label: string; role: string; enemyIds: string[]; intent: string };
+type WaveRow = {
+  label: string;
+  role: string;
+  enemyIds: string[];
+  intent: string;
+  statScaleHp: string;
+  statScaleAtk: string;
+  statScaleDef: string;
+};
 
 type StageFormState = {
   id: string;
@@ -70,13 +78,40 @@ type StageFormState = {
   firstClearGuaranteed: DropEntry[];
 };
 
+function statScaleValueForJson(raw: string): number | string | undefined {
+  const trimmed = raw.trim();
+  if (trimmed === '') return undefined;
+  const value = Number(trimmed);
+  if (!Number.isFinite(value)) return trimmed;
+  return value === 1 ? undefined : value;
+}
+
+function waveStatScaleToJson(wave: WaveRow): Record<string, number | string> | undefined {
+  const statScale: Record<string, number | string> = {};
+  const hp = statScaleValueForJson(wave.statScaleHp);
+  const atk = statScaleValueForJson(wave.statScaleAtk);
+  const def = statScaleValueForJson(wave.statScaleDef);
+  if (hp !== undefined) statScale.hp = hp;
+  if (atk !== undefined) statScale.atk = atk;
+  if (def !== undefined) statScale.def = def;
+  return Object.keys(statScale).length > 0 ? statScale : undefined;
+}
+
+function readStatScaleValue(raw: unknown): string {
+  return typeof raw === 'number' && Number.isFinite(raw) ? String(raw) : '';
+}
+
 function formToJson(form: StageFormState): Record<string, unknown> {
-  const wavesData = form.nodeType === 'SAFE' ? [] : form.waves.map((w, i) => ({
-    label: w.label || `WAVE ${i + 1}`,
-    role: w.role,
-    enemyIds: w.enemyIds,
-    intent: w.intent,
-  }));
+  const wavesData = form.nodeType === 'SAFE' ? [] : form.waves.map((w, i) => {
+    const statScale = waveStatScaleToJson(w);
+    return {
+      label: w.label || `WAVE ${i + 1}`,
+      role: w.role,
+      enemyIds: w.enemyIds,
+      intent: w.intent,
+      ...(statScale ? { statScale } : {}),
+    };
+  });
   return {
     id: form.id,
     name: form.name,
@@ -127,7 +162,7 @@ function initForm(
       positionX: position.x,
       positionY: position.y,
       description: '',
-      waves: [{ label: 'WAVE 1', role: 'WARMUP', enemyIds: [], intent: '' }],
+      waves: [{ label: 'WAVE 1', role: 'WARMUP', enemyIds: [], intent: '', statScaleHp: '', statScaleAtk: '', statScaleDef: '' }],
       baseExp: 10,
       baseGold: 500,
       dropTable: [],
@@ -137,12 +172,18 @@ function initForm(
   const raw = data as Record<string, unknown>;
   const rewards = (raw.rewards as Record<string, unknown>) ?? {};
   const position = (raw.position as Record<string, number>) ?? {};
-  const waves = ((raw.waves as Record<string, unknown>[]) ?? []).map((w) => ({
-    label: (w.label as string) ?? '',
-    role: (w.role as string) ?? 'WARMUP',
-    enemyIds: (w.enemyIds as string[]) ?? [],
-    intent: (w.intent as string) ?? '',
-  }));
+  const waves = ((raw.waves as Record<string, unknown>[]) ?? []).map((w) => {
+    const statScale = (w.statScale as Record<string, unknown>) ?? {};
+    return {
+      label: (w.label as string) ?? '',
+      role: (w.role as string) ?? 'WARMUP',
+      enemyIds: (w.enemyIds as string[]) ?? [],
+      intent: (w.intent as string) ?? '',
+      statScaleHp: readStatScaleValue(statScale.hp),
+      statScaleAtk: readStatScaleValue(statScale.atk),
+      statScaleDef: readStatScaleValue(statScale.def),
+    };
+  });
   return {
     id: (raw.id as string) ?? key,
     name: (raw.name as string) ?? '',
@@ -470,6 +511,41 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
                             {WAVE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
                         </FormField>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
+                          <FormField label="HP倍率">
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="0.05"
+                              placeholder="1.0"
+                              value={wave.statScaleHp}
+                              onChange={(e) => updateWave(idx, { statScaleHp: e.target.value })}
+                              style={inputStyle}
+                            />
+                          </FormField>
+                          <FormField label="ATK倍率">
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="0.05"
+                              placeholder="1.0"
+                              value={wave.statScaleAtk}
+                              onChange={(e) => updateWave(idx, { statScaleAtk: e.target.value })}
+                              style={inputStyle}
+                            />
+                          </FormField>
+                          <FormField label="DEF倍率">
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="0.05"
+                              placeholder="1.0"
+                              value={wave.statScaleDef}
+                              onChange={(e) => updateWave(idx, { statScaleDef: e.target.value })}
+                              style={inputStyle}
+                            />
+                          </FormField>
+                        </div>
                         <FormField label={`敵編成（${wave.enemyIds.length}体選択中）`}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {enemyData.length === 0 ? (
@@ -541,7 +617,7 @@ export default function StageForm({ initialData, entryKey, isNew, itemIds, mater
                   ))}
                   {form.waves.length < 3 && (
                     <button
-                      onClick={() => updateField('waves', [...form.waves, { label: `WAVE ${form.waves.length + 1}`, role: 'WARMUP', enemyIds: [], intent: '' }])}
+                      onClick={() => updateField('waves', [...form.waves, { label: `WAVE ${form.waves.length + 1}`, role: 'WARMUP', enemyIds: [], intent: '', statScaleHp: '', statScaleAtk: '', statScaleDef: '' }])}
                       style={{ background: 'rgba(139,0,255,0.10)', border: '1px dashed rgba(139,0,255,0.3)', color: '#8B00FF', padding: '8px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
                     >
                       + WAVE追加

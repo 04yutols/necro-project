@@ -23,7 +23,18 @@ export interface ClearTutorialTriggerGateInput {
   tutorialCompleted: boolean;
 }
 
-const TUTORIAL_BATTLE_STAGE_IDS = new Set(['tutorial_battle_01', 'area1_node1']);
+export const TUTORIAL_BATTLE_STAGE_IDS = ['tutorial_battle_01', 'area1_node1'] as const;
+export const TUTORIAL_VIRTUAL_STAGE_IDS = ['tutorial_battle_01'] as const;
+
+const TUTORIAL_BATTLE_STAGE_ID_SET = new Set<string>(TUTORIAL_BATTLE_STAGE_IDS);
+
+export const TUTORIAL_CHAIN_STAGE_IDS = {
+  PARTY_FORMATION: 'area1_node1',
+  WEAPON_EQUIP: 'area1_node2',
+  JOB_CHANGE: 'area1_node2',
+  WEAPON_ENHANCE: 'area1_boss',
+  DEMONIZATION: 'area1_boss',
+} as const satisfies Partial<Record<TutorialPhase, string>>;
 
 const CLEAR_TUTORIAL_CHAIN_PHASES = new Set<TutorialPhase>([
   'BATTLE_BASICS',
@@ -52,7 +63,7 @@ export function getTutorialPhaseAfterClear({
   const hasCompleted = (phase: TutorialPhase) => completed.has(phase);
 
   if (
-    hasCleared('area1_node1') &&
+    hasCleared(TUTORIAL_CHAIN_STAGE_IDS.PARTY_FORMATION) &&
     hasCompleted('BATTLE_BASICS') &&
     !hasCompleted('PARTY_FORMATION')
   ) {
@@ -60,7 +71,7 @@ export function getTutorialPhaseAfterClear({
   }
 
   if (
-    hasCleared('area1_node2') &&
+    hasCleared(TUTORIAL_CHAIN_STAGE_IDS.WEAPON_EQUIP) &&
     hasCompleted('PARTY_FORMATION') &&
     !hasCompleted('WEAPON_EQUIP')
   ) {
@@ -68,7 +79,7 @@ export function getTutorialPhaseAfterClear({
   }
 
   if (
-    hasCleared('area1_node2') &&
+    hasCleared(TUTORIAL_CHAIN_STAGE_IDS.JOB_CHANGE) &&
     hasCompleted('WEAPON_EQUIP') &&
     !hasCompleted('JOB_CHANGE')
   ) {
@@ -76,7 +87,7 @@ export function getTutorialPhaseAfterClear({
   }
 
   if (
-    hasCleared('area1_boss') &&
+    hasCleared(TUTORIAL_CHAIN_STAGE_IDS.WEAPON_ENHANCE) &&
     hasCompleted('JOB_CHANGE') &&
     !hasCompleted('WEAPON_ENHANCE')
   ) {
@@ -84,7 +95,7 @@ export function getTutorialPhaseAfterClear({
   }
 
   if (
-    hasCleared('area1_boss') &&
+    hasCleared(TUTORIAL_CHAIN_STAGE_IDS.DEMONIZATION) &&
     hasCompleted('WEAPON_ENHANCE') &&
     !hasCompleted('DEMONIZATION')
   ) {
@@ -115,7 +126,7 @@ export function getTutorialPhaseDestinationTab(phase: TutorialPhase): TutorialNa
 }
 
 export function isTutorialBattleStage(stageId: string | null | undefined): boolean {
-  return Boolean(stageId && TUTORIAL_BATTLE_STAGE_IDS.has(stageId));
+  return Boolean(stageId && TUTORIAL_BATTLE_STAGE_ID_SET.has(stageId));
 }
 
 export function shouldStartBattleTutorial({

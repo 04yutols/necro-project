@@ -37,7 +37,7 @@ describe('KNOWN_TOP_LEVEL_FIELDS - completeness vs actual data keys', () => {
   const ACTUAL: Record<string, string[]> = {
     enemies: ['battle', 'description', 'dropTable', 'gimmicks', 'id', 'maxShieldHp', 'name', 'nameEn', 'nameJa', 'necromance', 'resistances', 'shieldHp', 'stats', 'tier', 'tribe', 'weaknesses'],
     skills: ['ailmentBaseRate', 'ailmentType', 'ailments', 'attackType', 'description', 'effectKey', 'element', 'flags', 'healSelfPct', 'id', 'isUltimate', 'mpCost', 'name', 'power', 'targetType', 'type'],
-    stages: ['area', 'areaGimmick', 'chapter', 'chapterName', 'description', 'difficulty', 'element', 'id', 'isAreaBoss', 'name', 'nameEn', 'nameJa', 'nodeType', 'position', 'rewards', 'unlockRequires', 'waveCount', 'waves'],
+    stages: ['area', 'areaGimmick', 'chapter', 'chapterName', 'description', 'difficulty', 'element', 'id', 'isAreaBoss', 'name', 'nameEn', 'nameJa', 'nodeType', 'position', 'rewards', 'sortOrder', 'unlockRequires', 'waveCount', 'waves'],
     jobs: ['baseAttackType', 'baseStatsByLevel', 'category', 'description', 'displayName', 'energyCurve', 'levelBonuses', 'name', 'nameEn', 'role', 'skills', 'statModifiers', 'tier', 'title', 'unlock'],
     items: ['archetype', 'battleEffect', 'battleUsable', 'flavor', 'icon', 'id', 'ilv', 'isUnique', 'name', 'passiveA', 'passiveB', 'quantity', 'rank', 'rarity', 'stats', 'subOptions', 'type', 'weaponRarity'],
     materials: ['expValue', 'id', 'name', 'quantity', 'rarity'],

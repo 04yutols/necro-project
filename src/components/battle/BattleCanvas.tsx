@@ -38,6 +38,7 @@ import {
   shouldTriggerBossGimmick,
 } from '../../logic/BossGimmickSystem';
 import { applyPlayerDamage, isPlayerDead } from '../../logic/PlayerDefeat';
+import { applyEnemyStatScale } from '../../logic/EnemyScaling';
 import {
   canUseLocalStageResultFallback,
   getStageResultTimeoutMs,
@@ -65,7 +66,7 @@ import {
   processStatusEffects,
   tryApplyAilment,
 } from '../../logic/StatusAilmentSystem';
-import type { AilmentType, BaseStats, BossGimmick, DemonFormData, DropEntry, ElementType, EnemyData, EnemyTier, ItemData, JobData, MonsterData, Resistances, SkillAttackType, SkillData, StageData, StatusEffect } from '../../types/game';
+import type { AilmentType, BaseStats, BossGimmick, DemonFormData, DropEntry, ElementType, EnemyData, EnemyStatScale, EnemyTier, ItemData, JobData, MonsterData, Resistances, SkillAttackType, SkillData, StageData, StatusEffect } from '../../types/game';
 
 interface BattleCanvasProps {
   stageId?: string;
@@ -134,6 +135,7 @@ type BattleWave = {
   label: string;
   role?: 'WARMUP' | 'SHIELD' | 'ELITE' | 'BOSS';
   intent?: string;
+  statScale?: EnemyStatScale;
   isBoss?: boolean;
   rewards: { exp: number; gold: number };
   enemies: EnemyState[];
@@ -372,7 +374,10 @@ function buildBattleWaves(stageId?: string): BattleWave[] {
   }
 
   const waves = stage.waves.map((wave, waveIndex) => {
-    const enemyMasters = wave.enemyIds.map(enemyId => ENEMIES[enemyId]).filter(Boolean);
+    const enemyMasters = wave.enemyIds
+      .map(enemyId => ENEMIES[enemyId])
+      .filter(Boolean)
+      .map(enemy => applyEnemyStatScale(enemy, wave.statScale));
     const enemies = enemyMasters.map((enemy, index) => toEnemyState(enemy, index, enemyMasters.length));
     const weight = WAVE_REWARD_WEIGHTS[waveIndex] ?? 1 / stage.waves.length;
     return {
@@ -380,6 +385,7 @@ function buildBattleWaves(stageId?: string): BattleWave[] {
       label: wave.label,
       role: wave.role,
       intent: wave.intent,
+      statScale: wave.statScale,
       isBoss: wave.role === 'BOSS',
       rewards: {
         exp: Math.max(0, Math.round(stage.rewards.baseExp * weight)),
@@ -2231,7 +2237,8 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
   function createSummonedEnemyState(enemyId: string, runtimeId: number, pos: EnemyState['pos']): EnemyState | null {
     const master = ENEMIES[enemyId];
     if (!master) return null;
-    const summoned = toEnemyState(master, 0, 1);
+    const scaledMaster = applyEnemyStatScale(master, currentWave.statScale);
+    const summoned = toEnemyState(scaledMaster, 0, 1);
     return {
       ...summoned,
       id: runtimeId,
