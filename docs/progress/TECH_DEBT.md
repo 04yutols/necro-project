@@ -411,6 +411,38 @@ BattleCanvas は `isAwakened` を参照していない。現在は常に `false`
 
 ---
 
+## 🔴 バランス基盤（追加）— 2026-07-04 無限ダンジョン設計調査（doc122）で発見
+
+### BAL-1. 残滓オプション実数が JRPG スケール改訂（doc46）に未追随
+
+**問題：**
+`RewardService.ts` の `MAIN_STAT_POOLS` / `SUB_OPTION_POOL` が旧スケールのまま。腕スロット メイン `ATK_FLAT: [80, 140]`（`RewardService.ts:41`）、サブ `ATK_FLAT: [10, 40]`（`:69`）に対し、現行のプレイヤー基礎ATKは4（`BalanceConfig.ts:9`）、最大武器ATKは185（`WeaponSystem.ts:15-19`）。残滓5枠+サブを積むとATKが数百〜千に達し、doc19のpower帯・doc46のダメージシミュレーション前提を破壊する。
+
+**影響：** 残滓が本格解放されるCh2以降（および無限ダンジョンの報酬設計）の経済・難易度設計全体のブロッカー。
+
+**対応方針：** 残滓メイン/サブの絶対値をJRPGスケールに再設計する（doc46の手法でプレイヤーピークATK目標から逆算）。暫定回避策は「%系オプションのみ評価対象にする」ルールの明文化。
+**数値案あり（2026-07-04）：** `docs/設計書/123_残滓スケール再設計とCh1敵EHP是正.md` §A — 壊れはFLAT系3種・コード5箇所のみ。新レンジ表・既存データ移行方針・受入検証まで確定済み。実装待ち。
+
+**関連ファイル：**
+- `src/services/RewardService.ts:41,69`
+- `docs/設計書/46_バランス調整設計.md` / `122_無限ダンジョン設計.md §6.0 BLK-1`
+
+### BAL-2. Ch1 敵HPの逆転（真ボス < 中ボス < 精鋭表記）
+
+**問題：**
+`ossuary_wyrm_lord`（真ボス）HP90 < `gravewarden_colossus`（中ボス）HP95 < `blood_mire_queen`（role=ELITE表記）HP150（`enemies.json` 検証済み）。doc71 の「ボスは直前精鋭のEHP1.2倍以上」に違反の疑い。
+
+**影響：** Ch1難易度導線の歪み + 無限ダンジョン（doc122）のboss floor基準テンプレ選定の土台がぶれる。
+
+**対応方針：** RELEASE_CH1_設計 §1-C の Phase 2 新規敵作業と合流して是正。`enemyBalance`/`stageBalance` バリデータと simulator で確認。
+**数値案あり（2026-07-04）：** `docs/設計書/123_残滓スケール再設計とCh1敵EHP是正.md` §B — 最小是正は ossuary_wyrm_lord 単体（hp90→180 / def10→24 / shield34→50、新EHP320=直前比1.37x）。他2体は不変。実装待ち。
+
+**関連ファイル：**
+- `src/data/master/enemies.json`（ossuary_wyrm_lord / gravewarden_colossus / blood_mire_queen）
+- `docs/設計書/71_IMP3_敵ボスバランス手動調整手順.md` / `122_無限ダンジョン設計.md §6.0 BLK-2`
+
+---
+
 ## 監査スコープ外（確認済み・問題なし）
 
 - スキルテーブル (`skills.json`) — 全スターター職 + 2次職スキル全件存在、power/mpCost/elementのバランス適切 ✅
