@@ -20,5 +20,16 @@
     "color": "#38BDF8",
     "position": { "x": 250, "y": 292 },
     "sortOrder": 202
+  },
+  "ch1_area99": {
+    "id": "ch1_area99",
+    "chapter": 1,
+    "area": 99,
+    "nameJa": "黄泉の階層",
+    "nameEn": "THE YOMI DEPTHS",
+    "description": "第1章の敵を再構成した独立チャレンジタワー。B1から下り続ける。",
+    "color": "#4B0082",
+    "position": { "x": 999999, "y": 999999 },
+    "sortOrder": 199
   }
 }

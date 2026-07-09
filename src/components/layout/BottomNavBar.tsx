@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Home, Map, Sword, Skull, Terminal, Swords, Lock } from 'lucide-react';
+import { Home, Layers, Map, Sword, Skull, Terminal, Swords, Lock } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import { isAbyssalResidueUnlocked } from '../../logic/AbyssalResidueUnlockSystem';
+import { isYomiUnlocked } from '../../logic/YomiUnlockSystem';
 
 const TABS = [
   { id: 'HOME', label: 'HOME', icon: Home },
@@ -11,12 +12,14 @@ const TABS = [
   { id: 'BATTLE', label: 'BATTLE', icon: Swords },
   { id: 'EQUIP', label: 'LEGION', icon: Sword },
   { id: 'LAB', label: 'LAB', icon: Skull },
+  { id: 'YOMI', label: 'YOMI', icon: Layers },
   { id: 'LOGS', label: 'LOGS', icon: Terminal },
 ] as const;
 
 export function BottomNavBar() {
   const { currentTab, setCurrentTab, player } = useGameStore();
   const residueUnlocked = isAbyssalResidueUnlocked(player?.clearedStages);
+  const yomiUnlocked = isYomiUnlocked(player?.clearedStages);
 
   return (
     <nav
@@ -26,7 +29,7 @@ export function BottomNavBar() {
       <div className="h-14 flex justify-around items-center px-1">
         {TABS.map((tab) => {
           const isActive = currentTab === tab.id;
-          const isLocked = tab.id === 'LAB' && !residueUnlocked;
+          const isLocked = (tab.id === 'LAB' && !residueUnlocked) || (tab.id === 'YOMI' && !yomiUnlocked);
           const Icon = isLocked ? Lock : tab.icon;
 
           return (

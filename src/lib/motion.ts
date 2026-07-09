@@ -13,7 +13,7 @@ export const MOTION = {
   },
 } as const;
 
-export const APP_TAB_ORDER = ['HOME', 'MAP', 'BATTLE', 'EQUIP', 'JOB', 'LAB', 'LOGS'] as const;
+export const APP_TAB_ORDER = ['HOME', 'MAP', 'BATTLE', 'EQUIP', 'JOB', 'LAB', 'YOMI', 'LOGS'] as const;
 
 type TabId = typeof APP_TAB_ORDER[number];
 

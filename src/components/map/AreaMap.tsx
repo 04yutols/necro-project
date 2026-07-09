@@ -24,6 +24,7 @@ import {
   getWorldAreaStages,
   type WorldAreaView,
 } from '../../logic/WorldMapSystem';
+import { isYomiArea, isYomiStage } from '../../logic/YomiFloors';
 import type { AreaData, DropEntry, ElementType, EnemyData, StageData, StageNodeType } from '../../types/game';
 
 interface AreaMapProps {
@@ -1017,7 +1018,10 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
   const [isMounted, setIsMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const allStages = useMemo(() => Object.values(STAGES), []);
+  const allStages = useMemo(
+    () => Object.values(STAGES).filter(stage => !isYomiStage(stage.id) && !isYomiArea(stage.chapter, stage.area)),
+    [],
+  );
   const clearedStages = player?.clearedStages ?? [];
   const states = useMemo(() => buildStageStates(allStages, clearedStages), [clearedStages, allStages]);
   const worldAreas = useMemo(() => buildWorldAreas(AREAS, STAGES, clearedStages), [clearedStages]);

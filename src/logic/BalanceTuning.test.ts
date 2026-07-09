@@ -85,7 +85,9 @@ describe('Balance tuning for area1_node1', () => {
     });
     expect(STAGES.area1_node1.waves[2].enemyIds.some(enemyId => ENEMIES[enemyId]?.tier === 'BOSS')).toBe(false);
     expect(ENEMIES.abyss_warden.stats.hp).toBe(30);
-    expect(ENEMIES.ossuary_wyrm_lord.stats.hp).toBe(90);
+    expect(ENEMIES.ossuary_wyrm_lord.stats.hp).toBe(180);
+    expect(ENEMIES.ossuary_wyrm_lord.stats.def).toBe(24);
+    expect(ENEMIES.ossuary_wyrm_lord.shieldHp).toBe(50);
   });
 
   test('starter damage hits area1_node1 kill-count targets without crit variance', () => {

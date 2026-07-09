@@ -29,6 +29,7 @@ import { hydrateMonsterEnergy } from '@/logic/MonsterEnergySystem';
 import { deriveNecroRank } from '@/logic/NecroGrowthSystem';
 import { getJobBaseStatsAtLevel } from '@/logic/JobGrowthSystem';
 import { isAbyssalResidueUnlocked } from '@/logic/AbyssalResidueUnlockSystem';
+import { getYomiMilestoneFloorForFirstClear } from '@/logic/YomiFloors';
 import { isStageUnlocked } from '@/logic/DungeonSystem';
 import { applyEnemyStatScale } from '@/logic/EnemyScaling';
 import {
@@ -54,7 +55,7 @@ import type {
   StageData,
   WeaponRarity,
 } from '@/types/game';
-import type { OnlineStageRecordSummary, StageResultMeta, WorldEventType, WorldLogEntry } from '@/types/online';
+import type { OnlineStageRecordSummary, StageResultMeta, WorldEventType, WorldLogEntry, YomiMilestoneEventPayload } from '@/types/online';
 import { PLAYER_SAVE_SCHEMA_VERSION, type PlayerSaveV1 } from '@/types/playerSave';
 import type { CreateCharacterResult, LoadCharacterResult, SaveGameStateResult, ServerGameData, ServerGameUser } from '@/types/serverGame';
 
@@ -895,6 +896,15 @@ export async function processStageResultForUser(
         stageId: normalizedStageId,
         stageName: stage.nameJa ?? stage.name ?? stageId,
       }, userId));
+    }
+    const yomiMilestoneFloor = getYomiMilestoneFloorForFirstClear(normalizedStageId, clearedStagesBeforeClear);
+    if (yomiMilestoneFloor !== null) {
+      worldEvents.push(await createWorldEvent(tx, 'YOMI_MILESTONE', {
+        playerName,
+        floor: yomiMilestoneFloor,
+        stageId: normalizedStageId,
+        stageName: stage.nameJa ?? stage.name ?? stageId,
+      } satisfies YomiMilestoneEventPayload, userId));
     }
     if (stageRecord.becameTopResidue && bestResidueScore > 0) {
       worldEvents.push(await createWorldEvent(tx, 'RANKING_UPDATED', {

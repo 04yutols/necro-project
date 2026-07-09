@@ -14,7 +14,7 @@ interface UseBGMOptions {
 function resolveScene({ currentTab, isInBattle, activeStageId, storyActive }: UseBGMOptions): BGMScene {
   if (storyActive) return 'STORY_NEUTRAL';
   if (isInBattle) return activeStageId?.includes('boss') ? 'BATTLE_BOSS' : 'BATTLE_NORMAL';
-  if (currentTab === 'MAP') return 'MAP_EXPLORE';
+  if (currentTab === 'MAP' || currentTab === 'YOMI') return 'MAP_EXPLORE';
   if (currentTab === 'LAB') return 'NECRO_LAB';
   if (currentTab === 'LOGS') return 'STORY_NEUTRAL';
   return 'HOME_LOBBY';

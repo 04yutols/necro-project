@@ -34,11 +34,11 @@ interface StatRange { type: string; range: [number, number] }
 
 const MAIN_STAT_POOLS: Record<ResidueSlot, StatRange[]> = {
   head:  [
-    { type: 'HP_FLAT', range: [320, 560] },
+    { type: 'HP_FLAT', range: [13, 22] },
     { type: 'HP%',     range: [8,   14]  },
   ],
   arms:  [
-    { type: 'ATK_FLAT', range: [80, 140] },
+    { type: 'ATK_FLAT', range: [9, 16] },
     { type: 'ATK%',     range: [8,  14]  },
   ],
   chest: [
@@ -66,9 +66,9 @@ const SUB_OPTION_POOL: StatRange[] = [
   { type: 'ATK%',       range: [2,  8]   },
   { type: 'HP%',        range: [2,  8]   },
   { type: 'DEF%',       range: [2,  8]   },
-  { type: 'ATK_FLAT',   range: [10, 40]  },
-  { type: 'HP_FLAT',    range: [50, 150] },
-  { type: 'DEF_FLAT',   range: [10, 40]  },
+  { type: 'ATK_FLAT',   range: [2, 9]    },
+  { type: 'HP_FLAT',    range: [3, 13]   },
+  { type: 'DEF_FLAT',   range: [2, 10]   },
   { type: 'CRIT_RATE',  range: [1,  7]   },
   { type: 'CRIT_DMG',   range: [2,  14]  },
   { type: 'EFFECT_HIT', range: [1,  6]   },

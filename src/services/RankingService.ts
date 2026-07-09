@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import type { Prisma } from '@prisma/client';
+import { getYomiFloorNumber } from '../logic/YomiFloors';
 import type { RankingEntry, RankingType, StageResultMeta } from '../types/online';
 
 const CACHE_TTL_SEC = 300;
@@ -158,6 +159,18 @@ export class RankingService {
         value: row.bossKillCount,
         updatedAt: row.updatedAt.toISOString(),
       })));
+    } else if (type === 'DUNGEON_FLOOR') {
+      const rows = await prisma.playerStats.findMany({
+        orderBy: { bestDungeonFloor: 'desc' },
+        take: limit,
+        include: { user: true },
+      });
+      result = rank(rows.map(row => ({
+        userId: row.userId,
+        playerName: playerName(row.user),
+        value: row.bestDungeonFloor,
+        updatedAt: row.updatedAt.toISOString(),
+      })));
     } else {
       const rows = await prisma.playerStats.findMany({
         orderBy: { bestResidueScore: 'desc' },
@@ -222,6 +235,8 @@ export class RankingService {
     const currentStats = await tx.playerStats.findUnique({ where: { userId: input.userId } });
     const nextBestResidueScore = Math.max(currentStats?.bestResidueScore ?? 0, bestResidueScore);
     const becameTopResidue = bestResidueScore > topResidueBefore;
+    const yomiFloor = getYomiFloorNumber(input.stageId);
+    const nextBestDungeonFloor = Math.max(currentStats?.bestDungeonFloor ?? 0, yomiFloor ?? 0);
 
     await tx.playerStats.upsert({
       where: { userId: input.userId },
@@ -230,11 +245,13 @@ export class RankingService {
         totalDamage,
         bossKillCount: input.isBossStage ? 1 : 0,
         bestResidueScore: nextBestResidueScore,
+        bestDungeonFloor: nextBestDungeonFloor,
       },
       update: {
         totalDamage: { increment: totalDamage },
         bossKillCount: { increment: input.isBossStage ? 1 : 0 },
         bestResidueScore: nextBestResidueScore,
+        bestDungeonFloor: nextBestDungeonFloor,
       },
     });
 
@@ -254,6 +271,7 @@ export class RankingService {
       ...limits.map(limit => `ranking:RESIDUE_SCORE:global:${limit}`),
       ...limits.map(limit => `ranking:TOTAL_DAMAGE:global:${limit}`),
       ...limits.map(limit => `ranking:BOSS_KILLS:global:${limit}`),
+      ...limits.map(limit => `ranking:DUNGEON_FLOOR:global:${limit}`),
       ...limits.map(limit => `ranking:STAGE_TIME:area1_boss:${limit}`),
     ];
     await Promise.all(keys.map(key => redisDel(key)));

@@ -7,6 +7,14 @@ function makeSeqRng(values: number[]): () => number {
   return () => values[i++ % values.length];
 }
 
+function makeSeededRng(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
+
 const svc = new RewardService();
 
 describe('shuffleFisherYates', () => {
@@ -65,6 +73,33 @@ describe('RewardService.processDropTable', () => {
     expect(r.subOptions.length).toBeLessThanOrEqual(3);
     expect(r.level).toBe(1);
     expect(r.maxExp).toBe(2500);
+  });
+
+  test('RESIDUE FLAT options stay within the JRPG-scale balance ranges', () => {
+    const observed = new Map<string, number[]>();
+    const table: DropEntry[] = [
+      { type: 'RESIDUE', rarity: 'LEGENDARY', rate: 1.0 },
+    ];
+
+    for (let seed = 1; seed <= 180; seed += 1) {
+      const result = svc.processDropTable(table, 0, makeSeededRng(seed));
+      const residue = result.residues[0];
+      [residue.mainStat, ...residue.subOptions].forEach(option => {
+        if (!option.type.endsWith('_FLAT')) return;
+        observed.set(option.type, [...(observed.get(option.type) ?? []), option.value]);
+      });
+    }
+
+    expect(observed.get('ATK_FLAT')?.length).toBeGreaterThan(0);
+    expect(observed.get('HP_FLAT')?.length).toBeGreaterThan(0);
+    expect(observed.get('DEF_FLAT')?.length).toBeGreaterThan(0);
+
+    observed.get('ATK_FLAT')?.forEach(value => expect(value).toBeGreaterThanOrEqual(2));
+    observed.get('ATK_FLAT')?.forEach(value => expect(value).toBeLessThanOrEqual(16));
+    observed.get('HP_FLAT')?.forEach(value => expect(value).toBeGreaterThanOrEqual(3));
+    observed.get('HP_FLAT')?.forEach(value => expect(value).toBeLessThanOrEqual(22));
+    observed.get('DEF_FLAT')?.forEach(value => expect(value).toBeGreaterThanOrEqual(2));
+    observed.get('DEF_FLAT')?.forEach(value => expect(value).toBeLessThanOrEqual(10));
   });
 
   // 4. RESIDUE EPIC → subOptions.length∈[3,4]

@@ -338,8 +338,8 @@ interface GameState {
   toggleDemonMode: () => void;
 
   // 画面遷移管理
-  currentTab: 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'LOGS' | 'JOB';
-  setCurrentTab: (tab: 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'LOGS' | 'JOB') => void;
+  currentTab: 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'YOMI' | 'LOGS' | 'JOB';
+  setCurrentTab: (tab: 'HOME' | 'BATTLE' | 'MAP' | 'EQUIP' | 'LAB' | 'YOMI' | 'LOGS' | 'JOB') => void;
 
   // 初期化用
   initialize: () => void;

@@ -179,6 +179,7 @@ model PlayerStats {
   totalDamage      BigInt   @default(0)
   bossKillCount    Int      @default(0)
   bestResidueScore Float    @default(0)
+  bestDungeonFloor Int      @default(0)
   updatedAt        DateTime @updatedAt
 }
 
