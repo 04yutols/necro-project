@@ -1,0 +1,1 @@
+ALTER TABLE "PlayerStats" ADD COLUMN "bestDungeonFloor" INTEGER NOT NULL DEFAULT 0;

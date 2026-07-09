@@ -2,6 +2,7 @@ import type { SceneTrigger, StoryScene } from '../../types/story';
 import type { StageData } from '../../types/game';
 import stagesData from '../master/stages.json';
 import { STORY_PACKS, sortStoryScenes } from './packs';
+import { isYomiArea } from '../../logic/YomiFloors';
 
 export { STORY_PACKS, getStoryPackSummaries } from './packs';
 
@@ -86,14 +87,18 @@ function areaIdForStage(stage: StageData): string {
   return `area${stage.area}`;
 }
 
-export function getAreaUnlockIdsForClearedStage(stageId: string): string[] {
-  const clearedStage = STAGES[stageId];
+export function getAreaUnlockIdsForClearedStage(
+  stageId: string,
+  stages: Record<string, StageData> = STAGES,
+): string[] {
+  const clearedStage = stages[stageId];
   if (!clearedStage) return [];
 
   const areaIds = new Set<string>();
-  Object.values(STAGES).forEach(stage => {
+  Object.values(stages).forEach(stage => {
     if (!stage.unlockRequires.includes(stageId)) return;
     if (!isDifferentArea(clearedStage, stage)) return;
+    if (isYomiArea(stage.chapter, stage.area)) return;
     areaIds.add(areaIdForStage(stage));
   });
 

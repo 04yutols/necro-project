@@ -10,6 +10,7 @@ const EVENT_META: Record<WorldEventType, { label: string; color: string; icon: t
   SSR_DISCOVERED: { label: 'SSR DISCOVERY', color: '#D4AF37', icon: Sparkles },
   BOSS_CLEARED: { label: 'BOSS FIRST CLEAR', color: '#f97316', icon: Trophy },
   RANKING_UPDATED: { label: 'RANKING', color: '#8DFFBF', icon: Crown },
+  YOMI_MILESTONE: { label: 'YOMI DEPTHS', color: '#8B00FF', icon: Skull },
 };
 
 const RANKING_LABEL: Record<RankingType, string> = {
@@ -17,6 +18,7 @@ const RANKING_LABEL: Record<RankingType, string> = {
   STAGE_TIME: '竜骨祭壇最速',
   TOTAL_DAMAGE: '累計ダメージ',
   BOSS_KILLS: '魔王討伐数',
+  DUNGEON_FLOOR: '黄泉 最深到達',
 };
 
 function formatEvent(event: WorldLogEntry) {
@@ -30,6 +32,9 @@ function formatEvent(event: WorldLogEntry) {
   }
   if (event.type === 'BOSS_CLEARED') {
     return `${player} が [${String(payload.stageName ?? '???')}] を初攻略`;
+  }
+  if (event.type === 'YOMI_MILESTONE') {
+    return `${player} が黄泉の階層 ${String(payload.floor ?? '?')}階に到達`;
   }
   return `${player} が ${String(payload.rankingName ?? 'ランキング')} の頂点に到達`;
 }
@@ -67,7 +72,7 @@ function RankingMiniBoard({ type, stageId }: { type: RankingType; stageId?: stri
             <span style={{ width: 24, color: entry.rank === 1 ? '#D4AF37' : '#8b7da8', fontFamily: "'Cinzel', serif", fontWeight: 900, fontSize: 13 }}>#{entry.rank}</span>
             <span className="flex-1 truncate" style={{ color: '#F0EAFF', fontSize: 11, fontWeight: 800 }}>{entry.playerName}</span>
             <span style={{ color: entry.rank === 1 ? '#D4AF37' : '#c9b6ff', fontFamily: 'monospace', fontSize: 10, fontWeight: 900 }}>
-              {type === 'STAGE_TIME' ? `${entry.value}T` : entry.value.toLocaleString()}
+              {type === 'STAGE_TIME' ? `${entry.value}T` : type === 'DUNGEON_FLOOR' ? `B${entry.value}` : entry.value.toLocaleString()}
             </span>
           </div>
         ))}
@@ -100,6 +105,9 @@ export function WorldLogPanel() {
       <div className="shrink-0 grid grid-cols-2 gap-2">
         <RankingMiniBoard type="RESIDUE_SCORE" />
         <RankingMiniBoard type="STAGE_TIME" stageId="area1_boss" />
+        <div className="col-span-2">
+          <RankingMiniBoard type="DUNGEON_FLOOR" />
+        </div>
       </div>
 
       <div className="gothic-panel rounded-2xl p-3 flex-1 min-h-0 flex flex-col">

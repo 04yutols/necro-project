@@ -23,6 +23,7 @@ import NecroLab from '../components/necro/NecroLab';
 import LegionHub from '../components/legion/LegionHub';
 import JobChangeScreen from '../components/job/JobChangeScreen';
 import AreaMap from '../components/map/AreaMap';
+import { YomiTowerScreen } from '../components/yomi/YomiTowerScreen';
 import ShardEquipModal from '../components/necro/ShardEquipModal';
 import { HomeHero } from '../components/home/HomeHero';
 import { ResponsiveFrame } from '../components/layout/ResponsiveFrame';
@@ -34,6 +35,8 @@ import { LoadingScreen } from '../components/auth/LoadingScreen';
 import { ReloginModal } from '../components/auth/ReloginModal';
 import { Home as HomeIcon, Lock } from 'lucide-react';
 import { isAbyssalResidueUnlocked } from '../logic/AbyssalResidueUnlockSystem';
+import { isYomiStage } from '../logic/YomiFloors';
+import { isYomiUnlocked } from '../logic/YomiUnlockSystem';
 import { MOTION, fullscreenScreenVariants, getNavigationDirection, tabScreenVariants } from '../lib/motion';
 
 async function requestStageAttempt(stageId: string): Promise<{ stageAttemptId: string | null; error?: string }> {
@@ -74,6 +77,41 @@ function AbyssalResidueLockedScreen({ onBack, onMap }: { onBack: () => void; onM
         <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 16, fontWeight: 900, letterSpacing: '0.08em' }}>深淵の残滓</div>
         <p style={{ margin: '10px 0 16px', color: '#A5A9B4', fontSize: 12, lineHeight: 1.8 }}>
           第2章到達後にチュートリアルと一緒に解放されます。
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <button type="button" onClick={onBack} className="min-h-11 rounded-xl border border-white/10 bg-white/5 text-[11px] font-black tracking-[0.14em] text-[#B8B0C8]">
+            拠点へ
+          </button>
+          <button type="button" onClick={onMap} className="min-h-11 rounded-xl border border-[#8B00FF66] bg-[#8B00FF26] text-[11px] font-black tracking-[0.14em] text-[#F0EAFF]">
+            出撃へ
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function YomiLockedScreen({ onBack, onMap }: { onBack: () => void; onMap: () => void }) {
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-[#050505] p-5">
+      <div
+        style={{
+          width: 'min(420px, 100%)',
+          borderRadius: 16,
+          border: '1px solid rgba(139,0,255,0.34)',
+          background: 'linear-gradient(180deg, rgba(14,5,28,0.95), rgba(5,2,12,0.96))',
+          boxShadow: '0 24px 70px rgba(0,0,0,0.72)',
+          padding: 18,
+          color: '#F0EAFF',
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ width: 48, height: 48, borderRadius: 14, margin: '0 auto 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139,0,255,0.16)', border: '1px solid rgba(139,0,255,0.38)', color: '#BC00FB' }}>
+          <Lock size={21} />
+        </div>
+        <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 16, fontWeight: 900, letterSpacing: '0.08em' }}>黄泉の階層</div>
+        <p style={{ margin: '10px 0 16px', color: '#A5A9B4', fontSize: 12, lineHeight: 1.8 }}>
+          亡国の王都を制圧した後に解放されます。
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <button type="button" onClick={onBack} className="min-h-11 rounded-xl border border-white/10 bg-white/5 text-[11px] font-black tracking-[0.14em] text-[#B8B0C8]">
@@ -188,8 +226,14 @@ function GameContent() {
       storyFlags: useStoryStore.getState().storyFlags,
     });
 
-    setCurrentTab(pendingTutorialPhase ? 'HOME' : 'MAP');
-  }, [setCurrentTab]);
+    if (pendingTutorialPhase) {
+      setCurrentTab('HOME');
+    } else if (isYomiStage(activeStageId)) {
+      setCurrentTab('YOMI');
+    } else {
+      setCurrentTab('MAP');
+    }
+  }, [activeStageId, setCurrentTab]);
 
   if (authFlow.status === 'authRequired') {
     return <AuthGate onAuthenticated={authFlow.reload} />;
@@ -311,6 +355,21 @@ function GameContent() {
         return (
           <motion.div key="lab" {...tabMotionProps} className="w-full h-full">
             <NecroLab />
+          </motion.div>
+        );
+      case 'YOMI':
+        if (!isYomiUnlocked(player.clearedStages)) {
+          return (
+            <motion.div key="yomi-locked" {...tabMotionProps} className="w-full h-full">
+              <YomiLockedScreen onBack={() => setCurrentTab('HOME')} onMap={() => setCurrentTab('MAP')} />
+            </motion.div>
+          );
+        }
+        return (
+          <motion.div key="yomi" {...tabMotionProps} className="w-full h-full">
+            <YomiTowerScreen onChallenge={(stageId) => {
+              void requestStageStart(stageId);
+            }} />
           </motion.div>
         );
       case 'LOGS':

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { RankingService } from '../../../services/RankingService';
 import type { RankingType } from '../../../types/online';
 
-const RANKING_TYPES: RankingType[] = ['RESIDUE_SCORE', 'STAGE_TIME', 'TOTAL_DAMAGE', 'BOSS_KILLS'];
+const RANKING_TYPES: RankingType[] = ['RESIDUE_SCORE', 'STAGE_TIME', 'TOTAL_DAMAGE', 'BOSS_KILLS', 'DUNGEON_FLOOR'];
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);

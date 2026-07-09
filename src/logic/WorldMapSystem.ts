@@ -5,6 +5,7 @@ import {
   getStageProgressState,
   type StageProgressState,
 } from './DungeonSystem';
+import { isYomiArea, isYomiStage } from './YomiFloors';
 
 export type WorldAreaState = 'CURRENT' | 'AVAILABLE' | 'LOCKED' | 'CLEARED';
 
@@ -80,12 +81,16 @@ export function buildWorldAreas(
   stages: Record<string, StageData>,
   clearedStages: string[],
 ): WorldAreaView[] {
-  const stageList = getStageList(stages);
+  const mapStages = Object.fromEntries(
+    Object.entries(stages).filter(([, stage]) => !isYomiStage(stage.id) && !isYomiArea(stage.chapter, stage.area)),
+  );
+  const stageList = getStageList(mapStages);
   const states = buildStageStates(stageList, clearedStages);
-  const nextStage = getNextAvailableStage(stages, clearedStages);
+  const nextStage = getNextAvailableStage(mapStages, clearedStages);
 
   const areasByKey = new Map<string, AreaData>();
   Object.values(areaRecords).forEach(area => {
+    if (isYomiArea(area.chapter, area.area)) return;
     areasByKey.set(getAreaKey(area), area);
   });
 

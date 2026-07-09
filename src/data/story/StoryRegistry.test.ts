@@ -9,6 +9,29 @@ import {
   STORY_PACKS,
   STORY_SCENES,
 } from './index';
+import type { StageData } from '../../types/game';
+
+function makeStage(id: string, chapter: number, area: number, unlockRequires: string[] = []): StageData {
+  return {
+    id,
+    name: id,
+    nameJa: id,
+    nameEn: id.toUpperCase(),
+    chapter,
+    chapterName: `第${chapter}章`,
+    area,
+    nodeType: 'DUNGEON',
+    element: 'NONE',
+    difficulty: 1,
+    description: id,
+    waveCount: 1,
+    areaGimmick: 'NONE',
+    unlockRequires,
+    waves: [{ label: 'WAVE 1', role: 'WARMUP', enemyIds: [], intent: '' }],
+    rewards: { baseExp: 1, baseGold: 1, dropTable: [] },
+    position: { x: 100, y: 100 },
+  };
+}
 
 describe('Story registry', () => {
   test('contains registered story packs: prologue, chapter 1, and chapter 2 placeholder', () => {
@@ -70,5 +93,15 @@ describe('Story registry', () => {
   test('derives area unlock story triggers from stage unlock graph', () => {
     expect(getAreaUnlockIdsForClearedStage('area1_node1')).toEqual([]);
     expect(getAreaUnlockIdsForClearedStage('area1_node3')).toEqual(['area2']);
+  });
+
+  test('does not expose Yomi area as a story area unlock', () => {
+    const stages = {
+      area1_node3: makeStage('area1_node3', 1, 1),
+      area2_gate: makeStage('area2_gate', 2, 2, ['area1_node3']),
+      yomi_b01: makeStage('yomi_b01', 1, 99, ['area1_node3']),
+    };
+
+    expect(getAreaUnlockIdsForClearedStage('area1_node3', stages)).toEqual(['area2']);
   });
 });

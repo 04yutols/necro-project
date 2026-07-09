@@ -133,4 +133,42 @@ describe('WorldMapSystem', () => {
       'area1_node3',
     ]);
   });
+
+  test('excludes Yomi area and stages from the world map', () => {
+    const yomiArea = {
+      id: 'ch1_area99',
+      chapter: 1,
+      area: 99,
+      nameJa: '黄泉の階層',
+      nameEn: 'THE YOMI DEPTHS',
+      description: '独立チャレンジタワー',
+      color: '#4B0082',
+      position: { x: 999999, y: 999999 },
+      sortOrder: 199,
+    } satisfies AreaData;
+    const yomiStage = makeStage('yomi_b01', 1, 99, ['area1_node3']);
+
+    const worldAreas = buildWorldAreas(
+      { ...AREAS, ch1_area99: yomiArea },
+      { ...STAGES, yomi_b01: yomiStage },
+      CH1_CLEARED_STAGE_IDS,
+    );
+
+    expect(worldAreas.some(area => area.id === 'ch1_area99')).toBe(false);
+    expect(worldAreas.flatMap(area => area.stages).some(stage => stage.id === 'yomi_b01')).toBe(false);
+    expect(worldAreas.some(area => area.nextStage?.id === 'yomi_b01')).toBe(false);
+  });
+
+  test('Yomi data does not change the normal world map result', () => {
+    const areasWithoutYomi = Object.fromEntries(
+      Object.entries(AREAS).filter(([id]) => id !== 'ch1_area99'),
+    );
+    const stagesWithoutYomi = Object.fromEntries(
+      Object.entries(STAGES).filter(([id]) => !id.startsWith('yomi_b')),
+    );
+    const baseline = buildWorldAreas(areasWithoutYomi, stagesWithoutYomi, CH1_CLEARED_STAGE_IDS);
+    const withYomi = buildWorldAreas(AREAS, STAGES, CH1_CLEARED_STAGE_IDS);
+
+    expect(withYomi).toEqual(baseline);
+  });
 });

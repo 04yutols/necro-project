@@ -508,9 +508,9 @@
     "tier": "BOSS",
     "tribe": "UNDEAD",
     "stats": {
-      "hp": 90,
+      "hp": 180,
       "atk": 14,
-      "def": 10,
+      "def": 24,
       "spd": 55,
       "critRate": 10,
       "critDmg": 175,
@@ -527,8 +527,8 @@
       "LIGHT",
       "FIRE"
     ],
-    "shieldHp": 34,
-    "maxShieldHp": 34,
+    "shieldHp": 50,
+    "maxShieldHp": 50,
     "gimmicks": [
       {
         "trigger": "HP_BELOW_50",
@@ -577,9 +577,9 @@
       "captureRate": 0.001,
       "allyCost": 4,
       "allyStats": {
-        "hp": 90,
+        "hp": 180,
         "atk": 14,
-        "def": 10,
+        "def": 24,
         "spd": 55,
         "critRate": 10,
         "critDmg": 175,

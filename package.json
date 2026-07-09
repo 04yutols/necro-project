@@ -25,6 +25,7 @@
     "agent:verify-bulk": "tsx scripts/verify-bulk-agent.mts",
     "agent:verify-bulk-apply": "tsx scripts/verify-bulk-apply.mts",
     "data:audit": "node scripts/master-data-audit.mjs",
+    "data:generate-yomi": "node scripts/generate-yomi-floors.mjs",
     "data:template": "node scripts/master-data-template.mjs",
     "balance:report": "node scripts/balance-report.mjs",
     "balance:progression": "node scripts/progression-report.mjs",
