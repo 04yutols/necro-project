@@ -208,7 +208,7 @@ function buildStageForFloor(n) {
     unlockRequires: [n === 1 ? CH1_FINAL_NODE_ID : floorId(n - 1)],
     waves: buildWavesForFloor(n),
     rewards: buildRewardsForFloor(n),
-    position: { x: 200, y: 80 + (n - 1) * 40 },
+    position: { x: 900000 + n * 100, y: 900000 },
   };
 }
 

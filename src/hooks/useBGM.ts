@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { AudioService, type BGMScene } from '../services/AudioService';
 import { useAudioStore } from '../store/useAudioStore';
+import { getYomiFloorNumber } from '../logic/YomiFloors';
 
 interface UseBGMOptions {
   currentTab: string;
@@ -11,9 +12,14 @@ interface UseBGMOptions {
   storyActive?: boolean;
 }
 
-function resolveScene({ currentTab, isInBattle, activeStageId, storyActive }: UseBGMOptions): BGMScene {
+export function resolveScene({ currentTab, isInBattle, activeStageId, storyActive }: UseBGMOptions): BGMScene {
   if (storyActive) return 'STORY_NEUTRAL';
-  if (isInBattle) return activeStageId?.includes('boss') ? 'BATTLE_BOSS' : 'BATTLE_NORMAL';
+  if (isInBattle) {
+    const yomiFloor = getYomiFloorNumber(activeStageId);
+    return activeStageId?.includes('boss') || (yomiFloor !== null && yomiFloor % 10 === 0)
+      ? 'BATTLE_BOSS'
+      : 'BATTLE_NORMAL';
+  }
   if (currentTab === 'MAP' || currentTab === 'YOMI') return 'MAP_EXPLORE';
   if (currentTab === 'LAB') return 'NECRO_LAB';
   if (currentTab === 'LOGS') return 'STORY_NEUTRAL';
