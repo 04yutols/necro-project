@@ -34,6 +34,7 @@
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/src/**/*.js
 
 # OpenNext
 .open-next
@@ -44,3 +45,7 @@ next-env.d.ts
 !.dev.vars.example
 
 !.env.example
+!.env.local.example
+
+# 一括変更の undo 用スナップショット（git追跡しない）
+src/data/master/.snapshots/

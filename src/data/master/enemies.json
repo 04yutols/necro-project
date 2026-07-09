@@ -2,54 +2,442 @@
   "grave_soldier": {
     "id": "grave_soldier",
     "name": "Grave Soldier",
-    "nameJa": "墓荒らしの骸兵",
+    "nameJa": "霊体騎士",
     "nameEn": "GRAVE SOLDIER",
     "tier": "MINION",
     "tribe": "UNDEAD",
-    "stats": { "hp": 230, "atk": 56, "def": 28, "spd": 82, "critRate": 0, "critDmg": 150, "effectHit": 0, "effectRes": 0 },
-    "resistances": { "LIGHT": -30, "FIRE": -10, "DARK": 35 },
-    "weaknesses": ["LIGHT", "FIRE"],
-    "dropTable": [
-      { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.42 },
-      { "type": "MATERIAL", "itemId": "bone-chip", "rarity": "COMMON", "rate": 0.85 }
+    "stats": {
+      "hp": 10,
+      "atk": 2,
+      "def": 3,
+      "spd": 70,
+      "critRate": 0,
+      "critDmg": 150,
+      "effectHit": 0,
+      "effectRes": 0
+    },
+    "resistances": {
+      "LIGHT": -30,
+      "DARK": 20
+    },
+    "weaknesses": [
+      "LIGHT"
     ],
-    "battle": { "color": "#9ca3af", "sprite": "WRAITH", "size": 0.72 },
-    "description": "WAVE1の露払い。通常攻撃で倒せるゲージの餌。"
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 15,
+        "atk": 4,
+        "def": 3,
+        "spd": 70,
+        "critRate": 0,
+        "critDmg": 150,
+        "effectHit": 0,
+        "effectRes": 0
+      },
+      "allyMaxEnergy": 36,
+      "skillIds": [
+        "skill_necromancer_1"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bone_cleaver",
+        "rarity": "R",
+        "rate": 0.42
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "bone_chip",
+        "rarity": "COMMON",
+        "rate": 0.85
+      }
+    ],
+    "battle": {
+      "color": "#9ca3af",
+      "sprite": "WRAITH",
+      "size": 0.72
+    },
+    "description": "WAVE1の露払い。通常攻撃3回、スキル2回ほどで倒せる導入敵。"
   },
   "rot_hound": {
     "id": "rot_hound",
     "name": "Rot Hound",
-    "nameJa": "腐肉喰らい",
+    "nameJa": "腐敗猟犬",
     "nameEn": "ROT HOUND",
     "tier": "MINION",
     "tribe": "BEAST",
-    "stats": { "hp": 270, "atk": 64, "def": 22, "spd": 118, "critRate": 5, "critDmg": 150, "effectHit": 0, "effectRes": 0 },
-    "resistances": { "WIND": -20, "FIRE": -15, "EARTH": 20 },
-    "weaknesses": ["WIND", "FIRE"],
-    "dropTable": [
-      { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.35 },
-      { "type": "MATERIAL", "itemId": "beast-fang", "rarity": "COMMON", "rate": 0.72 }
+    "stats": {
+      "hp": 12,
+      "atk": 2,
+      "def": 2,
+      "spd": 70,
+      "critRate": 0,
+      "critDmg": 150,
+      "effectHit": 0,
+      "effectRes": 0
+    },
+    "resistances": {
+      "FIRE": -20,
+      "ICE": -10
+    },
+    "weaknesses": [
+      "FIRE",
+      "ICE"
     ],
-    "battle": { "color": "#22c55e", "sprite": "WRAITH", "size": 0.68 },
-    "description": "速度が高い小型魔物。周回テンポを崩さない低HP設計。"
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 14,
+        "atk": 5,
+        "def": 2,
+        "spd": 110,
+        "critRate": 0,
+        "critDmg": 150,
+        "effectHit": 0,
+        "effectRes": 0
+      },
+      "allyMaxEnergy": 18,
+      "skillIds": [
+        "skill_rogue_1"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bone_cleaver",
+        "rarity": "R",
+        "rate": 0.35
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "beast_fang",
+        "rarity": "COMMON",
+        "rate": 0.72
+      }
+    ],
+    "battle": {
+      "color": "#22c55e",
+      "sprite": "WRAITH",
+      "size": 0.68
+    },
+    "description": "速度が高い小型魔物。先行で小ダメージを与え、行動順の存在を体験させる。"
+  },
+  "hollow_handmaid": {
+    "id": "hollow_handmaid",
+    "name": "Hollow Handmaid",
+    "nameJa": "廃城の侍女",
+    "nameEn": "HOLLOW HANDMAID",
+    "tier": "MINION",
+    "tribe": "HUMANOID",
+    "stats": {
+      "hp": 15,
+      "atk": 3,
+      "def": 5,
+      "spd": 76,
+      "critRate": 3,
+      "critDmg": 150,
+      "effectHit": 12,
+      "effectRes": 5
+    },
+    "resistances": {
+      "THUNDER": -20,
+      "EARTH": 25,
+      "WIND": -15,
+      "LIGHT": 10
+    },
+    "weaknesses": [
+      "THUNDER",
+      "WIND"
+    ],
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 42,
+        "atk": 7,
+        "def": 5,
+        "spd": 76,
+        "critRate": 3,
+        "critDmg": 150,
+        "effectHit": 12,
+        "effectRes": 5
+      },
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_darkpriest_1"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bone_cleaver",
+        "rarity": "R",
+        "rate": 0.38
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "ash_scroll",
+        "rarity": "COMMON",
+        "rate": 0.8
+      }
+    ],
+    "battle": {
+      "color": "#d8b4fe",
+      "sprite": "WRAITH",
+      "size": 0.7
+    },
+    "description": "node2 初登場。高effectHitで毒を刺しやすく、雷・風スキルの使用を促す。"
+  },
+  "earthbound_grudge": {
+    "id": "earthbound_grudge",
+    "name": "Earthbound Grudge",
+    "nameJa": "地縛の怨念",
+    "nameEn": "EARTHBOUND GRUDGE",
+    "tier": "MINION",
+    "tribe": "UNDEAD",
+    "stats": {
+      "hp": 12,
+      "atk": 3,
+      "def": 2,
+      "spd": 45,
+      "critRate": 0,
+      "critDmg": 150,
+      "effectHit": 10,
+      "effectRes": 0
+    },
+    "resistances": {
+      "LIGHT": -40,
+      "DARK": 20
+    },
+    "weaknesses": [
+      "LIGHT"
+    ],
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bleed_reaver",
+        "rarity": "SR",
+        "rate": 0.08
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "grave_crystal",
+        "rarity": "COMMON",
+        "rate": 0.82
+      }
+    ],
+    "battle": {
+      "color": "#818cf8",
+      "sprite": "WRAITH",
+      "size": 0.75
+    },
+    "description": "ボスギミックの召喚ミニオン。低HPで処理しやすい怨念体。",
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 12,
+        "atk": 3,
+        "def": 2,
+        "spd": 45,
+        "critRate": 0,
+        "critDmg": 150,
+        "effectHit": 10,
+        "effectRes": 0
+      },
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_darkpriest_curse_bind"
+      ]
+    }
+  },
+  "bloodmire_leech": {
+    "id": "bloodmire_leech",
+    "name": "Bloodmire Leech",
+    "nameJa": "血沼の蛭",
+    "nameEn": "BLOODMIRE LEECH",
+    "tier": "MINION",
+    "tribe": "BEAST",
+    "stats": {
+      "hp": 46,
+      "atk": 8,
+      "def": 5,
+      "spd": 108,
+      "critRate": 5,
+      "critDmg": 155,
+      "effectHit": 0,
+      "effectRes": 5
+    },
+    "resistances": {
+      "WATER": 22,
+      "FIRE": -22,
+      "THUNDER": -15,
+      "DARK": 10
+    },
+    "weaknesses": [
+      "FIRE",
+      "THUNDER"
+    ],
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bone_cleaver",
+        "rarity": "R",
+        "rate": 0.3
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "leech_fang",
+        "rarity": "COMMON",
+        "rate": 0.75
+      }
+    ],
+    "battle": {
+      "color": "#f43f5e",
+      "sprite": "WRAITH",
+      "size": 0.65
+    },
+    "description": "node3 の圧力要員。高ATKと高SPDで先攻し、fire・thunder で迅速処理を促す。",
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 46,
+        "atk": 8,
+        "def": 5,
+        "spd": 108,
+        "critRate": 5,
+        "critDmg": 155,
+        "effectHit": 0,
+        "effectRes": 5
+      },
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_darkpriest_1"
+      ]
+    }
   },
   "abyss_warden": {
     "id": "abyss_warden",
     "name": "Abyss Warden",
-    "nameJa": "深淵の門番",
+    "nameJa": "深淵の看守",
     "nameEn": "ABYSS WARDEN",
     "tier": "ELITE",
-    "tribe": "DEMON",
-    "stats": { "hp": 640, "atk": 116, "def": 62, "spd": 92, "critRate": 8, "critDmg": 155, "effectHit": 8, "effectRes": 15 },
-    "resistances": { "DARK": 35, "THUNDER": -25, "WATER": -25, "FIRE": 15 },
-    "weaknesses": ["THUNDER", "WATER"],
-    "shieldHp": 190,
-    "dropTable": [
-      { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.145 },
-      { "type": "RESIDUE", "rarity": "RARE", "rate": 1.0 }
+    "tribe": "UNDEAD",
+    "stats": {
+      "hp": 30,
+      "atk": 4,
+      "def": 5,
+      "spd": 75,
+      "critRate": 0,
+      "critDmg": 150,
+      "effectHit": 10,
+      "effectRes": 20
+    },
+    "resistances": {
+      "FIRE": -10,
+      "LIGHT": -30,
+      "DARK": 20
+    },
+    "weaknesses": [
+      "FIRE",
+      "LIGHT"
     ],
-    "battle": { "color": "#38bdf8", "sprite": "GIANT", "size": 0.86 },
-    "description": "霊的防壁を持つWAVE2の門番。弱点属性で霊魂砕きを狙う。"
+    "shieldHp": 18,
+    "maxShieldHp": 18,
+    "necromance": {
+      "captureRate": 0.04,
+      "allyCost": 2,
+      "allyStats": {
+        "hp": 36,
+        "atk": 5,
+        "def": 5,
+        "spd": 75,
+        "critRate": 0,
+        "critDmg": 150,
+        "effectHit": 10,
+        "effectRes": 20
+      },
+      "allyMaxEnergy": 40,
+      "skillIds": [
+        "skill_necromancer_grave_command"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bleed_reaver",
+        "rarity": "SR",
+        "rate": 0.145
+      }
+    ],
+    "battle": {
+      "color": "#38bdf8",
+      "sprite": "GIANT",
+      "size": 0.86
+    },
+    "description": "霊的防壁を持つWAVE2の看守。通常攻撃4回で防壁破壊を学ばせる。"
+  },
+  "grave_knight": {
+    "id": "grave_knight",
+    "name": "Grave Knight",
+    "nameJa": "霊体騎士長",
+    "nameEn": "GRAVE KNIGHT",
+    "tier": "ELITE",
+    "tribe": "UNDEAD",
+    "stats": {
+      "hp": 44,
+      "atk": 6,
+      "def": 7,
+      "spd": 65,
+      "critRate": 0,
+      "critDmg": 150,
+      "effectHit": 0,
+      "effectRes": 10
+    },
+    "resistances": {
+      "LIGHT": -25,
+      "DARK": 15
+    },
+    "weaknesses": [
+      "LIGHT"
+    ],
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bone_cleaver",
+        "rarity": "R",
+        "rate": 0.45
+      }
+    ],
+    "battle": {
+      "color": "#c4b5fd",
+      "sprite": "WRAITH",
+      "size": 0.82
+    },
+    "description": "area1_node1最終WAVEの強めの雑魚。通常攻撃9回、スキル6回ほどで撃破する想定。",
+    "necromance": {
+      "captureRate": 0.04,
+      "allyCost": 2,
+      "allyStats": {
+        "hp": 44,
+        "atk": 6,
+        "def": 7,
+        "spd": 65,
+        "critRate": 0,
+        "critDmg": 150,
+        "effectHit": 0,
+        "effectRes": 10
+      },
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_darkknight_shadow_edge"
+      ]
+    }
   },
   "bone_colossus": {
     "id": "bone_colossus",
@@ -58,15 +446,58 @@
     "nameEn": "BONE COLOSSUS",
     "tier": "ELITE",
     "tribe": "UNDEAD",
-    "stats": { "hp": 720, "atk": 124, "def": 78, "spd": 68, "critRate": 5, "critDmg": 150, "effectHit": 4, "effectRes": 20 },
-    "resistances": { "LIGHT": -30, "EARTH": -20, "DARK": 45, "WIND": 10 },
-    "weaknesses": ["LIGHT", "EARTH"],
-    "shieldHp": 220,
-    "dropTable": [
-      { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.12 },
-      { "type": "RESIDUE", "rarity": "RARE", "rate": 1.0 }
+    "stats": {
+      "hp": 50,
+      "atk": 7,
+      "def": 9,
+      "spd": 68,
+      "critRate": 5,
+      "critDmg": 150,
+      "effectHit": 4,
+      "effectRes": 20
+    },
+    "resistances": {
+      "EARTH": -20,
+      "WIND": 10,
+      "LIGHT": -30,
+      "DARK": 45
+    },
+    "weaknesses": [
+      "EARTH",
+      "LIGHT"
     ],
-    "battle": { "color": "#a855f7", "sprite": "GIANT", "size": 0.9 },
+    "shieldHp": 24,
+    "maxShieldHp": 24,
+    "necromance": {
+      "captureRate": 0.04,
+      "allyCost": 2,
+      "allyStats": {
+        "hp": 72,
+        "atk": 9,
+        "def": 9,
+        "spd": 68,
+        "critRate": 5,
+        "critDmg": 150,
+        "effectHit": 4,
+        "effectRes": 20
+      },
+      "skillIds": [
+        "skill_berserker_earth_breaker"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bleed_reaver",
+        "rarity": "SR",
+        "rate": 0.12
+      }
+    ],
+    "battle": {
+      "color": "#a855f7",
+      "sprite": "GIANT",
+      "size": 0.9
+    },
     "description": "高DEFの精鋭。防壁破壊後に一気に削ることを想定。"
   },
   "ossuary_wyrm_lord": {
@@ -76,23 +507,91 @@
     "nameEn": "OSSUARY WYRM LORD",
     "tier": "BOSS",
     "tribe": "UNDEAD",
-    "stats": { "hp": 1120, "atk": 168, "def": 92, "spd": 76, "critRate": 12, "critDmg": 165, "effectHit": 12, "effectRes": 30 },
-    "resistances": { "LIGHT": -35, "THUNDER": -20, "FIRE": 15, "DARK": 55 },
-    "weaknesses": ["LIGHT", "THUNDER"],
-    "shieldHp": 310,
+    "stats": {
+      "hp": 180,
+      "atk": 14,
+      "def": 24,
+      "spd": 55,
+      "critRate": 10,
+      "critDmg": 175,
+      "effectHit": 0,
+      "effectRes": 30
+    },
+    "resistances": {
+      "LIGHT": -30,
+      "FIRE": -20,
+      "DARK": 25,
+      "ICE": 15
+    },
+    "weaknesses": [
+      "LIGHT",
+      "FIRE"
+    ],
+    "shieldHp": 50,
+    "maxShieldHp": 50,
     "gimmicks": [
-      { "trigger": "HP_BELOW_50", "effect": "ENRAGE", "value": 1.45 },
-      { "trigger": "TURN_3", "effect": "AV_DELAY", "value": 18 },
-      { "trigger": "ON_REVIVE", "effect": "REVIVE", "value": 0.35 }
+      {
+        "trigger": "HP_BELOW_50",
+        "effect": "ENRAGE",
+        "value": 1.5
+      },
+      {
+        "trigger": "TURN_3",
+        "effect": "AV_DELAY",
+        "value": 40
+      },
+      {
+        "trigger": "HP_BELOW_50",
+        "effect": "REVIVE",
+        "value": 1.5
+      }
     ],
     "dropTable": [
-      { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.008 },
-      { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.45 },
-      { "type": "MATERIAL", "itemId": "ossuary-memory", "rarity": "RARE", "rate": 0.26 },
-      { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
+      {
+        "type": "WEAPON",
+        "itemId": "spirit_silver_saber",
+        "rarity": "SSR",
+        "rate": 0.008
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "ossuary_memory",
+        "rarity": "RARE",
+        "rate": 0.26
+      },
+      {
+        "type": "WEAPON",
+        "itemId": "grudge_manifest",
+        "rarity": "UR",
+        "rate": 0.00008,
+        "isHidden": true
+      }
     ],
-    "battle": { "color": "#ef4444", "sprite": "WYRM", "size": 1.0 },
-    "description": "章ボス。重装甲版の霊的防壁と大技で、魔神化の切りどころを試す。"
+    "battle": {
+      "color": "#ef4444",
+      "sprite": "WYRM",
+      "size": 1
+    },
+    "description": "第1章後半用ボス。area1_node1からは外し、準ボス以降で魔神化の切りどころを試す。HP50%でENRAGE、HP0でREVIVE。",
+    "necromance": {
+      "captureRate": 0.001,
+      "allyCost": 4,
+      "allyStats": {
+        "hp": 180,
+        "atk": 14,
+        "def": 24,
+        "spd": 55,
+        "critRate": 10,
+        "critDmg": 175,
+        "effectHit": 0,
+        "effectRes": 30
+      },
+      "allyMaxEnergy": 50,
+      "skillIds": [
+        "skill_necromancer_grave_command",
+        "skill_necromancer_1"
+      ]
+    }
   },
   "blood_mire_queen": {
     "id": "blood_mire_queen",
@@ -101,20 +600,363 @@
     "nameEn": "BLOODMIRE QUEEN",
     "tier": "BOSS",
     "tribe": "DEMON",
-    "stats": { "hp": 1380, "atk": 188, "def": 88, "spd": 96, "critRate": 16, "critDmg": 175, "effectHit": 18, "effectRes": 28 },
-    "resistances": { "WATER": -35, "WIND": -20, "FIRE": 35, "DARK": 30 },
-    "weaknesses": ["WATER", "WIND"],
-    "shieldHp": 360,
+    "stats": {
+      "hp": 150,
+      "atk": 14,
+      "def": 13,
+      "spd": 96,
+      "critRate": 16,
+      "critDmg": 175,
+      "effectHit": 18,
+      "effectRes": 28
+    },
+    "resistances": {
+      "WATER": -35,
+      "WIND": -20,
+      "FIRE": 35,
+      "DARK": 30
+    },
+    "weaknesses": [
+      "WATER",
+      "WIND"
+    ],
+    "shieldHp": 48,
+    "maxShieldHp": 48,
     "gimmicks": [
-      { "trigger": "HP_BELOW_50", "effect": "ENRAGE", "value": 1.55 },
-      { "trigger": "ON_SHIELD_BREAK", "effect": "SUMMON_MINIONS", "value": 2 }
+      {
+        "trigger": "HP_BELOW_50",
+        "effect": "ENRAGE",
+        "value": 1
+      },
+      {
+        "trigger": "ON_SHIELD_BREAK",
+        "effect": "SUMMON_MINIONS",
+        "value": 2
+      }
     ],
     "dropTable": [
-      { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.01 },
-      { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.5 },
-      { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
+      {
+        "type": "WEAPON",
+        "itemId": "spirit_silver_saber",
+        "rarity": "SSR",
+        "rate": 0.01
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "bloodmire_essence",
+        "rarity": "RARE",
+        "rate": 0.3
+      },
+      {
+        "type": "WEAPON",
+        "itemId": "grudge_manifest",
+        "rarity": "UR",
+        "rate": 0.00008,
+        "isHidden": true
+      }
     ],
-    "battle": { "color": "#dc2626", "sprite": "WYRM", "size": 1.02 },
-    "description": "第1章後半のボス。水・風ビルドの適正を問う。"
+    "battle": {
+      "color": "#dc2626",
+      "sprite": "WYRM",
+      "size": 1.02
+    },
+    "description": "第1章後半のボス。水・風ビルドの適正を問う。防壁破壊で増援召喚。",
+    "necromance": {
+      "captureRate": 0.001,
+      "allyCost": 4,
+      "allyStats": {
+        "hp": 150,
+        "atk": 14,
+        "def": 13,
+        "spd": 96,
+        "critRate": 16,
+        "critDmg": 175,
+        "effectHit": 18,
+        "effectRes": 28
+      },
+      "allyMaxEnergy": 54,
+      "skillIds": [
+        "skill_warlock_abyss_hex",
+        "skill_darkpriest_1"
+      ]
+    }
+  },
+  "gravewarden_colossus": {
+    "id": "gravewarden_colossus",
+    "name": "Gravewarden Colossus",
+    "nameJa": "墓守の巨像",
+    "nameEn": "GRAVEWARDEN COLOSSUS",
+    "tier": "BOSS",
+    "tribe": "UNDEAD",
+    "stats": {
+      "hp": 95,
+      "atk": 14,
+      "def": 13,
+      "spd": 55,
+      "critRate": 8,
+      "critDmg": 175,
+      "effectHit": 4,
+      "effectRes": 30
+    },
+    "resistances": {
+      "LIGHT": -30,
+      "EARTH": 10,
+      "DARK": 25
+    },
+    "weaknesses": [
+      "LIGHT"
+    ],
+    "shieldHp": 30,
+    "maxShieldHp": 30,
+    "gimmicks": [
+      {
+        "trigger": "ON_SHIELD_BREAK",
+        "effect": "SUMMON_MINIONS",
+        "value": 1
+      }
+    ],
+    "necromance": {
+      "captureRate": 0.001,
+      "allyCost": 4,
+      "allyStats": {
+        "hp": 95,
+        "atk": 14,
+        "def": 13,
+        "spd": 55,
+        "critRate": 8,
+        "critDmg": 175,
+        "effectHit": 4,
+        "effectRes": 30
+      },
+      "allyMaxEnergy": 48,
+      "skillIds": [
+        "skill_berserker_earth_breaker",
+        "skill_necromancer_grave_command"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bleed_reaver",
+        "rarity": "SR",
+        "rate": 0.14
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "grave_crystal",
+        "rarity": "COMMON",
+        "rate": 0.68
+      }
+    ],
+    "battle": {
+      "color": "#8b5cf6",
+      "sprite": "GIANT",
+      "size": 0.96
+    },
+    "description": "1-4のミニボス。霊的防壁を割ると骸兵を呼び、魔神化解放前の山場を作る。"
+  },
+  "wandering_guard_wraith": {
+    "id": "wandering_guard_wraith",
+    "name": "Wandering Guard Wraith",
+    "nameJa": "彷徨う近衛霊",
+    "nameEn": "WANDERING GUARD WRAITH",
+    "tier": "MINION",
+    "tribe": "UNDEAD",
+    "stats": {
+      "hp": 35,
+      "atk": 6,
+      "def": 4,
+      "spd": 85,
+      "critRate": 5,
+      "critDmg": 150,
+      "effectHit": 4,
+      "effectRes": 5
+    },
+    "resistances": {
+      "LIGHT": -25,
+      "FIRE": -15,
+      "DARK": 20
+    },
+    "weaknesses": [
+      "LIGHT",
+      "FIRE"
+    ],
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 35,
+        "atk": 6,
+        "def": 4,
+        "spd": 85,
+        "critRate": 5,
+        "critDmg": 150,
+        "effectHit": 4,
+        "effectRes": 5
+      },
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_darkknight_shadow_edge"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "grave_thorn_dagger",
+        "rarity": "R",
+        "rate": 0.38
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "grave_crystal",
+        "rarity": "COMMON",
+        "rate": 0.62
+      }
+    ],
+    "battle": {
+      "color": "#c4b5fd",
+      "sprite": "WRAITH",
+      "size": 0.76
+    },
+    "description": "王城後半の攻撃寄りミニオン。墓兵より鋭く、血沼の蛭より遅い近衛霊。"
+  },
+  "cursed_head_maid": {
+    "id": "cursed_head_maid",
+    "name": "Cursed Head Maid",
+    "nameJa": "呪詛の女官長",
+    "nameEn": "CURSED HEAD MAID",
+    "tier": "ELITE",
+    "tribe": "HUMANOID",
+    "stats": {
+      "hp": 44,
+      "atk": 7,
+      "def": 5,
+      "spd": 72,
+      "critRate": 6,
+      "critDmg": 150,
+      "effectHit": 18,
+      "effectRes": 12
+    },
+    "resistances": {
+      "THUNDER": -25,
+      "WIND": -20,
+      "DARK": 15,
+      "LIGHT": 10
+    },
+    "weaknesses": [
+      "THUNDER",
+      "WIND"
+    ],
+    "shieldHp": 12,
+    "maxShieldHp": 12,
+    "necromance": {
+      "captureRate": 0.04,
+      "allyCost": 2,
+      "allyStats": {
+        "hp": 44,
+        "atk": 7,
+        "def": 5,
+        "spd": 72,
+        "critRate": 6,
+        "critDmg": 150,
+        "effectHit": 18,
+        "effectRes": 12
+      },
+      "allyMaxEnergy": 42,
+      "skillIds": [
+        "skill_warlock_abyss_hex",
+        "skill_darkpriest_1"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "mourning_bell_crozier",
+        "rarity": "R",
+        "rate": 0.34
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "ash_scroll",
+        "rarity": "COMMON",
+        "rate": 0.72
+      },
+      {
+        "type": "WEAPON",
+        "itemId": "spirit_silver_saber",
+        "rarity": "SSR",
+        "rate": 0.008
+      }
+    ],
+    "battle": {
+      "color": "#d946ef",
+      "sprite": "WRAITH",
+      "size": 0.8
+    },
+    "description": "廃城の侍女の上位個体。高ATK・低DEFの術師として1-10最終WAVEを尖らせる。"
+  },
+  "dragonbone_spawn": {
+    "id": "dragonbone_spawn",
+    "name": "Dragonbone Spawn",
+    "nameJa": "竜骨の眷属",
+    "nameEn": "DRAGONBONE SPAWN",
+    "tier": "MINION",
+    "tribe": "DRAGON",
+    "stats": {
+      "hp": 32,
+      "atk": 6,
+      "def": 5,
+      "spd": 68,
+      "critRate": 4,
+      "critDmg": 150,
+      "effectHit": 0,
+      "effectRes": 8
+    },
+    "resistances": {
+      "ICE": -30,
+      "FIRE": 15,
+      "EARTH": 10
+    },
+    "weaknesses": [
+      "ICE"
+    ],
+    "necromance": {
+      "captureRate": 0.12,
+      "allyCost": 1,
+      "allyStats": {
+        "hp": 32,
+        "atk": 6,
+        "def": 5,
+        "spd": 68,
+        "critRate": 4,
+        "critDmg": 150,
+        "effectHit": 0,
+        "effectRes": 8
+      },
+      "allyMaxEnergy": 30,
+      "skillIds": [
+        "skill_berserker_earth_breaker"
+      ]
+    },
+    "dropTable": [
+      {
+        "type": "WEAPON",
+        "itemId": "bleed_reaver",
+        "rarity": "SR",
+        "rate": 0.1
+      },
+      {
+        "type": "MATERIAL",
+        "itemId": "ossuary_memory",
+        "rarity": "RARE",
+        "rate": 0.24
+      }
+    ],
+    "battle": {
+      "color": "#f97316",
+      "sprite": "WYRM",
+      "size": 0.72
+    },
+    "description": "竜骨祭壇ゾーンの小型竜骨。第1章で捕獲できるDRAGON種族の導入役。"
   }
 }

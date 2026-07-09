@@ -1,0 +1,111 @@
+import {
+  applyActionDelay,
+  applyStatusActionDelay,
+  buildTurnOrder,
+  buildTurnOrderPreview,
+  calculateActionDelay,
+  calculateInitialActionValue,
+  scheduleEnemiesUntilAlly,
+  scheduleEnemiesUntilPlayer,
+  type TurnOrderActor,
+} from './TurnOrderSystem';
+
+describe('TurnOrderSystem', () => {
+  test('calculates AV from SPD using 10000 / spd', () => {
+    expect(calculateActionDelay(100)).toBe(100);
+    expect(calculateActionDelay(200)).toBe(50);
+    expect(calculateInitialActionValue(80)).toBe(125);
+  });
+
+  test('builds turn order by current AV, then faster actor on ties', () => {
+    const order = buildTurnOrder([
+      { id: 'slow', name: 'Slow', side: 'ENEMY', spd: 80, currentAv: 100 },
+      { id: 'fast', name: 'Fast', side: 'ENEMY', spd: 160, currentAv: 100 },
+      { id: 'player', name: 'Player', side: 'PLAYER', spd: 100, currentAv: 90 },
+    ]);
+
+    expect(order.map((actor) => actor.id)).toEqual(['player', 'fast', 'slow']);
+  });
+
+  test('builds a compact turn-order preview capped at five actors', () => {
+    const preview = buildTurnOrderPreview([
+      { id: 'sixth', name: 'Sixth', side: 'ENEMY', spd: 70, currentAv: 60 },
+      { id: 'first', name: 'First', side: 'PLAYER', spd: 120, currentAv: 10 },
+      { id: 'third', name: 'Third', side: 'ENEMY', spd: 90, currentAv: 30 },
+      { id: 'second', name: 'Second', side: 'ENEMY', spd: 100, currentAv: 20 },
+      { id: 'fifth', name: 'Fifth', side: 'ENEMY', spd: 75, currentAv: 50 },
+      { id: 'fourth', name: 'Fourth', side: 'ENEMY', spd: 80, currentAv: 40 },
+    ]);
+
+    expect(preview.map((actor) => actor.id)).toEqual(['first', 'second', 'third', 'fourth', 'fifth']);
+    expect(preview.every((actor) => actor.actionDelay > 0)).toBe(true);
+  });
+
+  test('turn-order preview accepts a zero-length display limit', () => {
+    const preview = buildTurnOrderPreview([
+      { id: 'player', name: 'Player', side: 'PLAYER', spd: 100, currentAv: 0 },
+    ], 0);
+
+    expect(preview).toEqual([]);
+  });
+
+  test('schedules only enemies that act before the next player turn', () => {
+    const player: TurnOrderActor = { id: 'player', name: 'Player', side: 'PLAYER', spd: 100, currentAv: 100 };
+    const fastEnemy: TurnOrderActor = { id: 'fast', name: 'Fast Enemy', side: 'ENEMY', spd: 200, currentAv: 50 };
+    const slowEnemy: TurnOrderActor = { id: 'slow', name: 'Slow Enemy', side: 'ENEMY', spd: 60, currentAv: 167 };
+
+    const schedule = scheduleEnemiesUntilPlayer({ player, enemies: [fastEnemy, slowEnemy] });
+
+    expect(schedule.enemyActions.map((actor) => actor.id)).toEqual(['fast']);
+    expect(schedule.enemies.find((actor) => actor.id === 'fast')?.currentAv).toBe(100);
+    expect(schedule.enemies.find((actor) => actor.id === 'slow')?.currentAv).toBe(167);
+  });
+
+  test('schedules enemies only until the next allied actor turn', () => {
+    const player: TurnOrderActor = { id: 'player', name: 'Player', side: 'PLAYER', spd: 100, currentAv: 150 };
+    const ally: TurnOrderActor = { id: 'ally-1', name: 'Skeleton', side: 'ALLY', spd: 90, currentAv: 120 };
+    const fastEnemy: TurnOrderActor = { id: 'fast', name: 'Fast Enemy', side: 'ENEMY', spd: 200, currentAv: 50 };
+    const slowEnemy: TurnOrderActor = { id: 'slow', name: 'Slow Enemy', side: 'ENEMY', spd: 60, currentAv: 130 };
+
+    const schedule = scheduleEnemiesUntilAlly({ player, allies: [ally], enemies: [fastEnemy, slowEnemy] });
+
+    expect(schedule.enemyActions.map((actor) => actor.id)).toEqual(['fast', 'fast']);
+    expect(schedule.nextAlly.id).toBe('ally-1');
+    expect(schedule.allies[0].currentAv).toBe(120);
+    expect(schedule.enemies.find((actor) => actor.id === 'fast')?.currentAv).toBe(150);
+    expect(schedule.enemies.find((actor) => actor.id === 'slow')?.currentAv).toBe(130);
+  });
+
+  test('advances skipped enemy turns without executing attacks', () => {
+    const player: TurnOrderActor = { id: 'player', name: 'Player', side: 'PLAYER', spd: 100, currentAv: 120 };
+    const stunnedEnemy: TurnOrderActor = { id: 'stun', name: 'Stunned', side: 'ENEMY', spd: 100, currentAv: 80 };
+
+    const schedule = scheduleEnemiesUntilPlayer({
+      player,
+      enemies: [stunnedEnemy],
+      skippedEnemyIds: new Set(['stun']),
+    });
+
+    expect(schedule.enemyActions).toHaveLength(0);
+    expect(schedule.skippedEnemyTurns.map((actor) => actor.id)).toEqual(['stun']);
+    expect(schedule.enemies[0].currentAv).toBe(180);
+  });
+
+  test('applies action delay and status AV delay', () => {
+    const actor: TurnOrderActor = { id: 'player', name: 'Player', side: 'PLAYER', spd: 100, currentAv: 10 };
+
+    expect(applyActionDelay(actor).currentAv).toBe(110);
+    expect(applyStatusActionDelay(actor, 40, 50).currentAv).toBe(30);
+  });
+
+  test('delayed player AV lets an enemy act before the next player turn', () => {
+    const player: TurnOrderActor = { id: 'player', name: 'Player', side: 'PLAYER', spd: 100, currentAv: 120 };
+    const delayedPlayer = applyStatusActionDelay(player, 40, 0);
+    const enemy: TurnOrderActor = { id: 'boss', name: 'Boss', side: 'ENEMY', spd: 100, currentAv: 130 };
+
+    const schedule = scheduleEnemiesUntilPlayer({ player: delayedPlayer, enemies: [enemy] });
+
+    expect(delayedPlayer.currentAv).toBe(160);
+    expect(schedule.enemyActions.map((actor) => actor.id)).toEqual(['boss']);
+  });
+});

@@ -4,27 +4,35 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Castle, ChevronLeft, Globe2, Home, Lock, MapPin, Skull, Sparkles, Swords } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
+import areasData from '../../data/master/areas.json';
 import stagesData from '../../data/master/stages.json';
 import enemiesData from '../../data/master/enemies.json';
 import itemsData from '../../data/master/items.json';
 import {
   getHiddenDropCount,
-  getNextAvailableStage,
   getPrimaryWeaknesses,
   getStageLineSegments,
-  getStageList,
-  getStageProgressState,
   getStageWaveSummaries,
   getVisibleDropTable,
   type StageProgressState,
 } from '../../logic/DungeonSystem';
-import type { DropEntry, ElementType, EnemyData, StageData, StageNodeType } from '../../types/game';
+import {
+  buildStageStates,
+  buildWorldAreas,
+  getAreaKey,
+  getCurrentWorldArea,
+  getWorldAreaStages,
+  type WorldAreaView,
+} from '../../logic/WorldMapSystem';
+import { isYomiArea, isYomiStage } from '../../logic/YomiFloors';
+import type { AreaData, DropEntry, ElementType, EnemyData, StageData, StageNodeType } from '../../types/game';
 
 interface AreaMapProps {
   onStartStage: (stageId: string) => void;
 }
 
 const STAGES = stagesData as Record<string, StageData>;
+const AREAS = areasData as Record<string, AreaData>;
 const ENEMIES = enemiesData as Record<string, EnemyData>;
 const ITEMS = itemsData as Record<string, { name?: string; rarity?: string }>;
 
@@ -50,7 +58,7 @@ const ELEMENT_COLOR: Record<ElementType, string> = {
   WIND: '#7dd3fc',
   ICE: '#93c5fd',
   LIGHT: '#fde68a',
-  DARK: '#8A2BE2',
+  DARK: '#8B00FF',
   NONE: '#a5a9b4',
 };
 
@@ -72,98 +80,13 @@ const MATERIAL_NAME: Record<string, string> = {
 };
 
 type MapLayer = 'WORLD' | 'AREA';
-type WorldAreaState = 'CURRENT' | 'AVAILABLE' | 'LOCKED' | 'CLEARED';
-
-interface WorldArea {
-  area: number;
-  chapter: number;
-  nameJa: string;
-  nameEn: string;
-  description: string;
-  color: string;
-  position: { x: number; y: number };
-  state: WorldAreaState;
-  stages: StageData[];
-  nextStage: StageData | null;
-  clearedCount: number;
-  totalCount: number;
-}
 
 const WORLD_VIEWBOX = { width: 375, height: 620 };
-
-const WORLD_AREA_META: Record<number, {
-  nameEn: string;
-  description: string;
-  color: string;
-  position: { x: number; y: number };
-}> = {
-  1: {
-    nameEn: 'FALLEN ROYAL CAPITAL',
-    description: '最初の侵攻領域。墓道、地下牢、竜骨祭壇を制圧し、亡国の中枢へ踏み込む。',
-    color: '#8A2BE2',
-    position: { x: 152, y: 438 },
-  },
-  2: {
-    nameEn: 'PHANTOM CITY',
-    description: '亡国の先に揺らめく幽霊都市。前章の全ノード制圧後に霧が晴れる。',
-    color: '#38bdf8',
-    position: { x: 250, y: 292 },
-  },
-};
-
-function buildWorldAreas(
-  stages: StageData[],
-  clearedStages: string[],
-  nextStage: StageData | null,
-  states: Record<string, StageProgressState>
-): WorldArea[] {
-  const grouped = new Map<number, StageData[]>();
-  stages.forEach(stage => {
-    const list = grouped.get(stage.area) ?? [];
-    list.push(stage);
-    grouped.set(stage.area, list);
-  });
-
-  return [...grouped.entries()].sort((a, b) => a[0] - b[0]).map(([area, areaStages]) => {
-    const first = areaStages.find(stage => stage.nodeType !== 'SAFE') ?? areaStages[0];
-    const totalStages = areaStages.filter(stage => stage.nodeType !== 'SAFE');
-    const clearedCount = totalStages.filter(stage => clearedStages.includes(stage.id)).length;
-    const hasAccessibleNode = areaStages.some(stage => states[stage.id] !== 'LOCKED');
-    const areaNextStage = nextStage?.area === area ? nextStage : areaStages.find(stage => states[stage.id] === 'AVAILABLE') ?? null;
-    const isCleared = totalStages.length > 0 && clearedCount === totalStages.length;
-    const meta = WORLD_AREA_META[area] ?? {
-      nameEn: `AREA ${area}`,
-      description: first.description,
-      color: getStageColor(first),
-      position: { x: 188, y: 440 - area * 86 },
-    };
-
-    let state: WorldAreaState = 'LOCKED';
-    if (isCleared) state = 'CLEARED';
-    else if (areaNextStage) state = 'CURRENT';
-    else if (hasAccessibleNode) state = 'AVAILABLE';
-
-    return {
-      area,
-      chapter: first.chapter,
-      nameJa: first.chapterName,
-      nameEn: meta.nameEn,
-      description: meta.description,
-      color: meta.color,
-      position: meta.position,
-      state,
-      stages: areaStages,
-      nextStage: areaNextStage,
-      clearedCount,
-      totalCount: totalStages.length,
-    };
-  });
-}
 
 function getStageColor(stage: StageData) {
   if (stage.nodeType === 'SAFE') return '#a5a9b4';
   if (stage.nodeType === 'BOSS') return '#ef4444';
-  return ELEMENT_COLOR[stage.element] ?? '#8A2BE2';
+  return ELEMENT_COLOR[stage.element] ?? '#8B00FF';
 }
 
 function getStateLabel(state: StageProgressState) {
@@ -184,6 +107,7 @@ function getDropName(drop: DropEntry) {
 function getDropIcon(drop: DropEntry) {
   if (drop.type === 'RESIDUE') return '◆';
   if (drop.type === 'WEAPON') return '⚔';
+  if (drop.type === 'CONSUMABLE') return '🧪';
   if (drop.type === 'MONSTER') return '☠';
   return '▣';
 }
@@ -216,7 +140,7 @@ function TerrainLayer() {
       {[[80,376], [92,362], [70,358], [111,344], [95,333], [72,329], [121,319], [105,305]].map(([x, y], i) => (
         <g key={`grave-${i}`} opacity="0.78">
           <path d={`M${x - 5} ${y} L${x - 4} ${y - 12} Q${x} ${y - 18} ${x + 4} ${y - 12} L${x + 5} ${y}Z`} fill="#171221" stroke="#463353" strokeWidth="0.8" />
-          <line x1={x - 3} y1={y - 6} x2={x + 3} y2={y - 6} stroke="#6b5f7a" strokeWidth="0.5" opacity="0.4" />
+          <line x1={x - 3} y1={y - 6} x2={x + 3} y2={y - 6} stroke="#A5A9B4" strokeWidth="0.5" opacity="0.4" />
         </g>
       ))}
       {[[248,112], [259,105], [270,113], [238,96], [283,98]].map(([x, y], i) => (
@@ -253,7 +177,7 @@ function ParticleLayer() {
             width: 1.6 + (i % 3),
             height: 1.6 + (i % 3),
             borderRadius: '50%',
-            background: i % 4 === 0 ? '#ef4444' : i % 3 === 0 ? '#8A2BE2' : '#c084fc',
+            background: i % 4 === 0 ? '#ef4444' : i % 3 === 0 ? '#8B00FF' : '#c084fc',
             opacity: 0.65,
             animation: `particleRise ${3 + (i % 4)}s ease-out infinite`,
             animationDelay: `${(i * 0.31) % 4}s`,
@@ -319,11 +243,13 @@ function MapNode({
   stage,
   state,
   isActive,
+  isRevealing = false,
   onClick,
 }: {
   stage: StageData;
   state: StageProgressState;
   isActive: boolean;
+  isRevealing?: boolean;
   onClick: (stage: StageData) => void;
 }) {
   const color = getStageColor(stage);
@@ -340,6 +266,22 @@ function MapNode({
         <>
           <circle cx={stage.position.x} cy={stage.position.y} r={size + 10} fill="none" stroke={color} strokeWidth="1.2" opacity="0" style={{ animation: 'nodeRing 2.2s ease-out infinite' }} />
           <circle cx={stage.position.x} cy={stage.position.y} r={size + 5} fill="none" stroke={color} strokeWidth="1" opacity="0" style={{ animation: 'nodeRing 2.2s ease-out infinite 0.35s' }} />
+        </>
+      )}
+      {isRevealing && !isLocked && (
+        <>
+          <circle cx={stage.position.x} cy={stage.position.y} r={size + 18} fill={color} opacity="0.12" style={{ animation: 'mapUnlockPulse 1.4s ease-out infinite' }} />
+          {Array.from({ length: 8 }, (_, i) => (
+            <circle
+              key={`fog-shard-${i}`}
+              cx={stage.position.x + Math.cos((i / 8) * Math.PI * 2) * (size + 16)}
+              cy={stage.position.y + Math.sin((i / 8) * Math.PI * 2) * (size + 16)}
+              r="2"
+              fill={color}
+              opacity="0.72"
+              style={{ animation: `fogShardDissolve ${1.1 + (i % 3) * 0.12}s ease-out infinite`, animationDelay: `${i * 0.06}s` }}
+            />
+          ))}
         </>
       )}
       <circle cx={stage.position.x} cy={stage.position.y + 4} r={size + 3} fill="#000" opacity="0.36" />
@@ -416,7 +358,7 @@ function HeaderStat({ label, value, icon }: { label: string; value: string; icon
     }}>
       <div style={{ color: '#c084fc', flexShrink: 0 }}>{icon}</div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 7, color: '#6b5f7a', letterSpacing: '0.13em', fontWeight: 800 }}>{label}</div>
+        <div style={{ fontSize: 7, color: '#A5A9B4', letterSpacing: '0.13em', fontWeight: 800 }}>{label}</div>
         <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, color: '#f0ebff', fontWeight: 800, whiteSpace: 'nowrap' }}>{value}</div>
       </div>
     </div>
@@ -466,7 +408,7 @@ function WorldTerrainLayer() {
           cx={(i * 43 + 18) % WORLD_VIEWBOX.width}
           cy={(i * 67 + 24) % WORLD_VIEWBOX.height}
           r={0.7 + (i % 3) * 0.42}
-          fill={i % 4 === 0 ? '#8A2BE2' : '#fff'}
+          fill={i % 4 === 0 ? '#8B00FF' : '#fff'}
           opacity={0.08 + (i % 6) * 0.032}
         />
       ))}
@@ -480,9 +422,9 @@ function WorldAreaNode({
   isActive,
   onClick,
 }: {
-  area: WorldArea;
+  area: WorldAreaView;
   isActive: boolean;
-  onClick: (area: WorldArea) => void;
+  onClick: (area: WorldAreaView) => void;
 }) {
   const locked = area.state === 'LOCKED';
   const cleared = area.state === 'CLEARED';
@@ -538,7 +480,7 @@ function WorldAreaNode({
         x={area.position.x}
         y={area.position.y + size + 30}
         textAnchor="middle"
-        fontFamily="'Noto Sans JP', sans-serif"
+        fontFamily="var(--font-noto-sans-jp), sans-serif"
         fontSize="10"
         fontWeight="800"
         fill={locked ? '#51445c' : color}
@@ -554,7 +496,7 @@ function WorldAreaSheet({
   onClose,
   onEnter,
 }: {
-  area: WorldArea;
+  area: WorldAreaView;
   onClose: () => void;
   onEnter: () => void;
 }) {
@@ -712,7 +654,7 @@ function WavePreview({ stage }: { stage: StageData }) {
       <div style={panelTitleStyle}>WAVE STRUCTURE</div>
       <div style={{ display: 'grid', gap: 7 }}>
         {waves.map(wave => {
-          const color = wave.role === 'BOSS' ? '#ef4444' : wave.role === 'SHIELD' ? '#38bdf8' : '#8A2BE2';
+          const color = wave.role === 'BOSS' ? '#ef4444' : wave.role === 'ELITE' ? '#f59e0b' : wave.role === 'SHIELD' ? '#38bdf8' : '#8B00FF';
           return (
             <div key={wave.label} style={{
               display: 'grid',
@@ -737,7 +679,7 @@ function WavePreview({ stage }: { stage: StageData }) {
                     </span>
                   ))}
                 </div>
-                <div style={{ marginTop: 2, fontSize: 8.5, color: '#6b5f7a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wave.intent}</div>
+                <div style={{ marginTop: 2, fontSize: 8.5, color: '#A5A9B4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wave.intent}</div>
               </div>
             </div>
           );
@@ -759,7 +701,7 @@ const panelTitleStyle: CSSProperties = {
   fontFamily: "'Cinzel', serif",
   fontSize: 8,
   fontWeight: 900,
-  color: '#8A2BE2',
+  color: '#D4AF37',
   letterSpacing: '0.13em',
   marginBottom: 7,
 };
@@ -770,7 +712,7 @@ function WeaknessPreview({ stage }: { stage: StageData }) {
     <div style={infoPanelStyle}>
       <div style={panelTitleStyle}>WEAKNESS</div>
       {weaknesses.length === 0 ? (
-        <div style={{ fontSize: 10, color: '#6b5f7a' }}>なし</div>
+        <div style={{ fontSize: 10, color: '#A5A9B4' }}>なし</div>
       ) : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {weaknesses.map(element => (
@@ -802,7 +744,7 @@ function DropPreview({ stage }: { stage: StageData }) {
       <div style={panelTitleStyle}>DROPS</div>
       <div style={{ display: 'grid', gap: 6 }}>
         {visibleDrops.length === 0 ? (
-          <div style={{ fontSize: 10, color: '#6b5f7a' }}>報酬なし</div>
+          <div style={{ fontSize: 10, color: '#A5A9B4' }}>報酬なし</div>
         ) : visibleDrops.map(drop => {
           const rarity = drop.rarity ?? 'COMMON';
           const color = RARITY_COLOR[rarity] ?? '#a5a9b4';
@@ -913,7 +855,7 @@ function DetailSheet({
                 fontWeight: 900,
               }}>{getStateLabel(state)}</span>
               {stage.nodeType !== 'SAFE' && (
-                <span style={{ fontSize: 8, color: '#6b5f7a', fontWeight: 800 }}>3 WAVE / STAMINA FREE</span>
+                <span style={{ fontSize: 8, color: '#A5A9B4', fontWeight: 800 }}>3 WAVE / STAMINA FREE</span>
               )}
             </div>
             <div style={{
@@ -1001,29 +943,112 @@ function DetailSheet({
   );
 }
 
+function FogRevealOverlay({ stage, onDone }: { stage: StageData; onDone: () => void }) {
+  const color = getStageColor(stage);
+
+  useEffect(() => {
+    const timer = window.setTimeout(onDone, 1900);
+    return () => window.clearTimeout(timer);
+  }, [onDone]);
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 30,
+        pointerEvents: 'none',
+        overflow: 'hidden',
+        background: 'radial-gradient(circle at 50% 48%, transparent 0 19%, rgba(5,2,16,0.24) 31%, rgba(5,2,16,0.68) 100%)',
+        animation: 'mapFogReveal 1.8s ease-out both',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-20%',
+          backgroundImage: `radial-gradient(circle at 42% 44%, ${color}36, transparent 17%), radial-gradient(circle at 58% 48%, rgba(255,255,255,0.12), transparent 15%), repeating-linear-gradient(115deg, rgba(255,255,255,0.045) 0 2px, transparent 2px 22px)`,
+          filter: 'blur(1.4px)',
+          animation: 'fogRuneSweep 1.65s ease-out both',
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '48%',
+          width: 'min(68vw, 260px)',
+          height: 'min(68vw, 260px)',
+          borderRadius: '50%',
+          transform: 'translate(-50%, -50%)',
+          border: `1px solid ${color}80`,
+          boxShadow: `0 0 44px ${color}55, inset 0 0 32px rgba(255,255,255,0.06)`,
+          animation: 'mapUnlockPulse 1.25s ease-out both',
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          left: 18,
+          right: 18,
+          bottom: 'max(26px, env(safe-area-inset-bottom, 26px))',
+          borderRadius: 18,
+          border: `1px solid ${color}66`,
+          background: 'linear-gradient(180deg, rgba(10,4,24,0.94), rgba(5,2,16,0.94))',
+          boxShadow: `0 0 28px ${color}30`,
+          padding: '13px 15px',
+          animation: 'mapUnlockBanner 1.6s cubic-bezier(0.2,1,0.28,1) both',
+        }}
+      >
+        <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color, fontWeight: 900, letterSpacing: '0.16em' }}>FOG CLEARED</div>
+        <div style={{ marginTop: 4, fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 15, color: '#f0ebff', fontWeight: 900 }}>{stage.nameJa}</div>
+        <div style={{ marginTop: 3, fontSize: 10, color: '#a89ec8' }}>新たな深淵の迷宮ノードが解放された</div>
+      </div>
+    </div>
+  );
+}
+
 export default function AreaMap({ onStartStage }: AreaMapProps) {
   const { player, party, setCurrentTab } = useGameStore();
   const [layer, setLayer] = useState<MapLayer>('WORLD');
-  const [selectedArea, setSelectedArea] = useState<number | null>(null);
-  const [activeWorldAreaId, setActiveWorldAreaId] = useState<number | null>(null);
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  const [activeWorldAreaId, setActiveWorldAreaId] = useState<string | null>(null);
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  const [fogRevealStageId, setFogRevealStageId] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const allStages = useMemo(() => getStageList(STAGES), []);
+  const allStages = useMemo(
+    () => Object.values(STAGES).filter(stage => !isYomiStage(stage.id) && !isYomiArea(stage.chapter, stage.area)),
+    [],
+  );
   const clearedStages = player?.clearedStages ?? [];
-  const states = useMemo(() => Object.fromEntries(allStages.map(stage => [stage.id, getStageProgressState(stage, clearedStages)])), [clearedStages, allStages]);
-  const nextStage = useMemo(() => getNextAvailableStage(STAGES, clearedStages), [clearedStages]);
-  const worldAreas = useMemo(() => buildWorldAreas(allStages, clearedStages, nextStage, states), [allStages, clearedStages, nextStage, states]);
-  const activeWorldArea = activeWorldAreaId ? worldAreas.find(area => area.area === activeWorldAreaId) ?? null : null;
-  const selectedAreaId = selectedArea ?? nextStage?.area ?? worldAreas[0]?.area ?? 1;
-  const selectedWorldArea = worldAreas.find(area => area.area === selectedAreaId) ?? worldAreas[0] ?? null;
-  const areaStages = useMemo(() => allStages.filter(stage => stage.area === selectedAreaId), [allStages, selectedAreaId]);
+  const states = useMemo(() => buildStageStates(allStages, clearedStages), [clearedStages, allStages]);
+  const worldAreas = useMemo(() => buildWorldAreas(AREAS, STAGES, clearedStages), [clearedStages]);
+  const activeWorldArea = activeWorldAreaId ? worldAreas.find(area => area.id === activeWorldAreaId) ?? null : null;
+  const currentWorldArea = useMemo(() => getCurrentWorldArea(worldAreas), [worldAreas]);
+  const nextStage = currentWorldArea?.nextStage ?? null;
+  const selectedWorldAreaId = selectedAreaId ?? currentWorldArea?.id ?? worldAreas[0]?.id ?? null;
+  const selectedWorldArea = worldAreas.find(area => area.id === selectedWorldAreaId) ?? worldAreas[0] ?? null;
+  const areaStages = useMemo(() => selectedWorldArea ? getWorldAreaStages(allStages, selectedWorldArea) : [], [allStages, selectedWorldArea]);
   const nextStageForArea = useMemo(() => areaStages.find(stage => states[stage.id] === 'AVAILABLE') ?? null, [areaStages, states]);
   const activeStage = activeStageId ? STAGES[activeStageId] : null;
+  const fogRevealStage = fogRevealStageId ? STAGES[fogRevealStageId] : null;
   const currentStage = activeStage ?? nextStageForArea ?? areaStages.find(stage => stage.nodeType === 'SAFE') ?? areaStages[0] ?? STAGES.area1_safe;
 
   useEffect(() => { setIsMounted(true); }, []);
+
+  useEffect(() => {
+    if (!isMounted || !nextStage || clearedStages.length === 0 || typeof window === 'undefined') return;
+    const key = `necro:fog-reveal:${clearedStages.length}:${nextStage.id}`;
+    try {
+      if (window.sessionStorage.getItem(key) === '1') return;
+      window.sessionStorage.setItem(key, '1');
+    } catch {
+      // sessionStorage can be unavailable in private browsing.
+    }
+    setFogRevealStageId(nextStage.id);
+  }, [clearedStages.length, isMounted, nextStage]);
 
   useEffect(() => {
     if (layer !== 'AREA' || !isMounted || !scrollRef.current || !currentStage) return;
@@ -1037,22 +1062,20 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
   if (!isMounted || !player) return null;
 
   const partyDisplay = [
-    { icon: '☠', name: player.name, color: '#8A2BE2' },
+    { icon: '☠', name: player.name, color: '#8B00FF' },
     ...party.slice(0, 2).map((monster, i) => monster
       ? { icon: monster.tribe === 'DEMON' ? '◆' : '☾', name: monster.name, color: ['#22c55e', '#38bdf8'][i] }
-      : { icon: '+', name: '未配置', color: '#4a3a5a' }
+      : { icon: '+', name: '未配置', color: '#6d5f7a' }
     ),
   ];
 
   if (layer === 'WORLD') {
-    const currentArea = worldAreas.find(area => area.state === 'CURRENT') ?? worldAreas.find(area => area.state === 'AVAILABLE') ?? worldAreas[0] ?? null;
-
     return (
       <div style={{
         position: 'absolute',
         inset: 0,
         background: '#05030f',
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "var(--font-inter), sans-serif",
         overflow: 'hidden',
         color: '#f0ebff',
       }}>
@@ -1081,10 +1104,10 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
             <g filter="url(#worldNodeGlow)">
               {worldAreas.map(area => (
                 <WorldAreaNode
-                  key={area.area}
+                  key={area.id}
                   area={area}
-                  isActive={activeWorldAreaId === area.area}
-                  onClick={(clickedArea) => setActiveWorldAreaId(prev => prev === clickedArea.area ? null : clickedArea.area)}
+                  isActive={activeWorldAreaId === area.id}
+                  onClick={(clickedArea) => setActiveWorldAreaId(prev => prev === clickedArea.id ? null : clickedArea.id)}
                 />
               ))}
             </g>
@@ -1123,13 +1146,13 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                 <ChevronLeft size={15} />
                 ホーム
               </button>
-              <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#8A2BE2', letterSpacing: '0.18em' }}>LAYER 1 / WORLD MAP</div>
+              <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 8, color: '#D4AF37', letterSpacing: '0.18em' }}>LAYER 1 / WORLD MAP</div>
               <div style={{
                 fontFamily: "'Cinzel', serif",
                 fontSize: 'clamp(19px, 5.5vw, 25px)',
                 fontWeight: 900,
                 letterSpacing: '0.04em',
-                textShadow: '0 0 20px rgba(138,43,226,0.58)',
+                textShadow: '0 0 20px rgba(139,0,255,0.58)',
                 lineHeight: 1.1,
               }}>ワールドマップ</div>
             </div>
@@ -1163,27 +1186,27 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
               backdropFilter: 'blur(14px)',
             }}>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#8A2BE2', fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 900, letterSpacing: '0.14em' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#D4AF37', fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 900, letterSpacing: '0.14em' }}>
                   <Castle size={14} />
                   CURRENT FRONT
                 </div>
                 <div style={{ marginTop: 3, color: '#f0ebff', fontFamily: "'Cinzel', serif", fontSize: 14, fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {currentArea?.nameJa ?? '未選択'}
+                  {currentWorldArea?.nameJa ?? '未選択'}
                 </div>
-                <div style={{ marginTop: 2, color: '#6b5f7a', fontSize: 9 }}>
+                <div style={{ marginTop: 2, color: '#A5A9B4', fontSize: 9 }}>
                   Layer 1で領域を選び、Layer 2のエリアマップへ進む
                 </div>
               </div>
               <button
                 type="button"
-                disabled={!currentArea || currentArea.state === 'LOCKED'}
-                onClick={() => currentArea && setActiveWorldAreaId(currentArea.area)}
+                disabled={!currentWorldArea || currentWorldArea.state === 'LOCKED'}
+                onClick={() => currentWorldArea && setActiveWorldAreaId(currentWorldArea.id)}
                 style={{
                   minHeight: 44,
                   padding: '0 15px',
                   borderRadius: 12,
-                  border: '1px solid rgba(138,43,226,0.68)',
-                  background: 'linear-gradient(135deg, rgba(138,43,226,0.42), rgba(6,3,16,0.92))',
+                  border: '1px solid rgba(139,0,255,0.68)',
+                  background: 'linear-gradient(135deg, rgba(139,0,255,0.42), rgba(6,3,16,0.92))',
                   color: '#f0ebff',
                   fontFamily: "'Cinzel', serif",
                   fontSize: 11,
@@ -1192,7 +1215,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 7,
-                  boxShadow: '0 0 18px rgba(138,43,226,0.32)',
+                  boxShadow: '0 0 18px rgba(139,0,255,0.32)',
                 }}
               >
                 <MapPin size={15} />
@@ -1215,7 +1238,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   onClose={() => setActiveWorldAreaId(null)}
                   onEnter={() => {
                     if (activeWorldArea.state === 'LOCKED') return;
-                    setSelectedArea(activeWorldArea.area);
+                    setSelectedAreaId(activeWorldArea.id);
                     setActiveWorldAreaId(null);
                     setActiveStageId(null);
                     setLayer('AREA');
@@ -1237,7 +1260,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
       position: 'absolute',
       inset: 0,
       background: '#05030f',
-      fontFamily: "'Inter', sans-serif",
+      fontFamily: "var(--font-inter), sans-serif",
       overflow: 'hidden',
       color: '#f0ebff',
     }}>
@@ -1283,6 +1306,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   stage={stage}
                   state={states[stage.id]}
                   isActive={activeStageId === stage.id}
+                  isRevealing={fogRevealStageId === stage.id}
                   onClick={(clickedStage) => setActiveStageId(prev => prev === clickedStage.id ? null : clickedStage.id)}
                 />
               ))}
@@ -1327,13 +1351,13 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
               <ChevronLeft size={15} />
               ワールド
             </button>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#8A2BE2', letterSpacing: '0.18em' }}>LAYER 2 / AREA MAP</div>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 8, color: '#D4AF37', letterSpacing: '0.18em' }}>LAYER 2 / AREA MAP</div>
             <div style={{
               fontFamily: "'Cinzel', serif",
               fontSize: 'clamp(18px, 5vw, 23px)',
               fontWeight: 900,
               letterSpacing: '0.04em',
-              textShadow: '0 0 20px rgba(138,43,226,0.58)',
+              textShadow: '0 0 20px rgba(139,0,255,0.58)',
               lineHeight: 1.1,
             }}>{selectedWorldArea?.nameJa ?? 'エリアマップ'}</div>
           </div>
@@ -1390,8 +1414,8 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                 minHeight: 44,
                 padding: '0 15px',
                 borderRadius: 12,
-                border: '1px solid rgba(138,43,226,0.68)',
-                background: 'linear-gradient(135deg, rgba(138,43,226,0.42), rgba(6,3,16,0.92))',
+                border: '1px solid rgba(139,0,255,0.68)',
+                background: 'linear-gradient(135deg, rgba(139,0,255,0.42), rgba(6,3,16,0.92))',
                 color: '#f0ebff',
                 fontFamily: "'Cinzel', serif",
                 fontSize: 11,
@@ -1400,7 +1424,7 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 7,
-                boxShadow: '0 0 18px rgba(138,43,226,0.32)',
+                boxShadow: '0 0 18px rgba(139,0,255,0.32)',
               }}
             >
               <MapPin size={15} />
@@ -1435,6 +1459,12 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
             </div>
           </div>
         </>
+      )}
+      {fogRevealStage && selectedWorldArea && getAreaKey(fogRevealStage) === getAreaKey(selectedWorldArea) && (
+        <FogRevealOverlay
+          stage={fogRevealStage}
+          onDone={() => setFogRevealStageId(null)}
+        />
       )}
     </div>
   );

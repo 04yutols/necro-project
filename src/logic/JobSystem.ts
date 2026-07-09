@@ -1,4 +1,4 @@
-import type { BaseStats, CharacterData, JobData, SkillData } from '../types/game';
+import type { BaseStats, CharacterData, JobData, SkillAttackType, SkillData } from '../types/game';
 
 export const STAT_KEYS: (keyof BaseStats)[] = ['hp', 'atk', 'def', 'spd', 'critRate', 'critDmg', 'effectHit', 'effectRes'];
 
@@ -44,6 +44,12 @@ export function getJobStyle(jobId: string) {
   return JOB_STYLE[jobId] ?? DEFAULT_JOB_STYLE;
 }
 
+export function getBaseAttackType(
+  job: Pick<JobData, 'baseAttackType'> | null | undefined,
+): SkillAttackType {
+  return job?.baseAttackType ?? 'SLASH';
+}
+
 export function normalizeJobData(jobId: string, job: JobData): JobData {
   return { ...job, id: job.id ?? jobId };
 }
@@ -67,10 +73,10 @@ export function calculateJobAdjustedStats(baseStats: BaseStats, job: JobData): B
 export function addPassiveBonuses(stats: BaseStats, character: CharacterData): BaseStats {
   return {
     ...stats,
-    hp:       stats.hp       + (character.passives.passiveHpBonus       ?? 0),
-    atk:      stats.atk      + (character.passives.passiveAtkBonus      ?? 0),
-    def:      stats.def      + (character.passives.passiveDefBonus      ?? 0),
-    spd:      stats.spd      + (character.passives.passiveSpdBonus      ?? 0),
+    hp:       Math.round(stats.hp  * (1 + (character.passives.passiveHpBonus  ?? 0) / 100)),
+    atk:      Math.round(stats.atk * (1 + (character.passives.passiveAtkBonus ?? 0) / 100)),
+    def:      Math.round(stats.def * (1 + (character.passives.passiveDefBonus ?? 0) / 100)),
+    spd:      Math.round(stats.spd * (1 + (character.passives.passiveSpdBonus ?? 0) / 100)),
     critRate: stats.critRate + (character.passives.passiveCritRateBonus ?? 0),
     critDmg:  stats.critDmg  + (character.passives.passiveCritDmgBonus  ?? 0),
   };

@@ -1,16 +1,103 @@
 {
   "bone_cleaver": {
+    "id": "bone_cleaver",
     "name": "骨砕きの短剣",
     "type": "WEAPON",
     "rarity": "R",
     "weaponRarity": "R",
     "archetype": "MID",
     "rank": 1,
-    "ilv": 40,
+    "ilv": 1,
+    "isUnique": false,
     "stats": {},
-    "subOptions": [{ "type": "ATK%", "value": 6.2 }]
+    "subOptions": [{ "type": "ATK%", "value": 6.2 }],
+    "passiveA": {
+      "nameJa": "粗削りの刃",
+      "descTemplate": "敵を倒した時、自身のHPを{value}%回復する。",
+      "values": [4, 5, 6, 7, 8]
+    },
+    "passiveB": {
+      "nameJa": "戦場勘",
+      "descTemplate": "通常攻撃の与ダメージが{value}%上昇する。",
+      "values": [3, 4, 5, 6, 7]
+    },
+    "flavor": "粗削りだが、戦場で骨を砕いてきた実績がある。"
+  },
+  "apprentice_cinder_staff": {
+    "id": "apprentice_cinder_staff",
+    "name": "煤火の見習い杖",
+    "type": "WEAPON",
+    "rarity": "R",
+    "weaponRarity": "R",
+    "archetype": "MID",
+    "rank": 1,
+    "ilv": 1,
+    "isUnique": false,
+    "stats": {},
+    "subOptions": [{ "type": "CRIT_DMG", "value": 8.5 }],
+    "passiveA": {
+      "nameJa": "熾火の導き",
+      "descTemplate": "炎属性スキルの与ダメージが{value}%上昇する。",
+      "values": [4, 5, 6, 7, 8]
+    },
+    "passiveB": {
+      "nameJa": "焦げた魔導書",
+      "descTemplate": "スキルを使用した時、自身の会心ダメージが{value}%上昇する。",
+      "values": [3, 4, 5, 6, 7]
+    },
+    "flavor": "初歩の炎術を安定させるための煤けた杖。魔力の通り道に小さな火種が残る。"
+  },
+  "mourning_bell_crozier": {
+    "id": "mourning_bell_crozier",
+    "name": "弔鐘の司祭杖",
+    "type": "WEAPON",
+    "rarity": "R",
+    "weaponRarity": "R",
+    "archetype": "MID",
+    "rank": 1,
+    "ilv": 1,
+    "isUnique": false,
+    "stats": {},
+    "subOptions": [{ "type": "EFFECT_HIT", "value": 7.0 }],
+    "passiveA": {
+      "nameJa": "弔いの残響",
+      "descTemplate": "状態異常を付与する確率が{value}%上昇する。",
+      "values": [4, 5, 6, 7, 8]
+    },
+    "passiveB": {
+      "nameJa": "逆さ祈祷",
+      "descTemplate": "闇属性スキルの与ダメージが{value}%上昇する。",
+      "values": [3, 4, 5, 6, 7]
+    },
+    "flavor": "弔鐘を小さく鳴らす司祭杖。癒しの祈りを反転させ、呪いへ変える。"
+  },
+  "grave_thorn_dagger": {
+    "id": "grave_thorn_dagger",
+    "name": "墓棘の短剣",
+    "type": "WEAPON",
+    "rarity": "R",
+    "weaponRarity": "R",
+    "archetype": "MID",
+    "rank": 1,
+    "ilv": 1,
+    "isUnique": false,
+    "stats": {},
+    "subOptions": [{ "type": "CRIT_RATE", "value": 5.2 }],
+    "passiveA": {
+      "nameJa": "影踏み",
+      "descTemplate": "会心率が{value}%上昇する。",
+      "values": [4, 5, 6, 7, 8]
+    },
+    "passiveB": {
+      "nameJa": "墓所の早駆け",
+      "descTemplate": "通常攻撃後、次の行動が{value}%早まる。",
+      "values": [3, 4, 5, 6, 7],
+      "systemTag": "ACTION_VALUE"
+    },
+    "flavor": "墓地の茨を削り出した短剣。軽く、速く、急所へ迷わず届く。"
   },
   "bleed_reaver": {
+    "id": "bleed_reaver",
     "name": "血啜りの処刑剣",
     "type": "WEAPON",
     "rarity": "SR",
@@ -18,10 +105,27 @@
     "archetype": "HIGH",
     "rank": 3,
     "ilv": 70,
+    "isUnique": false,
     "stats": {},
-    "subOptions": [{ "type": "CRIT_RATE", "value": 6.4 }]
+    "subOptions": [{ "type": "CRIT_RATE", "value": 6.4 }],
+    "passiveA": {
+      "nameJa": "出血追討",
+      "descTemplate": "出血状態の敵に対する会心率が{value}%上昇する。",
+      "values": [15, 19, 22, 26, 30],
+      "condition": "BLEED",
+      "systemTag": "GIANT_KILLING"
+    },
+    "passiveB": {
+      "nameJa": "早駆けの殺意",
+      "descTemplate": "会心時、次の行動が{value}ターン早まる。",
+      "values": [1, 1, 1, 2, 2],
+      "condition": "BLEED",
+      "systemTag": "ACTION_VALUE"
+    },
+    "flavor": "処刑場の血を吸い続け、刃が赤黒く変色している。"
   },
   "spirit_silver_saber": {
+    "id": "spirit_silver_saber",
     "name": "霊銀の斬骨刀",
     "type": "WEAPON",
     "rarity": "SSR",
@@ -29,14 +133,28 @@
     "archetype": "MID",
     "rank": 2,
     "ilv": 72,
+    "isUnique": false,
     "stats": {},
     "subOptions": [
-      { "type": "DARK_DMG_BOOST", "value": 13 },
-      { "type": "CRIT_DMG", "value": 16 }
+      { "type": "CRIT_DMG", "value": 16 },
+      { "type": "DARK_DMG_BOOST", "value": 13 }
     ],
-    "specialEffect": "SOUL_RESONANCE"
+    "passiveA": {
+      "nameJa": "残響蓄積",
+      "descTemplate": "霊的防壁を破壊した時、ATKの{value}倍の追加闇属性ダメージを与える。",
+      "values": [0.18, 0.23, 0.27, 0.32, 0.36],
+      "systemTag": "SOUL_SHATTER"
+    },
+    "passiveB": {
+      "nameJa": "魔神呼応",
+      "descTemplate": "攻撃時、魔神化ゲージを{value}%回復する。",
+      "values": [5, 6, 7, 9, 10],
+      "systemTag": "DEMON_MODE"
+    },
+    "flavor": "死霊の冷気を帯びた刀。刃紋に骸の白光が走る。"
   },
   "grudge_manifest": {
+    "id": "grudge_manifest",
     "name": "怨嗟顕現・喰魂",
     "type": "WEAPON",
     "rarity": "UR",
@@ -44,11 +162,64 @@
     "archetype": "MYTHIC",
     "rank": 5,
     "ilv": 90,
+    "isUnique": true,
     "stats": {},
     "subOptions": [
-      { "type": "ATK%", "value": 19.5 },
-      { "type": "CRIT_RATE", "value": 12 }
+      { "type": "ATK%", "value": 12 },
+      { "type": "DARK_DMG_BOOST", "value": 7.5 }
     ],
-    "specialEffect": "GRUDGE_SINGULARITY"
+    "passiveA": {
+      "nameJa": "怨念の特異点",
+      "descTemplate": "攻撃時、魔神化ゲージを{value}%回復する。魔神化中は全ダメージ+30%。",
+      "values": [8, 9, 10, 12, 15],
+      "condition": "DEMON_ACTIVE",
+      "systemTag": "DEMON_MODE"
+    },
+    "passiveB": {
+      "nameJa": "霊的防壁破断",
+      "descTemplate": "攻撃が防御干渉を{value}%無視する。",
+      "values": [25, 32, 38, 44, 50],
+      "systemTag": "SHIELD_PIERCE"
+    },
+    "flavor": "周回で屠られた魔物たちの怨念が刃の内側で折り重なり、握る者の魂へ黒い刃紋を伸ばす。"
+  },
+  "underworld_potion": {
+    "id": "underworld_potion",
+    "name": "冥界薬",
+    "type": "CONSUMABLE",
+    "rarity": "COMMON",
+    "icon": "🧪",
+    "stats": {},
+    "isUnique": false,
+    "quantity": 1,
+    "battleUsable": true,
+    "battleEffect": { "type": "HEAL_HP", "value": 200 },
+    "flavor": "冥界草を煎じた回復薬。戦闘中に傷口へ黒い霧を纏わせ、生命力を一時的に呼び戻す。"
+  },
+  "ether_shard": {
+    "id": "ether_shard",
+    "name": "エーテル片",
+    "type": "CONSUMABLE",
+    "rarity": "RARE",
+    "icon": "💎",
+    "stats": {},
+    "isUnique": false,
+    "quantity": 1,
+    "battleUsable": true,
+    "battleEffect": { "type": "RESTORE_ENERGY", "value": 100 },
+    "flavor": "魂脈で凝固した蒼い結晶。非売品で、探索や希少ドロップからのみ得られる。"
+  },
+  "soul_incense": {
+    "id": "soul_incense",
+    "name": "魂寄せの香",
+    "type": "CONSUMABLE",
+    "rarity": "RARE",
+    "icon": "☾",
+    "stats": {},
+    "isUnique": false,
+    "quantity": 1,
+    "battleUsable": true,
+    "battleEffect": { "type": "RESTORE_SOUL", "value": 35 },
+    "flavor": "周囲の怨念を薄く燃やす香。魔神化ソウルを少量呼び戻す。"
   }
 }

@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
-import { Cinzel, Noto_Sans_JP, Space_Grotesk } from "next/font/google";
+import {
+  Cinzel,
+  Cinzel_Decorative,
+  IM_Fell_English,
+  Inter,
+  Noto_Sans_JP,
+  Space_Grotesk,
+} from "next/font/google";
 import "./globals.css";
 
 const cinzel = Cinzel({
@@ -18,6 +25,24 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
   weight: ["400", "700"],
+});
+
+const cinzelDecorative = Cinzel_Decorative({
+  subsets: ["latin"],
+  variable: "--font-cinzel-decorative",
+  weight: ["700", "900"],
+});
+
+const imFellEnglish = IM_Fell_English({
+  subsets: ["latin"],
+  variable: "--font-im-fell-english",
+  weight: ["400"],
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  weight: ["400", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
@@ -39,7 +64,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className={`${cinzel.variable} ${notoSansJP.variable} ${spaceGrotesk.variable}`}>
+    <html
+      lang="ja"
+      className={`${cinzel.variable} ${cinzelDecorative.variable} ${imFellEnglish.variable} ${inter.variable} ${notoSansJP.variable} ${spaceGrotesk.variable}`}
+    >
       <body className="antialiased bg-dark text-foreground font-noto">
         {children}
       </body>

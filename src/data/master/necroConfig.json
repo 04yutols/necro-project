@@ -1,0 +1,20 @@
+{
+  "monsterStatMultiplier": {
+    "kA": 0.006,
+    "kB": 0.0024,
+    "k2": 0.05
+  },
+  "maxCost": {
+    "base": 6,
+    "d1": 10,
+    "c2": 2
+  },
+  "captureRate": {
+    "rankMultiplier": 1.1,
+    "cap": 0.75
+  },
+  "expCurve": {
+    "coefficient": 9,
+    "necroExpRate": 1.5
+  }
+}

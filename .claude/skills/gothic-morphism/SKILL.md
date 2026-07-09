@@ -71,8 +71,13 @@ Border
   boxShadow: '0 0 18px rgba(139,0,255,0.14), inset 0 1px 0 rgba(255,255,255,0.05)',
 }}>
 
-// Tailwind className equivalent
+// グローバルCSSクラス版 (globals.css) — inline版とは別定義
+// --glass-bg: rgba(16,9,36,0.88), border rgba(160,60,255,0.4), blur(14px) + ノイズテクスチャ
+// ⚠️ .gothic-panel は overflow:hidden を含む — transform/motion を同一要素に付けない (iOS Safari)
 className="gothic-panel"
+
+// Demon Mode 中は [data-demon="true"] が CSS 変数を赤系に上書き
+// (--void-purple → #CC2222, --glass-border → rgba(220,30,30,0.5))
 
 // 薄いパネル (カード内)
 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(139,0,255,0.18)', borderRadius: 10 }}
@@ -161,7 +166,7 @@ whileHover={{ scale: 1.02 }}
 
 ```
 全画面: h-[100dvh] (100vh はNG — iOS Safari でアドレスバー含む)
-Header: shrink-0, height: 44px (h-11)
+Header: shrink-0, height: 40px (h-10 — MobileHeader.tsx)
 BottomNav: shrink-0, height: 56px (h-14)
 Content: flex-1 min-h-0
 

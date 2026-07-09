@@ -11,14 +11,18 @@ describe('NecroService', () => {
     cost,
     stats: { hp: 100, atk: 50, def: 20, spd: 80, critRate: 0, critDmg: 150, effectHit: 0, effectRes: 0 },
     resistances: {},
+    currentEnergy: 30,
+    maxEnergy: 30,
   });
 
-  const mockNecroStatus: NecroStatus = {
+  const createNecroStatus = (overrides: Partial<NecroStatus> = {}): NecroStatus => ({
     level: 1,
-    rank: 1,
     maxCost: 10,
-    baseStatsBonus: 1.0
-  };
+    exp: 0,
+    ...overrides,
+  });
+
+  const mockNecroStatus = createNecroStatus();
 
   beforeEach(() => {
     necroService = new NecroService();
@@ -49,20 +53,4 @@ describe('NecroService', () => {
     });
   });
 
-  describe('performRankUp', () => {
-    test('resets level and increases maxCost', () => {
-      const status: NecroStatus = { level: 99, rank: 1, maxCost: 10, baseStatsBonus: 1.0 };
-      const nextStatus = necroService.performRankUp(status, true);
-      
-      expect(nextStatus.level).toBe(1);
-      expect(nextStatus.rank).toBe(2);
-      expect(nextStatus.maxCost).toBe(15);
-      expect(nextStatus.baseStatsBonus).toBe(1.5);
-    });
-
-    test('fails if level is below 99', () => {
-      const status: NecroStatus = { level: 98, rank: 1, maxCost: 10, baseStatsBonus: 1.0 };
-      expect(() => necroService.performRankUp(status, true)).toThrow('Lv.99到達が必要です。');
-    });
-  });
 });

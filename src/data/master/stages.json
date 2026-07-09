@@ -10,8 +10,10 @@
     "nodeType": "SAFE",
     "element": "DARK",
     "difficulty": 0,
+    "sortOrder": 0,
     "description": "亡国の王都へ侵攻するための拠点。ここでは戦闘は発生せず、軍団編成と装備確認に戻れる。",
     "waveCount": 0,
+    "areaGimmick": "NONE",
     "unlockRequires": [],
     "waves": [],
     "rewards": {
@@ -19,7 +21,10 @@
       "baseGold": 0,
       "dropTable": []
     },
-    "position": { "x": 188, "y": 508 }
+    "position": {
+      "x": 188,
+      "y": 508
+    }
   },
   "area1_node1": {
     "id": "area1_node1",
@@ -32,39 +37,247 @@
     "nodeType": "DUNGEON",
     "element": "DARK",
     "difficulty": 1,
+    "sortOrder": 110,
     "description": "英雄に滅ぼされた亡国の外縁。墓荒らしの骸兵と腐肉喰らいを倒し、魂ゲージを温める導入ダンジョン。",
     "waveCount": 3,
+    "areaGimmick": "NONE",
     "unlockRequires": [],
     "waves": [
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["grave_soldier", "rot_hound"],
+        "enemyIds": [
+          "grave_soldier",
+          "rot_hound"
+        ],
         "intent": "ミニオンで通常攻撃と魂ゲージ回収を体験させる。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
-        "enemyIds": ["abyss_warden"],
+        "enemyIds": [
+          "grave_soldier",
+          "rot_hound",
+          "hollow_handmaid"
+        ],
         "intent": "弱点属性で霊的防壁を割る最初のチュートリアル。"
       },
       {
         "label": "WAVE 3",
-        "role": "BOSS",
-        "enemyIds": ["ossuary_wyrm_lord"],
-        "intent": "章ボスの簡易版。防壁破壊後に魔神化で押し切る。"
+        "role": "ELITE",
+        "enemyIds": [
+          "abyss_warden"
+        ],
+        "intent": "章ボスへの足がかり。騎士長との戦いでスキルの使いどころを学ぶ。"
       }
     ],
     "rewards": {
-      "baseExp": 620,
+      "baseExp": 12,
       "baseGold": 1180,
       "dropTable": [
-        { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.55 },
-        { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.12 },
-        { "type": "RESIDUE", "rarity": "RARE", "rate": 0.65 }
+        {
+          "type": "WEAPON",
+          "itemId": "bone_cleaver",
+          "rarity": "R",
+          "rate": 0.55
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.12
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "underworld_potion",
+          "quantity": 1,
+          "rate": 0.85
+        }
+      ],
+      "firstClearGuaranteed": [
+        {
+          "type": "MONSTER",
+          "monsterId": "grave_soldier",
+          "quantity": 1,
+          "rate": 1
+        },
+        {
+          "type": "MONSTER",
+          "monsterId": "rot_hound",
+          "quantity": 1,
+          "rate": 1
+        }
       ]
     },
-    "position": { "x": 188, "y": 422 }
+    "position": {
+      "x": 188,
+      "y": 422
+    }
+  },
+  "area1_a2": {
+    "id": "area1_a2",
+    "name": "Inner Grave Road",
+    "nameJa": "王都墓道・内郭",
+    "nameEn": "INNER GRAVE ROAD",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 1,
+    "sortOrder": 120,
+    "description": "城壁の裂け目へ続く内郭の墓道。女官の亡霊と腐肉喰らいが混ざり、通常攻撃だけでは押し切りにくくなる。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_node1"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "grave_soldier",
+          "hollow_handmaid"
+        ],
+        "intent": "墓道の延長としてHUMANOIDを混ぜ、雷・風弱点の確認を促す。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "rot_hound",
+          "hollow_handmaid",
+          "earthbound_grudge"
+        ],
+        "intent": "軽量3体でターゲット選択と属性幅を確認する。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "abyss_warden",
+          "hollow_handmaid"
+        ],
+        "intent": "防壁持ち精鋭に支援役を添え、次のミニボス前の小さな山を作る。",
+        "statScale": {
+          "hp": 1.1,
+          "atk": 1.05
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 14,
+      "baseGold": 1320,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "apprentice_cinder_staff",
+          "rarity": "R",
+          "rate": 0.42
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "ash_scroll",
+          "rarity": "COMMON",
+          "quantity": 1,
+          "rate": 0.62
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "underworld_potion",
+          "quantity": 1,
+          "rate": 0.72
+        }
+      ]
+    },
+    "position": {
+      "x": 254,
+      "y": 382
+    }
+  },
+  "area1_a_mini": {
+    "id": "area1_a_mini",
+    "name": "Gravewarden Gate",
+    "nameJa": "墓守巨像の門",
+    "nameEn": "GRAVEWARDEN GATE",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "EARTH",
+    "difficulty": 2,
+    "sortOrder": 140,
+    "description": "死都への門を塞ぐ墓守の巨像。霊的防壁を割った先で増援を呼ぶ、魔神化解放前の山場。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_a2"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "grave_soldier",
+          "grave_soldier",
+          "rot_hound"
+        ],
+        "intent": "ミニオン数を増やし、範囲攻撃と撃破順を意識させる。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "abyss_warden",
+          "earthbound_grudge"
+        ],
+        "intent": "防壁持ちと怨霊で、光弱点への集中を促す。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "BOSS",
+        "enemyIds": [
+          "gravewarden_colossus",
+          "grave_soldier"
+        ],
+        "intent": "Zone A の締め。巨像の防壁と増援で、魔神化前の最初の壁にする。",
+        "statScale": {
+          "hp": 1.2,
+          "atk": 1.1,
+          "def": 1.1
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 18,
+      "baseGold": 1700,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.13
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "grave_crystal",
+          "rarity": "COMMON",
+          "quantity": 1,
+          "rate": 0.58
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "ether_shard",
+          "quantity": 1,
+          "rate": 0.16
+        }
+      ]
+    },
+    "position": {
+      "x": 308,
+      "y": 326
+    }
   },
   "area1_node2": {
     "id": "area1_node2",
@@ -77,39 +290,497 @@
     "nodeType": "DUNGEON",
     "element": "EARTH",
     "difficulty": 2,
+    "sortOrder": 150,
     "description": "王城の地下に残る処刑場。骨巨人の高耐久と霊的防壁が、属性スキルの選択を要求する。",
     "waveCount": 3,
-    "unlockRequires": ["area1_node1"],
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_a_mini"
+    ],
     "waves": [
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["grave_soldier", "grave_soldier"],
-        "intent": "撃破テンポを上げ、AUTO戦闘での周回感を作る。"
+        "enemyIds": [
+          "hollow_handmaid",
+          "grave_soldier"
+        ],
+        "intent": "HUMANOID初登場。高effectHitの脅威を感じつつ、雷・風スキルを使う場面。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
-        "enemyIds": ["bone_colossus"],
+        "enemyIds": [
+          "hollow_handmaid",
+          "earthbound_grudge",
+          "rot_hound"
+        ],
         "intent": "光・土弱点の防壁を割り、ブレイク後の火力集中を促す。"
       },
       {
         "label": "WAVE 3",
         "role": "BOSS",
-        "enemyIds": ["ossuary_wyrm_lord"],
+        "enemyIds": [
+          "bone_colossus"
+        ],
         "intent": "竜王の怒りギミックを体験する。"
       }
     ],
     "rewards": {
-      "baseExp": 780,
-      "baseGold": 1460,
+      "baseExp": 20,
+      "baseGold": 1900,
       "dropTable": [
-        { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.45 },
-        { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.145 },
-        { "type": "RESIDUE", "rarity": "RARE", "rate": 0.82 }
+        {
+          "type": "WEAPON",
+          "itemId": "bone_cleaver",
+          "rarity": "R",
+          "rate": 0.45
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.145
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "underworld_potion",
+          "quantity": 1,
+          "rate": 0.7
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "ether_shard",
+          "quantity": 1,
+          "rate": 0.18
+        }
+      ],
+      "firstClearGuaranteed": [
+        {
+          "type": "WEAPON",
+          "itemId": "bone_cleaver",
+          "rarity": "R",
+          "quantity": 1,
+          "rate": 1
+        }
       ]
     },
-    "position": { "x": 102, "y": 326 }
+    "position": {
+      "x": 102,
+      "y": 326
+    }
+  },
+  "area1_b2": {
+    "id": "area1_b2",
+    "name": "Burnt Audience Hall",
+    "nameJa": "焼け落ちた謁見の間",
+    "nameEn": "BURNT AUDIENCE HALL",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "FIRE",
+    "difficulty": 3,
+    "sortOrder": 160,
+    "description": "煤に覆われた謁見の間。怨霊と監獄守が残り火をまとい、王城内部の消耗戦が始まる。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_node2"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "hollow_handmaid",
+          "earthbound_grudge"
+        ],
+        "intent": "王城側の敵種を再提示し、状態異常命中への警戒を作る。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "abyss_warden",
+          "rot_hound"
+        ],
+        "intent": "防壁と高速ミニオンで、行動順の圧を出す。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "abyss_warden",
+          "grave_knight"
+        ],
+        "intent": "精鋭2体で中盤の硬さを作り、魔神化ゲージの使いどころを増やす。",
+        "statScale": {
+          "hp": 1.2,
+          "atk": 1.1
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 22,
+      "baseGold": 2200,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "mourning_bell_crozier",
+          "rarity": "R",
+          "rate": 0.4
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "bone_chip",
+          "rarity": "COMMON",
+          "quantity": 2,
+          "rate": 0.66
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "underworld_potion",
+          "quantity": 1,
+          "rate": 0.62
+        }
+      ]
+    },
+    "position": {
+      "x": 164,
+      "y": 278
+    }
+  },
+  "area1_b3": {
+    "id": "area1_b3",
+    "name": "Hollow Guard Barracks",
+    "nameJa": "虚ろな近衛兵舎",
+    "nameEn": "HOLLOW GUARD BARRACKS",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "LIGHT",
+    "difficulty": 3,
+    "sortOrder": 170,
+    "description": "かつて王を守った近衛たちの兵舎。彷徨う近衛霊が残留し、王城後半の消耗戦を仕掛ける。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_b2"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "grave_knight",
+          "grave_soldier"
+        ],
+        "intent": "近衛兵舎の導入として、騎士と骸兵の組み合わせを見せる。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "hollow_handmaid",
+          "abyss_warden",
+          "earthbound_grudge"
+        ],
+        "intent": "支援役・防壁・怨霊を混ぜ、優先撃破の判断を要求する。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "wandering_guard_wraith",
+          "bone_colossus"
+        ],
+        "intent": "Zone B の山場前。近衛霊の攻撃圧と骨巨人の防壁破壊を同時に求める。",
+        "statScale": {
+          "hp": 1.25,
+          "atk": 1.12,
+          "def": 1.08
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 24,
+      "baseGold": 2500,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "grave_thorn_dagger",
+          "rarity": "R",
+          "rate": 0.4
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.15
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "beast_fang",
+          "rarity": "COMMON",
+          "quantity": 1,
+          "rate": 0.5
+        }
+      ]
+    },
+    "position": {
+      "x": 226,
+      "y": 240
+    }
+  },
+  "area1_c1": {
+    "id": "area1_c1",
+    "name": "Dragonbone Procession",
+    "nameJa": "竜骨の参道",
+    "nameEn": "DRAGONBONE PROCESSION",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "EARTH",
+    "difficulty": 4,
+    "sortOrder": 190,
+    "description": "竜骨祭壇へ続く白骨の参道。骨巨人と血沼の魔物が混じり、終盤の複合弱点を試す。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_b3"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "wandering_guard_wraith",
+          "dragonbone_spawn"
+        ],
+        "intent": "近衛霊と竜骨の眷属を並べ、祭壇ゾーンの敵種を導入する。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "bone_colossus",
+          "hollow_handmaid"
+        ],
+        "intent": "高耐久と支援役で、敵ごとの処理順をはっきりさせる。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "bone_colossus",
+          "dragonbone_spawn",
+          "wandering_guard_wraith"
+        ],
+        "intent": "高耐久の骨巨人を軸に、竜骨と近衛の複合弱点で終盤の判断を作る。",
+        "statScale": {
+          "hp": 1.25,
+          "atk": 1.15
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 26,
+      "baseGold": 2800,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.16
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "rarity": "RARE",
+          "quantity": 1,
+          "rate": 0.38
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "ether_shard",
+          "quantity": 1,
+          "rate": 0.2
+        }
+      ]
+    },
+    "position": {
+      "x": 292,
+      "y": 202
+    }
+  },
+  "area1_c2": {
+    "id": "area1_c2",
+    "name": "Cursed Head Maid Chamber",
+    "nameJa": "呪詛女官の間",
+    "nameEn": "CURSED MAID CHAMBER",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "THUNDER",
+    "difficulty": 4,
+    "sortOrder": 200,
+    "description": "王妃の私室に残った呪詛の間。呪詛の女官長が薄い防壁をまとい、術師戦の圧を作る。",
+    "waveCount": 3,
+    "areaGimmick": "STATUS_AILMENT",
+    "unlockRequires": [
+      "area1_c1"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "hollow_handmaid",
+          "hollow_handmaid",
+          "earthbound_grudge"
+        ],
+        "intent": "女官長の前座として支援役を重ね、状態異常への警戒を高める。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "abyss_warden",
+          "hollow_handmaid",
+          "rot_hound"
+        ],
+        "intent": "防壁と高速敵を混ぜ、回復・防御の判断を促す。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "cursed_head_maid",
+          "abyss_warden",
+          "bone_colossus"
+        ],
+        "intent": "1-10 エリート相当。女官長の高ATK術師圧を先に処理するか、防壁を割るか選ばせる。",
+        "statScale": {
+          "hp": 1.35,
+          "atk": 1.2,
+          "def": 1.1
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 28,
+      "baseGold": 3200,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "mourning_bell_crozier",
+          "rarity": "R",
+          "rate": 0.36
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "spirit_silver_saber",
+          "rarity": "SSR",
+          "rate": 0.01
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "soul_incense",
+          "quantity": 1,
+          "rate": 0.16
+        }
+      ]
+    },
+    "position": {
+      "x": 242,
+      "y": 160
+    }
+  },
+  "area1_c3": {
+    "id": "area1_c3",
+    "name": "Bloodmire Queen's Causeway",
+    "nameJa": "血泥女王の畔",
+    "nameEn": "BLOODMIRE QUEEN'S CAUSEWAY",
+    "chapter": 1,
+    "chapterName": "亡国の王都",
+    "area": 1,
+    "nodeType": "DUNGEON",
+    "element": "WATER",
+    "difficulty": 4,
+    "sortOrder": 210,
+    "description": "祭壇手前の血泥に沈んだ畔。血沼の女王を章ボス前のエリートとして配置し、残滓ノードから役割を切り離す。",
+    "waveCount": 3,
+    "areaGimmick": "STATUS_AILMENT",
+    "unlockRequires": [
+      "area1_c2"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "dragonbone_spawn",
+          "bloodmire_leech",
+          "earthbound_grudge"
+        ],
+        "intent": "竜骨の眷属と血沼の高速圧力を並べ、女王前の複合弱点を提示する。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "abyss_warden",
+          "dragonbone_spawn"
+        ],
+        "intent": "女王戦前に防壁処理とICE弱点の竜骨処理を確認させる。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "blood_mire_queen"
+        ],
+        "intent": "1-11 エリート相当。既存ボス個体を軽く抑えた倍率で仮配置する。",
+        "statScale": {
+          "hp": 0.85,
+          "atk": 0.9,
+          "def": 0.9
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 30,
+      "baseGold": 3600,
+      "dropTable": [
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.18
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "spirit_silver_saber",
+          "rarity": "SSR",
+          "rate": 0.012
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "bloodmire_essence",
+          "rarity": "RARE",
+          "quantity": 1,
+          "rate": 0.42
+        }
+      ]
+    },
+    "position": {
+      "x": 184,
+      "y": 132
+    }
   },
   "area1_boss": {
     "id": "area1_boss",
@@ -122,41 +793,97 @@
     "nodeType": "BOSS",
     "element": "DARK",
     "difficulty": 3,
+    "sortOrder": 220,
     "description": "骸骨山脈の頂。死骨竜王オッサリウスが霊的防壁と怒りを纏い、隠しURの可能性を抱えて待つ。",
     "waveCount": 3,
-    "unlockRequires": ["area1_node2"],
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_c3"
+    ],
     "waves": [
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["rot_hound", "grave_soldier", "rot_hound"],
-        "intent": "ボス前に魂ゲージと自動戦闘テンポを整える。"
+        "enemyIds": [
+          "earthbound_grudge",
+          "earthbound_grudge",
+          "rot_hound"
+        ],
+        "intent": "第1章初のICE弱点を持つ怨霊2体。低SPDで重いが、倒す間に魂ゲージを満タンにできる。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
-        "enemyIds": ["abyss_warden", "bone_colossus"],
+        "enemyIds": [
+          "abyss_warden",
+          "bone_colossus"
+        ],
         "intent": "複数弱点の精鋭を置き、編成の属性幅を確認する。"
       },
       {
         "label": "WAVE 3",
         "role": "BOSS",
-        "enemyIds": ["ossuary_wyrm_lord"],
+        "enemyIds": [
+          "ossuary_wyrm_lord"
+        ],
         "intent": "HP50%以下の怒りと霊的防壁を突破する章ボス戦。"
       }
     ],
     "rewards": {
-      "baseExp": 1320,
-      "baseGold": 3600,
+      "baseExp": 36,
+      "baseGold": 4600,
       "dropTable": [
-        { "type": "WEAPON", "itemId": "bone_cleaver", "rarity": "R", "rate": 0.62 },
-        { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.18 },
-        { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.012 },
-        { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.5 },
-        { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
+        {
+          "type": "WEAPON",
+          "itemId": "bone_cleaver",
+          "rarity": "R",
+          "rate": 0.62
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.18
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "spirit_silver_saber",
+          "rarity": "SSR",
+          "rate": 0.012
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "ether_shard",
+          "quantity": 1,
+          "rate": 0.22
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "soul_incense",
+          "quantity": 1,
+          "rate": 0.15
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "grudge_manifest",
+          "rarity": "UR",
+          "rate": 0.00008,
+          "isHidden": true
+        }
+      ],
+      "firstClearGuaranteed": [
+        {
+          "type": "WEAPON_MATERIAL",
+          "weaponMaterialType": "ABYSSAL_OBSIDIAN",
+          "quantity": 1,
+          "rate": 1
+        }
       ]
     },
-    "position": { "x": 246, "y": 265 },
+    "position": {
+      "x": 310,
+      "y": 146
+    },
     "isAreaBoss": true
   },
   "area1_node3": {
@@ -170,40 +897,96 @@
     "nodeType": "DUNGEON",
     "element": "WATER",
     "difficulty": 4,
-    "description": "竜骨祭壇の先に広がる赤黒い湿地。水・風弱点を持つ血沼の女王が、次章への門を閉ざす。",
+    "sortOrder": 230,
+    "description": "竜骨祭壇の先に広がる赤黒い湿地。血沼の残響から深淵の残滓を拾い上げる、章クリア後の解放ノード。",
     "waveCount": 3,
-    "unlockRequires": ["area1_boss"],
+    "areaGimmick": "STATUS_AILMENT",
+    "unlockRequires": [
+      "area1_boss"
+    ],
     "waves": [
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["rot_hound", "rot_hound"],
-        "intent": "高速ミニオンで敵ターンの圧力を少し上げる。"
+        "enemyIds": [
+          "bloodmire_leech",
+          "bloodmire_leech"
+        ],
+        "intent": "残滓解放前の軽い血沼戦。火・雷での迅速処理を促す。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
-        "enemyIds": ["abyss_warden"],
-        "intent": "雷・水弱点の防壁で属性スキルを再確認する。"
+        "enemyIds": [
+          "bloodmire_leech",
+          "abyss_warden"
+        ],
+        "intent": "血沼の圧力に防壁持ちを添え、属性スキルの再確認を行う。"
       },
       {
         "label": "WAVE 3",
-        "role": "BOSS",
-        "enemyIds": ["blood_mire_queen"],
-        "intent": "水・風弱点のボス。防壁破壊時の増援ギミックを想定する。"
+        "role": "ELITE",
+        "enemyIds": [
+          "bloodmire_leech",
+          "bloodmire_leech",
+          "earthbound_grudge"
+        ],
+        "intent": "ボス後の残滓回収ノードとして、女王を置かず短い消耗戦で締める。",
+        "statScale": {
+          "hp": 1.2,
+          "atk": 1.1
+        }
       }
     ],
     "rewards": {
-      "baseExp": 1560,
+      "baseExp": 32,
       "baseGold": 4200,
       "dropTable": [
-        { "type": "WEAPON", "itemId": "bleed_reaver", "rarity": "SR", "rate": 0.2 },
-        { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.014 },
-        { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.55 },
-        { "type": "WEAPON", "itemId": "grudge_manifest", "rarity": "UR", "rate": 0.00008, "isHidden": true }
+        {
+          "type": "WEAPON",
+          "itemId": "bleed_reaver",
+          "rarity": "SR",
+          "rate": 0.2
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "spirit_silver_saber",
+          "rarity": "SSR",
+          "rate": 0.014
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "ether_shard",
+          "quantity": 1,
+          "rate": 0.25
+        },
+        {
+          "type": "CONSUMABLE",
+          "itemId": "soul_incense",
+          "quantity": 1,
+          "rate": 0.18
+        },
+        {
+          "type": "WEAPON",
+          "itemId": "grudge_manifest",
+          "rarity": "UR",
+          "rate": 0.00008,
+          "isHidden": true
+        }
+      ],
+      "firstClearGuaranteed": [
+        {
+          "type": "RESIDUE",
+          "rarity": "RARE",
+          "quantity": 1,
+          "rate": 1
+        }
       ]
     },
-    "position": { "x": 140, "y": 182 }
+    "position": {
+      "x": 140,
+      "y": 182
+    }
   },
   "area2_gate": {
     "id": "area2_gate",
@@ -218,35 +1001,1662 @@
     "difficulty": 5,
     "description": "第二章の入り口。現行プロトタイプではロック表示のみを行い、後続エネミー追加時に解放する。",
     "waveCount": 3,
-    "unlockRequires": ["area1_node3"],
+    "areaGimmick": "STATUS_AILMENT",
+    "unlockRequires": [
+      "area1_node3"
+    ],
     "waves": [
       {
         "label": "WAVE 1",
         "role": "WARMUP",
-        "enemyIds": ["grave_soldier"],
+        "enemyIds": [
+          "grave_soldier"
+        ],
         "intent": "第二章用の仮データ。"
       },
       {
         "label": "WAVE 2",
         "role": "SHIELD",
-        "enemyIds": ["bone_colossus"],
+        "enemyIds": [
+          "bone_colossus"
+        ],
         "intent": "第二章用の仮データ。"
       },
       {
         "label": "WAVE 3",
         "role": "BOSS",
-        "enemyIds": ["blood_mire_queen"],
+        "enemyIds": [
+          "blood_mire_queen"
+        ],
         "intent": "第二章用の仮データ。"
       }
     ],
     "rewards": {
-      "baseExp": 1880,
+      "baseExp": 38,
       "baseGold": 5200,
       "dropTable": [
-        { "type": "WEAPON", "itemId": "spirit_silver_saber", "rarity": "SSR", "rate": 0.016 },
-        { "type": "RESIDUE", "rarity": "EPIC", "rate": 0.6 }
+        {
+          "type": "WEAPON",
+          "itemId": "spirit_silver_saber",
+          "rarity": "SSR",
+          "rate": 0.016
+        },
+        {
+          "type": "RESIDUE",
+          "rarity": "EPIC",
+          "rate": 0.6
+        },
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "rarity": "RARE",
+          "quantity": 2,
+          "rate": 0.75
+        }
       ]
     },
-    "position": { "x": 254, "y": 94 }
+    "position": {
+      "x": 254,
+      "y": 94
+    }
+  },
+  "yomi_b01": {
+    "id": "yomi_b01",
+    "name": "Yomi Depths B1",
+    "nameJa": "黄泉の階層 B1",
+    "nameEn": "YOMI B1",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 1,
+    "sortOrder": 9001,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "area1_node3"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "grave_soldier",
+          "earthbound_grudge"
+        ],
+        "intent": "通常階の露払い。"
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "rot_hound",
+          "abyss_warden"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。"
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "abyss_warden",
+          "wandering_guard_wraith"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。"
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "bone_chip",
+          "quantity": 1
+        }
+      ]
+    },
+    "position": {
+      "x": 900100,
+      "y": 900000
+    }
+  },
+  "yomi_b02": {
+    "id": "yomi_b02",
+    "name": "Yomi Depths B2",
+    "nameJa": "黄泉の階層 B2",
+    "nameEn": "YOMI B2",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 2,
+    "sortOrder": 9002,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b01"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "rot_hound",
+          "bloodmire_leech"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 1.09,
+          "atk": 1.07,
+          "def": 1.045
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "hollow_handmaid",
+          "bone_colossus"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 1.09,
+          "atk": 1.07,
+          "def": 1.045
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "grave_knight",
+          "dragonbone_spawn"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 1.09,
+          "atk": 1.07,
+          "def": 1.045
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "bone_chip",
+          "quantity": 1
+        }
+      ]
+    },
+    "position": {
+      "x": 900200,
+      "y": 900000
+    }
+  },
+  "yomi_b03": {
+    "id": "yomi_b03",
+    "name": "Yomi Depths B3",
+    "nameJa": "黄泉の階層 B3",
+    "nameEn": "YOMI B3",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 3,
+    "sortOrder": 9003,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b02"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "hollow_handmaid",
+          "wandering_guard_wraith"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 1.1881,
+          "atk": 1.1449,
+          "def": 1.092
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "earthbound_grudge",
+          "cursed_head_maid"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 1.1881,
+          "atk": 1.1449,
+          "def": 1.092
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "bone_colossus",
+          "grave_soldier"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 1.1881,
+          "atk": 1.1449,
+          "def": 1.092
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "bone_chip",
+          "quantity": 1
+        }
+      ]
+    },
+    "position": {
+      "x": 900300,
+      "y": 900000
+    }
+  },
+  "yomi_b04": {
+    "id": "yomi_b04",
+    "name": "Yomi Depths B4",
+    "nameJa": "黄泉の階層 B4",
+    "nameEn": "YOMI B4",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 4,
+    "sortOrder": 9004,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b03"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "earthbound_grudge",
+          "dragonbone_spawn"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 1.295,
+          "atk": 1.225,
+          "def": 1.1412
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "bloodmire_leech",
+          "abyss_warden"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 1.295,
+          "atk": 1.225,
+          "def": 1.1412
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "cursed_head_maid",
+          "rot_hound"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 1.295,
+          "atk": 1.225,
+          "def": 1.1412
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "bone_chip",
+          "quantity": 1
+        }
+      ]
+    },
+    "position": {
+      "x": 900400,
+      "y": 900000
+    }
+  },
+  "yomi_b05": {
+    "id": "yomi_b05",
+    "name": "Yomi Depths B5",
+    "nameJa": "黄泉の階層 B5",
+    "nameEn": "YOMI B5",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 5,
+    "sortOrder": 9005,
+    "description": "黄泉の節目に置かれた精鋭階。初回踏破で宝箱報酬を得る。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b04"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "bloodmire_leech",
+          "dragonbone_spawn"
+        ],
+        "intent": "節目階の導入戦。",
+        "statScale": {
+          "hp": 1.4116,
+          "atk": 1.3108,
+          "def": 1.1925
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "bone_colossus",
+          "rot_hound"
+        ],
+        "intent": "防壁持ちの精鋭で突破力を確認する。",
+        "statScale": {
+          "hp": 1.4116,
+          "atk": 1.3108,
+          "def": 1.1925
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "bone_colossus"
+        ],
+        "intent": "節目階の単体ELITE。",
+        "statScale": {
+          "hp": 1.4116,
+          "atk": 1.3108,
+          "def": 1.1925
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "grave_crystal",
+          "quantity": 2
+        },
+        {
+          "type": "WEAPON_MATERIAL",
+          "weaponMaterialType": "IDEA_SR",
+          "quantity": 1
+        },
+        {
+          "type": "RESIDUE",
+          "rarity": "RARE",
+          "quantity": 1
+        }
+      ]
+    },
+    "position": {
+      "x": 900500,
+      "y": 900000
+    }
+  },
+  "yomi_b06": {
+    "id": "yomi_b06",
+    "name": "Yomi Depths B6",
+    "nameJa": "黄泉の階層 B6",
+    "nameEn": "YOMI B6",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 6,
+    "sortOrder": 9006,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b05"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "wandering_guard_wraith",
+          "rot_hound"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 1.5386,
+          "atk": 1.4026,
+          "def": 1.2462
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "dragonbone_spawn",
+          "cursed_head_maid"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 1.5386,
+          "atk": 1.4026,
+          "def": 1.2462
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "grave_knight",
+          "earthbound_grudge"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 1.5386,
+          "atk": 1.4026,
+          "def": 1.2462
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "grave_crystal",
+          "quantity": 1
+        }
+      ]
+    },
+    "position": {
+      "x": 900600,
+      "y": 900000
+    }
+  },
+  "yomi_b07": {
+    "id": "yomi_b07",
+    "name": "Yomi Depths B7",
+    "nameJa": "黄泉の階層 B7",
+    "nameEn": "YOMI B7",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 7,
+    "sortOrder": 9007,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b06"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "dragonbone_spawn",
+          "hollow_handmaid"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 1.6771,
+          "atk": 1.5007,
+          "def": 1.3023
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "grave_soldier",
+          "abyss_warden"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 1.6771,
+          "atk": 1.5007,
+          "def": 1.3023
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "bone_colossus",
+          "bloodmire_leech"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 1.6771,
+          "atk": 1.5007,
+          "def": 1.3023
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "grave_crystal",
+          "quantity": 2
+        }
+      ]
+    },
+    "position": {
+      "x": 900700,
+      "y": 900000
+    }
+  },
+  "yomi_b08": {
+    "id": "yomi_b08",
+    "name": "Yomi Depths B8",
+    "nameJa": "黄泉の階層 B8",
+    "nameEn": "YOMI B8",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 8,
+    "sortOrder": 9008,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b07"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "grave_soldier",
+          "earthbound_grudge"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 1.828,
+          "atk": 1.6058,
+          "def": 1.3609
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "rot_hound",
+          "bone_colossus"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 1.828,
+          "atk": 1.6058,
+          "def": 1.3609
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "cursed_head_maid",
+          "wandering_guard_wraith"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 1.828,
+          "atk": 1.6058,
+          "def": 1.3609
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "grave_crystal",
+          "quantity": 2
+        }
+      ]
+    },
+    "position": {
+      "x": 900800,
+      "y": 900000
+    }
+  },
+  "yomi_b09": {
+    "id": "yomi_b09",
+    "name": "Yomi Depths B9",
+    "nameJa": "黄泉の階層 B9",
+    "nameEn": "YOMI B9",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 9,
+    "sortOrder": 9009,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b08"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "rot_hound",
+          "bloodmire_leech"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 1.9926,
+          "atk": 1.7182,
+          "def": 1.4221
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "hollow_handmaid",
+          "cursed_head_maid"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 1.9926,
+          "atk": 1.7182,
+          "def": 1.4221
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "abyss_warden",
+          "dragonbone_spawn"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 1.9926,
+          "atk": 1.7182,
+          "def": 1.4221
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "grave_crystal",
+          "quantity": 2
+        }
+      ]
+    },
+    "position": {
+      "x": 900900,
+      "y": 900000
+    }
+  },
+  "yomi_b10": {
+    "id": "yomi_b10",
+    "name": "Yomi Depths B10",
+    "nameJa": "黄泉の階層 B10",
+    "nameEn": "YOMI B10",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 10,
+    "sortOrder": 9010,
+    "description": "10階層ごとのボス階。強化された死骨竜王オッサリウスが待ち構える。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b09"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "hollow_handmaid",
+          "wandering_guard_wraith"
+        ],
+        "intent": "ボス戦前の消耗。",
+        "statScale": {
+          "hp": 2.1719,
+          "atk": 1.8385,
+          "def": 1.4861
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "ELITE",
+        "enemyIds": [
+          "bone_colossus"
+        ],
+        "intent": "強化ELITEで防壁破壊を練習させる。",
+        "statScale": {
+          "hp": 2.1719,
+          "atk": 1.8385,
+          "def": 1.4861
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "BOSS",
+        "enemyIds": [
+          "ossuary_wyrm_lord"
+        ],
+        "intent": "最初のボス階。HP50%以下の怒りと復活を強化された数値で越える。",
+        "statScale": {
+          "hp": 2.1719,
+          "atk": 1.8385,
+          "def": 1.4861
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "quantity": 2
+        },
+        {
+          "type": "WEAPON_MATERIAL",
+          "weaponMaterialType": "IDEA_SSR",
+          "quantity": 1
+        },
+        {
+          "type": "RESIDUE",
+          "rarity": "EPIC",
+          "quantity": 1
+        }
+      ]
+    },
+    "position": {
+      "x": 901000,
+      "y": 900000
+    }
+  },
+  "yomi_b11": {
+    "id": "yomi_b11",
+    "name": "Yomi Depths B11",
+    "nameJa": "黄泉の階層 B11",
+    "nameEn": "YOMI B11",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 11,
+    "sortOrder": 9011,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b10"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "earthbound_grudge",
+          "dragonbone_spawn"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 2.3674,
+          "atk": 1.9672,
+          "def": 1.553
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "bloodmire_leech",
+          "bone_colossus"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 2.3674,
+          "atk": 1.9672,
+          "def": 1.553
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "bone_colossus",
+          "rot_hound"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 2.3674,
+          "atk": 1.9672,
+          "def": 1.553
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "quantity": 2
+        }
+      ]
+    },
+    "position": {
+      "x": 901100,
+      "y": 900000
+    }
+  },
+  "yomi_b12": {
+    "id": "yomi_b12",
+    "name": "Yomi Depths B12",
+    "nameJa": "黄泉の階層 B12",
+    "nameEn": "YOMI B12",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 12,
+    "sortOrder": 9012,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b11"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "bloodmire_leech",
+          "grave_soldier"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 2.5804,
+          "atk": 2.1049,
+          "def": 1.6229
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "wandering_guard_wraith",
+          "cursed_head_maid"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 2.5804,
+          "atk": 2.1049,
+          "def": 1.6229
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "cursed_head_maid",
+          "hollow_handmaid"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 2.5804,
+          "atk": 2.1049,
+          "def": 1.6229
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "quantity": 2
+        }
+      ]
+    },
+    "position": {
+      "x": 901200,
+      "y": 900000
+    }
+  },
+  "yomi_b13": {
+    "id": "yomi_b13",
+    "name": "Yomi Depths B13",
+    "nameJa": "黄泉の階層 B13",
+    "nameEn": "YOMI B13",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 13,
+    "sortOrder": 9013,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b12"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "wandering_guard_wraith",
+          "rot_hound"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 2.8127,
+          "atk": 2.2522,
+          "def": 1.6959
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "dragonbone_spawn",
+          "abyss_warden"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 2.8127,
+          "atk": 2.2522,
+          "def": 1.6959
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "abyss_warden",
+          "earthbound_grudge"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 2.8127,
+          "atk": 2.2522,
+          "def": 1.6959
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "quantity": 2
+        }
+      ]
+    },
+    "position": {
+      "x": 901300,
+      "y": 900000
+    }
+  },
+  "yomi_b14": {
+    "id": "yomi_b14",
+    "name": "Yomi Depths B14",
+    "nameJa": "黄泉の階層 B14",
+    "nameEn": "YOMI B14",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 14,
+    "sortOrder": 9014,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b13"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "dragonbone_spawn",
+          "hollow_handmaid"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 3.0658,
+          "atk": 2.4098,
+          "def": 1.7722
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "grave_soldier",
+          "bone_colossus"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 3.0658,
+          "atk": 2.4098,
+          "def": 1.7722
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "grave_knight",
+          "bloodmire_leech"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 3.0658,
+          "atk": 2.4098,
+          "def": 1.7722
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "quantity": 3
+        }
+      ]
+    },
+    "position": {
+      "x": 901400,
+      "y": 900000
+    }
+  },
+  "yomi_b15": {
+    "id": "yomi_b15",
+    "name": "Yomi Depths B15",
+    "nameJa": "黄泉の階層 B15",
+    "nameEn": "YOMI B15",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 15,
+    "sortOrder": 9015,
+    "description": "黄泉の節目に置かれた精鋭階。初回踏破で宝箱報酬を得る。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b14"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "grave_soldier",
+          "hollow_handmaid"
+        ],
+        "intent": "節目階の導入戦。",
+        "statScale": {
+          "hp": 3.3417,
+          "atk": 2.5785,
+          "def": 1.8519
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "cursed_head_maid",
+          "bloodmire_leech"
+        ],
+        "intent": "防壁持ちの精鋭で突破力を確認する。",
+        "statScale": {
+          "hp": 3.3417,
+          "atk": 2.5785,
+          "def": 1.8519
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "bone_colossus"
+        ],
+        "intent": "節目階の単体ELITE。",
+        "statScale": {
+          "hp": 3.3417,
+          "atk": 2.5785,
+          "def": 1.8519
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "quantity": 2
+        },
+        {
+          "type": "WEAPON_MATERIAL",
+          "weaponMaterialType": "IDEA_SSR",
+          "quantity": 1
+        },
+        {
+          "type": "RESIDUE",
+          "rarity": "EPIC",
+          "quantity": 1
+        }
+      ]
+    },
+    "position": {
+      "x": 901500,
+      "y": 900000
+    }
+  },
+  "yomi_b16": {
+    "id": "yomi_b16",
+    "name": "Yomi Depths B16",
+    "nameJa": "黄泉の階層 B16",
+    "nameEn": "YOMI B16",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 16,
+    "sortOrder": 9016,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b15"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "rot_hound",
+          "bloodmire_leech"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 3.6425,
+          "atk": 2.759,
+          "def": 1.9353
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "hollow_handmaid",
+          "abyss_warden"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 3.6425,
+          "atk": 2.759,
+          "def": 1.9353
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "cursed_head_maid",
+          "dragonbone_spawn"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 3.6425,
+          "atk": 2.759,
+          "def": 1.9353
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "quantity": 3
+        }
+      ]
+    },
+    "position": {
+      "x": 901600,
+      "y": 900000
+    }
+  },
+  "yomi_b17": {
+    "id": "yomi_b17",
+    "name": "Yomi Depths B17",
+    "nameJa": "黄泉の階層 B17",
+    "nameEn": "YOMI B17",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 17,
+    "sortOrder": 9017,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b16"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "hollow_handmaid",
+          "wandering_guard_wraith"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 3.9703,
+          "atk": 2.9522,
+          "def": 2.0224
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "earthbound_grudge",
+          "bone_colossus"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 3.9703,
+          "atk": 2.9522,
+          "def": 2.0224
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "abyss_warden",
+          "grave_soldier"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 3.9703,
+          "atk": 2.9522,
+          "def": 2.0224
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "quantity": 3
+        }
+      ]
+    },
+    "position": {
+      "x": 901700,
+      "y": 900000
+    }
+  },
+  "yomi_b18": {
+    "id": "yomi_b18",
+    "name": "Yomi Depths B18",
+    "nameJa": "黄泉の階層 B18",
+    "nameEn": "YOMI B18",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 18,
+    "sortOrder": 9018,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b17"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "earthbound_grudge",
+          "dragonbone_spawn"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 4.3276,
+          "atk": 3.1588,
+          "def": 2.1134
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "bloodmire_leech",
+          "cursed_head_maid"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 4.3276,
+          "atk": 3.1588,
+          "def": 2.1134
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "grave_knight",
+          "rot_hound"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 4.3276,
+          "atk": 3.1588,
+          "def": 2.1134
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "quantity": 3
+        }
+      ]
+    },
+    "position": {
+      "x": 901800,
+      "y": 900000
+    }
+  },
+  "yomi_b19": {
+    "id": "yomi_b19",
+    "name": "Yomi Depths B19",
+    "nameJa": "黄泉の階層 B19",
+    "nameEn": "YOMI B19",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 19,
+    "sortOrder": 9019,
+    "description": "第1章の敵影が再構成された黄泉の通常階。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b18"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "bloodmire_leech",
+          "grave_soldier"
+        ],
+        "intent": "通常階の露払い。",
+        "statScale": {
+          "hp": 4.7171,
+          "atk": 3.3799,
+          "def": 2.2085
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "SHIELD",
+        "enemyIds": [
+          "wandering_guard_wraith",
+          "abyss_warden"
+        ],
+        "intent": "防壁持ちを混ぜた中盤戦。",
+        "statScale": {
+          "hp": 4.7171,
+          "atk": 3.3799,
+          "def": 2.2085
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "ELITE",
+        "enemyIds": [
+          "bone_colossus",
+          "hollow_handmaid"
+        ],
+        "intent": "精鋭と随伴を倒して次階へ降りる。",
+        "statScale": {
+          "hp": 4.7171,
+          "atk": 3.3799,
+          "def": 2.2085
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "quantity": 3
+        }
+      ]
+    },
+    "position": {
+      "x": 901900,
+      "y": 900000
+    }
+  },
+  "yomi_b20": {
+    "id": "yomi_b20",
+    "name": "Yomi Depths B20",
+    "nameJa": "黄泉の階層 B20",
+    "nameEn": "YOMI B20",
+    "chapter": 1,
+    "chapterName": "黄泉の階層",
+    "area": 99,
+    "nodeType": "DUNGEON",
+    "element": "DARK",
+    "difficulty": 20,
+    "sortOrder": 9020,
+    "description": "20階層ごとのボス階。強化された死骨竜王オッサリウスが待ち構える。",
+    "waveCount": 3,
+    "areaGimmick": "NONE",
+    "unlockRequires": [
+      "yomi_b19"
+    ],
+    "waves": [
+      {
+        "label": "WAVE 1",
+        "role": "WARMUP",
+        "enemyIds": [
+          "wandering_guard_wraith",
+          "rot_hound"
+        ],
+        "intent": "ボス戦前の消耗。",
+        "statScale": {
+          "hp": 5.1417,
+          "atk": 3.6165,
+          "def": 2.3079
+        }
+      },
+      {
+        "label": "WAVE 2",
+        "role": "ELITE",
+        "enemyIds": [
+          "bone_colossus"
+        ],
+        "intent": "強化ELITEで防壁破壊を練習させる。",
+        "statScale": {
+          "hp": 5.1417,
+          "atk": 3.6165,
+          "def": 2.3079
+        }
+      },
+      {
+        "label": "WAVE 3",
+        "role": "BOSS",
+        "enemyIds": [
+          "ossuary_wyrm_lord"
+        ],
+        "intent": "第1章の死骨竜王を黄泉の最深補正で越える最終試練。",
+        "statScale": {
+          "hp": 5.1417,
+          "atk": 3.6165,
+          "def": 2.3079
+        }
+      }
+    ],
+    "rewards": {
+      "baseExp": 0,
+      "baseGold": 0,
+      "dropTable": [],
+      "firstClearGuaranteed": [
+        {
+          "type": "MATERIAL",
+          "itemId": "ossuary_memory",
+          "quantity": 2
+        },
+        {
+          "type": "WEAPON_MATERIAL",
+          "weaponMaterialType": "ABYSSAL_OBSIDIAN",
+          "quantity": 1
+        },
+        {
+          "type": "RESIDUE",
+          "rarity": "LEGENDARY",
+          "quantity": 1
+        }
+      ]
+    },
+    "position": {
+      "x": 902000,
+      "y": 900000
+    }
   }
 }

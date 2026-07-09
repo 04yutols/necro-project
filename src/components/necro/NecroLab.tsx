@@ -8,7 +8,9 @@ import { Home, Plus, Sparkles, Zap, ChevronRight } from 'lucide-react';
 import { useNecroLabPixi } from './useNecroLabPixi';
 import { useResidueEnhancePixi } from './useResidueEnhancePixi';
 import { useGothicSound } from './useGothicSound';
+import { calculateResidueEnhancement } from '../../logic/ResidueEnhancement';
 import { formatOptionValue, getOptionLabel } from '../../logic/StatSystem';
+import { deriveNecroRank } from '../../logic/NecroGrowthSystem';
 
 /* ──────────────────────────────────────────
    Constants
@@ -36,6 +38,29 @@ const STAT_LABEL: Record<string, string> = {
   'LIGHT_DMG_BOOST': 'LIGHT DMG', 'DARK_DMG_BOOST': 'DARK DMG',
   'VOID_DMG_BOOST': 'ALL DMG',
 };
+
+type ActionToast = { kind: 'success' | 'error'; text: string } | null;
+
+function LabToast({ toast }: { toast: ActionToast }) {
+  if (!toast) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className="pointer-events-none absolute left-4 right-4 top-[72px] z-50 rounded-lg px-4 py-3 text-center text-[12px] font-black tracking-[0.08em]"
+      style={{
+        background: toast.kind === 'success' ? 'rgba(34,197,94,0.14)' : 'rgba(139,0,0,0.22)',
+        border: `1px solid ${toast.kind === 'success' ? 'rgba(34,197,94,0.34)' : 'rgba(220,38,38,0.42)'}`,
+        color: toast.kind === 'success' ? '#86efac' : '#FFB4B4',
+        boxShadow: '0 14px 34px rgba(0,0,0,0.38)',
+        fontFamily: "var(--font-noto-sans-jp), sans-serif",
+      }}
+    >
+      {toast.text}
+    </motion.div>
+  );
+}
 
 function formatStat(type: string, value: number): string {
   return formatOptionValue(type, value);
@@ -104,7 +129,7 @@ function ResidueSlotCard({ slot, slotIndex, isActive, onTap }: SlotProps) {
     <motion.button
       onClick={onTap}
       whileTap={{ scale: 0.92 }}
-      className="flex-1 rounded-2xl flex flex-col items-center justify-center gap-1 relative overflow-hidden"
+      className="flex-1 rounded-2xl flex flex-col items-center justify-center gap-1 relative"
       style={{
         height: 82,
         background: slot
@@ -189,8 +214,9 @@ function ResidueDetailStrip({ residue, isEquipped, onEquip }: StripProps) {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -6 }}
         transition={{ duration: 0.18 }}
-        className="gothic-panel rounded-2xl overflow-hidden relative"
+        className="gothic-panel rounded-2xl relative"
       >
+        <div className="overflow-hidden rounded-2xl relative">
         <div className="absolute top-0 left-0 right-0 h-[2px] pointer-events-none"
           style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />
 
@@ -209,7 +235,7 @@ function ResidueDetailStrip({ residue, isEquipped, onEquip }: StripProps) {
           <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
             <div className="flex items-center gap-1.5">
               <span className="text-[12px] font-black truncate leading-tight"
-                style={{ color: '#EDE8FF', fontFamily: "'Cinzel Decorative', serif" }}>
+                style={{ color: '#EDE8FF', fontFamily: "var(--font-cinzel-decorative), serif" }}>
                 {residue.name}
               </span>
               <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0"
@@ -262,6 +288,7 @@ function ResidueDetailStrip({ residue, isEquipped, onEquip }: StripProps) {
             {isEquipped ? '✓ 装備中' : '装備する'}
           </motion.button>
         </div>
+        </div>
       </motion.div>
     </AnimatePresence>
   );
@@ -284,7 +311,7 @@ function ResidueGridCard({ residue, isSelected, isEquipped, onSelect }: GridCard
     <motion.button
       onClick={onSelect}
       whileTap={{ scale: 0.91 }}
-      className="rounded-xl flex flex-col items-center gap-1 py-2.5 px-1.5 relative overflow-hidden"
+      className="rounded-xl flex flex-col items-center gap-1 py-2.5 px-1.5 relative"
       style={{
         height: GRID_ITEM_H,
         background: isSelected
@@ -356,6 +383,7 @@ function VirtualResidueGrid({ items, selectedId, equippedIds, onSelect }: Virtua
 
   return (
     <div
+      id="tut-residue-grid"
       ref={containerRef}
       className="flex-1 overflow-y-auto custom-scrollbar"
       onScroll={e => setScrollTop(e.currentTarget.scrollTop)}
@@ -418,10 +446,11 @@ function EquipTab({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 18 }}
       transition={{ duration: 0.2 }}
-      className="flex flex-col flex-1 overflow-hidden"
+      className="flex flex-col flex-1"
     >
+      <div className="flex flex-col flex-1 overflow-hidden">
       {/* 3 residue slots */}
-      <div className="shrink-0 flex gap-2 px-3 pt-2.5 pb-1.5">
+      <div id="tut-residue-slots" className="shrink-0 flex gap-2 px-3 pt-2.5 pb-1.5">
         {equippedResidueSlots.map((slot, i) => (
           <ResidueSlotCard
             key={i}
@@ -462,6 +491,7 @@ function EquipTab({
         equippedIds={equippedIds}
         onSelect={id => { sound.playTap(); onSelectResidue(id); }}
       />
+      </div>
     </motion.div>
   );
 }
@@ -476,21 +506,11 @@ function StatsComparison({ residue, expGain }: { residue: AbyssalResidueData | n
     </div>
   );
 
-  let newExp = residue.exp + expGain;
-  let newLevel = residue.level;
-  let newMaxExp = residue.maxExp;
-  let levelledUp = false;
-
-  while (newExp >= newMaxExp && newLevel < 20) {
-    newExp -= newMaxExp;
-    newLevel++;
-    newMaxExp = Math.floor(newMaxExp * 1.5);
-    levelledUp = true;
-  }
-  if (newLevel >= 20) newExp = Math.min(newExp, newMaxExp);
+  const enhanced = calculateResidueEnhancement(residue, expGain);
+  const levelledUp = enhanced.level > residue.level;
 
   const newMainValue = levelledUp
-    ? +(residue.mainStat.value * (1 + newLevel * 0.04)).toFixed(1)
+    ? +(residue.mainStat.value * (1 + enhanced.level * 0.04)).toFixed(1)
     : residue.mainStat.value;
   const color = RARITY_COLOR[residue.rarity];
 
@@ -531,7 +551,7 @@ function StatsComparison({ residue, expGain }: { residue: AbyssalResidueData | n
         {/* After */}
         <div className="flex flex-col items-center gap-1 flex-1">
           <span className="text-[11px] tracking-widest font-bold" style={{ color: 'rgba(195,182,238,0.65)', fontFamily: 'monospace' }}>AFTER</span>
-          <span className="text-[12px] font-black" style={{ color: levelledUp ? '#00DD77' : 'rgba(160,145,195,0.75)', fontFamily: 'monospace' }}>Lv.{newLevel}</span>
+          <span className="text-[12px] font-black" style={{ color: levelledUp ? '#00DD77' : 'rgba(160,145,195,0.75)', fontFamily: 'monospace' }}>Lv.{enhanced.level}</span>
           <span
             className="text-2xl font-black leading-none"
             style={{
@@ -606,7 +626,7 @@ function MaterialCard({ mat, isSelected, onToggle }: { mat: ResidueMatData; isSe
     <motion.button
       onClick={onToggle}
       whileTap={{ scale: 0.9 }}
-      className="rounded-xl flex flex-col items-center gap-1 py-2.5 px-1 relative overflow-hidden"
+      className="rounded-xl flex flex-col items-center gap-1 py-2.5 px-1 relative"
       style={{
         height: 88,
         background: isSelected
@@ -654,7 +674,7 @@ function EnhanceTab({ abyssalResidues, residueMaterials, selectedId, onEnhance, 
   const totalExpGain = useMemo(() =>
     [...selectedMatIds].reduce((acc, id) => {
       const mat = residueMaterials.find(m => m.id === id);
-      return acc + (mat ? mat.expValue * mat.quantity : 0);
+      return acc + (mat ? mat.expValue : 0);
     }, 0),
     [selectedMatIds, residueMaterials],
   );
@@ -665,11 +685,11 @@ function EnhanceTab({ abyssalResidues, residueMaterials, selectedId, onEnhance, 
     const needed = selectedResidue.maxExp - selectedResidue.exp;
     let remaining = needed;
     const next = new Set<string>();
-    const sorted = [...residueMaterials].sort((a, b) => b.expValue * b.quantity - a.expValue * a.quantity);
+    const sorted = [...residueMaterials].sort((a, b) => b.expValue - a.expValue);
     for (const mat of sorted) {
       if (remaining <= 0) break;
       next.add(mat.id);
-      remaining -= mat.expValue * mat.quantity;
+      remaining -= mat.expValue;
     }
     setSelectedMatIds(next);
   }, [selectedResidue, residueMaterials, sound]);
@@ -697,8 +717,9 @@ function EnhanceTab({ abyssalResidues, residueMaterials, selectedId, onEnhance, 
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -18 }}
       transition={{ duration: 0.2 }}
-      className="flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5"
+      className="flex flex-col flex-1"
     >
+      <div className="flex flex-col flex-1 overflow-hidden px-3 pt-2 pb-3 gap-2.5">
       <StatsComparison residue={selectedResidue} expGain={totalExpGain} />
 
       <EnhanceGauge residue={selectedResidue} previewExpGain={totalExpGain} />
@@ -764,6 +785,7 @@ function EnhanceTab({ abyssalResidues, residueMaterials, selectedId, onEnhance, 
       >
         強 化
       </motion.button>
+      </div>
     </motion.div>
   );
 }
@@ -774,7 +796,7 @@ function EnhanceTab({ abyssalResidues, residueMaterials, selectedId, onEnhance, 
 export default function NecroLab() {
   const {
     necroStatus, abyssalResidues, equippedResidueSlots, residueMaterials,
-    equipResidueToSlot, upgradeResidue, setCurrentTab,
+    equipResidueToSlot, upgradeResidue, setCurrentTab, player, loadFromServer, isServerBacked,
   } = useGameStore();
 
   const sound = useGothicSound();
@@ -785,6 +807,18 @@ export default function NecroLab() {
   const [activeTab, setActiveTab] = useState<'EQUIP' | 'ENHANCE'>('EQUIP');
   const [selectedId, setSelectedId] = useState<string | null>(abyssalResidues[0]?.id ?? null);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
+  const [toast, setToast] = useState<ActionToast>(null);
+  const necroRank = deriveNecroRank(necroStatus?.level ?? 1);
+
+  const showToast = useCallback((next: NonNullable<ActionToast>) => {
+    setToast(next);
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   if (!necroStatus) return (
     <div className="flex items-center justify-center h-full">
@@ -799,7 +833,9 @@ export default function NecroLab() {
     setActiveSlot(prev => prev === i ? null : i);
   };
 
-  const handleEquip = () => {
+  const canPersistToServer = () => isServerBacked;
+
+  const handleEquip = async () => {
     const residue = abyssalResidues.find(r => r.id === selectedId);
     if (!residue) return;
     let target = activeSlot;
@@ -810,11 +846,39 @@ export default function NecroLab() {
     sound.playEquip();
     equipResidueToSlot(target, residue);
     setActiveSlot(null);
+    showToast({ kind: 'success', text: '残滓を装備しました' });
+    if (!player || !canPersistToServer()) return;
+    try {
+      const { equipResidueAction } = await import('../../app/actions');
+      const result = await equipResidueAction(player.id, target, residue.id);
+      if (result.success) {
+        loadFromServer(result.data);
+        showToast({ kind: 'success', text: '装備を保存しました' });
+      } else {
+        showToast({ kind: 'error', text: result.error ?? '装備の保存に失敗しました' });
+      }
+    } catch (error) {
+      showToast({ kind: 'error', text: error instanceof Error ? error.message : '装備の保存に失敗しました' });
+    }
   };
 
-  const handleEnhance = (matIds: string[]) => {
+  const handleEnhance = async (matIds: string[]) => {
     if (!selectedId) return;
     upgradeResidue(selectedId, matIds);
+    showToast({ kind: 'success', text: '残滓を強化しました' });
+    if (!player || !canPersistToServer()) return;
+    try {
+      const { enhanceResidueAction } = await import('../../app/actions');
+      const result = await enhanceResidueAction(player.id, selectedId, matIds);
+      if (result.success) {
+        loadFromServer(result.data);
+        showToast({ kind: 'success', text: '強化を保存しました' });
+      } else {
+        showToast({ kind: 'error', text: result.error ?? '強化の保存に失敗しました' });
+      }
+    } catch (error) {
+      showToast({ kind: 'error', text: error instanceof Error ? error.message : '強化の保存に失敗しました' });
+    }
   };
 
   return (
@@ -828,6 +892,9 @@ export default function NecroLab() {
         className="absolute inset-0 z-0 pointer-events-none"
         style={{ opacity: 0.4 }}
       />
+      <AnimatePresence>
+        <LabToast toast={toast} />
+      </AnimatePresence>
       {/* Corner glows */}
       <div className="absolute top-0 left-0 w-40 h-40 pointer-events-none z-0"
         style={{ background: 'radial-gradient(circle at 0% 0%, rgba(160,50,255,0.15) 0%, transparent 70%)' }} />
@@ -858,7 +925,7 @@ export default function NecroLab() {
           className="text-[14px] font-black tracking-[0.3em] uppercase"
           style={{
             color: '#E080FF',
-            fontFamily: "'Cinzel Decorative', serif",
+            fontFamily: "var(--font-cinzel-decorative), serif",
             textShadow: '0 0 16px rgba(204,34,255,0.65)',
           }}
         >
@@ -874,7 +941,7 @@ export default function NecroLab() {
             fontFamily: 'monospace',
           }}
         >
-          <span>Rank {necroStatus.rank}</span>
+          <span>Rank {necroRank}</span>
         </div>
       </div>
 
@@ -884,6 +951,7 @@ export default function NecroLab() {
         {(['EQUIP', 'ENHANCE'] as const).map(tab => (
           <button
             key={tab}
+            id={tab === 'ENHANCE' ? 'tut-enhance-tab' : undefined}
             onClick={() => { sound.playTap(); setActiveTab(tab); }}
             className="flex-1 py-3.5 text-[13px] font-black tracking-[0.22em] relative transition-colors"
             style={{ color: activeTab === tab ? '#E080FF' : 'rgba(195,175,235,0.45)', fontFamily: 'monospace' }}

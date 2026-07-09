@@ -5,9 +5,11 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, Lock, Sparkles, Swords, Wand2 } from 'lucide-react';
 import jobsData from '../../data/master/jobs.json';
 import skillsData from '../../data/master/skills.json';
-import { addPassiveBonuses, calculateJobAdjustedStats, getJobLevel, getJobStyle, getJobUnlockStatus, JOB_ORDER, resolveJobSkills, STAT_KEYS } from '../../logic/JobSystem';
+import { addPassiveBonuses, getJobLevel, getJobStyle, getJobUnlockStatus, JOB_ORDER, resolveJobSkills, STAT_KEYS } from '../../logic/JobSystem';
+import { getJobBaseStatsAtLevel } from '../../logic/JobGrowthSystem';
 import { useGameStore } from '../../store/useGameStore';
 import type { BaseStats, JobData, SkillAttackType, SkillData } from '../../types/game';
+import { BubbleHint } from '../tutorial/BubbleHint';
 
 const JOBS = jobsData as Record<string, JobData>;
 const SKILLS = skillsData as Record<string, SkillData>;
@@ -110,7 +112,7 @@ function JobSigil({ jobId, size = 140 }: { jobId: string; size?: number }) {
         style={{
           position: 'relative',
           zIndex: 1,
-          fontFamily: "'Cinzel Decorative', serif",
+          fontFamily: "var(--font-cinzel-decorative), serif",
           fontSize: size * 0.26,
           color: '#F0EAFF',
           textShadow: `0 0 18px ${style.color}, 0 0 34px ${style.glow}`,
@@ -137,8 +139,10 @@ function JobSigil({ jobId, size = 140 }: { jobId: string; size?: number }) {
 }
 
 export default function JobChangeScreen() {
-  const { player, changeJob, setCurrentTab } = useGameStore();
+  const { player, loadFromServer, setCurrentTab } = useGameStore();
   const [selectedJobId, setSelectedJobId] = useState(player?.currentJobId ?? 'warrior');
+  const [isChangingJob, setIsChangingJob] = useState(false);
+  const [changeError, setChangeError] = useState<string | null>(null);
 
   const jobs = useMemo(() => (
     JOB_ORDER
@@ -156,11 +160,35 @@ export default function JobChangeScreen() {
   const effectiveSelectedLevel = selectedLevel || 1;
   const unlock = getJobUnlockStatus(player, selectedJob);
   const isCurrent = player.currentJobId === selectedJobId;
-  const baseStats = player.baseStats ?? player.stats;
-  const currentStats = addPassiveBonuses(calculateJobAdjustedStats(baseStats, currentJob), player);
-  const previewStats = addPassiveBonuses(calculateJobAdjustedStats(baseStats, selectedJob), player);
+  const characterId = player.id;
+  const currentLevel = Math.max(1, getJobLevel(player, player.currentJobId) || 1);
+  const currentBaseStats = getJobBaseStatsAtLevel(currentJob, currentLevel, player.baseStats ?? player.stats);
+  const previewBaseStats = getJobBaseStatsAtLevel(selectedJob, effectiveSelectedLevel, player.baseStats ?? player.stats);
+  const currentStats = addPassiveBonuses(currentBaseStats, player);
+  const previewStats = addPassiveBonuses(previewBaseStats, player);
   const skillEntries = resolveJobSkills(selectedJob, unlock.unlocked ? effectiveSelectedLevel : 0, SKILLS);
   const tierLabel = selectedJob.tier === 1 ? 'TIER I' : 'TIER II';
+
+  async function handleChangeJob() {
+    if (isCurrent || !unlock.unlocked || isChangingJob) return;
+    setChangeError(null);
+    setIsChangingJob(true);
+    try {
+      const { changeJobAction } = await import('../../app/actions');
+      const result = await changeJobAction(characterId, selectedJobId);
+      if (!result.success) {
+        setChangeError(result.error);
+        return;
+      }
+      loadFromServer(result.data);
+      setSelectedJobId(result.data.player.currentJobId);
+      setCurrentTab('JOB');
+    } catch {
+      setChangeError('転職の保存に失敗しました');
+    } finally {
+      setIsChangingJob(false);
+    }
+  }
 
   return (
     <motion.div
@@ -168,7 +196,7 @@ export default function JobChangeScreen() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', maxWidth: '100vw', overflow: 'hidden' }}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', maxWidth: '100vw' }}
     >
       <div
         className="absolute inset-0 flex flex-col overflow-hidden job-change-screen__shell"
@@ -214,7 +242,7 @@ export default function JobChangeScreen() {
               <ChevronLeft size={18} />
             </button>
             <div style={{ minWidth: 0, textAlign: 'center' }}>
-              <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 8, color: '#8B00FF', letterSpacing: '0.18em' }}>
+              <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 8, color: '#8B00FF', letterSpacing: '0.18em' }}>
                 UMBRAL RITE-HALL
               </div>
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: 18, color: '#F0EAFF', fontWeight: 800, letterSpacing: '0.06em' }}>
@@ -307,7 +335,7 @@ export default function JobChangeScreen() {
                       </span>
                     )}
                   </div>
-                  <h2 className="job-change-screen__title" style={{ margin: 0, fontFamily: "'Cinzel Decorative', serif", fontSize: 24, color: '#F0EAFF', letterSpacing: '0.04em', lineHeight: 1.05, overflowWrap: 'anywhere' }}>
+                  <h2 className="job-change-screen__title" style={{ margin: 0, fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 24, color: '#F0EAFF', letterSpacing: '0.04em', lineHeight: 1.05, overflowWrap: 'anywhere' }}>
                     {selectedJob.displayName ?? selectedJob.name}
                   </h2>
                   <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, color: selectedStyle.color, letterSpacing: '0.12em', marginTop: 4, lineHeight: 1.35, overflowWrap: 'anywhere' }}>
@@ -322,6 +350,7 @@ export default function JobChangeScreen() {
 
             <section style={{ marginTop: 12, width: '100%', minWidth: 0, overflow: 'hidden' }}>
               <div
+                id="tut-job-rail"
                 className="safe-scroll job-rail-scroll"
                 style={{
                   display: 'flex',
@@ -346,7 +375,10 @@ export default function JobChangeScreen() {
                       key={id}
                       className="job-rail-card"
                       type="button"
-                      onClick={() => setSelectedJobId(id)}
+                      onClick={() => {
+                        setSelectedJobId(id);
+                        setChangeError(null);
+                      }}
                       style={{
                         flex: '0 0 clamp(84px, 23vw, 100px)',
                         width: 'clamp(84px, 23vw, 100px)',
@@ -383,8 +415,17 @@ export default function JobChangeScreen() {
                 })}
               </div>
             </section>
+            <BubbleHint
+              hint={{
+                id: 'hint_job_change',
+                targetId: 'tut-job-rail',
+                title: '転職',
+                body: '横にスクロールして職業を選び、ステータス変化を確認してから「転職」。前職の経験は消えずに引き継がれる。',
+                position: 'below',
+              }}
+            />
 
-            <section style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+            <section id="tut-stat-change" style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
               <div
                 style={{
                   width: '100%',
@@ -503,6 +544,24 @@ export default function JobChangeScreen() {
               </div>
             )}
 
+            {changeError && (
+              <div
+                role="alert"
+                style={{
+                  marginTop: 10,
+                  borderRadius: 12,
+                  border: '1px solid rgba(248,113,113,0.38)',
+                  background: 'rgba(127,29,29,0.18)',
+                  padding: '9px 11px',
+                  fontSize: 11,
+                  color: '#fca5a5',
+                  lineHeight: 1.65,
+                }}
+              >
+                {changeError}
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 10, marginTop: 12, minWidth: 0 }}>
               <button
                 type="button"
@@ -522,26 +581,27 @@ export default function JobChangeScreen() {
                 戻る
               </button>
               <button
+                id="tut-job-confirm"
                 type="button"
-                disabled={isCurrent || !unlock.unlocked}
-                onClick={() => changeJob(selectedJobId)}
+                disabled={isCurrent || !unlock.unlocked || isChangingJob}
+                onClick={handleChangeJob}
                 style={{
                   flex: 1,
                   minHeight: 48,
                   borderRadius: 12,
-                  background: isCurrent || !unlock.unlocked
+                  background: isCurrent || !unlock.unlocked || isChangingJob
                     ? 'rgba(255,255,255,0.04)'
                     : `linear-gradient(135deg, ${selectedStyle.color}42, ${selectedStyle.soft})`,
-                  border: `1px solid ${isCurrent || !unlock.unlocked ? 'rgba(255,255,255,0.08)' : selectedStyle.color + '88'}`,
+                  border: `1px solid ${isCurrent || !unlock.unlocked || isChangingJob ? 'rgba(255,255,255,0.08)' : selectedStyle.color + '88'}`,
                   color: isCurrent ? '#6b5f7a' : unlock.unlocked ? '#F0EAFF' : '#8A6D1F',
                   fontFamily: "'Cinzel', serif",
                   fontSize: 12,
                   fontWeight: 900,
                   letterSpacing: '0.08em',
-                  boxShadow: isCurrent || !unlock.unlocked ? 'none' : `0 0 22px ${selectedStyle.glow}`,
+                  boxShadow: isCurrent || !unlock.unlocked || isChangingJob ? 'none' : `0 0 22px ${selectedStyle.glow}`,
                 }}
               >
-                {isCurrent ? '選択中' : unlock.unlocked ? '転職' : '条件未達成'}
+                {isChangingJob ? '転職中...' : isCurrent ? '選択中' : unlock.unlocked ? '転職' : '条件未達成'}
               </button>
             </div>
           </div>

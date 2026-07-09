@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ChevronRight, Eye, FastForward, Package, Share2, Skull, Sparkles } from 'lucide-react';
-import { useGameStore } from '../../store/useGameStore';
-import type { ItemData } from '../../types/game';
+import { useSoundEffects } from '../../hooks/useSoundEffects';
+import type { ItemData, MonsterData } from '../../types/game';
 import AppraisalCertificate from './AppraisalCertificate';
 
 type DropRarity = 'COMMON' | 'RARE' | 'SR' | 'SSR' | 'LR' | 'UR' | 'UNIQUE' | 'HIDDEN_UNIQUE';
@@ -24,10 +24,13 @@ interface ResultScreenProps {
   goldGained?: number;
   itemsGained: ResultDrop[] | string[];
   monstersGained: string[];
+  necromancedMonsters?: MonsterData[];
   isPurplePillar?: boolean;
   clearTime?: number;
   wavesCleared?: number;
   totalWaves?: number;
+  failureTitle?: string;
+  failureMessage?: string;
   onFinish: () => void;
 }
 
@@ -156,6 +159,14 @@ function isPremiumDrop(drop: ResultDrop) {
   return tier === 'premium' || tier === 'cursed';
 }
 
+function getDropRevealKind(drop: ResultDrop): 'COMMON' | 'SR' | 'SSR' | 'UR' {
+  const rarity = normalizeRarity(drop.rarity);
+  if (rarity === 'UR' || rarity === 'HIDDEN_UNIQUE') return 'UR';
+  if (rarity === 'SSR' || rarity === 'LR' || rarity === 'UNIQUE') return 'SSR';
+  if (rarity === 'SR' || rarity === 'RARE') return 'SR';
+  return 'COMMON';
+}
+
 function haptic(pattern: VibratePattern) {
   if (typeof navigator !== 'undefined') navigator.vibrate?.(pattern);
 }
@@ -211,6 +222,68 @@ function RarityBadge({ drop, compact = false }: { drop: ResultDrop; compact?: bo
   );
 }
 
+function DropCssVfx({ rarity, revealStage }: { rarity: DropRarity; revealStage: 'sealed' | 'revealing' | 'revealed' }) {
+  const style = RARITY_STYLE[rarity];
+  const tier = style.tier;
+  if (tier === 'normal') return null;
+  const cursed = tier === 'cursed';
+  const premium = tier === 'premium';
+  const particleCount = cursed ? 24 : 18;
+  const revealScale = revealStage === 'revealing' ? 1.16 : revealStage === 'revealed' ? 1.04 : 0.96;
+
+  return (
+    <div
+      className="absolute inset-0 pointer-events-none overflow-hidden"
+      style={{
+        mixBlendMode: cursed ? 'screen' : 'normal',
+        opacity: cursed ? 0.94 : 0.78,
+      }}
+    >
+      <div
+        className="absolute left-1/2 top-[-10%] bottom-[-10%]"
+        style={{
+          width: cursed ? 'min(29vw, 118px)' : premium ? 'min(24vw, 94px)' : 'min(18vw, 72px)',
+          transform: `translateX(-50%) scaleX(${revealScale})`,
+          background: cursed
+            ? 'linear-gradient(90deg, transparent, rgba(10,0,6,0.95), rgba(127,29,29,0.58), rgba(188,0,251,0.66), rgba(10,0,6,0.95), transparent)'
+            : `linear-gradient(90deg, transparent, ${style.color}22, ${style.color}66, ${style.color}18, transparent)`,
+          boxShadow: cursed ? '0 0 76px rgba(188,0,251,0.50)' : `0 0 44px ${style.glow}`,
+          animation: cursed ? 'cursedPillarBreath 1.7s ease-in-out infinite' : 'premiumRingPulse 2.4s ease-in-out infinite',
+        }}
+      />
+      <div
+        className="absolute left-1/2 top-1/2 rounded-full"
+        style={{
+          width: premium ? 'min(88vw, 348px)' : 'min(82vw, 318px)',
+          height: premium ? 'min(88vw, 348px)' : 'min(82vw, 318px)',
+          transform: `translate(-50%, -50%) scale(${revealScale})`,
+          border: `1px ${cursed ? 'dashed' : 'solid'} ${style.color}55`,
+          boxShadow: `0 0 30px ${style.glow}, inset 0 0 34px rgba(0,0,0,0.42)`,
+          animation: cursed ? 'cursedSigilSpin 10s linear infinite' : 'rareRuneSpin 9s linear infinite',
+        }}
+      />
+      {Array.from({ length: particleCount }, (_, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full"
+          style={{
+            left: `${5 + ((i * 37) % 90)}%`,
+            top: `${8 + ((i * 53) % 82)}%`,
+            width: cursed && i % 5 === 0 ? 2 : 2 + (i % 3),
+            height: cursed && i % 5 === 0 ? 22 + (i % 4) * 8 : 2 + (i % 3),
+            borderRadius: cursed && i % 5 === 0 ? 99 : '50%',
+            background: i % 3 === 0 ? style.color : cursed ? 'rgba(127,29,29,0.72)' : '#F0EAFF',
+            boxShadow: `0 0 12px ${style.color}`,
+            opacity: cursed ? 0.72 : 0.62,
+            animation: cursed ? `vengeanceWisp ${2.1 + (i % 5) * 0.22}s ease-in-out infinite` : `premiumSparkFall ${2.0 + (i % 5) * 0.18}s ease-in-out infinite`,
+            animationDelay: `${i * 0.09}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 'sealed' | 'revealing' | 'revealed'; onReveal: () => void }) {
   const rarity = normalizeRarity(drop.rarity);
   const style = RARITY_STYLE[rarity];
@@ -227,9 +300,10 @@ function AppraisalField({ drop, stage, onReveal }: { drop: ResultDrop; stage: 's
             ? 'radial-gradient(ellipse at 50% 42%, rgba(188,0,251,0.24), rgba(70,0,18,0.28) 38%, transparent 70%)'
             : premium
               ? `radial-gradient(ellipse at 50% 42%, ${style.glow}, transparent 62%)`
-              : `radial-gradient(ellipse at 50% 48%, ${style.glow}, transparent 58%)`,
+          : `radial-gradient(ellipse at 50% 48%, ${style.glow}, transparent 58%)`,
         }}
       />
+      <DropCssVfx rarity={rarity} revealStage={stage} />
 
       {premium && (
         <>
@@ -592,14 +666,17 @@ export default function ResultScreen({
   goldGained = 0,
   itemsGained,
   monstersGained,
+  necromancedMonsters = [],
   isPurplePillar,
   clearTime = 74,
   wavesCleared = 3,
   totalWaves = 3,
+  failureTitle,
+  failureMessage,
   onFinish,
 }: ResultScreenProps) {
   const [showContent, setShowContent] = useState(false);
-  const [screen, setScreen] = useState<'summary' | 'appraisal'>('summary');
+  const [screen, setScreen] = useState<'summary' | 'appraisal' | 'necromance'>('summary');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dropStage, setDropStage] = useState<'sealed' | 'revealing' | 'revealed'>('sealed');
   const [revealedIds, setRevealedIds] = useState<string[]>([]);
@@ -607,7 +684,7 @@ export default function ResultScreen({
   const [skipMode, setSkipMode] = useState(false);
   const revealTimerRef = useRef<number | null>(null);
   const skipTimersRef = useRef<number[]>([]);
-  const { addExp } = useGameStore();
+  const sfx = useSoundEffects();
 
   const particles = useMemo(() => Array.from({ length: 28 }, (_, i) => ({
     left: 5 + ((i * 37) % 90),
@@ -624,6 +701,7 @@ export default function ResultScreen({
   }, [itemsGained]);
 
   const currentDrop = normalizedDrops[currentIndex] ?? normalizedDrops[0] ?? DEFAULT_UNIQUE;
+  const hasNecromanceResults = necromancedMonsters.length > 0;
   const currentRarity = normalizeRarity(currentDrop.rarity);
   const currentStyle = RARITY_STYLE[currentRarity];
   const hasCursedDrop = (isPurplePillar ?? false) || normalizedDrops.some(isCursedDrop);
@@ -657,10 +735,9 @@ export default function ResultScreen({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setShowContent(true);
-      addExp(expGained);
     }, 450);
     return () => window.clearTimeout(timer);
-  }, [addExp, expGained]);
+  }, []);
 
   const clearSkipTimers = () => {
     skipTimersRef.current.forEach(timer => window.clearTimeout(timer));
@@ -682,6 +759,7 @@ export default function ResultScreen({
 
   const goToAppraisal = () => {
     haptic(hasCursedDrop ? [16, 24, 42] : [12, 18]);
+    sfx.resultOpen(hasCursedDrop ? 'UR' : rareSignalCount > 0 ? 'SSR' : 'COMMON');
     setScreen('appraisal');
   };
 
@@ -689,6 +767,7 @@ export default function ResultScreen({
     if (dropStage !== 'sealed') return;
     if (revealTimerRef.current) window.clearTimeout(revealTimerRef.current);
     haptic(isCursedDrop(currentDrop) ? [18, 28, 45, 35, 70] : isPremiumDrop(currentDrop) ? [16, 26, 38] : [10, 16]);
+    sfx.dropReveal(getDropRevealKind(currentDrop));
     setDropStage('revealing');
 
     const revealDelay = isCursedDrop(currentDrop) ? 1180 : isPremiumDrop(currentDrop) ? 820 : 420;
@@ -769,17 +848,26 @@ export default function ResultScreen({
       haptic([8, 12]);
       return;
     }
+    if (hasNecromanceResults) {
+      haptic([18, 24, 36]);
+      sfx.resultOpen('SR');
+      setScreen('necromance');
+      return;
+    }
     onFinish();
   };
 
   return (
     <div
+      data-testid="result-screen"
       className="w-full h-full relative overflow-hidden"
       style={{
         background: screen === 'appraisal'
           ? currentStyle.tier === 'cursed'
             ? 'radial-gradient(ellipse at 50% 42%, rgba(70,0,28,0.38), #07020f 58%, #03010a 100%)'
             : `radial-gradient(ellipse at 50% 42%, ${currentStyle.glow}, #07020f 56%, #03010a 100%)`
+          : screen === 'necromance'
+            ? 'radial-gradient(ellipse at 50% 38%, rgba(139,0,255,0.24), rgba(22,0,38,0.80) 52%, #03010a 100%)'
           : hasCursedDrop
             ? 'radial-gradient(ellipse at 50% 44%, rgba(138,43,226,0.18), #07020f 58%, #03010a 100%)'
             : 'linear-gradient(180deg,#08041a 0%,#05020f 100%)',
@@ -815,11 +903,12 @@ export default function ResultScreen({
         </div>
       ) : screen === 'summary' ? (
         <div
+          data-testid="result-summary"
           className="relative z-10 h-full flex flex-col"
           style={{ padding: 'max(18px, env(safe-area-inset-top, 18px)) 16px max(18px, env(safe-area-inset-bottom, 18px))' }}
         >
           <div style={{ textAlign: 'center', animation: 'resultSlideIn 0.45s ease-out both' }}>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: '#8A2BE2', letterSpacing: '0.25em', marginBottom: 5 }}>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 9, color: '#8A2BE2', letterSpacing: '0.25em', marginBottom: 5 }}>
               BATTLE COMPLETE
             </div>
             <div
@@ -837,21 +926,39 @@ export default function ResultScreen({
           </div>
 
           <div className="flex justify-center" style={{ padding: '16px 0 10px', animation: 'rankPop 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.18s both' }}>
-            <div
-              style={{
-                width: 82,
-                height: 82,
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(251,191,36,0.28), #130b02)',
-                border: '2.5px solid #fbbf24',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 0 26px rgba(251,191,36,0.55)',
-              }}
-            >
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: 42, fontWeight: 900, color: '#fbbf24' }}>S</span>
-            </div>
+            {isVictory ? (
+              <div
+                style={{
+                  width: 82,
+                  height: 82,
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle, rgba(251,191,36,0.28), #130b02)',
+                  border: '2.5px solid #fbbf24',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 0 26px rgba(251,191,36,0.55)',
+                }}
+              >
+                <span style={{ fontFamily: "'Cinzel', serif", fontSize: 42, fontWeight: 900, color: '#fbbf24' }}>S</span>
+              </div>
+            ) : (
+              <div
+                style={{
+                  width: 82,
+                  height: 82,
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle, rgba(239,68,68,0.28), #0d0202)',
+                  border: '2.5px solid #ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 0 26px rgba(239,68,68,0.55)',
+                }}
+              >
+                <Skull size={38} color="#ef4444" />
+              </div>
+            )}
           </div>
 
           <div
@@ -864,9 +971,9 @@ export default function ResultScreen({
             }}
           >
             {[
-              { label: 'クリアタイム', value: `${mins}:${secs}`, color: '#c084fc' },
+              { label: isVictory ? 'クリアタイム' : '経過タイム', value: `${mins}:${secs}`, color: '#c084fc' },
               { label: 'WAVE', value: `${wavesCleared}/${totalWaves}`, color: '#f59e0b' },
-              { label: '生存', value: '3/3', color: '#34d399' },
+              { label: isVictory ? '生存' : '戦果', value: isVictory ? '3/3' : '敗北', color: isVictory ? '#34d399' : '#ef4444' },
             ].map((s, i) => (
               <div key={s.label} style={{ padding: '12px 6px', textAlign: 'center', borderRight: i < 2 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
                 <div style={{ fontFamily: "'Cinzel', serif", fontSize: 17, fontWeight: 700, color: s.color }}>{s.value}</div>
@@ -875,128 +982,285 @@ export default function ResultScreen({
             ))}
           </div>
 
-          <div
-            style={{
-              marginTop: 12,
-              padding: '12px 14px',
-              borderRadius: 12,
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              animation: 'resultSlideIn 0.45s ease-out 0.22s both',
-            }}
-          >
-            <div className="flex justify-between items-baseline mb-2">
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, color: '#8A2BE2', letterSpacing: '0.12em' }}>EXPERIENCE</span>
-              <span style={{ fontFamily: "'Cinzel', serif", fontSize: 15, fontWeight: 700, color: '#34d399' }}>+{expGained.toLocaleString()}</span>
-            </div>
-            <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+          {isVictory ? (
+            <>
               <div
                 style={{
-                  '--exp-width': '74%',
-                  width: '74%',
-                  height: '100%',
-                  borderRadius: 4,
-                  background: 'linear-gradient(90deg,#4a0e8a,#8A2BE2,#34d399)',
-                  animation: 'expGrow 1s cubic-bezier(0.34,1.2,0.64,1) 0.35s both',
-                  boxShadow: '0 0 10px rgba(52,211,153,0.55)',
-                } as CSSProperties}
-              />
+                  marginTop: 12,
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  animation: 'resultSlideIn 0.45s ease-out 0.22s both',
+                }}
+              >
+                <div className="flex justify-between items-baseline mb-2">
+                  <span style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, color: '#8A2BE2', letterSpacing: '0.12em' }}>EXPERIENCE</span>
+                  <span style={{ fontFamily: "'Cinzel', serif", fontSize: 15, fontWeight: 700, color: '#34d399' }}>+{expGained.toLocaleString()}</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      '--exp-width': '74%',
+                      width: '74%',
+                      height: '100%',
+                      borderRadius: 4,
+                      background: 'linear-gradient(90deg,#4a0e8a,#8A2BE2,#34d399)',
+                      animation: 'expGrow 1s cubic-bezier(0.34,1.2,0.64,1) 0.35s both',
+                      boxShadow: '0 0 10px rgba(52,211,153,0.55)',
+                    } as CSSProperties}
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-y-auto safe-scroll" style={{ marginTop: 12, animation: 'resultSlideIn 0.45s ease-out 0.32s both' }}>
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-3" style={{ color: '#fbbf24' }}>
+                    <Package size={15} />
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.12em' }}>BATTLE REWARDS</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span style={{ color: '#9ca3af', fontSize: 11 }}>ゴールド</span>
+                      <span style={{ color: '#fbbf24', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>+{goldGained.toLocaleString()}G</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span style={{ color: '#9ca3af', fontSize: 11 }}>未鑑定戦利品</span>
+                      <span style={{ color: '#8A2BE2', fontFamily: 'monospace', fontSize: 10 }}>{normalizedDrops.length} DROPS</span>
+                    </div>
+                    {rareSignalCount > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span style={{ color: '#fde68a', fontSize: 11 }}>高レア反応</span>
+                        <span style={{ color: '#fbbf24', fontFamily: 'monospace', fontSize: 10 }}>{rareSignalCount} SIGNALS</span>
+                      </div>
+                    )}
+                    {hasNecromanceResults && (
+                      <div className="flex items-center justify-between">
+                        <span style={{ color: '#d8b4fe', fontSize: 11 }}>ネクロマンス反応</span>
+                        <span style={{ color: '#c084fc', fontFamily: 'monospace', fontSize: 10 }}>{necromancedMonsters.length} SOULS</span>
+                      </div>
+                    )}
+                    {monstersGained.map(monster => (
+                      <div key={monster} className="flex items-center justify-between">
+                        <span style={{ color: '#9ca3af', fontSize: 11 }}>{monster}</span>
+                        <span style={{ color: '#c084fc', fontFamily: 'monospace', fontSize: 10 }}>CORE</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {hasCursedDrop && (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: '13px 14px',
+                      borderRadius: 14,
+                      background: 'linear-gradient(135deg, rgba(80,0,18,0.34), rgba(138,43,226,0.18), rgba(3,1,8,0.82))',
+                      border: '1px solid rgba(188,0,251,0.52)',
+                      boxShadow: '0 0 28px rgba(188,0,251,0.28), inset 0 0 22px rgba(0,0,0,0.34)',
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Skull size={20} color="#BC00FB" />
+                      <div className="flex-1">
+                        <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700, color: '#BC00FB', letterSpacing: '0.14em' }}>
+                          PURPLE PILLAR RESONANCE
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#f3d1ff', marginTop: 2 }}>
+                          怨念を含む異質な戦利品反応
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={goToAppraisal}
+                style={{
+                  marginTop: 12,
+                  width: '100%',
+                  minHeight: 54,
+                  borderRadius: 14,
+                  border: `1.5px solid ${hasCursedDrop ? '#BC00FB' : 'rgba(138,43,226,0.65)'}`,
+                  background: hasCursedDrop
+                    ? 'linear-gradient(135deg, #2b0010, #8A2BE2, #4c0519)'
+                    : 'linear-gradient(135deg, rgba(138,43,226,0.34), rgba(88,28,135,0.24))',
+                  color: '#fff',
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  boxShadow: hasCursedDrop ? '0 0 30px rgba(188,0,251,0.34)' : '0 0 20px rgba(138,43,226,0.25)',
+                }}
+              >
+                鑑定へ進む
+              </button>
+            </>
+          ) : (
+            <>
+              <div
+                style={{
+                  marginTop: 12,
+                  flex: 1,
+                  padding: '18px 14px',
+                  borderRadius: 12,
+                  background: 'linear-gradient(160deg, rgba(139,0,0,0.18), rgba(5,2,14,0.9))',
+                  border: '1px solid rgba(239,68,68,0.22)',
+                  animation: 'resultSlideIn 0.45s ease-out 0.22s both',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, fontWeight: 700, color: '#ef4444', letterSpacing: '0.18em' }}>
+                  {failureTitle ?? 'BATTLE LOST'}
+                </div>
+                <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 13, color: 'rgba(240,234,255,0.72)', lineHeight: 1.7 }}>
+                  {failureMessage ?? (
+                    <>
+                      骸骨騎士は倒れた。<br />
+                      報酬は得られなかった。
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={onFinish}
+                style={{
+                  marginTop: 12,
+                  width: '100%',
+                  minHeight: 54,
+                  borderRadius: 14,
+                  border: '1.5px solid rgba(239,68,68,0.5)',
+                  background: 'linear-gradient(135deg, rgba(139,0,0,0.38), rgba(80,0,0,0.22))',
+                  color: '#fca5a5',
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  boxShadow: '0 0 18px rgba(239,68,68,0.18)',
+                }}
+              >
+                マップへ撤退
+              </button>
+            </>
+          )}
+        </div>
+      ) : screen === 'necromance' ? (
+        <div
+          data-testid="necromance-result-screen"
+          className="relative z-10 h-full flex flex-col"
+          style={{ padding: 'max(18px, env(safe-area-inset-top, 18px)) 16px max(18px, env(safe-area-inset-bottom, 18px))' }}
+        >
+          <div style={{ textAlign: 'center', animation: 'resultSlideIn 0.42s ease-out both' }}>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 9, color: '#BC00FB', letterSpacing: '0.25em', marginBottom: 6 }}>
+              NECROMANCE
+            </div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 26, fontWeight: 900, color: '#F0EAFF', textShadow: '0 0 24px rgba(188,0,251,0.52)' }}>
+              魂の使役に成功
+            </div>
+            <div style={{ marginTop: 8, color: '#a5a9b4', fontSize: 12, lineHeight: 1.6 }}>
+              戦場に残った魂を縛り、軍団へ迎え入れた。
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto safe-scroll" style={{ marginTop: 12, animation: 'resultSlideIn 0.45s ease-out 0.32s both' }}>
-            <div
-              style={{
-                padding: '12px 14px',
-                borderRadius: 12,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
-              <div className="flex items-center gap-2 mb-3" style={{ color: '#fbbf24' }}>
-                <Package size={15} />
-                <span style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.12em' }}>BATTLE REWARDS</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span style={{ color: '#9ca3af', fontSize: 11 }}>ゴールド</span>
-                  <span style={{ color: '#fbbf24', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>+{goldGained.toLocaleString()}G</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span style={{ color: '#9ca3af', fontSize: 11 }}>未鑑定戦利品</span>
-                  <span style={{ color: '#8A2BE2', fontFamily: 'monospace', fontSize: 10 }}>{normalizedDrops.length} DROPS</span>
-                </div>
-                {rareSignalCount > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span style={{ color: '#fde68a', fontSize: 11 }}>高レア反応</span>
-                    <span style={{ color: '#fbbf24', fontFamily: 'monospace', fontSize: 10 }}>{rareSignalCount} SIGNALS</span>
-                  </div>
-                )}
-                {monstersGained.map(monster => (
-                  <div key={monster} className="flex items-center justify-between">
-                    <span style={{ color: '#9ca3af', fontSize: 11 }}>{monster}</span>
-                    <span style={{ color: '#c084fc', fontFamily: 'monospace', fontSize: 10 }}>CORE</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {hasCursedDrop && (
-              <div
-                style={{
-                  marginTop: 10,
-                  padding: '13px 14px',
-                  borderRadius: 14,
-                  background: 'linear-gradient(135deg, rgba(80,0,18,0.34), rgba(138,43,226,0.18), rgba(3,1,8,0.82))',
-                  border: '1px solid rgba(188,0,251,0.52)',
-                  boxShadow: '0 0 28px rgba(188,0,251,0.28), inset 0 0 22px rgba(0,0,0,0.34)',
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <Skull size={20} color="#BC00FB" />
-                  <div className="flex-1">
-                    <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700, color: '#BC00FB', letterSpacing: '0.14em' }}>
-                      PURPLE PILLAR RESONANCE
+          <div
+            className="flex-1 min-h-0 safe-scroll"
+            style={{ marginTop: 18, overflowY: 'auto', display: 'grid', gap: 10, alignContent: 'start' }}
+          >
+            {necromancedMonsters.map((monster, index) => {
+              const tierColor = monster.tier === 'BOSS' ? '#fbbf24' : monster.tier === 'ELITE' ? '#c084fc' : '#60a5fa';
+              return (
+                <div
+                  key={monster.id}
+                  style={{
+                    borderRadius: 12,
+                    border: `1px solid ${tierColor}66`,
+                    background: 'linear-gradient(135deg, rgba(139,0,255,0.18), rgba(10,5,26,0.88))',
+                    padding: '13px 14px',
+                    boxShadow: `0 0 18px ${tierColor}22, inset 0 1px 0 rgba(255,255,255,0.05)`,
+                    animation: `resultSlideIn 0.42s ease-out ${0.08 + index * 0.07}s both`,
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: '50%',
+                        border: `1px solid ${tierColor}88`,
+                        background: `radial-gradient(circle, ${tierColor}2E, rgba(3,1,8,0.96))`,
+                        color: tierColor,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: `0 0 18px ${tierColor}40`,
+                      }}
+                    >
+                      <Skull size={24} />
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#f3d1ff', marginTop: 2 }}>
-                      怨念を含む異質な戦利品反応
+                    <div className="min-w-0" style={{ flex: 1 }}>
+                      <div style={{ fontFamily: "'Cinzel', serif", color: '#F0EAFF', fontSize: 16, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {monster.name}
+                      </div>
+                      <div className="flex items-center gap-2" style={{ marginTop: 5, color: '#8b7da8', fontSize: 10, fontFamily: 'monospace' }}>
+                        <span>{monster.tribe}</span>
+                        <span style={{ color: tierColor }}>{monster.tier ?? 'MINION'}</span>
+                        <span>COST {monster.cost}</span>
+                      </div>
+                    </div>
+                    <div style={{ color: '#c084fc', fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 900, letterSpacing: '0.1em' }}>
+                      BOUND
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })}
           </div>
 
           <button
             type="button"
-            onClick={goToAppraisal}
+            onClick={onFinish}
             style={{
-              marginTop: 12,
+              marginTop: 14,
               width: '100%',
               minHeight: 54,
               borderRadius: 14,
-              border: `1.5px solid ${hasCursedDrop ? '#BC00FB' : 'rgba(138,43,226,0.65)'}`,
-              background: hasCursedDrop
-                ? 'linear-gradient(135deg, #2b0010, #8A2BE2, #4c0519)'
-                : 'linear-gradient(135deg, rgba(138,43,226,0.34), rgba(88,28,135,0.24))',
+              border: '1.5px solid rgba(188,0,251,0.62)',
+              background: 'linear-gradient(135deg, rgba(139,0,255,0.42), rgba(80,0,28,0.34))',
               color: '#fff',
               fontFamily: "'Cinzel', serif",
               fontSize: 14,
-              fontWeight: 700,
+              fontWeight: 900,
               letterSpacing: '0.08em',
-              boxShadow: hasCursedDrop ? '0 0 30px rgba(188,0,251,0.34)' : '0 0 20px rgba(138,43,226,0.25)',
+              boxShadow: '0 0 26px rgba(188,0,251,0.30)',
             }}
           >
-            鑑定へ進む
+            軍団へ戻る
           </button>
         </div>
       ) : (
         <div
+          data-testid="appraisal-screen"
           className="relative z-10 h-full flex flex-col"
           style={{ padding: 'max(14px, env(safe-area-inset-top, 14px)) 14px max(14px, env(safe-area-inset-bottom, 14px))' }}
         >
           <div className="shrink-0 relative" style={{ textAlign: 'center', animation: 'resultSlideIn 0.32s ease-out both' }}>
-            <div style={{ fontFamily: "'Cinzel Decorative', serif", fontSize: 9, color: currentStyle.color, letterSpacing: '0.24em' }}>
+            <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 9, color: currentStyle.color, letterSpacing: '0.24em' }}>
               APPRAISAL
             </div>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 900, color: '#F0EAFF', marginTop: 5 }}>
@@ -1155,7 +1419,9 @@ export default function ResultScreen({
               {!skipMode && dropStage === 'revealing' && '鑑定中'}
               {!skipMode && dropStage === 'revealed' && (
                 <>
-                  {allRevealed && currentIndex === normalizedDrops.length - 1 ? '獲得して戻る' : '次の戦利品'}
+                  {allRevealed && currentIndex === normalizedDrops.length - 1
+                    ? hasNecromanceResults ? 'ネクロマンスへ' : '獲得して戻る'
+                    : '次の戦利品'}
                   <ChevronRight size={15} />
                 </>
               )}

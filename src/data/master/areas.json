@@ -1,0 +1,35 @@
+{
+  "ch1_area1": {
+    "id": "ch1_area1",
+    "chapter": 1,
+    "area": 1,
+    "nameJa": "亡国の王都",
+    "nameEn": "FALLEN ROYAL CAPITAL",
+    "description": "最初の侵攻領域。墓道、地下牢、竜骨祭壇を制圧し、亡国の中枢へ踏み込む。",
+    "color": "#8A2BE2",
+    "position": { "x": 152, "y": 438 },
+    "sortOrder": 101
+  },
+  "ch2_area2": {
+    "id": "ch2_area2",
+    "chapter": 2,
+    "area": 2,
+    "nameJa": "幽霊都市",
+    "nameEn": "PHANTOM CITY",
+    "description": "亡国の先に揺らめく幽霊都市。前章の全ノード制圧後に霧が晴れる。",
+    "color": "#38BDF8",
+    "position": { "x": 250, "y": 292 },
+    "sortOrder": 202
+  },
+  "ch1_area99": {
+    "id": "ch1_area99",
+    "chapter": 1,
+    "area": 99,
+    "nameJa": "黄泉の階層",
+    "nameEn": "THE YOMI DEPTHS",
+    "description": "第1章の敵を再構成した独立チャレンジタワー。B1から下り続ける。",
+    "color": "#4B0082",
+    "position": { "x": 999999, "y": 999999 },
+    "sortOrder": 199
+  }
+}

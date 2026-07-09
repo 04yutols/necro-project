@@ -1,10 +1,14 @@
 import { BattleEngine } from './BattleEngine';
-import { CharacterData, MonsterData } from '../types/game';
+import { CharacterData, MonsterData, SkillAttackType } from '../types/game';
+import { MasterDataService } from '../services/MasterDataService';
 
 describe('BattleEngine', () => {
   beforeEach(() => {
     mockPlayer.currentEnergy = 0;
+    enemySeq = 0;
   });
+
+  let enemySeq = 0;
 
   const mockPlayer: CharacterData = {
     id: '1',
@@ -58,24 +62,130 @@ describe('BattleEngine', () => {
       effectRes: 0,
     },
     resistances: {},
+    currentEnergy: 30,
+    maxEnergy: 30,
+  };
+
+  const createPlayer = (
+    stats: Partial<CharacterData['stats']> = {},
+    extra: Partial<CharacterData> = {},
+  ): CharacterData => ({
+    ...mockPlayer,
+    ...extra,
+    baseStats: { ...mockPlayer.baseStats, ...stats },
+    stats: { ...mockPlayer.stats, ...stats },
+    equipment: { ...mockPlayer.equipment },
+    passives: { ...mockPlayer.passives },
+    jobs: [...mockPlayer.jobs],
+    statusEffects: extra.statusEffects,
+    currentEnergy: extra.currentEnergy ?? 0,
+    maxEnergy: extra.maxEnergy ?? mockPlayer.maxEnergy,
+    elementDmgBoosts: { ...mockPlayer.elementDmgBoosts, ...extra.elementDmgBoosts },
+  });
+
+  const createEnemy = (stats: Partial<MonsterData['stats']> = {}): MonsterData => ({
+    ...mockTarget,
+    id: `enemy-${enemySeq++}`,
+    stats: { ...mockTarget.stats, ...stats },
+    statusEffects: undefined,
+  });
+
+  const expectedBaseAttackTypes: Record<string, SkillAttackType> = {
+    warrior: 'SLASH',
+    mage: 'MAGIC',
+    dark_priest: 'MAGIC',
+    rogue: 'STRIKE',
+    dark_knight: 'SLASH',
+    berserker: 'SLASH',
+    archmage: 'MAGIC',
+    sorcerer: 'PROJECTILE',
+    warlock: 'MAGIC',
+    necromancer: 'SUMMON',
+    assassin: 'SLASH',
+    trickster: 'PROJECTILE',
   };
 
   test('Damage calculation uses HSR-style defMult', () => {
-    const engine = new BattleEngine(mockPlayer, []);
-    const logs = engine.simulateAction('PHYSICAL_ATTACK', mockTarget);
+    const player = createPlayer({ critRate: 0 });
+    const target = createEnemy({ hp: 500 });
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', target);
 
     // baseDmg = 50 × 1.0 = 50
     // defMult = 1 - 10/(10+200) = 1 - 0.0476 = 0.952
-    // finalDmg = 50 × 0.952 = 47.6 → 47 (non-crit) or × 1.5 (crit)
+    // finalDmg = 50 × 0.952 = 47.6 → 47
     const attackLog = logs.find(l => l.action === 'PHYSICAL_ATTACK');
     expect(attackLog?.damage).toBeGreaterThanOrEqual(40);
-    expect(attackLog?.damage).toBeLessThanOrEqual(80); // crit ceiling (×1.5)
+    expect(attackLog?.damage).toBeLessThanOrEqual(50);
   });
 
-  test('Energy is gained on attack', () => {
+  test('tracks enemy current HP without mutating shared enemy stats', () => {
+    const player = createPlayer({ hp: 500, atk: 50, def: 30, critRate: 0 });
+    const enemy = createEnemy({ hp: 500, atk: 1, def: 0, effectRes: 100 });
+    const originalStats = enemy.stats;
+    const engine = new BattleEngine(player, []);
+
+    const firstLogs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+    const firstDamage = firstLogs.find(log => log.action === 'PHYSICAL_ATTACK')?.damage ?? 0;
+
+    expect(enemy.stats).toBe(originalStats);
+    expect(enemy.stats.hp).toBe(500);
+    expect(engine.getEnemyCurrentHp(enemy.id)).toBe(500 - firstDamage);
+
+    const secondLogs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+    const secondDamage = secondLogs.find(log => log.action === 'PHYSICAL_ATTACK')?.damage ?? 0;
+
+    expect(enemy.stats).toBe(originalStats);
+    expect(enemy.stats.hp).toBe(500);
+    expect(engine.getEnemyCurrentHp(enemy.id)).toBe(500 - firstDamage - secondDamage);
+  });
+
+  test('normal attacks do not restore MP', () => {
+    mockPlayer.currentEnergy = 35;
     const engine = new BattleEngine(mockPlayer, []);
     engine.simulateAction('PHYSICAL_ATTACK', mockTarget);
-    expect(mockPlayer.currentEnergy).toBe(20); // 0 + 20
+    expect(mockPlayer.currentEnergy).toBe(35);
+  });
+
+  test('normal attacks do not restore MP for jobs that previously had regen', () => {
+    const roguePlayer: CharacterData = {
+      ...mockPlayer,
+      currentJobId: 'rogue',
+      currentEnergy: 7,
+      maxEnergy: 90,
+    };
+    const engine = new BattleEngine(roguePlayer, []);
+
+    engine.simulateAction('PHYSICAL_ATTACK', mockTarget);
+
+    expect(roguePlayer.currentEnergy).toBe(7);
+  });
+
+  test.each(Object.entries(expectedBaseAttackTypes))(
+    'normal attack log uses %s base attack type',
+    (jobId, expectedAttackType) => {
+      const player = createPlayer(
+        { hp: 500, atk: 50, def: 999, critRate: 0 },
+        { currentJobId: jobId },
+      );
+      const enemy = createEnemy({ hp: 500, atk: 1, def: 0, effectRes: 100 });
+
+      const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+      expect(logs.find(log => log.action === 'PHYSICAL_ATTACK')?.attackType).toBe(expectedAttackType);
+    },
+  );
+
+  test('normal attack log falls back to slash for unknown legacy jobs', () => {
+    const player = createPlayer(
+      { hp: 500, atk: 50, def: 999, critRate: 0 },
+      { currentJobId: 'legacy_job_without_master' },
+    );
+    const enemy = createEnemy({ hp: 500, atk: 1, def: 0, effectRes: 100 });
+
+    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+    expect(logs.find(log => log.action === 'PHYSICAL_ATTACK')?.attackType).toBe('SLASH');
   });
 
   test('Element damage boosts increase matching elemental skill damage', () => {
@@ -99,6 +209,325 @@ describe('BattleEngine', () => {
     expect(boostedDamage).toBeGreaterThan(baseDamage);
   });
 
+  test('ALL_ENEMIES skills damage every alive enemy candidate with one energy payment', () => {
+    const player = createPlayer(
+      { hp: 500, atk: 120, def: 999, critRate: 0 },
+      { currentEnergy: 50, maxEnergy: 100 },
+    );
+    const enemyA = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyB = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyC = createEnemy({ hp: 500, atk: 1, def: 0 });
+    enemyA.name = 'Enemy-A';
+    enemyB.name = 'Enemy-B';
+    enemyC.name = 'Enemy-C';
+
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction(
+      'MAGIC_SKILL',
+      enemyA,
+      'skill_warrior_wind_slash',
+      [enemyA, enemyB, enemyC],
+    );
+    const skillLogs = logs.filter(log => log.action === 'MAGIC_SKILL');
+
+    expect(skillLogs.map(log => log.targetName)).toEqual(['Enemy-A', 'Enemy-B', 'Enemy-C']);
+    expect(skillLogs.every(log => log.description.includes('敵全体'))).toBe(true);
+    expect(engine.getEnemyCurrentHp(enemyA.id)).toBeLessThan(500);
+    expect(engine.getEnemyCurrentHp(enemyB.id)).toBeLessThan(500);
+    expect(engine.getEnemyCurrentHp(enemyC.id)).toBeLessThan(500);
+    expect(player.currentEnergy).toBe(46);
+  });
+
+  test('single target skills keep damaging only the selected enemy even with enemy candidates', () => {
+    const player = createPlayer(
+      { hp: 500, atk: 120, def: 999, critRate: 0 },
+      { currentEnergy: 50, maxEnergy: 100 },
+    );
+    const enemyA = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyB = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyC = createEnemy({ hp: 500, atk: 1, def: 0 });
+    enemyA.name = 'Enemy-A';
+    enemyB.name = 'Enemy-B';
+    enemyC.name = 'Enemy-C';
+
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction(
+      'MAGIC_SKILL',
+      enemyA,
+      'skill_mage_1',
+      [enemyA, enemyB, enemyC],
+    );
+    const skillLogs = logs.filter(log => log.action === 'MAGIC_SKILL');
+
+    expect(skillLogs.map(log => log.targetName)).toEqual(['Enemy-A']);
+    expect(engine.getEnemyCurrentHp(enemyA.id)).toBeLessThan(500);
+    expect(engine.getEnemyCurrentHp(enemyB.id)).toBeUndefined();
+    expect(engine.getEnemyCurrentHp(enemyC.id)).toBeUndefined();
+    expect(player.currentEnergy).toBe(38);
+  });
+
+  test('drain skill restores HP from actual HP damage dealt', () => {
+    const player = createPlayer(
+      { hp: 100, atk: 120, def: 999, critRate: 0 },
+      { currentJobId: 'dark_priest', category: 'MAGICAL', currentEnergy: 100, maxEnergy: 100 },
+    );
+    const ally = createEnemy({ hp: 300, atk: 0, def: 999, critRate: 0 });
+    const enemy = createEnemy({ hp: 1000, atk: 1, def: 0 });
+    const engine = new BattleEngine(player, [ally]);
+    player.stats.hp = 50;
+
+    const logs = engine.simulateAction('MAGIC_SKILL', enemy, 'skill_darkpriest_1');
+    const attackLog = logs.find(log => log.action === 'MAGIC_SKILL');
+    const healLog = logs.find(log => log.action === 'HEAL');
+    const expectedHeal = Math.floor((attackLog?.damage ?? 0) * 0.3);
+
+    expect(healLog?.damage).toBe(expectedHeal);
+    expect(healLog?.description).toContain('ドレイン');
+    expect(healLog?.playerHP).toBe(50 + expectedHeal);
+    expect(player.stats.hp).toBe(50 + expectedHeal);
+  });
+
+  test('drain skill healing is capped by battle-start player max HP', () => {
+    const player = createPlayer(
+      { hp: 100, atk: 120, def: 999, critRate: 0 },
+      { currentJobId: 'dark_priest', category: 'MAGICAL', currentEnergy: 100, maxEnergy: 100 },
+    );
+    const ally = createEnemy({ hp: 300, atk: 0, def: 999, critRate: 0 });
+    const enemy = createEnemy({ hp: 1000, atk: 1, def: 0 });
+    const engine = new BattleEngine(player, [ally]);
+    player.stats.hp = 95;
+
+    const logs = engine.simulateAction('MAGIC_SKILL', enemy, 'skill_darkpriest_1');
+    const healLog = logs.find(log => log.action === 'HEAL');
+
+    expect(healLog?.damage).toBe(5);
+    expect(healLog?.playerHP).toBe(100);
+    expect(player.stats.hp).toBe(100);
+  });
+
+  test('drain skill ignores overkill damage when calculating healing', () => {
+    const player = createPlayer(
+      { hp: 100, atk: 120, def: 999, critRate: 0 },
+      { currentJobId: 'dark_priest', category: 'MAGICAL', currentEnergy: 100, maxEnergy: 100 },
+    );
+    const ally = createEnemy({ hp: 300, atk: 0, def: 999, critRate: 0 });
+    const enemy = createEnemy({ hp: 10, atk: 1, def: 0 });
+    const engine = new BattleEngine(player, [ally]);
+    player.stats.hp = 10;
+
+    const logs = engine.simulateAction('MAGIC_SKILL', enemy, 'skill_darkpriest_1');
+    const attackLog = logs.find(log => log.action === 'MAGIC_SKILL');
+    const healLog = logs.find(log => log.action === 'HEAL');
+
+    expect(attackLog?.damage).toBeGreaterThan(10);
+    expect(healLog?.damage).toBe(3);
+    expect(healLog?.playerHP).toBe(13);
+    expect(player.stats.hp).toBe(13);
+  });
+
+  test('Necromance level does not increase player critical outgoing battle damage', () => {
+    const basePlayer: CharacterData = {
+      ...mockPlayer,
+      stats: { ...mockPlayer.stats, critRate: 100 },
+      necroLevel: 1,
+    };
+    const rankedPlayer: CharacterData = {
+      ...basePlayer,
+      necroLevel: 50,
+    };
+
+    const baseTarget: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 500 },
+    };
+    const rankedTarget: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 500 },
+    };
+
+    const baseLogs = new BattleEngine(basePlayer, []).simulateAction('PHYSICAL_ATTACK', baseTarget);
+    const rankedLogs = new BattleEngine(rankedPlayer, []).simulateAction('PHYSICAL_ATTACK', rankedTarget);
+    const baseDamage = baseLogs.find(l => l.action === 'PHYSICAL_ATTACK')?.damage ?? 0;
+    const rankedDamage = rankedLogs.find(l => l.action === 'PHYSICAL_ATTACK')?.damage ?? 0;
+
+    expect(rankedDamage).toBe(baseDamage);
+  });
+
+  test('Necromance level does not increase player elemental skill damage', () => {
+    const basePlayer: CharacterData = {
+      ...mockPlayer,
+      currentJobId: 'mage',
+      category: 'MAGICAL',
+      stats: { ...mockPlayer.stats, hp: 500, atk: 40, def: 20, critRate: 0 },
+      currentEnergy: 100,
+      maxEnergy: 100,
+      necroLevel: 1,
+    };
+    const rankedPlayer: CharacterData = {
+      ...basePlayer,
+      stats: { ...basePlayer.stats },
+      necroLevel: 50,
+    };
+    const baseEnemy: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 500, atk: 1, def: 0 },
+      resistances: {},
+    };
+    const rankedEnemy: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 500, atk: 1, def: 0 },
+      resistances: {},
+    };
+
+    const baseLogs = new BattleEngine(basePlayer, []).simulateAction('MAGIC_SKILL', baseEnemy, 'skill_mage_1');
+    const rankedLogs = new BattleEngine(rankedPlayer, []).simulateAction('MAGIC_SKILL', rankedEnemy, 'skill_mage_1');
+    const baseDamage = baseLogs.find(l => l.action === 'MAGIC_SKILL')?.damage ?? 0;
+    const rankedDamage = rankedLogs.find(l => l.action === 'MAGIC_SKILL')?.damage ?? 0;
+
+    expect(rankedDamage).toBe(baseDamage);
+  });
+
+  test('direct enemy damage can defeat the player when no party monsters remain', () => {
+    const player = createPlayer({ hp: 30, atk: 1, def: 0, critRate: 0 });
+    const enemy = createEnemy({ hp: 500, atk: 90, def: 999 });
+
+    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+    expect(player.stats.hp).toBe(0);
+    expect(logs.find(log => log.action === 'ENEMY_ATTACK' && log.targetName === player.name)?.playerHP).toBe(0);
+    expect(logs.find(log => log.action === 'PLAYER_DEFEATED')?.description).toContain('倒れた');
+  });
+
+  test('enemy counterattack against party monsters uses shared damage formula and resistances', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const ally: MonsterData = {
+      ...mockTarget,
+      id: 'ally-bone-guard',
+      name: 'Bone Guard',
+      stats: { ...mockTarget.stats, hp: 300, atk: 10, def: 0 },
+      resistances: { DARK: 50 },
+    };
+    const enemy: MonsterData = {
+      ...createEnemy({ hp: 500, atk: 100, def: 999, critRate: 0, critDmg: 100 }),
+      spiritCore: { id: 'enemy-dark-core', name: 'Dark Core', element: 'DARK', atkMultiplier: 1 },
+    };
+    const engine = new BattleEngine(player, [ally]);
+
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+    const counterLog = logs.find(log => log.action === 'ENEMY_ATTACK' && log.targetName === ally.name);
+
+    expect(counterLog?.damage).toBe(50);
+    expect(counterLog?.element).toBe('DARK');
+    expect(counterLog?.isResisted).toBe(true);
+    expect((engine as unknown as { monsterCurrentHp: Record<string, number> }).monsterCurrentHp[ally.id]).toBe(250);
+  });
+
+  test('player runtime HP mutations use CharacterData.stats without touching baseStats', () => {
+    const player = createPlayer({ hp: 30, atk: 1, def: 0, critRate: 0 });
+    player.baseStats = { ...player.baseStats!, hp: 999 };
+    const enemy = createEnemy({ hp: 500, atk: 90, def: 999 });
+
+    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+    expect(player.stats.hp).toBe(0);
+    expect(player.baseStats?.hp).toBe(999);
+    expect(logs.find(log => log.action === 'PLAYER_DEFEATED')?.playerHP).toBe(0);
+  });
+
+  test('lethal player status damage stops the action and emits defeat log', () => {
+    const player = createPlayer(
+      { hp: 10, atk: 50, def: 30, critRate: 0 },
+      {
+        statusEffects: [{
+          type: 'BLEED',
+          remainingTurns: 2,
+          stackCount: 1,
+          sourceAtk: 300,
+          stacks: [{ remainingTurns: 2, sourceAtk: 300 }],
+        }],
+      },
+    );
+    const enemy = createEnemy({ hp: 500, atk: 10, def: 10 });
+
+    const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+    expect(player.stats.hp).toBe(0);
+    expect(logs.some(log => log.action === 'AILMENT_TICK')).toBe(true);
+    expect(logs.some(log => log.action === 'PHYSICAL_ATTACK')).toBe(false);
+    expect(logs.find(log => log.action === 'PLAYER_DEFEATED')?.description).toContain('状態異常');
+  });
+
+  test('player poison damage uses battle-start max HP instead of current HP', () => {
+    const player = createPlayer({ hp: 1000, atk: 1, def: 999, critRate: 0 });
+    const ally = createEnemy({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const enemy = createEnemy({ hp: 500, atk: 1, def: 999 });
+    const engine = new BattleEngine(player, [ally]);
+
+    player.stats.hp = 100;
+    player.statusEffects = [{
+      type: 'POISON',
+      remainingTurns: 2,
+      stackCount: 1,
+    }];
+
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+    const tick = logs.find(log => log.action === 'AILMENT_TICK' && log.ailmentTick === 'POISON');
+
+    expect(tick?.damage).toBe(30);
+    expect(player.stats.hp).toBe(70);
+  });
+
+  test('enemy status damage ticks against runtime HP before player action', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const enemy = createEnemy({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    enemy.statusEffects = [{
+      type: 'POISON',
+      remainingTurns: 2,
+      stackCount: 1,
+    }];
+
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+    const tick = logs.find(log => log.action === 'AILMENT_TICK' && log.targetName === enemy.name);
+    const attack = logs.find(log => log.action === 'PHYSICAL_ATTACK');
+
+    expect(tick?.damage).toBe(15);
+    expect(attack?.damage).toBe(1);
+    expect(engine.getEnemyCurrentHp(enemy.id)).toBe(484);
+    expect(enemy.statusEffects?.[0]?.remainingTurns).toBe(1);
+    expect(enemy.stats.hp).toBe(500);
+  });
+
+  test('paralysis skip loses only the player action while enemy counterattack still resolves', () => {
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.25);
+    const player = createPlayer(
+      { hp: 200, atk: 50, def: 0, critRate: 0 },
+      {
+        statusEffects: [{
+          type: 'PARALYSIS',
+          remainingTurns: 2,
+          stackCount: 1,
+        }],
+      },
+    );
+    const enemy = createEnemy({ hp: 500, atk: 60, def: 10 });
+
+    try {
+      const logs = new BattleEngine(player, []).simulateAction('PHYSICAL_ATTACK', enemy);
+
+      expect(logs.some(log => log.action === 'AILMENT_SKIP')).toBe(true);
+      expect(logs.some(log => log.action === 'STATUS_SKIP')).toBe(true);
+      expect(logs.some(log => log.action === 'PHYSICAL_ATTACK')).toBe(false);
+      expect(logs.some(log => log.action === 'MONSTER_ATTACK')).toBe(false);
+      expect(logs.some(log => log.action === 'ENEMY_ATTACK')).toBe(true);
+      expect(player.stats.hp).toBeLessThan(200);
+      expect(player.currentEnergy).toBe(0);
+      expect(player.statusEffects?.[0]?.remainingTurns).toBe(1);
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
+
   test('Spiritual shield heavily reduces non-weak attacks', () => {
     const player: CharacterData = {
       ...mockPlayer,
@@ -117,10 +546,10 @@ describe('BattleEngine', () => {
 
     expect(attackLog?.damage).toBeLessThan(20);
     expect(attackLog?.description).toContain('霊的防壁に阻まれた');
-    expect(shieldedTarget.shieldHp).toBe(100);
+    expect(shieldedTarget.shieldHp).toBeLessThan(100);
   });
 
-  test('Weak element breaks spiritual shield and grants extra energy', () => {
+  test('Weak element breaks spiritual shield without restoring MP', () => {
     const player: CharacterData = {
       ...mockPlayer,
       currentEnergy: 100,
@@ -141,6 +570,351 @@ describe('BattleEngine', () => {
     expect(shieldedTarget.shieldBroken).toBe(true);
     expect(shieldedTarget.shieldHp).toBe(0);
     expect(attackLog?.description).toContain('霊魂砕き');
-    expect(player.currentEnergy).toBe(133);
+    expect(player.currentEnergy).toBe(88);
+  });
+
+  test('REVIVE fires only at HP 0 and restores boss to second phase HP', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      stats: { ...mockPlayer.stats, atk: 1000, critRate: 0 },
+      currentEnergy: 0,
+    };
+    const boss: MonsterData = {
+      ...mockTarget,
+      id: 'revive-boss',
+      name: 'Revive Boss',
+      tier: 'BOSS',
+      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+      gimmicks: [{ trigger: 'HP_BELOW_50', effect: 'REVIVE', value: 1 }],
+    };
+
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', boss);
+
+    expect(engine.getEnemyCurrentHp(boss.id)).toBe(500);
+    expect(boss.stats.hp).toBe(1000);
+    expect(logs.some((log) => log.action === 'BOSS_REVIVE')).toBe(true);
+  });
+
+  test('REVIVE does not fire just because boss crosses below 50 percent HP', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      stats: { ...mockPlayer.stats, atk: 600, critRate: 0 },
+      currentEnergy: 0,
+    };
+    const boss: MonsterData = {
+      ...mockTarget,
+      id: 'revive-boss-threshold',
+      name: 'Revive Boss',
+      tier: 'BOSS',
+      stats: { ...mockTarget.stats, hp: 1000, def: 0, effectRes: 100 },
+      gimmicks: [{ trigger: 'HP_BELOW_50', effect: 'REVIVE', value: 1 }],
+    };
+
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction('PHYSICAL_ATTACK', boss);
+    const bossDamage = logs
+      .filter((log) => log.targetName === boss.name && typeof log.damage === 'number')
+      .reduce((sum, log) => sum + (log.damage ?? 0), 0);
+    const expectedHp = Math.max(0, 1000 - bossDamage);
+
+    expect(expectedHp).toBeLessThan(500);
+    expect(expectedHp).toBeGreaterThan(0);
+    expect(engine.getEnemyCurrentHp(boss.id)).toBe(expectedHp);
+    expect(boss.stats.hp).toBe(1000);
+    expect(logs.some((log) => log.action === 'BOSS_REVIVE')).toBe(false);
+  });
+
+  test('SUMMON_MINIONS materializes minions when spiritual shield breaks', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      currentEnergy: 100,
+      stats: { ...mockPlayer.stats, critRate: 0 },
+    };
+    const boss: MonsterData = {
+      ...mockTarget,
+      id: 'blood_mire_queen',
+      name: 'Bloodmire Queen',
+      tier: 'BOSS',
+      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+      shieldHp: 20,
+      maxShieldHp: 20,
+      weaknesses: ['FIRE'],
+      resistances: { FIRE: -30 },
+      gimmicks: [{ trigger: 'ON_SHIELD_BREAK', effect: 'SUMMON_MINIONS', value: 2 }],
+    };
+
+    const engine = new BattleEngine(player, []);
+    const logs = engine.simulateAction('MAGIC_SKILL', boss, 'skill_mage_1');
+    const summoned = engine.getSummonedEnemies();
+
+    expect(boss.shieldBroken).toBe(true);
+    expect(logs.some((log) => log.action === 'BOSS_SUMMON')).toBe(true);
+    expect(summoned.map(enemy => enemy.name)).toEqual(['血沼の蛭', '腐敗猟犬']);
+    expect(engine.getPendingSummons()).toEqual(summoned.map(enemy => enemy.id));
+    expect(engine.consumePendingSummons()).toEqual(summoned.map(enemy => enemy.id));
+    expect(engine.getPendingSummons()).toEqual([]);
+    expect(summoned.every(enemy => engine.getEnemyCurrentHp(enemy.id) === enemy.stats.hp)).toBe(true);
+  });
+
+  test('SUMMON_MINIONS applies configured enemy stat scale to materialized minions', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      currentEnergy: 100,
+      stats: { ...mockPlayer.stats, critRate: 0 },
+    };
+    const boss: MonsterData = {
+      ...mockTarget,
+      id: 'blood_mire_queen',
+      name: 'Bloodmire Queen',
+      tier: 'BOSS',
+      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+      shieldHp: 20,
+      maxShieldHp: 20,
+      weaknesses: ['FIRE'],
+      resistances: { FIRE: -30 },
+      gimmicks: [{ trigger: 'ON_SHIELD_BREAK', effect: 'SUMMON_MINIONS', value: 1 }],
+    };
+    const master = MasterDataService.getInstance().getEnemy('bloodmire_leech');
+    if (!master) throw new Error('bloodmire_leech fixture missing');
+
+    const engine = new BattleEngine(player, [], 'NONE', undefined, { hp: 1.5, atk: 2, def: 0.5 });
+    engine.simulateAction('MAGIC_SKILL', boss, 'skill_mage_1');
+    const [summoned] = engine.getSummonedEnemies();
+
+    expect(summoned.stats.hp).toBe(Math.floor(master.stats.hp * 1.5));
+    expect(summoned.stats.atk).toBe(Math.floor(master.stats.atk * 2));
+    expect(summoned.stats.def).toBe(Math.floor(master.stats.def * 0.5));
+    expect(master.stats.hp).not.toBe(summoned.stats.hp);
+  });
+
+  test('summoned minions join later player AoE while monster attacks wait for commands', () => {
+    const player = createPlayer(
+      { hp: 500, atk: 12, def: 999, critRate: 0 },
+      { currentEnergy: 100, maxEnergy: 100 },
+    );
+    const boss: MonsterData = {
+      ...mockTarget,
+      id: 'blood_mire_queen',
+      name: 'Bloodmire Queen',
+      tier: 'BOSS',
+      stats: { ...mockTarget.stats, hp: 1000, atk: 1, def: 0 },
+      shieldHp: 20,
+      maxShieldHp: 20,
+      weaknesses: ['FIRE'],
+      resistances: { FIRE: -30 },
+      gimmicks: [{ trigger: 'ON_SHIELD_BREAK', effect: 'SUMMON_MINIONS', value: 2 }],
+    };
+    const ally1 = createEnemy({ hp: 300, atk: 30, def: 10, critRate: 0 });
+    const ally2 = createEnemy({ hp: 300, atk: 30, def: 10, critRate: 0 });
+    const engine = new BattleEngine(player, [ally1, ally2]);
+
+    engine.simulateAction('MAGIC_SKILL', boss, 'skill_mage_1');
+    const summoned = engine.getSummonedEnemies();
+    expect(summoned).toHaveLength(2);
+
+    const logs = engine.simulateAction('MAGIC_SKILL', boss, 'skill_warrior_wind_slash');
+    const skillTargets = logs
+      .filter(log => log.action === 'MAGIC_SKILL')
+      .map(log => log.targetName);
+    const followUpTargets = logs
+      .filter(log => log.action === 'MONSTER_ATTACK')
+      .map(log => log.targetName);
+
+    expect(skillTargets).toEqual(['Bloodmire Queen', '血沼の蛭', '腐敗猟犬']);
+    expect(followUpTargets).toEqual([]);
+
+    const monsterLogs = engine.simulateMonsterAction(ally1.id, boss, [boss, ...summoned]);
+    const commandAttack = monsterLogs.find(log => log.action === 'MONSTER_ATTACK');
+    expect(commandAttack).toMatchObject({
+      actorName: ally1.name,
+      targetName: 'Bloodmire Queen',
+    });
+  });
+
+  test('player actions no longer trigger party follow-ups', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const enemyA = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyB = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const enemyC = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const ally1 = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    const ally2 = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    const ally3 = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    ally1.name = 'Ally-1';
+    ally2.name = 'Ally-2';
+    ally3.name = 'Ally-3';
+    enemyA.name = 'Enemy-A';
+    enemyB.name = 'Enemy-B';
+    enemyC.name = 'Enemy-C';
+
+    const logs = new BattleEngine(player, [ally1, ally2, ally3])
+      .simulateAction('PHYSICAL_ATTACK', enemyA, undefined, [enemyA, enemyB, enemyC]);
+    const followUps = logs.filter(log => log.action === 'MONSTER_ATTACK');
+
+    expect(followUps).toHaveLength(0);
+  });
+
+  test('commanded monster action retargets alive enemies after the preferred target falls', () => {
+    const player = createPlayer({ hp: 500, atk: 1000, def: 999, critRate: 0 });
+    const defeatedTarget = createEnemy({ hp: 20, atk: 1, def: 0 });
+    const aliveTarget = createEnemy({ hp: 500, atk: 1, def: 0 });
+    const ally1 = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    defeatedTarget.name = 'Fallen Target';
+    aliveTarget.name = 'Alive Target';
+
+    const engine = new BattleEngine(player, [ally1]);
+    engine.simulateAction(
+      'PHYSICAL_ATTACK',
+      defeatedTarget,
+      undefined,
+      [defeatedTarget, aliveTarget],
+    );
+    const logs = engine.simulateMonsterAction(ally1.id, defeatedTarget, [defeatedTarget, aliveTarget]);
+    const followUps = logs.filter(log => log.action === 'MONSTER_ATTACK');
+
+    expect(engine.getEnemyCurrentHp(defeatedTarget.id)).toBe(0);
+    expect(followUps).toHaveLength(1);
+    expect(followUps.every(log => log.targetName === 'Alive Target')).toBe(true);
+  });
+
+  test('SpiritCore atkMultiplier increases commanded monster turn damage', () => {
+    const player: CharacterData = {
+      ...mockPlayer,
+      stats: { ...mockPlayer.stats, atk: 1, critRate: 0 },
+      currentEnergy: 0,
+    };
+    const targetBase: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+    };
+    const targetCore: MonsterData = {
+      ...mockTarget,
+      stats: { ...mockTarget.stats, hp: 1000, def: 0 },
+    };
+    const baseMonster: MonsterData = {
+      ...mockTarget,
+      id: 'ally-base',
+      name: 'Base Ally',
+      stats: { ...mockTarget.stats, hp: 300, atk: 40, def: 10, critRate: 0 },
+    };
+    const coreMonster: MonsterData = {
+      ...baseMonster,
+      id: 'ally-core',
+      name: 'Core Ally',
+      spiritCore: {
+        id: 'core-2x',
+        name: '怨霊の霊核',
+        atkMultiplier: 2,
+      },
+    };
+
+    const baseLogs = new BattleEngine({ ...player }, [baseMonster]).simulateMonsterAction(baseMonster.id, targetBase);
+    const coreLogs = new BattleEngine({ ...player }, [coreMonster]).simulateMonsterAction(coreMonster.id, targetCore);
+    const baseDamage = baseLogs.find(log => log.action === 'MONSTER_ATTACK')?.damage ?? 0;
+    const coreDamage = coreLogs.find(log => log.action === 'MONSTER_ATTACK')?.damage ?? 0;
+
+    expect(baseDamage).toBe(40);
+    expect(coreDamage).toBe(80);
+    expect(coreLogs.find(log => log.action === 'MONSTER_ATTACK')?.description).toContain('怨霊の霊核');
+  });
+
+  test('commanded monster skill consumes MP and uses skill power, element, and log action', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const target = createEnemy({ hp: 500, atk: 1, def: 0, critRate: 0, effectRes: 100 });
+    target.resistances = { FIRE: -30 };
+    const caster = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    caster.id = 'ally-caster';
+    caster.name = 'Caster Ally';
+    caster.skillIds = ['skill_mage_1'];
+    caster.currentEnergy = 20;
+    caster.maxEnergy = 20;
+
+    const logs = new BattleEngine(player, [caster]).simulateMonsterAction(caster.id, target, [target], 'skill_mage_1');
+    const skillLog = logs.find(log => log.action === 'MONSTER_SKILL');
+
+    expect(skillLog).toMatchObject({
+      actorName: 'Caster Ally',
+      targetName: target.name,
+      element: 'FIRE',
+      attackType: 'MAGIC',
+    });
+    expect(skillLog?.damage).toBeGreaterThan(40);
+    expect(caster.currentEnergy).toBe(8);
+    expect(logs.some(log => log.action === 'MONSTER_ATTACK')).toBe(false);
+  });
+
+  test('commanded monster AoE skill damages all alive enemy candidates once', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const enemyA = createEnemy({ hp: 500, atk: 1, def: 0, critRate: 0, effectRes: 100 });
+    const enemyB = createEnemy({ hp: 500, atk: 1, def: 0, critRate: 0, effectRes: 100 });
+    const caster = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    enemyA.name = 'Enemy-A';
+    enemyB.name = 'Enemy-B';
+    caster.id = 'ally-aoe-caster';
+    caster.skillIds = ['skill_necromancer_grave_command'];
+    caster.currentEnergy = 30;
+    caster.maxEnergy = 30;
+
+    const logs = new BattleEngine(player, [caster]).simulateMonsterAction(
+      caster.id,
+      enemyA,
+      [enemyA, enemyB],
+      'skill_necromancer_grave_command',
+    );
+    const skillLogs = logs.filter(log => log.action === 'MONSTER_SKILL');
+
+    expect(skillLogs.map(log => log.targetName)).toEqual(['Enemy-A', 'Enemy-B']);
+    expect(caster.currentEnergy).toBe(10);
+  });
+
+  test('commanded monster skill with insufficient MP does not fall back to normal attack', () => {
+    const player = createPlayer({ hp: 500, atk: 1, def: 999, critRate: 0 });
+    const target = createEnemy({ hp: 500, atk: 1, def: 0, critRate: 0 });
+    const caster = createEnemy({ hp: 300, atk: 40, def: 10, critRate: 0 });
+    caster.id = 'ally-low-mp';
+    caster.skillIds = ['skill_mage_1'];
+    caster.currentEnergy = 3;
+    caster.maxEnergy = 20;
+
+    const logs = new BattleEngine(player, [caster]).simulateMonsterAction(caster.id, target, [target], 'skill_mage_1');
+
+    expect(logs.some(log => log.action === 'NO_ENERGY')).toBe(true);
+    expect(logs.some(log => log.action === 'MONSTER_ATTACK')).toBe(false);
+    expect(logs.some(log => log.action === 'MONSTER_SKILL')).toBe(false);
+    expect(caster.currentEnergy).toBe(3);
+  });
+
+  // ── WAVE 進行ロジック (L-2) ──────────────────────────────────────────────
+  describe('WAVE 進行: 敵全滅トリガー', () => {
+    test('現 WAVE の敵が全滅したら次のアクションで WAVE が 2 に進む', () => {
+      // atk を十分高くして 1 撃で倒す
+      const player = createPlayer({ hp: 500, atk: 9999, def: 30, critRate: 0 });
+      const enemy = createEnemy({ hp: 10, atk: 1, def: 0 });
+      const engine = new BattleEngine(player, []);
+
+      // 1 ターン目: 敵を倒す。このログはまだ wave=1
+      const logsT1 = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+      const waveT1 = logsT1.find(l => l.action === 'PHYSICAL_ATTACK')?.wave;
+      expect(waveT1).toBe(1);
+
+      // 2 ターン目: updateState が敵全滅を検知して wave=2 にリセット済みのはず
+      const logsT2 = engine.simulateAction('PHYSICAL_ATTACK', enemy, undefined, [enemy]);
+      const waveT2 = logsT2.find(l => l.action === 'PHYSICAL_ATTACK')?.wave;
+      expect(waveT2).toBe(2);
+    });
+
+    test('敵が残っていれば 15 ターン経過しても WAVE が進まない', () => {
+      // 敵の hp を高くして絶対に倒せないようにする
+      const player = createPlayer({ hp: 500, atk: 1, def: 30, critRate: 0 });
+      const enemy = createEnemy({ hp: 999999, atk: 1, def: 0 });
+      const engine = new BattleEngine(player, []);
+
+      for (let i = 0; i < 14; i++) {
+        engine.simulateAction('PHYSICAL_ATTACK', enemy);
+      }
+      const logs = engine.simulateAction('PHYSICAL_ATTACK', enemy);
+      const wave = logs.find(l => l.action === 'PHYSICAL_ATTACK')?.wave;
+      expect(wave).toBe(1);
+    });
   });
 });

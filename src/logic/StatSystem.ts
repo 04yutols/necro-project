@@ -60,6 +60,7 @@ export const ELEMENT_VIEW_META: Record<Exclude<ElementType, 'NONE'>, { label: st
 
 export interface StatBreakdown {
   job: BaseStats;
+  necro: BaseStats;
   passives: BaseStats;
   equipment: BaseStats;
   residues: BaseStats;
@@ -214,12 +215,12 @@ function applyOption(
   if (key) stats[key] += value;
 }
 
-export function passiveBonusesToStats(passives: PassiveBonuses): BaseStats {
+export function passiveBonusesToStats(passives: PassiveBonuses, baseStats: BaseStats = ZERO_STATS): BaseStats {
   return {
-    hp: passives.passiveHpBonus ?? 0,
-    atk: passives.passiveAtkBonus ?? 0,
-    def: passives.passiveDefBonus ?? 0,
-    spd: passives.passiveSpdBonus ?? 0,
+    hp: (baseStats.hp * (passives.passiveHpBonus ?? 0)) / 100,
+    atk: (baseStats.atk * (passives.passiveAtkBonus ?? 0)) / 100,
+    def: (baseStats.def * (passives.passiveDefBonus ?? 0)) / 100,
+    spd: (baseStats.spd * (passives.passiveSpdBonus ?? 0)) / 100,
     critRate: passives.passiveCritRateBonus ?? 0,
     critDmg: passives.passiveCritDmgBonus ?? 0,
     effectHit: 0,
@@ -296,7 +297,9 @@ export function calculateCharacterStatProfile(
   residues: (AbyssalResidueData | null)[] = [],
 ): StatBreakdown {
   const job = { ...character.stats };
-  const passives = passiveBonusesToStats(character.passives);
+  const necro = cloneZeroStats();
+
+  const passives = passiveBonusesToStats(character.passives, job);
   const equipment = calculateEquipmentContribution(character.equipment, job);
   const residue = calculateResidueContribution(residues, job);
 
@@ -308,6 +311,7 @@ export function calculateCharacterStatProfile(
 
   return {
     job: roundStats(job),
+    necro,
     passives: roundStatsForBonus(passives),
     equipment: equipment.stats,
     residues: residue.stats,

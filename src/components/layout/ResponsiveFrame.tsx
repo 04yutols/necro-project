@@ -1,14 +1,16 @@
 'use client';
 
 import React from 'react';
+import { BottomNavBar } from './BottomNavBar';
 
 interface ResponsiveFrameProps {
   leftSidebar: React.ReactNode;
   mainMonitor: React.ReactNode;
   rightSidebar: React.ReactNode;
+  isFullscreen?: boolean;
 }
 
-export function ResponsiveFrame({ leftSidebar, mainMonitor, rightSidebar }: ResponsiveFrameProps) {
+export function ResponsiveFrame({ leftSidebar, mainMonitor, rightSidebar, isFullscreen = false }: ResponsiveFrameProps) {
   return (
     <div
       className="ios-app-shell text-[#A5A9B4] font-body selection:bg-secondary/30"
@@ -33,6 +35,7 @@ export function ResponsiveFrame({ leftSidebar, mainMonitor, rightSidebar }: Resp
       }}>
         {mainMonitor}
       </main>
+      {!isFullscreen && <BottomNavBar />}
     </div>
   );
 }

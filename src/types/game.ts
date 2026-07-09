@@ -2,11 +2,12 @@
 // docs/TDD.md の Prisma スキーマと整合性を取った定義
 
 export type ClassCategory = 'PHYSICAL' | 'MAGICAL';
-export type Tribe = 'UNDEAD' | 'DEMON' | 'BEAST' | 'HUMANOID';
+export type Tribe = 'UNDEAD' | 'DEMON' | 'BEAST' | 'HUMANOID' | 'DRAGON' | 'ORC';
 export type ElementType = 'FIRE' | 'WATER' | 'THUNDER' | 'EARTH' | 'WIND' | 'ICE' | 'LIGHT' | 'DARK' | 'NONE';
 export type SkillAttackType = 'SLASH' | 'STRIKE' | 'PROJECTILE' | 'MAGIC' | 'SUMMON' | 'HEAL';
 export type EnemyTier = 'MINION' | 'ELITE' | 'BOSS';
 export type StageNodeType = 'SAFE' | 'DUNGEON' | 'BOSS';
+export type AilmentType = 'BLEED' | 'POISON' | 'BURN' | 'FREEZE' | 'PARALYSIS' | 'WEAKEN';
 
 export interface BaseStats {
   hp:        number;  // 最大HP
@@ -14,7 +15,7 @@ export interface BaseStats {
   def:       number;  // 防御力（物理・魔法共通）
   spd:       number;  // 速度（行動値 = 10000/spd）
   critRate:  number;  // 会心率 %（基礎5.0）
-  critDmg:   number;  // 会心ダメージ %（基礎150.0 → 1.5×）
+  critDmg:   number;  // 会心ダメージ加算 %（100.0 → 通常+100% = 2.0×）
   effectHit: number;  // 効果命中 %
   effectRes: number;  // 効果抵抗 %
 }
@@ -22,13 +23,15 @@ export interface BaseStats {
 export type Resistances = Partial<Record<ElementType, number>>;
 
 // 永続パッシブの累積補正 (GDD-004) — 転職後もリセットされない
+// HP/ATK/DEF/SPD は現在の職業基礎ステータスに対する % 補正。
+// 会心率/会心ダメージは既存どおり % 値の直接加算。
 export interface PassiveBonuses {
-  passiveAtkBonus:      number;  // flat ATK
-  passiveDefBonus:      number;  // flat DEF
-  passiveSpdBonus:      number;  // flat SPD
+  passiveAtkBonus:      number;  // ATK %
+  passiveDefBonus:      number;  // DEF %
+  passiveSpdBonus:      number;  // SPD %
   passiveCritRateBonus: number;  // % 追加
   passiveCritDmgBonus:  number;  // % 追加
-  passiveHpBonus:       number;  // flat HP
+  passiveHpBonus:       number;  // HP %
 }
 
 export interface UserJobState {
@@ -47,6 +50,11 @@ export interface JobUnlockRequirement {
   minLevel: number;
 }
 
+export type JobBaseStats = BaseStats & {
+  mp: number; // 最大MP
+};
+export type JobBaseStatsByLevel = Record<string, JobBaseStats>;
+
 export interface JobData {
   id?: string;
   name: string;
@@ -55,6 +63,7 @@ export interface JobData {
   title?: string;
   tier: number;
   category: ClassCategory;
+  baseAttackType?: SkillAttackType; // 通常攻撃の演出・状態異常推論に使う攻撃種別
   role?: string;
   description?: string;
   unlock?: {
@@ -63,23 +72,33 @@ export interface JobData {
   };
   statModifiers?: Partial<BaseStats>;
   energyCurve: {
-    baseMaxEnergy: number;
-    energyRegen: number;
-    ultimateCost: number;
+    baseMaxEnergy: number; // 最大MP
+    ultimateCost: number;  // 奥義コスト（未使用・将来用）
+    spGrowthPerLevel: number; // レベルごとの最大MP成長値（互換フィールド名）
   };
-  mpCurve?: {
-    baseMaxMP: number;
-    mpGrowth: number;
-    skillCost: number;
-  };
+  // 主人公の装備なし職業基礎ステータス。キーは "1"〜"100"。mp は最大MP。
+  baseStatsByLevel?: JobBaseStatsByLevel;
   levelBonuses: Record<string, Partial<PassiveBonuses>>;
   skills: JobSkillUnlock[];
+}
+
+export interface StatusEffectStack {
+  remainingTurns: number;
+  sourceAtk?: number;
+}
+
+export interface StatusEffect {
+  type: AilmentType;
+  remainingTurns: number;
+  stackCount: number;
+  sourceAtk?: number;
+  stacks?: StatusEffectStack[];
 }
 
 export interface SkillData {
   id: string;
   name: string;
-  mpCost: number;       // エネルギーコスト（旧 mpCost の名称を維持）
+  mpCost: number;       // MPコスト
   power: number;
   type: 'PHYSICAL' | 'MAGICAL' | 'HEAL';
   element?: ElementType;
@@ -87,7 +106,53 @@ export interface SkillData {
   targetType?: 'SINGLE' | 'ALL_ENEMIES' | 'SELF' | 'ALLY';
   effectKey?: string;
   isUltimate?: boolean; // 奥義フラグ — true のとき maxEnergy を全消費
+  flags?: string[];
+  ailments?: Array<{ type: AilmentType; baseRate: number }>;
+  ailmentType?: AilmentType;
+  ailmentBaseRate?: number;
+  healSelfPct?: number; // 与えた実HPダメージに対する自己回復率%
   description: string;
+}
+
+export type DemonRiskType = 'SELF_DAMAGE' | 'ENERGY_DRAIN' | 'GLASS_CANNON' | 'SETUP_DEPENDENT' | null;
+export type DemonLingeringType = 'FIELD' | 'PARTY_BUFF' | 'ENEMY_DEBUFF';
+
+export interface DemonFormData {
+  jobId: string;
+  formName: string;
+  tier: 1 | 2;
+  concept: string;
+  effectA: {
+    descJa: string;
+    statBoosts: Partial<Record<keyof BaseStats, number>>;
+    flags?: string[];
+  };
+  effectB: {
+    descJa: string;
+    riskType: DemonRiskType;
+    riskValue?: number;
+    onAttackEffect?: string | null;
+  };
+  ultimateSkill: {
+    nameJa: string;
+    damage: {
+      power: number;
+      element: ElementType;
+      targetType: 'SINGLE' | 'ALL';
+      attackType?: SkillAttackType;
+      flags?: string[];
+    };
+    lingering: {
+      type: DemonLingeringType;
+      descJa: string;
+      duration: number;
+    };
+  };
+  visual?: {
+    color: string;
+    soft: string;
+    icon: string;
+  };
 }
 
 export interface SubOption {
@@ -128,13 +193,19 @@ export interface WeaponMaterialData {
 export interface ItemData {
   id: string;
   name: string;
-  type: 'WEAPON' | 'SUB' | 'HEAD' | 'BODY' | 'ARMS' | 'LEGS' | 'ACC1' | 'ACC2';
+  type: 'WEAPON' | 'SUB' | 'HEAD' | 'BODY' | 'ARMS' | 'LEGS' | 'ACC1' | 'ACC2' | 'CONSUMABLE';
   rarity: 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY' | 'UNIQUE' | 'HIDDEN_UNIQUE' | 'R' | 'SR' | 'SSR' | 'UR' | 'LR';
   stats: Partial<BaseStats>;
   resistances?: Resistances;
   specialEffect?: string;
   icon?: string;
   flavor?: string;
+  quantity?: number;
+  battleUsable?: boolean;
+  battleEffect?: {
+    type: 'HEAL_HP' | 'RESTORE_ENERGY' | 'RESTORE_SOUL';
+    value: number;
+  };
   
   // 第一発見者システム (GDD-追加要件)
   isUnique: boolean;
@@ -175,6 +246,8 @@ export interface CharacterData {
   currentJobId: string;
   category: ClassCategory;
   baseStats?: BaseStats;
+  // 死霊術レベル。主人公は強化せず、味方モンスター補正と軍団コスト上限に使う（max 500）。
+  necroLevel?: number;
   stats: BaseStats;
   passives: PassiveBonuses;
   equipment: EquipmentSlots;
@@ -182,9 +255,11 @@ export interface CharacterData {
   jobs: UserJobState[];
   isAwakened: boolean;
   clearedStages: string[];
-  // エネルギーシステム（ランタイム状態 — DB非保存）
-  currentEnergy: number;
-  maxEnergy:     number;
+  gold: number;
+  statusEffects?: StatusEffect[];
+  // MP（ランタイム状態 — DB非保存、魔神化ゲージとは別リソース）
+  currentEnergy: number; // 現在MP（互換フィールド名）
+  maxEnergy:     number; // 最大MP：job.baseStatsByLevel[level].mp または energyCurve から導出
   // 属性ダメージ加成（装備・残滓から集計）
   elementDmgBoosts: Partial<Record<ElementType, number>>;
 }
@@ -234,33 +309,57 @@ export interface SpiritCoreData {
 
 export interface MonsterData {
   id: string;
+  masterId?: string; // ネクロマンス元の敵/魔物マスターID。同一masterIdは1体まで獲得可能。
   name: string;
   tribe: Tribe; // 種族 (GDD-005)
   cost: number;
   stats: BaseStats;
   resistances: Resistances;
+  skillIds?: string[]; // 味方化後に保持するスキルID
+  currentEnergy: number; // 現在MP。主人公と同じくスキル使用で消費し、自動回復しない。
+  maxEnergy: number;     // 最大MP。捕獲時は enemy.necromance.allyMaxEnergy から初期化する。
+  // キャラと同じ装備体系 (GDD-007) — 未装備時は undefined（空扱い）
+  equipment?: EquipmentSlots;                          // 武器スロット（weapon のみ使用）
+  equippedResidues?: (AbyssalResidueData | null)[];    // 深淵の残滓 5スロット
+  equippedShardId?: string;                            // SoulShard（魂の欠片）
+  spiritCore?: SpiritCoreData;                        // 霊核 (GDD-追加要件)
+  // バトルランタイム専用（DB非保存）
   tier?: EnemyTier;
   weaknesses?: ElementType[];
   shieldHp?: number;
   maxShieldHp?: number;
   shieldBroken?: boolean;
-  equippedShardId?: string;
-  spiritCore?: SpiritCoreData; // 霊核 (GDD-追加要件)
+  statusEffects?: StatusEffect[];
+  gimmicks?: BossGimmick[];
 }
 
 export interface DropEntry {
-  type?: 'WEAPON' | 'RESIDUE' | 'MATERIAL' | 'MONSTER';
+  type?: 'WEAPON' | 'RESIDUE' | 'MATERIAL' | 'MONSTER' | 'CONSUMABLE' | 'WEAPON_MATERIAL';
   itemId?: string;
   monsterId?: string;
+  weaponMaterialType?: WeaponMaterialType;
   rarity?: string;
+  quantity?: number;
   rate: number;
   isHidden?: boolean;
 }
+
+export type GuaranteedDropEntry = Omit<DropEntry, 'rate'> & {
+  rate?: number;
+};
 
 export interface BossGimmick {
   trigger: 'HP_BELOW_50' | 'TURN_3' | 'ON_SHIELD_BREAK' | 'ON_REVIVE';
   effect: 'ENRAGE' | 'AV_DELAY' | 'REVIVE' | 'SUMMON_MINIONS';
   value?: number;
+}
+
+export interface EnemyNecromanceConfig {
+  captureRate?: number;
+  allyCost?: number;
+  allyStats?: BaseStats;
+  allyMaxEnergy?: number;
+  skillIds?: string[];
 }
 
 export interface EnemyData {
@@ -274,7 +373,9 @@ export interface EnemyData {
   resistances: Resistances;
   weaknesses: ElementType[];
   shieldHp?: number;
+  maxShieldHp?: number;
   gimmicks?: BossGimmick[];
+  necromance?: EnemyNecromanceConfig;
   dropTable: DropEntry[];
   battle?: {
     color: string;
@@ -284,11 +385,28 @@ export interface EnemyData {
   description?: string;
 }
 
+export type EnemyStatScale = Partial<Pick<BaseStats, 'hp' | 'atk' | 'def'>>;
+
 export interface StageWaveData {
   label: string;
-  role: 'WARMUP' | 'SHIELD' | 'BOSS';
+  role: 'WARMUP' | 'SHIELD' | 'ELITE' | 'BOSS';
   enemyIds: string[];
   intent: string;
+  statScale?: EnemyStatScale;
+}
+
+export type AreaGimmickType = 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE';
+
+export interface AreaData {
+  id: string;
+  chapter: number;
+  area: number;
+  nameJa: string;
+  nameEn: string;
+  description: string;
+  color: string;
+  position: { x: number; y: number };
+  sortOrder?: number;
 }
 
 export interface StageData {
@@ -302,24 +420,38 @@ export interface StageData {
   nodeType: StageNodeType;
   element: ElementType;
   difficulty: number;
+  sortOrder?: number;
   description: string;
   waveCount: number;
+  areaGimmick?: AreaGimmickType;
   unlockRequires: string[];
   waves: StageWaveData[];
   rewards: {
     baseExp: number;
     baseGold: number;
     dropTable: DropEntry[];
+    firstClearGuaranteed?: GuaranteedDropEntry[];
   };
   position: { x: number; y: number };
   isAreaBoss?: boolean;
 }
 
 export interface NecroStatus {
-  level: number;       // Max: 99
-  rank: number;        // Max: 10
+  level: number;       // Max: 500
   maxCost: number;
-  baseStatsBonus: number; // ランクアップで蓄積される基礎ステータス倍率補正
+  exp: number;         // 現在のネクロEXP
+}
+
+// 死霊術Lv/Rank 再設計の調整係数（docs/設計書/120）。将来 src/data/master/necroConfig.json から供給。
+export interface NecroConfigData {
+  // モンスターステ倍率: mult = 1 + min(L,50)*kA + max(0,L-50)*kB + (rank-1)*k2（HP/ATK/DEF/SPDのみ）
+  monsterStatMultiplier: { kA: number; kB: number; k2: number };
+  // maxCost = base + floor(level/d1) + (rank-1)*c2
+  maxCost: { base: number; d1: number; c2: number };
+  // 捕獲率 = clamp(baseRate * rankMultiplier^(rank-1), 0, cap)
+  captureRate: { rankMultiplier: number; cap: number };
+  // necro専用EXP曲線: necroExpForLevel(L) = (L-1)*(L+coefficient)。necroExpRate は職業共有フィードへの倍率。
+  expCurve: { coefficient: number; necroExpRate: number };
 }
 
 export interface BattleState {
@@ -327,7 +459,12 @@ export interface BattleState {
   monsters: (MonsterData | null)[];
   wave: number;
   turn: number;
-  areaGimmick?: 'SLIP_DAMAGE' | 'STATUS_AILMENT' | 'NONE';
+  areaGimmick?: AreaGimmickType;
+  monsterCurrentHp: Record<string, number>;
+  enemyCurrentHp: Record<string, number>;
+  enemyMaxHp: Record<string, number>;
+  pendingSummons: string[];
+  summonedEnemies: MonsterData[];
 }
 
 export interface BattleLog {
@@ -342,8 +479,11 @@ export interface BattleLog {
   isResisted?: boolean;
   element?: ElementType;
   attackType?: SkillAttackType;
-  playerEnergy: number;
-  playerMP?: number; // legacy alias for older UI log readers
+  ailmentApplied?: AilmentType;
+  ailmentTick?: AilmentType;
+  ailmentClearedBy?: 'DEMONIZE' | 'TURN_END';
+  playerSp: number;         // 現在MP（互換ログフィールド名）
+  playerDemonGauge: number; // 魔神化ゲージ 0-100（別リソース）
   playerHP: number;
   description: string;
 }

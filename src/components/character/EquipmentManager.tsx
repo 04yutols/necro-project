@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { ItemData, EquipmentSlots, BaseStats } from '../../types/game';
-import { equipItemAction, unequipItemAction } from '../../app/actions';
 import { Shield, Sword, X, ArrowRight, Package, Home } from 'lucide-react';
 import { calculateCharacterStatProfile, formatStatValue } from '../../logic/StatSystem';
 
@@ -21,7 +20,7 @@ const SLOT_LABELS: Record<keyof EquipmentSlots, string> = {
 };
 
 export default function EquipmentManager() {
-  const { player, inventoryItems, equipItem, unequipItem, setCurrentTab, equippedResidueSlots } = useGameStore();
+  const { player, inventoryItems, equipItem, unequipItem, setCurrentTab, equippedResidueSlots, loadFromServer } = useGameStore();
   const [selectedSlot, setSelectedSlot] = useState<keyof EquipmentSlots | null>(null);
   const [previewItem, setPreviewItem] = useState<ItemData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -45,12 +44,15 @@ export default function EquipmentManager() {
     if (!player || !selectedSlot || !previewItem) return;
     setIsProcessing(true);
     try {
-      const result = await equipItemAction(player.id, selectedSlot, previewItem.id);
-      if (result.success) {
-        equipItem(selectedSlot, previewItem);
-        setPreviewItem(null);
-        setSelectedSlot(null);
+      equipItem(selectedSlot, previewItem);
+      if (typeof window !== 'undefined' && (window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__) {
+        const { equipItemAction } = await import('../../app/actions');
+        const result = await equipItemAction(player.id, selectedSlot, previewItem.id);
+        if (result.success) loadFromServer(result.data);
+        else console.error(result.error);
       }
+      setPreviewItem(null);
+      setSelectedSlot(null);
     } catch (e) {
       console.error(e);
     } finally {
@@ -62,11 +64,14 @@ export default function EquipmentManager() {
     if (!player) return;
     setIsProcessing(true);
     try {
-      const result = await unequipItemAction(player.id, slot);
-      if (result.success) {
-        unequipItem(slot);
-        if (selectedSlot === slot) setPreviewItem(null);
+      unequipItem(slot);
+      if (typeof window !== 'undefined' && (window as Window & { __NEXT_DATA__?: unknown }).__NEXT_DATA__) {
+        const { unequipItemAction } = await import('../../app/actions');
+        const result = await unequipItemAction(player.id, slot);
+        if (result.success) loadFromServer(result.data);
+        else console.error(result.error);
       }
+      if (selectedSlot === slot) setPreviewItem(null);
     } catch (e) {
       console.error(e);
     } finally {

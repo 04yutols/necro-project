@@ -1,0 +1,38 @@
+{
+  "aldo": {
+    "id": "aldo",
+    "nameJa": "アルド",
+    "nameEn": "Aldo",
+    "color": "#B09FF8",
+    "glow": "rgba(176,159,248,0.55)",
+    "portraitBase": "/images/story/aldo",
+    "expressions": ["default", "determined", "sad", "angry", "shocked", "smile"]
+  },
+  "line": {
+    "id": "line",
+    "nameJa": "ライン",
+    "nameEn": "Line",
+    "color": "#FFD700",
+    "glow": "rgba(255,215,0,0.55)",
+    "portraitBase": "/images/story/line",
+    "expressions": ["default", "smile", "sad", "dying"]
+  },
+  "demon_king": {
+    "id": "demon_king",
+    "nameJa": "魔王",
+    "nameEn": "Demon King",
+    "color": "#FF2244",
+    "glow": "rgba(255,34,68,0.65)",
+    "portraitBase": "/images/story/demon_king",
+    "expressions": ["default", "contempt", "rage"]
+  },
+  "narrator": {
+    "id": "narrator",
+    "nameJa": "",
+    "nameEn": "",
+    "color": "#8B8370",
+    "glow": "rgba(139,131,112,0.35)",
+    "portraitBase": "",
+    "expressions": []
+  }
+}

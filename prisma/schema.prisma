@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -7,176 +8,189 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── コアモデル ────────────────────────────────────────────────────────────────
+
 model User {
-  id              String   @id @default(uuid())
-  name            String
-  characters      Character[]
-  discoveredItems Item[]   @relation("Discoverer")
+  id             String   @id @default(uuid())
+  name           String?
+  email          String?  @unique
+  displayName    String?
+  passwordHash   String?  // ID/PW 認証用（bcrypt ハッシュ）
+  sessionVersion Int      @default(1) // JWT セッション一括失効用
+  createdAt      DateTime @default(now())
+
+  character       Character?
+  ownedItems      Item[]  @relation("ItemOwner")
+  discoveredItems Item[]  @relation("Discoverer")
+  stageRecords    StageRecord[]
+  stageAttempts   StageAttempt[]
+  playerStats     PlayerStats?
+  worldLogs       WorldLog[]
 }
 
 model Character {
   id              String   @id @default(uuid())
-  name            String
-  userId          String?
-  user            User?    @relation(fields: [userId], references: [id])
-  
-  // 8種の基礎ステータス（HSR互換）
-  hp              Int
-  atk             Int
-  def             Int
-  spd             Int
-  critRate        Float    @default(5.0)
-  critDmg         Float    @default(150.0)
-  effectHit       Float    @default(0.0)
-  effectRes       Float    @default(0.0)
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playerState     Json
+  saveVersion     Int      @default(2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  // 職業レベル到達時に獲得する永続パッシブの累積補正
-  passiveAtkBonus      Int    @default(0)
-  passiveDefBonus      Int    @default(0)
-  passiveSpdBonus      Int    @default(0)
-  passiveCritRateBonus Float  @default(0)
-  passiveCritDmgBonus  Float  @default(0)
-  passiveHpBonus       Int    @default(0)
-  
-  // 職業システム
-  jobs            UserJob[]
-  currentJobId    String?
-  
-  // 8枠装備スロット
-  equipWeaponId   String?
-  equipSubId      String?
-  equipHeadId     String?
-  equipBodyId     String?
-  equipArmsId     String?
-  equipLegsId     String?
-  equipAcc1Id     String?
-  equipAcc2Id     String?
-
-  equipWeapon     Item?    @relation("Weapon", fields: [equipWeaponId], references: [id])
-  equipSub        Item?    @relation("Sub", fields: [equipSubId], references: [id])
-  equipHead       Item?    @relation("Head", fields: [equipHeadId], references: [id])
-  equipBody       Item?    @relation("Body", fields: [equipBodyId], references: [id])
-  equipArms       Item?    @relation("Arms", fields: [equipArmsId], references: [id])
-  equipLegs       Item?    @relation("Legs", fields: [equipLegsId], references: [id])
-  equipAcc1       Item?    @relation("Acc1", fields: [equipAcc1Id], references: [id])
-  equipAcc2       Item?    @relation("Acc2", fields: [equipAcc2Id], references: [id])
-
-  // 死霊術ステータス
-  necroLevel      Int      @default(1)
-  necroRank       Int      @default(1)
-  necroMaxCost    Int      @default(10)
-  necroBaseStatsBonus Float @default(1.0)
-  
-  // 進行管理
-  clearedStages   String[] @default([])
-
-  // 深淵の残滓 (ビルドアイテム)
-  abyssalResidues AbyssalResidue[]
-}
-
-model Job {
-  id              String   @id
-  name            String
-  tier            Int
-  category        String   // PHYSICAL | MAGICAL
-  userJobs        UserJob[]
-}
-
-model UserJob {
-  characterId     String
-  jobId           String
-  level           Int      @default(1)
-  exp             Int      @default(0)
-  character       Character @relation(fields: [characterId], references: [id])
-  job             Job       @relation(fields: [jobId], references: [id])
-
-  @@id([characterId, jobId])
+  inventoryMonsters Monster[] @relation("CharacterMonsters")
+  stageAttempts   StageAttempt[]
+  soulShards      SoulShard[] @relation("CharacterSoulShards")
+  abyssalResidues AbyssalResidue[] @relation("CharacterResidues")
 }
 
 model Item {
-  id              String   @id @default(uuid())
-  name            String
-  type            String   // WEAPON | HEAD | BODY ...
-  rarity          String   // COMMON | UNIQUE | HIDDEN_UNIQUE
-  atk             Int      @default(0)
-  def             Int      @default(0)
-  critRate        Float    @default(0.0)
-  critDmg         Float    @default(0.0)
-  spd             Int      @default(0)
-  specialEffect   String?
-  
-  // 第一発見者システム
-  isUnique        Boolean  @default(false)
-  discovererId    String?
-  discovererName  String?
-  discoverer      User?    @relation("Discoverer", fields: [discovererId], references: [id])
-  serialNo        Int?     // 全体での発見順
-  discoveredAt    DateTime?
-  
-  // ランダムオプション (JSONB)
-  subOptions      Json?    // Array of { type: string, value: number }
-  
-  equippedWeapon  Character[] @relation("Weapon")
-  equippedSub     Character[] @relation("Sub")
-  equippedHead    Character[] @relation("Head")
-  equippedBody    Character[] @relation("Body")
-  equippedArms    Character[] @relation("Arms")
-  equippedLegs    Character[] @relation("Legs")
-  equippedAcc1    Character[] @relation("Acc1")
-  equippedAcc2    Character[] @relation("Acc2")
+  id            String   @id @default(uuid())
+  name          String
+  type          String   // WEAPON | HEAD | BODY ...
+  rarity        String   // R | SR | SSR | UR | COMMON | RARE | EPIC
 
-  residues        AbyssalResidue[]
+  // 基本ステータス補正
+  atk           Int      @default(0)
+  def           Int      @default(0)
+  critRate      Float    @default(0.0)
+  critDmg       Float    @default(0.0)
+  spd           Int      @default(0)
+  specialEffect String?
+
+  // 武器システム（§13 武器システム.md）
+  rank          Int      @default(0)    // 魂の共鳴 0-5
+  archetype     String?                 // LOW | MID | HIGH | MYTHIC
+  ilv           Int?                    // アイテムレベル 1-90
+  passiveA      Json?                   // WeaponPassive { nameJa, descTemplate, values[], systemTag? }
+  passiveB      Json?                   // WeaponPassive { nameJa, descTemplate, values[], systemTag? }
+
+  // ランダムオプション
+  subOptions    Json?    // Array of { type: string, value: number }
+
+  // 第一発見者システム
+  ownerId       String?
+  owner         User?    @relation("ItemOwner", fields: [ownerId], references: [id])
+  isUnique      Boolean  @default(false)
+  discovererId  String?
+  discovererName String?
+  discoverer    User?    @relation("Discoverer", fields: [discovererId], references: [id])
+  serialNo      Int?
+  discoveredAt  DateTime?
+
+}
+
+model ItemSerialCounter {
+  itemName String @id
+  counter  Int    @default(0)
 }
 
 model AbyssalResidue {
-  id              String   @id @default(uuid())
-  name            String
-  itemId          String
-  item            Item     @relation(fields: [itemId], references: [id])
-  characterId     String?
-  character       Character? @relation(fields: [characterId], references: [id])
-  
-  // ランダムなサブオプション (JSONB)
-  subOptions      Json     // Array of { type: string, value: number }
-  level           Int      @default(1)
+  id          String    @id @default(uuid())
+  name        String
+  // itemId は装備スロット種別 ('head'|'arms'|'chest'|'waist'|'legs') — Item FK ではない
+  itemId      String
+  characterId String?
+  character   Character? @relation("CharacterResidues", fields: [characterId], references: [id], onDelete: SetNull)
+
+  rarity      String   @default("COMMON")  // COMMON | RARE | EPIC | LEGENDARY
+  mainStat    Json                          // { type: string, value: number }
+  subOptions  Json     @default("[]")       // Array of { type: string, value: number }
+  level       Int      @default(1)
+  exp         Int      @default(0)
+  maxExp      Int      @default(800)
 }
 
 model Monster {
-  id              String   @id @default(uuid())
-  name            String
-  tribe           String
-  cost            Int
-  hp              Int
-  atk             Int
-  def             Int
-  spd             Int
-  critRate        Float    @default(0.0)
-  critDmg         Float    @default(150.0)
-  effectHit       Float    @default(0.0)
-  effectRes       Float    @default(0.0)
+  id          String  @id @default(uuid())
+  masterId    String?
+  characterId String?
+  character   Character? @relation("CharacterMonsters", fields: [characterId], references: [id], onDelete: SetNull)
+  name        String
+  tribe       String
+  cost        Int
+  hp          Int
+  atk         Int
+  def         Int
+  spd         Int
+  critRate    Float   @default(0.0)
+  critDmg     Float   @default(150.0)
+  effectHit   Float   @default(0.0)
+  effectRes   Float   @default(0.0)
+  currentEnergy Int    @default(30)
+  maxEnergy     Int    @default(30)
+  resistances  Json    @default("{}")
+  skillIds     Json    @default("[]")
 
-  soulShardId     String?
-  soulShard       SoulShard? @relation(fields: [soulShardId], references: [id])
-  
-  // 霊核 (魔改造要素)
-  spiritCoreId    String?
-  spiritCore      SpiritCore? @relation(fields: [spiritCoreId], references: [id])
+  soulShardId  String?
+  soulShard    SoulShard?  @relation(fields: [soulShardId],  references: [id])
+
+  @@index([characterId])
 }
 
 model SoulShard {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
+  characterId     String?
+  character       Character? @relation("CharacterSoulShards", fields: [characterId], references: [id], onDelete: SetNull)
   originMonster   String
-  atkBonus        Int      @default(0)
-  elementDmgBoost Int      @default(0)
+  atkBonus        Int       @default(0)
+  elementDmgBoost Int       @default(0)
   specialAbility  String?
   monsters        Monster[]
+
+  @@index([characterId])
 }
 
-model SpiritCore {
-  id              String   @id @default(uuid())
-  name            String
-  element         String?
-  skillChangeId   String?
-  atkMultiplier   Float    @default(1.0)
-  monsters        Monster[]
+model StageRecord {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stageId        String
+  turnCount      Int
+  clearTimeSec   Int      @default(0)
+  totalDamage    Int      @default(0)
+  clearedAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, stageId])
+  @@index([stageId, turnCount])
+  @@index([stageId, clearTimeSec])
+}
+
+model StageAttempt {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  stageId     String
+  issuedAt    DateTime  @default(now())
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, stageId, consumedAt])
+  @@index([characterId, stageId])
+  @@index([expiresAt])
+}
+
+model PlayerStats {
+  userId           String   @id
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalDamage      BigInt   @default(0)
+  bossKillCount    Int      @default(0)
+  bestResidueScore Float    @default(0)
+  bestDungeonFloor Int      @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+model WorldLog {
+  id        String   @id @default(cuid())
+  type      String
+  payload   Json
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([type, createdAt])
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "Monster" ADD COLUMN "skillIds" JSONB NOT NULL DEFAULT '[]';

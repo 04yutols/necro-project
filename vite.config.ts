@@ -1,0 +1,23 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+  },
+  define: {
+    // Next.js の process.env.* 参照をブラウザ環境で安全にする
+    'process.env': JSON.stringify({}),
+  },
+  resolve: {
+    alias: {
+      // @/* → src/* (tsconfig の paths と同期)
+      '@': path.resolve(__dirname, 'src'),
+      // next/dynamic → Vite 互換の React.lazy ベース shim に差し替え
+      'next/dynamic': path.resolve(__dirname, 'src/shims/next-dynamic.tsx'),
+    },
+  },
+});

@@ -1,0 +1,787 @@
+# ゲーム改善案レポート
+
+> 調査日: 2026-05-27  
+> 対象: `src/` 全体 + マスターデータ JSON  
+> 深刻度凡例: 🔴 Critical / 🟠 High / 🟡 Medium / 🟢 Low
+
+---
+
+## サマリー
+
+| ID | 深刻度 | カテゴリ | タイトル | 対応状況 |
+|----|--------|----------|----------|----------|
+| BUG-2   | ✅ | バトルロジック | 状態異常ダメージが現在HPをmaxHpとして計算 | 2026-05-27 完了 |
+| IMP-1   | ✅ | バトルロジック | AoEスキルがBattleEngineで単体攻撃になる | 2026-05-30 完了 |
+| IMP-2   | ✅ | バトルロジック | SUMMON_MINIONSがBattleEngineではログのみ | 2026-05-30 完了 |
+| IMP-3   | 🟠 | コンテンツ | ボスが直前の精鋭より弱い（stat逆転） | 未対応 |
+| IMP-4   | ✅ | バトルロジック | ドレインスキルのHP回復が未実装 | 2026-05-30 完了 |
+| IMP-5   | ✅ | バトルロジック | 通常攻撃のattackTypeが全職業でSLASH固定 | 2026-05-30 完了 |
+| IMP-6   | ✅ | UX | ターン順序プレビューUI が存在しない | 2026-05-31 完了 |
+| IMP-7   | 🟡 | ゲームデザイン | node1→node2の難易度崖（案内なし） | 未対応（調整支援追加） |
+| IMP-8   | ✅ | バトルUX | スキル用エナジーがMPとして機能していない | 2026-05-31 完了 |
+| IMP-12  | ✅ | ゲームデザイン | 深淵の残滓の開放タイミングが早すぎる | 2026-06-03 完了 |
+| IMP-13  | ✅ | コンテンツ基盤 | ストーリーJSONが第1章ファイル固定で2章以降に拡張しづらい | 2026-06-03 完了 |
+| IMP-14  | ✅ | コンテンツ基盤 | エリアマップが管理画面から追加・編集できない | 2026-06-05 完了 |
+| BUG-11  | ✅ | バトルロジック | 最終WAVEクリアループとプレイヤー行動の多重入力 | 2026-05-31 完了 |
+| SEC-6   | ✅ | セキュリティ | JWTセッションの失効不可 | 2026-05-27 完了 |
+| SEC-7   | ✅ | セキュリティ | パスワードポリシーが弱い | 2026-05-28 完了 |
+| NL-1    | 🟢 | コード品質 | SynergyBonus未使用フィールド3種 | 未対応 |
+| NL-2    | 🟢 | コード品質 | isAwakenedが常にfalse | 未対応 |
+| L-2     | 🟢 | コード品質 | BattleEngineのWAVE進行が10ターン経過トリガー | 未対応 |
+| QUALITY-2 | 🟢 | コード品質 | JobService.changeJobの引数直接変異 | 未対応 |
+
+---
+
+## コンテンツ制作・調整支援（2026-05-30）
+
+今後の敵・ダンジョン・ドロップ・スキル追加を楽にするため、マスターデータを直接編集し、雛形生成と監査レポートで安全確認できる運用を追加した。
+
+| 対象 | 手順書 | レポートコマンド | 目的 |
+|---|---|---|---|
+| マスターデータ制作全体 | `docs/設計書/75_マスターデータ制作運用手順.md` | `npm run data:audit` / `npm run data:template` | 敵・ステージ・武器・素材・魔物・スキルの作成手順と参照整合性チェック |
+| ステージ進行・難易度導線 | `docs/設計書/72_IMP7_ステージ難易度導線手動調整手順.md` | `npm run balance:progression` | 新規ステージ追加時のEHP/脅威度の急上昇と推奨導線を検出 |
+| ドロップ経済 | `docs/設計書/73_ドロップ経済手動調整手順.md` | `npm run balance:drops` | R/SR/SSR/UR武器・残滓・素材の期待値と参照切れを検出 |
+| スキル倍率 | `docs/設計書/74_スキル倍率手動調整手順.md` | `npm run balance:skills` | 設計書19のpower範囲、状態異常budget、説明文と効果定義のズレを検出 |
+
+---
+
+## ✅ BUG-2: 状態異常ダメージが現在HPをmaxHpとして計算（2026-05-27 完了）
+
+**ファイル:** `src/logic/BattleEngine.ts:898`
+
+```typescript
+private processRuntimeStatus(...) {
+  const result = processStatusEffects(
+    effects,
+    { maxHp: targetStats.hp },  // ← targetStats.hp は戦闘中に直接削られていく現在HP
+    Math.random,
+  );
+}
+```
+
+**問題の詳細:**  
+POISON（maxHPの3%）やBURN（maxHPの5%）のダメージ計算が、戦闘が進むにつれ小さくなっていく。  
+「3ターン目にPOISON付与 → 毎ターン弱体化していく状態異常」という意図しない動作になっている。  
+HP 100 → 50 に削られた後にPOISONのtickが入ると、3%の基準が50になってしまう。
+
+**対応:**
+プレイヤー側は `this.playerInitialMaxHp`、敵側は `this.enemyMaxHp[enemy.id]` を参照して `maxHp` に渡す。
+
+```typescript
+// プレイヤー
+const result = processStatusEffects(
+  effects,
+  { maxHp: this.playerInitialMaxHp },
+  Math.random,
+);
+
+// 敵（processEnemyStatus を追加する場合）
+const maxHp = this.getEnemyMaxHp(enemy);
+const result = processStatusEffects(effects, { maxHp }, Math.random);
+```
+
+現実装ではプレイヤー状態異常処理に `targetMaxHp` 引数を追加し、`this.playerInitialMaxHp` を渡すようにした。敵のターン開始状態異常を追加する場合は同じ引数へ `this.getEnemyMaxHp(enemy)` を渡す。
+
+**関連ファイル:**
+- `src/logic/BattleEngine.ts:898` — `processRuntimeStatus()`
+- `src/logic/StatusAilmentSystem.ts` — `processStatusEffects()` の `maxHp` 引数
+
+**設計:** `docs/設計書/66_BUG2_状態異常DoT最大HP参照設計.md`
+
+---
+
+## ✅ IMP-1: AoEスキルがBattleEngineで単体攻撃になる（2026-05-30 完了）
+
+**ファイル:** `src/logic/BattleEngine.ts:257–420`
+
+**問題の詳細:**  
+`processPlayerAction()` は `skillData.targetType` を一切チェックせず、常に引数の `target` 1体にのみダメージを与える。  
+`skill_warrior_wind_slash`（鎌鼬: `targetType: ALL_ENEMIES`）や `skill_mage_earth`（ロックブレイク）をBattleEngineで呼ぶと単体ダメージになる。
+
+BattleCanvasは正しく `skill.aoe ? enemies.filter(e => e.hp > 0) : [getTargetId()]` でAoEを処理している。  
+→ BattleEngineのテストと実際のゲームプレイで挙動が乖離している。
+
+**AoE対象スキル（第1章）:**
+| スキルID | 名前 | 職業 |
+|---|---|---|
+| skill_warrior_wind_slash | 鎌鼬 | 戦士 |
+| skill_mage_earth | ロックブレイク | 魔術師 |
+| skill_mage_wind | エアロバースト | 魔術師 |
+| skill_darkpriest_curse_bind | 呪縛 | 暗黒司祭 |
+| skill_darkknight_grave_cross | 墓標十字 | 暗黒騎士 |
+
+**修正方針:**
+
+```typescript
+private processPlayerAction(
+  actionType: 'PHYSICAL_ATTACK' | 'MAGIC_SKILL',
+  target: MonsterData,
+  skillId?: string,
+  enemyCandidates?: MonsterData[],
+): void {
+  // ...
+  const targets = this.resolvePlayerActionTargets(target, skillData, enemyCandidates);
+
+  for (const t of targets) {
+    const shieldResult = this.applySpiritualShield(t, totalDamage, element);
+    const hpChange = this.applyDamageToEnemy(t, shieldResult.damage);
+    this.checkBossGimmicks(t, hpChange.prevHpPct, hpChange.newHpPct);
+    // ログ生成...
+  }
+}
+```
+
+`simulateAction()` が既に受け取っている `enemyCandidates` をプレイヤー攻撃にも渡し、`SkillData.targetType === 'ALL_ENEMIES'` の場合のみ生存候補全体へ展開する。MP消費・魔神化行動消費・SELF_DAMAGE は行動単位のため1回だけ実行し、ダメージ・防壁・状態異常・武器パッシブ・ログは対象ごとに実行する。
+
+**対応内容:**
+- `processPlayerAction()` に `enemyCandidates` を渡すよう変更。
+- `resolvePlayerActionTargets()` を追加し、AoEは生存敵候補、単体は選択対象のみへ解決。
+- AoE命中対象ごとに BattleLog / HPランタイム更新 / ボスギミック / 状態異常 / 武器パッシブを処理。
+- `BattleEngine.test.ts` に AoE 3体命中・MP 1回消費・単体スキル非AoEの回帰テストを追加。
+
+**設計:** `docs/設計書/69_IMP1_BattleEngine_AoEスキル対象解決設計.md`
+
+**関連ファイル:**
+- `src/logic/BattleEngine.ts:257` — `processPlayerAction()`
+- `src/logic/BattleEngine.ts:104` — `simulateAction()`
+- `src/data/master/skills.json` — `targetType: ALL_ENEMIES` スキル5種
+
+---
+
+## ✅ IMP-2: SUMMON_MINIONSがBattleEngineではログのみ（敵が実際に増えない）（2026-05-30 完了）
+
+**ファイル:** `src/logic/BattleEngine.ts:688`
+
+```typescript
+case 'SUMMON_MINIONS':
+  this.addLog('BOSS_SUMMON', boss.name, 'FIELD',
+    `【召喚】${boss.name}が手下を呼んだ！`);
+  break; // ← 実際には何も起きない
+```
+
+**問題の詳細:**  
+`blood_mire_queen`（第1章ラストボス）は `ON_SHIELD_BREAK → SUMMON_MINIONS` ギミックを持つ。  
+BattleCanvasには `resolveSummonMinionIds()` が実装され増援IDを解決できるが、  
+BattleEngineでは「ログを出すだけ」で `state.enemies` に追加しない。  
+BattleEngineのテストをすると、防壁破壊後もモンスターが増えていない。
+
+**BossGimmickSystemには解決ロジックがある:**
+
+```typescript
+// src/logic/BossGimmickSystem.ts
+export function resolveSummonMinionIds(boss: MonsterData, gimmick: BossGimmick): string[]
+```
+
+**修正方針:**
+BattleEngine の `state` に `pendingSummons: string[]` と `summonedEnemies: MonsterData[]` を追加し、
+`applyBossGimmickEffect()` の SUMMON_MINIONS ケースで増援を `MonsterData` として実体化する。
+
+```typescript
+case 'SUMMON_MINIONS': {
+  const ids = resolveSummonMinionIds(boss.id, g.value, availableSlots);
+  const summoned = ids.map(id => createSummonedEnemy(id, boss));
+  this.state.summonedEnemies = [...this.state.summonedEnemies, ...summoned];
+  this.state.pendingSummons = [...this.state.pendingSummons, ...summoned.map(e => e.id)];
+  this.addLog('BOSS_SUMMON', boss.name, 'FIELD',
+    `【召喚】${boss.name}が${summoned.map(e => e.name).join(' / ')}を呼び出した！`);
+  break;
+}
+```
+
+`resolveEnemyCandidates()` で `summonedEnemies` を候補へマージすることで、次回以降の AoE / 軍団追撃対象にも増援が入る。
+
+**対応内容:**
+- `BattleState` に `pendingSummons` / `summonedEnemies` を追加。
+- `applySummonMinions()` で enemy master から増援を `MonsterData` として生成。
+- 増援を `enemyCurrentHp` / `enemyMaxHp` に登録。
+- `getPendingSummons()` / `consumePendingSummons()` / `getSummonedEnemies()` を追加。
+- 後続ターンの `resolveEnemyCandidates()` に増援を混ぜる。
+- `BattleEngine.test.ts` に実体化・pending取得・後続AoE/追撃候補化の回帰テストを追加。
+
+**設計:** `docs/設計書/70_IMP2_BattleEngine_SUMMON_MINIONS実体化設計.md`
+
+**関連ファイル:**
+- `src/logic/BattleEngine.ts:688` — `applyBossGimmickEffect()` SUMMON_MINIONS ケース
+- `src/logic/BossGimmickSystem.ts` — `resolveSummonMinionIds()`
+- `src/types/game.ts:BattleState` — `pendingSummons` / `summonedEnemies` を追加
+
+---
+
+## 🟠 IMP-3: ボスが直前の精鋭より弱い（stat逆転）
+
+**ファイル:** `src/data/master/enemies.json`
+
+**スタット比較:**
+
+| 敵名 | tier | HP | ATK | DEF | 出現場所 |
+|------|------|-----|-----|-----|---------|
+| bone_colossus（骨巨人） | ELITE | 720 | 124 | 78 | area1_node2 WAVE2 |
+| ossuary_wyrm_lord（死骨竜王） | BOSS | **180** | **15** | 25 | area1_node2 WAVE3 / area1_boss WAVE3 |
+| blood_mire_queen（血沼の女王） | BOSS | 1380 | 188 | 88 | area1_node3 WAVE3 |
+
+`ossuary_wyrm_lord` は直前のエリートより HP が1/4、ATK が1/8。  
+bone_colossusを倒した後に「章ボス」と戦うとあっさり終わってしまう。  
+一方、`blood_mire_queen` は適切なスケールで設計されている。
+
+**具体案:**  
+`ossuary_wyrm_lord` のステータスをENRAGE前後で差をつける形に修正する。  
+基礎値を引き上げ、REVIVEで第2形態に移行する演出を活かす。
+
+```json
+"ossuary_wyrm_lord": {
+  "stats": { "hp": 680, "atk": 95, "def": 52, "spd": 55,
+             "critRate": 10, "critDmg": 175, "effectHit": 0, "effectRes": 30 },
+  "shieldHp": 160, "maxShieldHp": 160,
+  ...
+}
+```
+
+ENRAGE後にATK×1.5 → `680 × 0.5 HP, ATK 142` で bone_colossus を超える局面を作る。  
+REVIVE時のHP回復量と合わせて、2フェーズ制の緊張感を演出する。
+
+**関連ファイル:**
+- `src/data/master/enemies.json` — `ossuary_wyrm_lord.stats`
+- `src/logic/BalanceTuning.test.ts` — 期待値を更新
+
+**調整支援:**
+- `docs/設計書/71_IMP3_敵ボスバランス手動調整手順.md` — 手動調整手順
+- `scripts/balance-report.mjs` — ボス逆転検出レポート
+- `npm run balance:report -- --stage=area1_node2 --all` — 特定ステージ確認
+
+---
+
+## ✅ IMP-4: ドレインスキルのHP回復が未実装（2026-05-30 完了）
+
+**ファイル:** `src/data/master/skills.json:114–127`, `src/logic/BattleEngine.ts:257`
+
+```json
+"skill_darkpriest_1": {
+  "name": "ドレイン",
+  "description": "対象の生命力を吸収する。敵単体に魔法ダメージを与え、自身のHPを回復。"
+}
+```
+
+スキルデータに `healSelf` フィールドがなく、`processPlayerAction()` にも自己回復処理がない。  
+暗黒司祭のアイデンティティとなるスキルが、ただの単体魔法攻撃になっている。
+
+**対応方針:**
+
+skills.json に `healSelfPct` フィールドを追加:
+
+```json
+"skill_darkpriest_1": {
+  "healSelfPct": 30,
+  "description": "敵単体に魔法ダメージを与え、与えたダメージの30%分HPを回復。"
+}
+```
+
+BattleEngineでは、最終ダメージ値ではなく敵ランタイムHPの差分を回復原資にする:
+
+```typescript
+const actualHpDamage = Math.max(0, hpChange.prevHp - hpChange.nextHp);
+if (skillData?.healSelfPct && actualHpDamage > 0) {
+  const healAmount = Math.floor(actualHpDamage * skillData.healSelfPct / 100);
+  const playerStats = this.getMutableStats(player);
+  const prevHp = playerStats.hp;
+  playerStats.hp = Math.min(this.playerInitialMaxHp, playerStats.hp + healAmount);
+  const actualHeal = playerStats.hp - prevHp;
+  this.addLog('HEAL', player.name, player.name,
+    `ドレイン：HP +${actualHeal} 回復。`, actualHeal);
+}
+```
+
+BattleCanvasでも同様にフローティングHPテキスト（緑）を表示する。
+
+**対応内容:**
+- `SkillData` に `healSelfPct?: number` を追加。
+- `skill_darkpriest_1` に `healSelfPct: 30` を追加し、説明文を実効果に合わせた。
+- BattleEngineで実HPダメージの30%を自己回復し、`HEAL` ログを出すようにした。
+- BattleCanvasでドレイン回復のHP更新・回復float・ログ表示を追加した。
+- `BattleEngine.test.ts` に、通常回復・最大HP上限・オーバーキル除外の回帰テストを追加した。
+
+**設計:** `docs/設計書/76_IMP4_ドレインスキルHP吸収設計.md`
+
+**関連ファイル:**
+- `src/data/master/skills.json:114` — `skill_darkpriest_1`
+- `src/types/game.ts:SkillData` — `healSelfPct?: number` を追加
+- `src/logic/BattleEngine.ts` — `processPlayerAction()` / `applySkillSelfHeal()` にヒール処理を追加
+- `src/components/battle/BattleCanvas.tsx` — `handleSkill()` に回復float追加
+
+---
+
+## ✅ IMP-5: 通常攻撃のattackTypeが全職業でSLASH固定（2026-05-30 完了）
+
+**ファイル:** `src/logic/BattleEngine.ts:282`, `src/components/battle/BattleCanvas.tsx:2732`
+
+```typescript
+// BattleEngine
+if (actionType === 'PHYSICAL_ATTACK') {
+  energyCost = 0;
+  attackType = 'SLASH'; // ← 全職業一律
+}
+
+// BattleCanvas
+attackType: 'SLASH', // ← ハードコード
+```
+
+**影響:**
+- ローグが「STRIKE」ではなく「SLASH」で通常攻撃 → ログと衝撃VFXが職業コンセプトと一致しない
+- 魔術師や闇術師も「SLASH」扱い → 術式VFXと状態異常推論が職業コンセプトと一致しない
+- 魔神化の連撃数・倍率・リスク表示も固定された攻撃種別を参照する
+- VFXも全員が斬撃アニメーションになる
+
+**対応方針:**
+`jobs.json` の全12職に `baseAttackType` フィールドを追加:
+
+```json
+"warrior":    { "baseAttackType": "SLASH" },
+"mage":       { "baseAttackType": "MAGIC" },
+"dark_priest":{ "baseAttackType": "MAGIC" },
+"rogue":      { "baseAttackType": "STRIKE" },
+"necromancer":{ "baseAttackType": "SUMMON" },
+"trickster":  { "baseAttackType": "PROJECTILE" }
+```
+
+`JobSystem` に共通解決関数を追加:
+
+```typescript
+export function getBaseAttackType(
+  job: Pick<JobData, 'baseAttackType'> | null | undefined,
+): SkillAttackType {
+  return job?.baseAttackType ?? 'SLASH';
+}
+```
+
+**対応内容:**
+- `JobData` に `baseAttackType?: SkillAttackType` を追加。
+- `jobs.json` の全12職に職業コンセプトに沿った `baseAttackType` を設定。
+- `JobSystem.getBaseAttackType()` に旧データ向け `SLASH` フォールバックを集約。
+- BattleEngineの通常攻撃ログ・状態異常推論・魔神化分岐を職業別攻撃種別へ接続。
+- BattleCanvasの通常攻撃VFX・ダメージ計算・状態異常推論・魔神化分岐を同じ解決関数へ接続。
+- `JobSystem.test.ts` と `BattleEngine.test.ts` に全12職・フォールバックの回帰テストを追加。
+
+**設計:** `docs/設計書/77_IMP5_職業別通常攻撃種別設計.md`
+
+**関連ファイル:**
+- `src/data/master/jobs.json` — 全12職業に `baseAttackType` を追加
+- `src/types/game.ts:JobData` — `baseAttackType?: SkillAttackType` を追加
+- `src/logic/JobSystem.ts` — `getBaseAttackType()`
+- `src/logic/BattleEngine.ts` — `processPlayerAction()`
+- `src/components/battle/BattleCanvas.tsx` — `handleAttack()`
+
+---
+
+## ✅ IMP-6: ターン順序プレビューUIが存在しない（2026-05-30 完了）
+
+**ファイル:** `src/logic/TurnOrderSystem.ts`, `src/components/battle/BattleCanvas.tsx`
+
+`TurnOrderSystem.scheduleEnemiesUntilPlayer()` は `orderPreview` を返すが、
+BattleCanvasは `formatAvOrder(schedule.orderPreview)` でテキスト変換してログに流すのみだった。
+画面上部には `TurnOrderStrip` が存在したが、実AVと接続されていない固定表示だった。
+プレイヤーは「次に誰が動くか」を視覚的に把握できない。
+
+HSR / FGOなどのターン制ゲームではターン順アイコン列が戦略の根幹になっている。
+
+**対応方針:**
+バトル画面上部に、実AVから計算した最大5件の行動順バッジ列を表示する。
+
+```tsx
+<TurnOrderStrip order={turnOrderPreview}/>
+```
+
+`battleAvRef` を戦闘ロジックの正本として維持し、`buildTurnOrderPreview()` でUI用の投影を作る。
+初期化・ウェーブ遷移・通常ターン終了・AV遅延・魔神化割り込み・敵増減のたびに再計算する。
+
+**対応内容:**
+- `TurnOrderSystem.buildTurnOrderPreview()` を追加し、AV昇順・同値時SPD優先の既存規則を再利用した。
+- `scheduleEnemiesUntilPlayer()` も同じ共通関数から最大5件のプレビューを返すように統一した。
+- BattleCanvasの固定 `TurnOrderStrip` を実データ受け取り型へ変更した。
+- 先頭手番を発光枠と `▶` で強調し、プレイヤーを紫、敵を赤で識別した。
+- 各バッジに丸めたAV値を表示し、`title` と `aria-label` にアクター名とAVを保持した。
+- `TurnOrderSystem.test.ts` に最大5件の切り詰めと表示件数0の境界値テストを追加した。
+
+**設計:** `docs/設計書/78_IMP6_ターン順序プレビューUI設計.md`
+
+**関連ファイル:**
+- `src/logic/TurnOrderSystem.ts` — `buildTurnOrderPreview()`
+- `src/logic/TurnOrderSystem.test.ts` — 最大件数・境界値の回帰テスト
+- `src/components/battle/BattleCanvas.tsx` — `TurnOrderStrip` / AV同期処理
+
+---
+
+## 🟡 IMP-7: node1→node2の難易度崖（プレイヤーへの案内なし）
+
+**データ比較:**
+
+| ステージ | 代表敵 | HP | ATK | スターターATK=11での撃破ターン数 |
+|---------|--------|----|----|--------------------------------|
+| area1_node1 | grave_soldier | 15 | 3 | 2ターン |
+| area1_node1 | grave_knight | 40 | 6 | 4ターン |
+| area1_node2 | hollow_handmaid | **285** | **62** | **32ターン** |
+| area1_node2 | bone_colossus | **720** | **124** | **80ターン+** |
+
+スターター装備（ATK=11）でnode2へ進むと、プレイヤーはbone_colossusに1撃（118ダメージ）で倒される。  
+HP=60の初期プレイヤーに対してATK=124は即死。  
+しかしマップ上でのロック表示がなく、「ステージが解放された＝行ける」と誤解される可能性がある。
+
+**具体案1（推奨）: 推奨レベル表示をマップノードに追加**
+
+```json
+// stages.json
+"area1_node2": {
+  "recommendedLevel": 5,
+  "recommendedWeapon": "SR"
+}
+```
+
+マップノードのツールチップに「推奨Lv.5 / 推奨武器:SR以上」を表示。  
+低レベルで挑もうとすると「このステージは難易度が高い。本当に挑戦する？」の確認ダイアログを出す。
+
+**具体案2: スターターパックの追加**  
+area1_node1クリア時に確定でSR武器残滓をドロップする「初回クリアボーナス」を設ける。  
+`dropTable` に `"firstClearOnly": true` フラグを追加して対応。
+
+**関連ファイル:**
+- `src/data/master/stages.json` — `recommendedLevel` フィールドを追加
+- `src/types/game.ts:StageData` — 型拡張
+- `src/components/map/AreaMap.tsx` — ノードツールチップに推奨情報表示
+
+**調整支援:**
+- `docs/設計書/72_IMP7_ステージ難易度導線手動調整手順.md` — ステージ難易度導線の手動調整手順
+- `scripts/progression-report.mjs` — ステージ間のEHP/脅威度急上昇検出レポート
+- `npm run balance:progression -- --stage=area1_node2 --all` — node1→node2周辺の確認
+
+---
+
+## ✅ SEC-6: JWTセッションの失効不可（2026-05-27 完了）
+
+**ファイル:** `src/auth.ts:33`
+
+```typescript
+session: { strategy: 'jwt', maxAge: 60 * 60 * 24 }
+```
+
+パスワード変更やアカウント削除後も最大24時間、トークンが有効なまま残る。  
+Credentials provider は Auth.js v5 の制約により database session へ単純移行できないため、JWT戦略を維持したまま `User.sessionVersion` で失効できるようにした。
+
+**対応:**
+NextAuth の `jwt` callback と手製 `/api/auth/login` のJWT payload に `sessionVersion` を入れ、セッション確認時にDB上の `User.sessionVersion` と照合する。通常ログアウト時も `/api/auth/logout` で `sessionVersion` を進め、旧JWTを一括失効する。
+
+```typescript
+export async function invalidateAllUserSessions(userId: string): Promise<number | null> {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { sessionVersion: { increment: 1 } },
+    select: { sessionVersion: true },
+  });
+  return user.sessionVersion;
+}
+```
+
+パスワード変更・アカウント削除時に `invalidateAllUserSessions(userId)` を呼ぶことで、そのユーザーの旧JWTを一括で無効化できる。
+
+**関連ファイル:**
+- `src/auth.ts` — `jwt` callbackで `sessionVersion` を付与・照合
+- `src/services/SessionSecurityService.ts` — version照合と一括失効
+- `src/app/api/auth/login/route.ts` — 手製JWTにも `sessionVersion` を付与
+- `src/app/api/auth/logout/route.ts` — ログアウト時に旧JWTを一括失効
+- `prisma/schema.prisma` — `User.sessionVersion`
+
+**設計:** `docs/設計書/67_SEC6_JWTセッション失効設計.md`
+
+---
+
+## 🟡 SEC-7: パスワードポリシーが弱い
+
+**ファイル:** `src/services/AuthService.ts:30`
+
+```typescript
+if (password.length < 8) {
+  return { success: false, error: 'パスワードは8文字以上にしてください' };
+}
+```
+
+**具体案:**  
+最低12文字、または「数字＋英字混合8文字以上」のいずれかを要件とする。
+
+```typescript
+const MIN_LENGTH = 12;
+const MIXED_PATTERN = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/;
+
+if (password.length < MIN_LENGTH && !MIXED_PATTERN.test(password)) {
+  return {
+    success: false,
+    error: 'パスワードは12文字以上、または英数字を含む8文字以上にしてください'
+  };
+}
+```
+
+あわせてサインアップUIにパスワード強度インジケーター（色帯）を追加するとUX向上。
+
+---
+
+## 🟢 NL-1: SynergyBonusの未使用フィールド3種
+
+**ファイル:** `src/logic/TribeSynergySystem.ts`, `src/logic/BattleDamage.ts`
+
+```typescript
+// SynergyBonus に定義あり、使用箇所なし
+atkBonus?: number;    // HUMANOID 3体: ATK +12 のはず？
+defBonus?: number;    // ORC クロス共鳴用？
+avBonus?: number;     // DRAGON クロス共鳴用？
+```
+
+`BattleDamage.ts` にも `BattleCanvas` にも参照がない。
+
+**具体案A（削除）:** これらのボーナスタイプをシナジー設計から外す場合、型から削除して明確化する。  
+**具体案B（接続）:** `BattleDamage.ts` でATKに加算する:
+
+```typescript
+const effectiveAtk = attackerStats.atk + (synergyBonus?.atkBonus ?? 0);
+```
+
+DEF/AVも同様。どちらを採用するか設計書 `18_種族シナジーシステム.md` を確認の上決定する。
+
+---
+
+## 🟢 NL-2: isAwakenedが常にfalseでBattleCanvasに未接続
+
+**ファイル:** `src/logic/BattleEngine.ts:503`, `src/components/battle/BattleCanvas.tsx`
+
+`BattleEngine.processMonsterActions()` は `monster.isAwakened` チェックで ATK×1.5 になるが、  
+BattleCanvas は `calculateMonsterAttackProfile()` に `{ awakened: player.isAwakened }` を渡しており、  
+`player.isAwakened` は常に `false`（DBスキーマにも `isAwakened` フィールドはある）。
+
+第2章以降で「覚醒」を実装する際の伏線として残すか、今章で死に値を削除するか判断が必要。
+
+---
+
+## 🟢 L-2: BattleEngineのWAVE進行が「10ターン経過」トリガー
+
+**ファイル:** `src/logic/BattleEngine.ts:883`
+
+```typescript
+private updateState(): void {
+  this.state.turn++;
+  if (this.state.turn > 10) {
+    this.state.wave = Math.min(3, this.state.wave + 1);
+    this.state.turn = 1;
+  }
+}
+```
+
+BattleCanvasは「敵全滅でWAVE進行」を実装している。両者が同じ挙動にならない。  
+BattleEngineを本番バトルに完全接続する際に衝突する。
+
+**具体案:** `updateState()` のWAVE進行ロジックを削除し、呼び出し元から明示的に `advanceWave()` を呼ぶ設計に変更する。
+
+```typescript
+public advanceWave(): void {
+  this.state.wave = Math.min(3, this.state.wave + 1);
+  this.state.turn = 1;
+}
+```
+
+---
+
+## ✅ QUALITY-2: JobService.changeJobの引数直接変異（2026-05-27 完了）
+
+**ファイル:** `src/services/JobService.ts:32–44`
+
+```typescript
+if (typeof characterOrId !== 'string') {
+  const character = characterOrId;
+  character.jobs.push(...);     // 引数を直接書き換え
+  character.currentJobId = ...; // 引数を直接書き換え
+  return;
+}
+```
+
+Zustandストアから渡された `CharacterData` を直接変異させているため、Immerを使わないパスで予期しないレンダリングや状態の汚染が起こり得る。
+
+**対応:** 変異ではなく新しいオブジェクトを返す不変更新に変更した。
+
+```typescript
+public async changeJob(character: CharacterData, nextJobId: string): Promise<CharacterData>;
+public async changeJob(characterId: string, nextJobId: string): Promise<void>;
+```
+
+インメモリ経路は `buildChangedCharacter()` で `jobs` / `stats` / `passives` などを別参照にして返す。DB永続化経路は既存通り `Promise<void>` を返す。
+
+**設計:** `docs/設計書/65_QUALITY2_JobService_changeJob不変更新設計.md`
+
+---
+
+## ✅ BUG-11: 最終WAVEクリア後のループとプレイヤー行動の多重入力（2026-05-31 完了）
+
+**ファイル:** `src/components/battle/BattleCanvas.tsx`, `src/logic/BattleFlowSystem.ts`
+
+node1-1のWAVE 3を全滅させても、報酬適用後にバトル初期化effectが再発火するとWAVE 1へ戻る。
+また、攻撃ボタンを短時間に連打するとReact stateの反映前に複数の `handleAttack()` が通過し、敵ターン中にも予約済みの連続攻撃が実行される。
+
+**原因:**
+- バトル初期化effectが `currentJobLevel` などの進行中に変化する値へ依存している。
+- 最終報酬の `addExp()` が職業レベルを更新すると、同一ステージのBattleCanvasを再初期化する。
+- `phase === 'playerTurn'` はReact stateのスナップショットであり、同一描画フレーム内の連打を同期的には遮断できない。
+
+**対応方針:**
+- 同一BattleCanvas内では同一ステージキーを一度だけ初期化する。
+- phaseをrefにも同期し、イベントハンドラが最新phaseを即時参照できるようにする。
+- プレイヤーの消費アクションへ同期ロックを追加し、次の自ターンまたは新WAVE開始まで保持する。
+- 通常攻撃だけでなく、スキル、道具、魔神技にも同じロック規則を適用する。
+
+**対応内容:**
+- `BattleFlowSystem.shouldInitializeBattle()` で同一ステージの再初期化を拒否した。
+- `BattleFlowSystem.canStartPlayerAction()` にphase一致・ロック未取得・WAVE未解決の判定を集約した。
+- BattleCanvasに `initializedBattleKeyRef`, `phaseRef`, `playerActionLockRef` を追加した。
+- BattleCanvasのphase遷移を `setBattlePhase()` に統一し、イベントハンドラから最新phaseを同期参照できるようにした。
+- 通常攻撃、スキル、道具、魔神技へ同期ロックを接続した。
+- Lv.1職業スキルとソウル初期値の現行仕様に合わせ、古いPlaywright期待値を更新した。
+
+**設計:** `docs/設計書/79_BUG11_最終WAVEクリアループと多重入力防止設計.md`
+
+---
+
+## ✅ IMP-8: スキル用エナジーがMPとして機能していない（2026-05-31 完了）
+
+**ファイル:** `src/logic/EnergySystem.ts`, `src/logic/BattleEngine.ts`, `src/components/battle/BattleCanvas.tsx`
+
+現行実装はスキル用リソースをEN / SP / エネルギーと表示し、通常攻撃、スキル使用、防壁破壊、BEASTシナジーで充填する。
+プレイヤーが期待するMP仕様に合わせ、ステージ開始時は満タン、スキル使用時は `mpCost` 分だけ消費、通常攻撃などでは暗黙回復しない有限リソースへ変更する。
+
+内部の `currentEnergy`, `maxEnergy`, `RESTORE_ENERGY`, `ENERGY_DRAIN` は互換用識別子として維持し、画面とルール上の用語をMPへ統一する。
+
+**対応内容:**
+- バトルコマンド、選択見出し、ステータス、ログ、チュートリアルを「スキル」 / 「MP」へ統一した。
+- `calculateInitialEnergy()` を最大MP返却へ変更し、キャラクター作成時とステージ開始時を満タンMPにした。
+- 通常攻撃、スキル使用後、防壁破壊、BEAST × 3シナジーの暗黙MP回復を廃止した。
+- `jobs.json` と `JobData` から不要になった `energyRegen`, `initialSpPct` を削除した。
+- MP回復アイテムの `RESTORE_ENERGY` と魔神化リスクの `ENERGY_DRAIN` は互換用内部IDとして維持した。
+- Unit Test、結合テスト、モバイルPlaywright E2EへMP仕様の回帰確認を追加した。
+
+**設計:** `docs/設計書/80_IMP8_スキルMPリソース再設計.md`
+
+---
+
+## ✅ IMP-9: 序盤バランスと戦闘後MP全回復の再設計（2026-05-31 完了）
+
+**ファイル:** `src/logic/ExperienceSystem.ts`, `src/logic/JobGrowthSystem.ts`, `src/data/master/enemies.json`, `src/data/master/stages.json`, `src/components/battle/BattleCanvas.tsx`
+
+Lv1基礎値、職業EXP、レベルアップ成長、Chapter 1敵データを同じ序盤スケールで再設計する。
+あわせて戦闘終了時のMP全回復を保証し、ローカル勝利時にResultScreenがEXPを二重加算する問題を解消する。
+
+**対応内容:**
+- Lv1基礎値を `HP 30 / ATK 4 / DEF 4` へ変更し、ローカルモックとサーバー作成値を共通定数化した。
+- ローカルモックの強化済み残滓はインベントリへ残し、初回装備枠を空にして実戦値を `HP 34 / ATK 6 / DEF 5` に揃えた。
+- Lv2必要EXPを `10` とする緩やかな累積EXP式へ変更した。
+- ホームの `JOB-EXP` を共通進捗関数へ接続し、Lv1開始時の残り必要EXPを `10` と表示するようにした。
+- 基礎成長を小数係数による累積差分方式へ変更し、分割レベルアップと一括レベルアップの結果を一致させた。
+- Chapter 1敵とステージEXPを再調整し、`area1_node1 → area1_node2` のEHP上昇を `11.46x → 2.27x` に抑えた。
+- 勝利、敗北、逃走で `restoreEnergy()` を呼び、戦闘終了時にMPを最大値へ戻した。
+- ResultScreenのEXP二重加算と、共通終了処理による逃走・敗北時の誤クリア付与を削除した。
+- Unit Test、DB結合テスト、バランス監査、モバイルPlaywright E2E、Next/Viteビルドを実行した。
+
+**設計:** `docs/設計書/81_IMP9_序盤バランスと戦闘後MP全回復再設計.md`
+**レポート:** `docs/progress/IMP9_序盤バランス再調整レポート.md`
+
+---
+
+## ✅ IMP-10: 武器打ち直しILv成長とサーバー永続化（2026-06-01 完了）
+
+**ファイル:** `src/logic/WeaponSystem.ts`, `src/app/actions.ts`, `src/store/useGameStore.ts`, `src/components/legion/LegionHub.tsx`, `prisma/schema.prisma`
+
+武器打ち直しを段階ジャンプから `ILv + 1` の逐次成長へ変更する。
+メインATKは毎ILvで必ず伸ばし、サブステータスは20ILvごとの節目で成長させる。
+R / SR / SSR / URは最終ATK、節目成長率、黒鋼コストで差を作る。
+
+**対応内容:**
+- 武器基礎ATKを `ILv.1 = 1`、毎ILv最低 `+1`、ILv.90でレアリティ別終盤値へ到達する式へ変更した。
+- サブステータスへ `ILv.20 / 40 / 60 / 80` の節目成長とレアリティ別倍率を追加した。
+- 打ち直しを1回 `ILv + 1` に変更し、次ILv帯とレアリティに応じた深淵の黒鋼コストを設定した。
+- 節目打ち直しだけレアリティ対応イデアを1個追加消費するようにした。
+- Prismaへ `WeaponMaterial` を追加し、新規キャラクターと既存アカウントへ初回素材パックを付与した。
+- 共鳴、打ち直し、分解をServer Actionへ接続し、所有権確認と素材更新をDBトランザクション化した。
+- クラウドロードで武器素材を復元し、ログイン済みUIはサーバー成功後の再ロードを正とするようにした。
+- 通信中の武器強化連打を遮断し、打ち直しUIへ逐次成長と20ILv節目を表示した。
+- Unit Test、DB結合テスト、型検査、監査、ビルド、Playwright全27件を実行した。
+
+**設計:** `docs/設計書/91_IMP10_武器打ち直しILv成長とサーバー永続化設計.md`
+**レポート:** `docs/progress/IMP10_武器打ち直し再設計レポート.md`
+
+---
+
+## ✅ IMP-11: 武器レアリティ別サブオプション再設計（2026-06-01 完了）
+
+**ファイル:** `src/logic/WeaponSystem.ts`, `src/data/master/items.json`, `src/components/legion/LegionHub.tsx`, `scripts/master-data-audit.mjs`, `src/app/admin/actions.ts`
+
+武器サブオプションを単純な上位倍率から、レアリティごとの役割差が生まれる構成へ変更する。
+Rは単一枠、SRは高倍率の単一枠、SSRはSRより倍率を抑えた通常枠と固定属性枠、URはSR以上の通常枠と固定属性枠を持つ。
+
+**対応内容:**
+- レアリティ別の基準倍率を `R 1.00 / SR 1.25 / SSR 1.10 / UR 1.40` に設定した。
+- 20ILvごとの成長率を `R +5% / SR +6% / SSR +5% / UR +6%` に設定した。
+- SSR / URへ固定属性ダメージ枠を1枠必須化し、R / SRは単一通常枠へ整理した。
+- 第1章の全武器マスターを新しい枠数ルールへ合わせた。
+- 既存アカウントの所持武器JSONもデータ移行マイグレーションで新ルールへ揃えた。
+- CLI監査と管理画面監査へ、枠数と固定属性枠のFAIL判定を追加した。
+- 武器詳細へ実効サブステータス、枠数、20ILv成長、属性特化バッジを表示した。
+- Unit Test、型検査、監査、ビルド、Playwright全27件を実行した。
+
+**設計:** `docs/設計書/92_IMP11_武器レアリティ別サブオプション再設計.md`
+**レポート:** `docs/progress/IMP11_武器レアリティ別サブオプション再設計レポート.md`
+
+---
+
+## ✅ IMP-13: ストーリーJSONが第1章ファイル固定で2章以降に拡張しづらい（2026-06-03 完了）
+
+**ファイル:** `src/data/story/packs.ts`, `src/data/story/index.ts`, `src/app/admin/actions.ts`, `src/app/admin/story/page.tsx`
+
+ストーリー本文の読み込みと管理画面の保存先が `ch1_scenes.json` に固定されていたため、2章以降のシーンJSONを追加するとランタイムへ読み込めず、管理画面からの新規作成も第1章ファイルへ混入するリスクがあった。
+
+**対応内容:**
+- `StoryPack` レジストリを追加し、章別JSONを登録制にした。
+- ランタイムの `STORY_SCENES` を登録済みパックの集約から構築するようにした。
+- シーンID重複をレジストリ構築時に検出するようにした。
+- `area1_node3` 固定分岐を削除し、`stages.json` の `unlockRequires` から `AREA_UNLOCK` シーンを導出するようにした。
+- 管理画面のStory CRUDを章別パック対応にし、未登録章への保存はエラーにした。
+- 管理画面のヘッダーとダッシュボードを章別JSONパック表示へ変更した。
+
+**設計:** `docs/設計書/94_ストーリー章別JSONレジストリ設計.md`
+**レポート:** `docs/progress/IMP13_ストーリー章別JSONレジストリレポート.md`
+
+---
+
+## ✅ IMP-14: エリアマップが管理画面から追加・編集できない（2026-06-05 完了）
+
+**ファイル:** `src/data/master/areas.json`, `src/logic/WorldMapSystem.ts`, `src/components/map/AreaMap.tsx`, `src/app/admin/areas/*`
+
+ステージは `/admin/stages` から追加できていたが、エリアは独立した管理対象ではなく、ワールド上のエリア名・説明・色・座標が `AreaMap.tsx` に固定されていた。
+また、エリア識別が `area` 数値のみだったため、第1章Area1と第2章Area1を追加したときに混ざるリスクがあった。
+
+**対応内容:**
+- `areas.json` と `AreaData` 型を追加した。
+- `/admin/areas`、`/admin/areas/new`、`/admin/areas/[id]` を追加した。
+- プレイ画面のワールド/エリアマップを `areas.json + stages.json` から構築するようにした。
+- エリア識別を `chapter + area` の複合キーへ変更し、章をまたぐ同番号エリアの混在を防いだ。
+- 管理画面監査とCLI監査にエリア形式チェック、ステージからエリアへの参照チェックを追加した。
+- `StageForm` の `areaGimmick` 選択肢を現行仕様へ修正した。
+
+**設計:** `docs/設計書/95_エリアマップ管理とステージ反映設計.md`
+**レポート:** `docs/progress/IMP14_エリアマップ管理とステージ反映レポート.md`
+
+---
+
+## 実装推奨順
+
+| 優先度 | 項目 | 理由 |
+|--------|------|------|
+| 1位 | BUG-2 | ゲームバランスに直結、数行修正 |
+| 2位 | IMP-3 | ボス戦の達成感に直結、マスターデータ変更のみ |
+| 3位 | IMP-4 | 職業の個性に直結、スキルデータ+数行修正 |
+| 4位 | IMP-1 | BattleEngineとBattleCanvasの分岐解消 |
+| 5位 | IMP-5 | 武器パッシブとVFXの一貫性に直結 |
+| 6位 | IMP-6 | ゲームプレイの戦略深度向上 |
+| 7位 | IMP-7 | 新規ユーザーの離脱防止 |
+| 8位 | IMP-2 | blood_mire_queenのギミック完成 |
+| 9位 | SEC-6, SEC-7 | セキュリティ強化 |
+| 10位 | NL-1, NL-2, L-2, QUALITY-2 | 技術負債整理 |
