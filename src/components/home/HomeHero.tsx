@@ -3,11 +3,12 @@
 import React from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { motion } from 'framer-motion';
-import { Map, Skull, Sword, Terminal, Activity, Settings, Sparkles, Lock, HeartPulse, ShieldCheck, Gauge, Target, type LucideIcon } from 'lucide-react';
+import { Map, Skull, Sword, Terminal, Activity, Settings, Sparkles, Lock, HeartPulse, ShieldCheck, Gauge, Target, Layers, type LucideIcon } from 'lucide-react';
 import { AuthPanel } from '../auth/AuthPanel';
 import { getJobLevelProgress } from '../../logic/ExperienceSystem';
 import { calcNecroMaxCost, deriveNecroRank, necroLevelFromExp, reqNecroExp } from '../../logic/NecroGrowthSystem';
 import { isAbyssalResidueUnlocked } from '../../logic/AbyssalResidueUnlockSystem';
+import { isYomiUnlocked } from '../../logic/YomiUnlockSystem';
 import { MOTION } from '../../lib/motion';
 
 const THEME = {
@@ -115,6 +116,7 @@ export function HomeHero() {
   const maxCost = necroStatus?.maxCost || calcNecroMaxCost(1);
   const goldAmount = player.gold;
   const residueUnlocked = isAbyssalResidueUnlocked(player.clearedStages);
+  const yomiUnlocked = isYomiUnlocked(player.clearedStages);
   const combatStats = [
     { label: 'HP', sub: '生命', value: player.stats.hp.toLocaleString(), ratio: (player.stats.hp / 650) * 100, color: '#FF6B9B', Icon: HeartPulse },
     { label: 'ATK', sub: '攻勢', value: player.stats.atk.toLocaleString(), ratio: (player.stats.atk / 180) * 100, color: '#D4AF37', Icon: Target },
@@ -135,6 +137,17 @@ export function HomeHero() {
       bg: residueUnlocked ? THEME.tertiaryBg : 'rgba(32,26,44,0.42)',
       glow: residueUnlocked ? '0 0 20px rgba(255,107,155,0.3)' : 'none',
       locked: !residueUnlocked,
+    },
+    {
+      id: 'YOMI',
+      label: '黄泉の階層',
+      sub: yomiUnlocked ? 'THE YOMI DEPTHS' : '第1章クリアで解放',
+      icon: yomiUnlocked ? Layers : Lock,
+      color: yomiUnlocked ? '#8B00FF' : '#8b7da8',
+      border: yomiUnlocked ? 'rgba(139,0,255,0.5)' : 'rgba(139,125,168,0.32)',
+      bg: yomiUnlocked ? 'rgba(139,0,255,0.15)' : 'rgba(32,26,44,0.42)',
+      glow: yomiUnlocked ? '0 0 20px rgba(139,0,255,0.3)' : 'none',
+      locked: !yomiUnlocked,
     },
     { id: 'EQUIP', label: '装備・編成', sub: 'ARMORY & LEGION', icon: Sword, color: THEME.secondary, border: THEME.secondaryBorder, bg: THEME.secondaryBg, glow: '0 0 20px rgba(212,175,55,0.22)' },
     { id: 'LOGS', label: '兵歴記録', sub: 'SYSTEM LOGS', icon: Terminal, color: THEME.gray, border: THEME.grayBorder, bg: THEME.grayBg, glow: '0 0 10px rgba(255,255,255,0.1)' },
