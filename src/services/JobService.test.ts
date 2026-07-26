@@ -1,5 +1,6 @@
 import { JobService } from './JobService';
 import { CharacterData } from '../types/game';
+import { makeBaseStats, makeCharacter } from '../testing/factories';
 
 describe('JobService', () => {
   let jobService: JobService;
@@ -7,33 +8,13 @@ describe('JobService', () => {
 
   beforeEach(() => {
     jobService = new JobService();
-    mockCharacter = {
+    mockCharacter = makeCharacter({
       id: '1',
-      name: 'Hero',
-      currentJobId: 'warrior',
-      category: 'PHYSICAL',
-      stats: {
-        hp: 100, atk: 10, def: 10, spd: 100, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 0
-      },
-      passives: {
-        passiveAtkBonus: 0,
-        passiveDefBonus: 0,
-        passiveSpdBonus: 0,
-        passiveCritRateBonus: 0,
-        passiveCritDmgBonus: 0,
-        passiveHpBonus: 0,
-      },
-      equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
-      baseResistances: {},
+      stats: makeBaseStats({ atk: 10, def: 10, critRate: 5 }),
       jobs: [
         { jobId: 'warrior', level: 10, exp: 100 }
       ],
-      isAwakened: false,
-      clearedStages: [],
-      currentEnergy: 0,
-      maxEnergy: 100,
-      elementDmgBoosts: {},
-    };
+    });
   });
 
   test('changeJob should return a new Lv1 job state without mutating the input character', async () => {

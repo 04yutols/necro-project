@@ -1,24 +1,17 @@
 import { evaluateWeaponPassive, WeaponPassiveContext } from './WeaponPassive';
 import type { CharacterData, WeaponPassive } from '../types/game';
+import { makeBaseStats, makeCharacter } from '../testing/factories';
 
-const makePlayer = (rank = 0): CharacterData => ({
+const makePlayer = (rank = 0): CharacterData => makeCharacter({
   id: 'player',
   name: 'アルド',
-  currentJobId: 'warrior',
-  category: 'PHYSICAL',
-  stats: { hp: 5000, atk: 1000, def: 500, spd: 100, critRate: 10, critDmg: 150, effectHit: 0, effectRes: 0 },
-  passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveSpdBonus: 0, passiveCritRateBonus: 0, passiveCritDmgBonus: 0, passiveHpBonus: 0 },
+  stats: makeBaseStats({ hp: 5000, atk: 1000, def: 500, critRate: 10 }),
   equipment: {
     weapon: rank > 0 ? { id: 'w1', name: 'test', type: 'WEAPON', rarity: 'SR', rank, stats: {}, isUnique: false } as any : null,
     sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null,
   },
-  baseResistances: {},
   jobs: [{ jobId: 'warrior', level: 1, exp: 0 }],
-  isAwakened: false,
-  clearedStages: [],
   currentEnergy: 50,
-  maxEnergy: 100,
-  elementDmgBoosts: {},
 });
 
 describe('evaluateWeaponPassive', () => {

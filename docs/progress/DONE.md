@@ -59,6 +59,19 @@
 
 ---
 
+## テスト基盤（2026-07-13）
+
+| 項目 | ファイル | 内容 |
+|---|---|---|
+| DBテスト隔離 | `src/tests/*.integration.test.ts` | `GameManager`/`AuthService`/`SessionSecurityService` の実DB依存テストを `src/logic`・`src/services` から `src/tests/` へ移動。「ユニット＝DB不要」レイヤ分離の乖離を解消 |
+| 共有テストファクトリ | `src/testing/factories.ts` | `makeCharacter`/`makeMonster`/`makeBaseStats` で `CharacterData`/`MonsterData` フルシェル生成を共通化。実マスターデータ非依存で5ファイルのローカルヘルパーを移行 |
+| 進行プリセット | `src/testing/presets.ts` | `fresh`/`ch1_mid`/`ch1_cleared`/`yomi_b5`/`endgame` の5種の `useGameStore` persist スナップショットを実マスターデータから構築 |
+| E2E/実機シード注入 | `tests/helpers/e2e.ts`（`seedGameState`）, `src/hooks/useDevPreset.ts` | `prepareE2EPage(page, { preset })` とブラウザの `?devPreset=<name>`（dev限定）でプリセット注入。詳細は `docs/仕様書/13_テストとCI.md` §5.5 |
+
+詳細仕様: `docs/仕様書/13_テストとCI.md`。積み残しは `docs/progress/TECH_DEBT.md`（TI-1〜TI-5）。
+
+---
+
 ## 意思決定（解決済みQ&A）
 
 | 質問 | 決定内容 |

@@ -3,14 +3,12 @@ import {
   getCanonicalOptionType,
 } from './StatSystem';
 import type { CharacterData } from '../types/game';
+import { makeBaseStats, makeCharacter } from '../testing/factories';
 
-const basePlayer: CharacterData = {
+const basePlayer: CharacterData = makeCharacter({
   id: 'p1',
-  name: 'Hero',
-  currentJobId: 'warrior',
-  category: 'PHYSICAL',
-  baseStats: { hp: 1000, atk: 100, def: 50, spd: 100, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 0 },
-  stats: { hp: 1000, atk: 100, def: 50, spd: 100, critRate: 5, critDmg: 150, effectHit: 0, effectRes: 0 },
+  baseStats: makeBaseStats({ hp: 1000, atk: 100, def: 50, critRate: 5 }),
+  stats: makeBaseStats({ hp: 1000, atk: 100, def: 50, critRate: 5 }),
   passives: { passiveHpBonus: 10, passiveAtkBonus: 5, passiveDefBonus: 3, passiveSpdBonus: 2, passiveCritRateBonus: 1, passiveCritDmgBonus: 10 },
   equipment: {
     weapon: { id: 'w1', name: 'Blade', type: 'WEAPON', rarity: 'COMMON', stats: { atk: 20 }, subOptions: [{ type: 'FIRE_DMG_BOOST', value: 12 }], isUnique: false },
@@ -22,14 +20,7 @@ const basePlayer: CharacterData = {
     acc1: null,
     acc2: null,
   },
-  baseResistances: {},
-  jobs: [],
-  isAwakened: false,
-  clearedStages: [],
-  currentEnergy: 0,
-  maxEnergy: 100,
-  elementDmgBoosts: {},
-};
+});
 
 describe('StatSystem', () => {
   test('normalizes legacy option names into the HSR stat model', () => {

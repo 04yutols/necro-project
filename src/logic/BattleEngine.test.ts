@@ -1,6 +1,7 @@
 import { BattleEngine } from './BattleEngine';
 import { CharacterData, MonsterData, SkillAttackType } from '../types/game';
 import { MasterDataService } from '../services/MasterDataService';
+import { makeBaseStats, makeCharacter, makeMonster } from '../testing/factories';
 
 describe('BattleEngine', () => {
   beforeEach(() => {
@@ -10,61 +11,18 @@ describe('BattleEngine', () => {
 
   let enemySeq = 0;
 
-  const mockPlayer: CharacterData = {
+  const mockPlayer: CharacterData = makeCharacter({
     id: '1',
-    name: 'Hero',
-    currentJobId: 'warrior',
-    category: 'PHYSICAL',
-    baseStats: {
-      hp: 100,
-      atk: 50,
-      def: 30,
-      spd: 100,
-      critRate: 10,
-      critDmg: 150,
-      effectHit: 0,
-      effectRes: 0,
-    },
-    stats: {
-      hp: 100,
-      atk: 50,
-      def: 30,
-      spd: 100,
-      critRate: 10,
-      critDmg: 150,
-      effectHit: 0,
-      effectRes: 0,
-    },
-    passives: { passiveAtkBonus: 0, passiveDefBonus: 0, passiveSpdBonus: 0, passiveCritRateBonus: 0, passiveCritDmgBonus: 0, passiveHpBonus: 0 },
-    equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
-    baseResistances: {},
-    jobs: [],
-    isAwakened: false,
-    clearedStages: [],
-    currentEnergy: 0,
+    baseStats: makeBaseStats({ critRate: 10 }),
+    stats: makeBaseStats({ critRate: 10 }),
     maxEnergy: 100,
-    elementDmgBoosts: {},
-  };
+  });
 
-  const mockTarget = {
+  const mockTarget = makeMonster({
     id: 'goblin-1',
     name: 'Goblin',
-    tribe: 'HUMANOID' as const,
-    cost: 1,
-    stats: {
-      hp: 50,
-      atk: 10,
-      def: 10,
-      spd: 80,
-      critRate: 0,
-      critDmg: 150,
-      effectHit: 0,
-      effectRes: 0,
-    },
-    resistances: {},
-    currentEnergy: 30,
-    maxEnergy: 30,
-  };
+    stats: makeBaseStats({ hp: 50, atk: 10, def: 10, spd: 80 }),
+  });
 
   const createPlayer = (
     stats: Partial<CharacterData['stats']> = {},

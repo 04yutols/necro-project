@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 新しいセッションを開始したら、まず以下を確認する:
 
 1. **作業タスク** → `docs/progress/CH1_TODO.md` — 第1章実装チェックリスト（Phase A〜D）
-2. **設計書参照** → `docs/設計書/00_INDEX.md` — 「この質問ならこの設計書」早引き表
+2. **正式仕様参照** → `docs/仕様書/00_INDEX.md` — コード逆生成・検証済みの正式仕様書13本の早引き表（旧 `docs/設計書/` は歴史的資料。位置付けは `docs/仕様書/99_旧ドキュメント棚卸し.md`）
 3. **完了済み確認** → `docs/progress/DONE.md` — 実装済みシステム・解決済み意思決定
 4. **今回の作業が第2章以降でないか** → `docs/progress/DEFERRED.md` で確認
 
@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Design aesthetic: **Gothic-Morphism** — Void Purple `#8B00FF`, obsidian glass, aged parchment, bone frames
 - Target quality: Star Rail / Genshin Impact production level
-- Release scope: **第1章「亡国の王都」のみ**（5ステージ）
+- Release scope: **第1章「亡国の王都」**（12ノード: SAFE 1 + 戦闘11）+ エンドコンテンツ**黄泉の階層 B1〜B20**（解放 = 第1章クリア）
 
 ## Commands
 
@@ -51,7 +51,7 @@ CI（`.github/workflows/ci.yml`）: push/PR で tsc + jest（`src/tests/` の DB
 ### Routing / navigation
 
 Single-page app (`src/app/page.tsx`), navigation via `currentTab` in Zustand.  
-Tabs: `HOME | BATTLE | MAP | EQUIP | LAB | LOGS`  
+Tabs: `HOME | BATTLE | MAP | EQUIP | LAB | YOMI | LOGS | JOB`（BottomNavBar は JOB を除く7タブ、JOB は HomeHero から遷移）  
 MAP and BATTLE = full-screen overlays (`position: absolute, inset: 0, zIndex: 9999`).  
 BattleCanvas loaded via `next/dynamic` with `ssr: false`.
 
@@ -144,7 +144,7 @@ MonsterData: {
 SoulShardData: { id, originMonsterName, effect: { atkBonus, elementDmgBoost, specialAbility? } }
 AbyssalResidueData: { id, name, itemId, rarity, mainStat, subOptions, level(1-20), exp, maxExp }
 SpiritCoreData: { id, name, element?, skillChangeId?, atkMultiplier }
-NecroStatus: { level(1-99), rank(1-10), maxCost, baseStatsBonus }
+NecroStatus: { level(1-500), maxCost, exp }  // rank(1-10) は 50Lv 毎の導出値（NecroGrowthSystem.deriveNecroRank）
 ```
 
 ## Coding Rules
@@ -173,8 +173,8 @@ Always separate into two layers:
 ## Database (Prisma + PostgreSQL)
 
 Schema: `prisma/schema.prisma`. Run `npx prisma generate` after schema changes.  
-Key models: `Character`, `UserJob`, `Monster`, `SoulShard`, `SpiritCore`, `Item`, `AbyssalResidue`.  
-Online: NextAuth.js v5 + Upstash Redis (ranking) + Pusher Channels (world log) — see `docs/設計書/25_オンラインゲーム設計.md`.
+Models (11): `User`, `Character`, `Item`, `ItemSerialCounter`, `AbyssalResidue`, `Monster`, `SoulShard`, `StageRecord`, `StageAttempt`, `PlayerStats`, `WorldLog`. 個人セーブは `Character.playerState` JSON ブロブ（スキーマ v3, `PlayerSaveService`）とのハイブリッド。  
+Online: NextAuth.js v5 + Upstash Redis (ranking) + Pusher Channels (world log) — see `docs/仕様書/10_オンライン機能とセキュリティ.md`.
 
 ## Task Tracking (docs/progress/)
 

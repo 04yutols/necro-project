@@ -9,6 +9,7 @@
     "start": "next start -H 0.0.0.0",
     "db:migrate:deploy": "prisma migrate deploy",
     "test": "jest",
+    "ts:e2e": "tsc --noEmit -p tsconfig.tests.json",
     "agent:verify": "tsx scripts/verify-enemy-agent.mts",
     "agent:verify-skill": "tsx scripts/verify-skill-agent.mts",
     "agent:verify-demon": "tsx scripts/verify-demon-agent.mts",

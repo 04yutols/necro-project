@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { buildPresetSnapshot, type PresetName } from '../../src/testing/presets';
 
 const VIEWED_STORY_SCENES = [
   'PROLOGUE_00',
@@ -32,6 +33,23 @@ const COMPLETED_TUTORIAL_PHASES = [
 
 interface PrepareE2EPageOptions {
   clearedStages?: string[];
+  /** 指定すると進行プリセットの persist スナップショットを注入する（未指定＝従来どおり新規状態）。 */
+  preset?: PresetName;
+}
+
+/**
+ * 進行プリセットの persist スナップショットを localStorage へ注入する（goto 前に呼ぶこと）。
+ * 'fresh' は null なので removeItem＝新規状態に委ねる。
+ */
+export async function seedGameState(page: Page, preset: PresetName) {
+  const snapshot = buildPresetSnapshot(preset);
+  await page.addInitScript((snap) => {
+    if (snap) {
+      window.localStorage.setItem('necro-game-store-v1', JSON.stringify(snap));
+    } else {
+      window.localStorage.removeItem('necro-game-store-v1');
+    }
+  }, snapshot);
 }
 
 export async function prepareE2EPage(page: Page, options: PrepareE2EPageOptions = {}) {
@@ -43,8 +61,15 @@ export async function prepareE2EPage(page: Page, options: PrepareE2EPageOptions 
     route.fulfill({ status: 200, contentType: 'text/html', body: '' });
   });
 
-  await page.addInitScript(({ storyScenes, tutorialPhases, clearedStages }) => {
-    window.localStorage.removeItem('necro-game-store-v1');
+  // preset 指定時のみ game-store を注入し、後段の removeItem をスキップする。
+  if (options.preset) {
+    await seedGameState(page, options.preset);
+  }
+
+  await page.addInitScript(({ storyScenes, tutorialPhases, clearedStages, hasPreset }) => {
+    if (!hasPreset) {
+      window.localStorage.removeItem('necro-game-store-v1');
+    }
     window.localStorage.setItem('necro-story-store-v2', JSON.stringify({
       state: {
         viewedScenes: storyScenes,
@@ -77,6 +102,7 @@ export async function prepareE2EPage(page: Page, options: PrepareE2EPageOptions 
     storyScenes: VIEWED_STORY_SCENES,
     tutorialPhases: COMPLETED_TUTORIAL_PHASES,
     clearedStages: options.clearedStages ?? [],
+    hasPreset: Boolean(options.preset),
   });
 
   await page.goto('/');

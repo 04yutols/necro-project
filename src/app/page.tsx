@@ -12,6 +12,7 @@ import { useTutorialStore } from '../store/useTutorialStore';
 import { TutorialOrchestrator } from '../components/tutorial/TutorialOrchestrator';
 import { useBGM } from '../hooks/useBGM';
 import { useAuthFlow } from '../hooks/useAuthFlow';
+import { useDevPresetInjection } from '../hooks/useDevPreset';
 import { getTutorialPhaseAfterClear } from '../data/tutorial/triggers';
 
 const BattleCanvas = dynamic(() => import('../components/battle/BattleCanvas').then((mod) => mod.default), {
@@ -143,6 +144,7 @@ function GameContent() {
     currentTab, setCurrentTab
   } = useGameStore();
   const authFlow = useAuthFlow();
+  useDevPresetInjection(authFlow.status);
 
   const canPresentStory = authFlow.status === 'ready' || authFlow.status === 'guest';
   const { triggerStageEnter } = useStoryTrigger(canPresentStory);

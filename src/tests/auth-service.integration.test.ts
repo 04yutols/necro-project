@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
-import { changePasswordForUser, validatePassword } from './AuthService';
+import { changePasswordForUser, validatePassword } from '../services/AuthService';
 
 jest.setTimeout(30000);
 
