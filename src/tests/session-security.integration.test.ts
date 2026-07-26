@@ -5,7 +5,7 @@ import {
   normalizeSessionVersion,
   resolveTokenUserId,
   validateVersionedSessionToken,
-} from './SessionSecurityService';
+} from '../services/SessionSecurityService';
 
 jest.setTimeout(30000);
 

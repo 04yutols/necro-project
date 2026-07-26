@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { GameManager } from './GameManager';
+import { GameManager } from '../logic/GameManager';
 import { emptyPlayerSave, playerSaveToJson, readPlayerSave } from '../services/PlayerSaveService';
 import { PLAYER_SAVE_SCHEMA_VERSION } from '../types/playerSave';
 

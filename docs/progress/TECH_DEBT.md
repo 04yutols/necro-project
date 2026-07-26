@@ -443,6 +443,76 @@ BattleCanvas は `isAwakened` を参照していない。現在は常に `false`
 
 ---
 
+## 🟡 テスト基盤（追加）— 2026-07-13 テストデータ基盤刷新（`docs/仕様書/13_テストとCI.md`）で発見
+
+### TI-1. `MasterDataService` にテスト用オーバーライドの差し込み口がない（L規模）
+
+**問題：**
+`MasterDataService` は `getInstance()` シングルトンで内部に `src/data/master/*.json` を直接ロードし、DIやオーバーライドの経路がない。実マスターデータに直接 import で結合しているテストは `src/logic/`・`src/lib/agent/`・`src/store/` にまたがり17ファイル（`data/master/` 直接import 14 + `MasterDataService` 経由3、`grep -rl "data/master/\|MasterDataService" src --include="*.test.ts"` で実測）。バランス調整（`enemies.json`/`stages.json` の数値変更）のたびにこれらのテストが「意図しない結合」で壊れうる。`src/testing/factories.ts`（実マスターデータ非依存）はこの問題を回避する形で新設されたが、既存17ファイルの結合自体は未解消。
+
+**対応方針：** `MasterDataService.getInstance()` にテスト専用の `resetForTest()` / オーバーライド注入口（例: `setInstanceForTest(data)`）を追加するか、各システムを「マスターデータを引数で受け取る」形へ段階的にリファクタリングする。影響範囲が広いため第2章以降で着手。
+
+**関連ファイル：**
+- `src/services/MasterDataService.ts`
+- `src/testing/factories.ts`（実マスターデータ非依存の代替パターンとして参考）
+
+---
+
+### TI-2. `account-progression.integration.test.ts` が574行の単一 `test()`（M規模）
+
+**問題：**
+`src/tests/account-progression.integration.test.ts` は「新規アカウント作成→スターター職業→ステージ1-1クリア→ドロップ・装備・成長」までを単一 `test()` 内の一連の assertion で検証している（574行）。途中の assertion が失敗すると、それ以降のシナリオが実行されずに失敗し、どのフェーズで壊れたのか特定するのに毎回ログを読み解く必要がある。
+
+**対応方針：** シナリオを3ブロック（例: ①アカウント作成〜スターター職業付与 ②ステージクリア〜ドロップ計算 ③装備・成長反映）に分割し、`describe`/`test` を分けて失敗箇所を即座に特定できるようにする。DBセットアップの重複を避けるため `beforeAll` でシナリオの前段状態を共有する構成を検討。
+
+**関連ファイル：**
+- `src/tests/account-progression.integration.test.ts`
+
+---
+
+### TI-3. DB統合テスト（`src/tests/`）のCIジョブ化が未着手
+
+**問題：**
+`.github/workflows/ci.yml` のコメントに「DB シークレットを設定したら別ジョブ（`needs: test`）で `npx jest --ci src/tests` を追加する」と構想が明記されているが、`DATABASE_URL` シークレットが未設定で実施されていない。2026-07-13 のレイヤ分離解消（`docs/仕様書/13_テストとCI.md` §3）で `src/tests/` にDB依存テストが7ファイルに集約されたため、着手条件は整った。
+
+**対応方針：** リポジトリ/Organization シークレットに Neon の `DATABASE_URL`（テスト専用ブランチ推奨）を追加し、`ci.yml` に `needs: test` の別ジョブとして `npx jest --ci src/tests` を追加する。
+
+**関連ファイル：**
+- `.github/workflows/ci.yml`
+- `src/tests/*.integration.test.ts`
+
+---
+
+### TI-4. E2Eナビゲーション重複と脆いE2Eアサーションの棚卸し（S規模）
+
+**問題：**
+`tests/new-player-onboarding.spec.ts` の T-04〜T-10 は各 `test()` 内で個別に `page.addInitScript()` によるストーリー/チュートリアルのスキップ投入と `page.goto('/')` を書いており、`tests/helpers/e2e.ts` の `prepareE2EPage()` と実質同じ処理を重複実装している。また `tests/necro-lab.spec.ts:14` の `expect(page.locator('#tut-cost-display')).toContainText('8/6')` のような厳密値アサーションは、マスターデータのコスト調整で無関係に壊れる。
+
+**対応方針：**
+- T-04〜T-10 の個別 `addInitScript`/`goto` を `prepareE2EPage()` 呼び出しへ統一する（必要な `clearedStages` は `options.clearedStages` で渡す）。
+- `necro-lab.spec.ts:14` 等の厳密値アサーションを棚卸しし、`toContainText('COST')` のような構造的な検証か、`src/testing/presets.ts` のプリセット値を参照する検証へ置き換える。
+
+**関連ファイル：**
+- `tests/new-player-onboarding.spec.ts`（T-04〜T-10、L133〜)
+- `tests/helpers/e2e.ts`（`prepareE2EPage`）
+- `tests/necro-lab.spec.ts:14`
+
+---
+
+### TI-5. dev限定「サーバーバックアカウントの即時プログレス生成」Server Actionがない（M規模）
+
+**問題：**
+`src/hooks/useDevPreset.ts` の `?devPreset=<name>` はゲストモード専用（`localStorage` 注入のみ）で、ログイン中のサーバーバックアカウントには適用されない（`authStatus !== 'guest'` は警告して無視）。DB同期を伴うサーバーバックの進行検証（クラウドセーブ・ランキング反映等）を素早く再現する手段がなく、`src/tests/account-progression.integration.test.ts` のような統合テストか手動プレイでしか確認できない。
+
+**対応方針：** dev限定（`NODE_ENV !== 'production'`）の Server Action を追加し、`emptyPlayerSave()` ベースに実プリセット相当のレコード（`Character`/`Monster`/`AbyssalResidue` 等）を生成、`cleanPlayerSaveReferences()` で参照整合を取ってからログイン中アカウントへ適用する。既存の `src/services/PlayerSaveService.ts` の `emptyPlayerSave` / `cleanPlayerSaveReferencesWithIds` を流用できる。
+
+**関連ファイル：**
+- `src/hooks/useDevPreset.ts`
+- `src/services/PlayerSaveService.ts`（`emptyPlayerSave`, `cleanPlayerSaveReferences`）
+- `src/app/actions.ts`
+
+---
+
 ## 監査スコープ外（確認済み・問題なし）
 
 - スキルテーブル (`skills.json`) — 全スターター職 + 2次職スキル全件存在、power/mpCost/elementのバランス適切 ✅

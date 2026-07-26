@@ -9,6 +9,7 @@ import { INITIAL_PLAYER_BASE_STATS } from './BalanceConfig';
 import { getJobBaseStatsAtLevel } from './JobGrowthSystem';
 import { calculateCharacterStatProfile } from './StatSystem';
 import { calculateWeaponBaseAttack } from './WeaponSystem';
+import { makeCharacter } from '../testing/factories';
 
 const ENEMIES = enemiesData as Record<string, EnemyData>;
 const ITEMS = itemsData as Record<string, ItemData>;
@@ -16,30 +17,13 @@ const JOBS = jobsData as Record<string, JobData>;
 const STAGES = stagesData as Record<string, StageData>;
 
 function makePlayer(finalStats: BaseStats): CharacterData {
-  return {
+  return makeCharacter({
     id: 'balance-player',
     name: 'Balance Player',
-    currentJobId: 'warrior',
-    category: 'PHYSICAL',
     baseStats: INITIAL_PLAYER_BASE_STATS,
     stats: finalStats,
-    passives: {
-      passiveAtkBonus: 0,
-      passiveDefBonus: 0,
-      passiveSpdBonus: 0,
-      passiveCritRateBonus: 0,
-      passiveCritDmgBonus: 0,
-      passiveHpBonus: 0,
-    },
-    equipment: { weapon: null, sub: null, head: null, body: null, arms: null, legs: null, acc1: null, acc2: null },
-    baseResistances: {},
     jobs: [{ jobId: 'warrior', level: 1, exp: 0 }],
-    isAwakened: false,
-    clearedStages: [],
-    currentEnergy: 0,
-    maxEnergy: 100,
-    elementDmgBoosts: {},
-  };
+  });
 }
 
 function enemyToMonster(enemyId: string): MonsterData {
