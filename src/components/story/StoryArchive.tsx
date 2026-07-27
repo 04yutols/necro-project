@@ -95,8 +95,8 @@ export function StoryArchive() {
                 onClick={() => playScene(scene.id)}
                 aria-label={`${scene.archiveTitle}を再生`}
                 style={{
-                  width: 42,
-                  height: 42,
+                  width: 44,
+                  height: 44,
                   borderRadius: 12,
                   border: `1px solid ${isViewed ? 'rgba(212,175,55,0.45)' : 'rgba(255,255,255,0.08)'}`,
                   background: isViewed ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.035)',

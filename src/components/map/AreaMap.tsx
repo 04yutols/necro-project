@@ -1140,7 +1140,8 @@ export default function AreaMap({ onStartStage }: AreaMapProps) {
                   marginBottom: 6,
                   background: 'transparent',
                   border: 0,
-                  padding: 0,
+                  minHeight: 44,
+                  padding: '0 8px',
                 }}
               >
                 <ChevronLeft size={15} />

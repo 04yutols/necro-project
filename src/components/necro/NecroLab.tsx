@@ -66,6 +66,14 @@ function formatStat(type: string, value: number): string {
   return formatOptionValue(type, value);
 }
 
+const RESIDUE_SLOT_LABELS = ['冠', '腕', '胸', '帯', '脚'] as const;
+
+function compactResidueName(name: string, slotIndex?: number): string {
+  const shortName = name.replace(/^深淵の残滓[・\s]*/, '').trim() || name;
+  const slotLabel = slotIndex === undefined ? null : RESIDUE_SLOT_LABELS[slotIndex];
+  return slotLabel ? `${slotLabel} · ${shortName}` : shortName;
+}
+
 /* ──────────────────────────────────────────
    ResidueIcon — geometric SVG per rarity
 ────────────────────────────────────────── */
@@ -158,9 +166,11 @@ function ResidueSlotCard({ slot, slotIndex, isActive, onTap }: SlotProps) {
       {slot ? (
         <>
           <ResidueIcon rarity={slot.rarity} size={22} />
-          <span className="text-[11px] font-black truncate max-w-[72px] text-center leading-tight"
+          <span
+            title={slot.name}
+            className="text-[11px] font-black truncate max-w-[72px] text-center leading-tight"
             style={{ color: RARITY_COLOR[slot.rarity], fontFamily: 'monospace' }}>
-            {slot.name}
+            {compactResidueName(slot.name, slotIndex)}
           </span>
           <span className="text-[12px] font-black" style={{ color: '#FBBB30', fontFamily: 'monospace' }}>
             {formatStat(slot.mainStat.type, slot.mainStat.value)}
@@ -335,9 +345,9 @@ function ResidueGridCard({ residue, isSelected, isEquipped, onSelect }: GridCard
       <span className="text-[12px] font-black" style={{ color, fontFamily: 'monospace' }}>
         {formatStat(residue.mainStat.type, residue.mainStat.value)}
       </span>
-      <span className="text-[10px] truncate max-w-full px-0.5 text-center leading-tight"
+      <span title={residue.name} className="text-[10px] truncate max-w-full px-0.5 text-center leading-tight"
         style={{ color: 'rgba(195,182,238,0.78)', fontFamily: 'monospace' }}>
-        {residue.name}
+        {compactResidueName(residue.name)}
       </span>
       <span className="text-[10px]" style={{ color: 'rgba(195,182,238,0.58)', fontFamily: 'monospace' }}>
         Lv.{residue.level}
@@ -736,6 +746,7 @@ function EnhanceTab({ abyssalResidues, residueMaterials, selectedId, onEnhance, 
             disabled={!selectedResidue || residueMaterials.length === 0}
             className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-lg transition-all active:scale-95 disabled:opacity-35"
             style={{
+              minHeight: 44,
               background: 'rgba(160,0,255,0.2)',
               border: '1px solid rgba(180,60,255,0.5)',
               color: '#E080FF',
@@ -915,7 +926,7 @@ export default function NecroLab() {
         <button
           onClick={() => { sound.playTap(); setCurrentTab('EQUIP'); }}
           className="flex items-center gap-2 transition-all active:scale-90 py-1"
-          style={{ color: 'rgba(185,110,255,0.88)' }}
+          style={{ minHeight: 44, paddingInline: 8, color: 'rgba(185,110,255,0.88)' }}
         >
           <Home size={15} />
           <span className="text-[12px] font-black tracking-[0.18em]" style={{ fontFamily: 'monospace' }}>LEGION</span>
@@ -954,7 +965,7 @@ export default function NecroLab() {
             id={tab === 'ENHANCE' ? 'tut-enhance-tab' : undefined}
             onClick={() => { sound.playTap(); setActiveTab(tab); }}
             className="flex-1 py-3.5 text-[13px] font-black tracking-[0.22em] relative transition-colors"
-            style={{ color: activeTab === tab ? '#E080FF' : 'rgba(195,175,235,0.45)', fontFamily: 'monospace' }}
+            style={{ minHeight: 44, color: activeTab === tab ? '#E080FF' : 'rgba(195,175,235,0.45)', fontFamily: 'monospace' }}
           >
             {tab === 'EQUIP' ? '装　備' : '強　化'}
             {activeTab === tab && (

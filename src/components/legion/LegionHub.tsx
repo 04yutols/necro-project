@@ -368,9 +368,10 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
       style={{
         animation: `slotReveal 0.4s ease-out ${delay}s both`,
         cursor: slot.locked ? 'default' : 'pointer',
-        display: 'flex', alignItems: 'center', gap: 8,
+        display: 'flex', alignItems: 'center', gap: 6,
         width: '100%',
-        padding: '8px 10px',
+        minHeight: 50,
+        padding: '7px 8px',
         background: isSelected
           ? `linear-gradient(135deg, ${color}25, ${color}15)`
           : slot.filled
@@ -395,7 +396,7 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
         }} />
       )}
       <div style={{
-        width: 34, height: 34, flexShrink: 0,
+        width: 30, height: 30, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: slot.filled ? `${color}18` : 'rgba(255,255,255,0.04)',
         border: `1px solid ${slot.filled ? color + '60' : color + '20'}`,
@@ -414,11 +415,6 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
           {slot.locked ? '—' : slot.sublabel}
         </div>
       </div>
-      {slot.filled && slot.level != null && !slot.locked && (
-        <div style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 600, color, background: `${color}18`, padding: '2px 5px', borderRadius: 4, border: `1px solid ${color}40`, flexShrink: 0 }}>
-          Lv.{slot.level}
-        </div>
-      )}
       {isVoid && !slot.filled && !slot.locked && (
         <div style={{ width: 22, height: 22, flexShrink: 0, borderRadius: '50%', border: `1px dashed ${color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: `${color}30` }} />
@@ -2003,10 +1999,11 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
   const rightSlots: HexSlotData[] = RESIDUE_SLOT_ORDER.map((slotId, i) => {
     const r = info.residues[i] ?? null;
     const meta = getResidueSlotMeta(slotId);
+    const compactName = r?.name.replace(/^深淵の残滓[・\s]*/, '').trim() || r?.name;
     return {
       id: `residue_${i}`, icon: meta.icon,
-      label: r ? r.name : meta.nameJa,
-      sublabel: r ? `${formatStat(r.mainStat.type, r.mainStat.value)} / ${getResidueScoreGrade(calculateResidueScore(r)).grade}` : meta.role,
+      label: r ? `${meta.nameJa} / ${compactName}` : meta.nameJa,
+      sublabel: r ? `${formatStat(r.mainStat.type, r.mainStat.value)} / ${getResidueScoreGrade(calculateResidueScore(r)).grade} · Lv.${r.level}` : meta.role,
       filled: !!r, level: r?.level ?? null,
       rarity: r?.rarity ?? null,
       locked: !isResidueUnlocked || (!info.isPlayer && i > 0),
@@ -2067,6 +2064,8 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
               gap: 4,
               alignSelf: 'flex-start',
               padding: '0 0 6px',
+              minHeight: 44,
+              paddingInline: 8,
               color: '#8b7da8',
               fontFamily: "var(--font-inter), sans-serif",
               fontSize: 11,
@@ -2216,7 +2215,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
             type="button"
             onClick={() => { haptic(5); setShowStatusSheet(true); }}
             style={{
-              minHeight: 28,
+              minHeight: 44,
               borderRadius: 9,
               padding: '0 10px',
               background: `linear-gradient(135deg, ${color}22, rgba(255,255,255,0.04))`,
@@ -2264,7 +2263,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
             })}
           </div>
           {/* Formation button */}
-          <button type="button" onClick={() => { haptic(5); onBack(); }} style={{ padding: '8px 12px', background: `linear-gradient(135deg, ${color}30, ${color}15)`, border: `1px solid ${color}60`, borderRadius: 10, cursor: 'pointer', boxShadow: `0 0 12px ${color}30`, flexShrink: 0, transition: 'all 0.2s ease' }}>
+          <button type="button" onClick={() => { haptic(5); onBack(); }} style={{ minHeight: 44, padding: '8px 12px', background: `linear-gradient(135deg, ${color}30, ${color}15)`, border: `1px solid ${color}60`, borderRadius: 10, cursor: 'pointer', boxShadow: `0 0 12px ${color}30`, flexShrink: 0, transition: 'all 0.2s ease' }}>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 700, color, letterSpacing: '0.05em', textAlign: 'center' }}>編成</div>
             <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 7, color: accent + '80', textAlign: 'center', marginTop: 1 }}>Formation</div>
           </button>
@@ -2612,7 +2611,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
       >
         <motion.button onClick={() => { haptic(5); sound.playTap(); onBack(); }} whileTap={{ scale: 0.9 }}
           className="flex items-center gap-1 px-2.5 py-2 rounded-xl"
-          style={{ background: 'rgba(10,5,26,0.88)', border: `1px solid ${color}36`, color: `${color}DD`, minHeight: 36 }}>
+          style={{ background: 'rgba(10,5,26,0.88)', border: `1px solid ${color}36`, color: `${color}DD`, minHeight: 44 }}>
           <ChevronLeft size={14} />
           <span className="text-[10px] font-black tracking-wider" style={{ fontFamily: 'monospace' }}>DETAIL</span>
         </motion.button>
@@ -2632,7 +2631,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
         {(isResidueSlot ? (['EQUIP', 'ENHANCE', 'TRANSMUTE'] as const) : (['EQUIP', 'ENHANCE', 'DISMANTLE'] as const)).map(t => (
           <button key={t} id={!isResidueSlot && t === 'ENHANCE' ? 'tut-weapon-enhance-tab' : undefined} onClick={() => { haptic(5); setWeaponDetailOpen(false); setTab(t); }}
             className="flex-1 py-2.5 text-[12px] font-black tracking-[0.12em] relative transition-colors"
-            style={{ color: tab === t ? '#F0EAFF' : 'rgba(185,165,230,0.36)', fontFamily: 'monospace', background: tab === t ? `linear-gradient(135deg, ${color}22, ${color}09)` : 'transparent' }}>
+            style={{ minHeight: 44, color: tab === t ? '#F0EAFF' : 'rgba(185,165,230,0.36)', fontFamily: 'monospace', background: tab === t ? `linear-gradient(135deg, ${color}22, ${color}09)` : 'transparent' }}>
             {t === 'EQUIP' ? '装備' : t === 'ENHANCE' ? (isResidueSlot ? '強化' : '共鳴') : t === 'TRANSMUTE' ? '錬成' : '分解'}
             {tab === t && <motion.div layoutId="gear-tab-line" className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />}
           </button>
@@ -3036,7 +3035,7 @@ function SynergyBanner({ party }: { party: (MonsterData | null)[] }) {
         onClick={() => setExpanded(e => !e)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          width: '100%', background: 'transparent', border: 0, padding: 0,
+          width: '100%', minHeight: 44, background: 'transparent', border: 0, padding: '0 4px',
           marginBottom: 8, cursor: 'pointer',
         }}
       >
@@ -3125,6 +3124,7 @@ function CostIndicator({ totalCost, maxCost, feedbackKey, feedbackMessage }: { t
         transition={{ duration: 0.38 }}
         className="flex flex-col items-end gap-1 rounded-xl px-3.5 py-1.5"
         style={{
+          minHeight: 44,
           background: isOver ? 'rgba(255,68,68,0.12)' : isWarn ? 'rgba(212,175,55,0.11)' : 'rgba(136,0,228,0.14)',
           border: `1px solid ${isOver ? 'rgba(255,68,68,0.46)' : isWarn ? 'rgba(212,175,55,0.38)' : 'rgba(148,0,238,0.32)'}`,
           boxShadow: isOver ? '0 0 18px rgba(255,68,68,0.18)' : isWarn ? '0 0 16px rgba(212,175,55,0.14)' : 'none',
@@ -4228,7 +4228,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
               type="button"
               onClick={() => { haptic(5); setCurrentTab('HOME'); }}
               className="flex items-center gap-1 pb-1"
-              style={{ color: '#8b7da8', fontFamily: 'monospace', fontSize: 10, background: 'transparent', border: 0 }}
+              style={{ minHeight: 44, paddingInline: 8, color: '#8b7da8', fontFamily: 'monospace', fontSize: 10, background: 'transparent', border: 0 }}
             >
               <Home size={12} />
               <span>ホーム</span>
@@ -4239,7 +4239,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
           <div className="flex flex-col items-end gap-1.5">
             <motion.button onClick={() => { haptic(5); onBack(); }} whileTap={{ scale: 0.9 }}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl mb-1"
-              style={{ background: 'rgba(10,5,26,0.88)', border: '1px solid rgba(140,60,220,0.36)', color: 'rgba(200,160,255,0.85)' }}>
+              style={{ minHeight: 44, background: 'rgba(10,5,26,0.88)', border: '1px solid rgba(140,60,220,0.36)', color: 'rgba(200,160,255,0.85)' }}>
               <ChevronLeft size={13} />
               <span className="text-[10px] font-black tracking-wider" style={{ fontFamily: 'monospace' }}>DETAIL</span>
             </motion.button>
@@ -4263,7 +4263,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
               setPickerSlotIndex(selectedSlotIndex);
             }}
             className="min-w-0 text-left"
-            style={{ background: 'transparent', border: 0, padding: 0 }}
+            style={{ minHeight: 44, background: 'transparent', border: 0, padding: 0 }}
           >
             <div className="text-[10px] font-black tracking-[0.18em]" style={{ color: selectedPosition.color, fontFamily: 'monospace' }}>{selectedPosition.short} / HATE {selectedPosition.hate}</div>
             <div className="truncate text-[13px] font-black" style={{ color: 'rgba(240,234,255,0.9)', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>

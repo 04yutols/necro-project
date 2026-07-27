@@ -1847,7 +1847,7 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
       background: 'rgba(3,1,12,0.9)', borderTop: '1px solid rgba(255,255,255,0.04)',
     }}>
       <button type="button" onClick={onAuto} style={{
-        minHeight: 38,
+        minHeight: 44,
         padding: '0 12px', borderRadius: 10,
         background: auto ? 'rgba(139,0,255,0.28)' : 'rgba(255,255,255,0.05)',
         border: `1px solid ${auto ? '#8B00FF80' : 'rgba(255,255,255,0.08)'}`,
@@ -1858,7 +1858,7 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
         transition: 'all 0.2s ease',
       }}>AUTO {auto ? 'ON' : 'OFF'}</button>
       <div style={{
-        minHeight: 38,
+        minHeight: 44,
         display: 'grid',
         gridTemplateColumns: 'repeat(3, minmax(42px, 1fr))',
         gap: 3,
@@ -1875,7 +1875,7 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
               type="button"
               onClick={() => onSpeedChange(value)}
               style={{
-                minHeight: 31,
+                minHeight: 44,
                 minWidth: 42,
                 padding: '0 7px',
                 borderRadius: 9,
@@ -1897,7 +1897,7 @@ function SystemBar({ auto, speed, onAuto, onSpeedChange, onEscape, canEscape }: 
       </div>
       <div style={{ flex: 1 }}/>
       <button type="button" onClick={canEscape ? onEscape : undefined} style={{
-        minHeight: 38,
+        minHeight: 44,
         padding: '0 13px', borderRadius: 10,
         background: canEscape ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.03)',
         border: `1px solid ${canEscape ? '#ef444440' : 'rgba(255,255,255,0.05)'}`,

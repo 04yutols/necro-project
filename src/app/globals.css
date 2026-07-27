@@ -12,6 +12,10 @@
   --background: #090615;
   --foreground: #DDD8F0;
 
+  /* Tailwind v4 spacing utilities use this token. Keep legacy @tailwind
+     directives compatible until the stylesheet is migrated to @import. */
+  --spacing: 0.25rem;
+
   /* Gothic-Morphism Glass Tokens */
   --glass-bg: rgba(16, 9, 36, 0.88);
   --glass-border: rgba(160, 60, 255, 0.4);

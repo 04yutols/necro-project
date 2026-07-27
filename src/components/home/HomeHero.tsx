@@ -176,7 +176,7 @@ export function HomeHero() {
             marginBottom: 12,
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{
               fontFamily: "var(--font-cinzel-decorative), serif",
               fontSize: 8,
@@ -203,8 +203,8 @@ export function HomeHero() {
               type="button"
               aria-label="設定"
               style={{
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 borderRadius: 12,
                 background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,255,255,0.12)',
@@ -411,6 +411,7 @@ export function HomeHero() {
             aria-label="クイック出撃"
             onClick={() => setCurrentTab('MAP')}
             style={{
+              minHeight: 44,
               padding: '8px 16px',
               background: 'linear-gradient(135deg, rgba(139,0,255,0.25), rgba(88,28,135,0.15))',
               border: '1px solid rgba(139,0,255,0.45)',
