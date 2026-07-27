@@ -84,6 +84,11 @@ const JOB: Record<string, Conf> = {
   thief:       { color: '#55FFBB', glow: 'rgba(85,255,187,0.45)',  darkBg: 'rgba(4,40,24,0.97)',  emoji: '🗝️', label: 'THIEF',       particle: 'rgba(85,255,187,0.6)',  accent: '#80ffd0' },
   necromancer: { color: '#DD22FF', glow: 'rgba(221,34,255,0.45)',  darkBg: 'rgba(22,0,50,0.97)',  emoji: '💀', label: 'NECROMANCER', particle: 'rgba(221,34,255,0.6)',  accent: '#ee66ff' },
 };
+const CONF_LABEL_JA: Record<string, string> = {
+  UNDEAD: '不死族', DEMON: '悪魔族', BEAST: '獣族', HUMANOID: '人型', DRAGON: '竜族', ORC: 'オーク族',
+  WARRIOR: '戦士', MAGE: '魔術師', 'DARK MAGE': '暗黒魔術師', THIEF: '盗賊', NECROMANCER: '死霊術師',
+};
+const getConfLabelJa = (conf: Conf) => CONF_LABEL_JA[conf.label] ?? '所属不明';
 const DEFAULT_CONF: Conf = { color: '#CC22FF', glow: 'rgba(204,34,255,0.4)', darkBg: 'rgba(16,0,44,0.97)', emoji: '🌟', label: '???', particle: 'rgba(204,34,255,0.6)', accent: '#dd66ff' };
 const VACANT_CONF:  Conf = { color: 'rgba(120,80,200,0.6)', glow: 'rgba(100,50,180,0.15)', darkBg: 'rgba(8,4,18,0.97)', emoji: '+', label: 'VACANT', particle: 'rgba(120,80,200,0.35)', accent: 'rgba(160,110,230,0.6)' };
 
@@ -109,9 +114,9 @@ const SORT_OPTIONS: { key: MonsterSortKey; label: string; icon: string; defaultD
 ];
 
 const POSITION_META = [
-  { label: '⚔ 前衛', short: 'VANGUARD', color: '#FF9955', hate: '50%' },
-  { label: '◈ 中衛', short: 'MIDDLE', color: '#B09FF8', hate: '30%' },
-  { label: '✦ 後衛', short: 'REAR', color: '#5599FF', hate: '20%' },
+  { label: '⚔ 前衛', color: '#FF9955', hate: '50%' },
+  { label: '◈ 中衛', color: '#B09FF8', hate: '30%' },
+  { label: '✦ 後衛', color: '#5599FF', hate: '20%' },
 ] as const;
 
 function getConf(mk: MemberKey, player: CharacterData | null, party: (MonsterData | null)[]): Conf {
@@ -163,7 +168,7 @@ function formatStat(type: string, value: number): string {
    MEMBER INFO
 ────────────────────────────────────────── */
 interface MemberInfo {
-  name: string; nameEn: string; sub: string; rank: string;
+  name: string;
   lvl: number | null; cost: number | null;
   stats: CharacterData['stats'] | null;
   weapon: ItemData | null;
@@ -178,9 +183,6 @@ function getMemberInfo(
   if (mk === 'PLAYER') {
     return {
       name: player?.name ?? '—',
-      nameEn: (player?.name ?? 'HERO').toUpperCase(),
-      sub: (JOB[player?.currentJobId ?? ''] ?? DEFAULT_CONF).label,
-      rank: 'SSR',
       lvl: player?.jobs.find(j => j.jobId === player?.currentJobId)?.level ?? 1,
       cost: null,
       stats: player?.stats ?? null,
@@ -191,14 +193,14 @@ function getMemberInfo(
   }
   const i = parseInt(mk.replace('MONSTER_', ''));
   const m = party[i] ?? null;
-  if (!m) return { name: 'VACANT', nameEn: 'VACANT', sub: 'EMPTY', rank: '—', lvl: null, cost: null, stats: null, weapon: null, residues: [null, null, null, null, null], isVacant: true, isPlayer: false };
+  if (!m) return { name: '空き枠', lvl: null, cost: null, stats: null, weapon: null, residues: [null, null, null, null, null], isVacant: true, isPlayer: false };
   const fake: AbyssalResidueData | null = (() => {
     if (!m.equippedShardId) return null;
     const s = soulShards.find((x: SoulShardData) => x.id === m.equippedShardId);
     return s ? { id: s.id, name: `${s.originMonsterName}の魂`, itemId: 'head', rarity: 'RARE', mainStat: { type: 'ATK_FLAT', value: s.effect.atkBonus }, subOptions: [{ type: 'DARK_DMG_BOOST', value: s.effect.elementDmgBoost }], level: 1, exp: 0, maxExp: 800 } : null;
   })();
   return {
-    name: m.name, nameEn: m.name.toUpperCase(), sub: (TRIBE[m.tribe] ?? TRIBE.HUMANOID).label, rank: 'SR',
+    name: m.name,
     lvl: null, cost: m.cost,
     stats: m.stats as CharacterData['stats'],
     weapon: null,
@@ -360,13 +362,13 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
   const isSelected = selected === slot.id;
   return (
     <button
+      data-testid="unit-gear-slot"
       id={slot.id === 'weapon' ? 'tut-weapon-slot' : undefined}
       type="button"
       disabled={slot.locked}
       aria-label={slot.locked ? `${slot.label} 未解放` : `${slot.label} ${slot.sublabel}`}
       onClick={() => onSelect(isSelected ? null : slot.id)}
       style={{
-        animation: `slotReveal 0.4s ease-out ${delay}s both`,
         cursor: slot.locked ? 'default' : 'pointer',
         display: 'flex', alignItems: 'center', gap: 6,
         width: '100%',
@@ -386,6 +388,7 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
         opacity: slot.locked ? 0.35 : 1,
         appearance: 'none',
         textAlign: 'left',
+        animationDelay: `${delay}s`,
       }}
     >
       {isSelected && (
@@ -408,10 +411,10 @@ function HexSlot({ slot, selected, onSelect, color, delay = 0, isVoid = false }:
         )}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 600, color: slot.filled ? '#e2d8f0' : '#6b5f7a', letterSpacing: '0.08em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {slot.locked ? 'LOCKED' : slot.label}
+        <div data-testid="unit-gear-name" style={{ fontFamily: "'Cinzel', serif", fontSize: 11, fontWeight: 700, color: slot.filled ? '#e2d8f0' : '#6b5f7a', letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {slot.locked ? '未解放' : slot.label}
         </div>
-        <div style={{ fontFamily: 'monospace', fontSize: 9, color: slot.filled ? '#9b7fc0' : '#4a3a5a', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontFamily: 'monospace', fontSize: 10, color: slot.filled ? '#b59bd8' : '#4a3a5a', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {slot.locked ? '—' : slot.sublabel}
         </div>
       </div>
@@ -433,10 +436,7 @@ function StatItem({ label, labelJa, value, color, delay = 0 }: { label: string; 
       <div style={{ fontFamily: "'Cinzel', serif", fontSize: 20, fontWeight: 700, color: '#f5f0ff', textShadow: `0 0 18px ${color}80`, lineHeight: 1 }}>
         {value.toLocaleString()}
       </div>
-      <div style={{ fontFamily: 'monospace', fontSize: 8, fontWeight: 400, color: '#8b7da8', marginTop: 4, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-        {label}
-      </div>
-      <div style={{ fontFamily: "'Cinzel', serif", fontSize: 7, color: color + '70', marginTop: 1 }}>
+      <div data-stat-key={label} style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, fontWeight: 700, color: color + 'B8', marginTop: 5 }}>
         {labelJa}
       </div>
     </div>
@@ -573,7 +573,7 @@ function StatusDetailSheet({ open, name, subtitle, stats, profile, currentEnergy
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 9, color, letterSpacing: '0.18em', textShadow: `0 0 10px ${color}` }}>
-              STATUS ARCHIVE
+              能力詳細
             </div>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: 20, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.05em', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {name}
@@ -612,7 +612,7 @@ function StatusDetailSheet({ open, name, subtitle, stats, profile, currentEnergy
       <div className="safe-scroll custom-scrollbar" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '12px 12px calc(env(safe-area-inset-bottom, 0px) + 14px)' }}>
         <section style={{ borderRadius: 16, padding: 12, background: 'rgba(10,5,26,0.78)', border: `1px solid ${color}30`, boxShadow: `0 0 22px ${color}12` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.12em' }}>MAIN STATUS</div>
+            <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 11, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.08em' }}>基本能力</div>
             {maxEnergy && <div style={{ fontFamily: 'monospace', fontSize: 10, color }}>{currentEnergy ?? 0}/{maxEnergy} MP</div>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
@@ -621,14 +621,14 @@ function StatusDetailSheet({ open, name, subtitle, stats, profile, currentEnergy
         </section>
 
         <section style={{ marginTop: 10, borderRadius: 16, padding: 12, background: 'rgba(10,5,26,0.7)', border: `1px solid ${color}24` }}>
-          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.12em', marginBottom: 10 }}>ADVANCED</div>
+          <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 11, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.08em', marginBottom: 10 }}>詳細能力</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
             {advancedKeys.map((key) => <StatusRow key={key} statKey={key} total={stats} profile={profile} color={color} />)}
           </div>
         </section>
 
         <section style={{ marginTop: 10, borderRadius: 16, padding: 12, background: 'rgba(10,5,26,0.7)', border: `1px solid ${color}24` }}>
-          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 11, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.12em', marginBottom: 10 }}>ELEMENT DMG</div>
+          <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 11, color: '#F0EAFF', fontWeight: 900, letterSpacing: '0.08em', marginBottom: 10 }}>属性ダメージ</div>
           <ElementBoostGrid boosts={profile?.elementDmgBoosts ?? {}} />
         </section>
       </div>
@@ -1085,34 +1085,34 @@ function WeaponListCard({
       }}
     >
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06), transparent 48%)' }} />
-      <button type="button" onClick={onSelect} className="relative w-full min-w-0 p-3 text-left" style={{ minHeight: 96 }} aria-label={`${item.name}を選択`}>
+      <button type="button" onClick={onSelect} className="relative w-full min-w-0 p-3 text-left" style={{ minHeight: 112 }} aria-label={`${item.name}を選択`}>
         <div className="flex items-start gap-3 min-w-0">
           <div className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `radial-gradient(circle at 35% 25%, ${color}34, rgba(0,0,0,0.82))`, border: `1px solid ${color}55`, boxShadow: `0 0 12px ${color}22` }}>
             <Swords size={21} style={{ color }} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 min-w-0">
-              <span className="text-[12px] font-black leading-tight truncate" style={{ color: '#EDE8FF', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>{item.name}</span>
-              {isEquipped && <span className="shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,221,119,0.16)', border: '1px solid rgba(0,221,119,0.48)', color: '#8DFFBF', fontFamily: 'monospace' }}>装備中</span>}
+              <span data-testid="weapon-card-name" className="text-[14px] font-black leading-tight truncate" style={{ color: '#EDE8FF', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>{item.name}</span>
+              {isEquipped && <span className="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,221,119,0.16)', border: '1px solid rgba(0,221,119,0.48)', color: '#8DFFBF', fontFamily: 'monospace' }}>装備中</span>}
             </div>
             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-              <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: `${color}22`, border: `1px solid ${color}44`, color, fontFamily: 'monospace' }}>{rarity}</span>
-              <span className="text-[9px] font-bold" style={{ color, fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>{WEAPON_RARITY_LABEL[rarity]}</span>
-              <span className="text-[9px] font-black" style={{ color: '#8b7da8', fontFamily: 'monospace' }}>ILv.{getWeaponIlv(item)} / R{getWeaponRank(item)}</span>
+              <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: `${color}22`, border: `1px solid ${color}44`, color, fontFamily: 'monospace' }}>{rarity}</span>
+              <span className="text-[10px] font-bold" style={{ color, fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>{WEAPON_RARITY_LABEL[rarity]}</span>
+              <span className="text-[10px] font-black" style={{ color: '#a695bd', fontFamily: 'monospace' }}>ILv.{getWeaponIlv(item)} / R{getWeaponRank(item)}</span>
             </div>
           </div>
           <div className="shrink-0 text-right">
-            <div className="text-[8px] font-black tracking-wider" style={{ color: '#8b7da8', fontFamily: 'monospace' }}>WEAPON ATK</div>
+            <div className="text-[10px] font-black tracking-wider" style={{ color: '#a695bd', fontFamily: 'monospace' }}>WEAPON ATK</div>
             <div className="text-[22px] font-black leading-none mt-1" style={{ color, fontFamily: "'Cinzel', serif", textShadow: `0 0 10px ${color}55` }}>{baseAtk}</div>
           </div>
         </div>
         <div className="mt-2.5 flex flex-wrap gap-1.5" aria-label="サブオプション">
           {subOptions.length > 0 ? subOptions.map((option) => (
-            <span key={option.type} className="rounded-lg px-2 py-1 text-[9px] font-black" style={{ color: '#D9CFF0', background: 'rgba(255,255,255,0.045)', border: `1px solid ${isElementDamageSubOption(option) ? 'rgba(212,175,55,0.38)' : 'rgba(139,0,255,0.22)'}`, fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>
+            <span key={option.type} className="rounded-lg px-2 py-1 text-[11px] font-black" style={{ color: '#D9CFF0', background: 'rgba(255,255,255,0.045)', border: `1px solid ${isElementDamageSubOption(option) ? 'rgba(212,175,55,0.38)' : 'rgba(139,0,255,0.22)'}`, fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>
               {getOptionLabel(option.type)} <span style={{ color }}>+{formatOptionValue(option.type, option.value)}</span>
             </span>
           )) : (
-            <span className="text-[9px]" style={{ color: '#6b5f7a', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>サブオプションなし</span>
+            <span className="text-[11px]" style={{ color: '#6b5f7a', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>サブオプションなし</span>
           )}
         </div>
       </button>
@@ -1123,7 +1123,7 @@ function WeaponListCard({
           onClick={onEquip}
           whileTap={isEquipped ? undefined : { scale: 0.97 }}
           disabled={isEquipped}
-          className="w-full rounded-xl text-[12px] font-black tracking-[0.16em]"
+          className="w-full rounded-xl text-[13px] font-black tracking-[0.14em]"
           style={{ minHeight: 44, background: isEquipped ? 'rgba(255,255,255,0.04)' : `linear-gradient(135deg, ${color}30, rgba(12,5,28,0.92))`, border: `1px solid ${isEquipped ? 'rgba(255,255,255,0.08)' : color + '66'}`, color: isEquipped ? '#5d5368' : color, fontFamily: "var(--font-noto-sans-jp), sans-serif" }}
           aria-label={`${item.name}を${isEquipped ? '装備中' : '装備'}`}
         >
@@ -1796,6 +1796,8 @@ function PortraitCard({
   return (
     <motion.div
       id={id}
+      data-testid="legion-member-card"
+      data-member-key={mk}
       role={canSelect ? 'button' : undefined}
       tabIndex={canSelect ? 0 : undefined}
       onClick={canSelect ? onSelect : undefined}
@@ -1807,7 +1809,7 @@ function PortraitCard({
         }
       }}
       whileTap={canSelect ? { scale: 0.96 } : undefined}
-      className="relative rounded-[20px] overflow-hidden flex flex-col select-none"
+      className="legion-portrait-card relative rounded-[20px] overflow-hidden flex flex-col select-none"
       style={{
         width: '100%',
         height: '100%',
@@ -1833,14 +1835,14 @@ function PortraitCard({
             border: `1px solid ${dragArmed ? 'rgba(212,175,55,0.55)' : position.color + '55'}`,
             color: dragArmed ? '#FFD700' : position.color,
             fontFamily: 'monospace',
-            fontSize: 8,
+            fontSize: 10,
             fontWeight: 900,
             letterSpacing: '0.04em',
             boxShadow: dragArmed ? '0 0 12px rgba(212,175,55,0.22)' : 'none',
           }}
         >
           {dragArmed ? <GripVertical size={10} /> : null}
-          <span>{dragArmed ? 'DRAG' : position.label}</span>
+          <span>{dragArmed ? '移動' : position.label}</span>
         </div>
       )}
       {!isVacant && (
@@ -1852,18 +1854,17 @@ function PortraitCard({
       <div className="absolute inset-0 pointer-events-none rounded-[20px]" style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.062) 0%, transparent 48%)' }} />
 
       {/* Sprite */}
-      <div className="flex-1 flex items-center justify-center relative min-h-0 py-4">
+      <div className="legion-portrait-sprite flex-1 flex items-center justify-center relative min-h-0 py-3">
         {isVacant ? (
           <div className="flex flex-col items-center gap-2 opacity-25">
             <div className="w-14 h-14 rounded-2xl border-2 border-dashed flex items-center justify-center" style={{ borderColor: 'rgba(130,75,210,0.35)' }}>
               <Plus size={24} style={{ color: 'rgba(130,75,210,0.45)' }} strokeWidth={1.5} />
             </div>
-            <span className="text-[9px] tracking-[0.25em] font-black" style={{ color: 'rgba(130,75,210,0.45)', fontFamily: 'monospace' }}>VACANT</span>
           </div>
         ) : (
           <motion.div animate={{ y: [-5, 5, -5] }} transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }} className="relative">
             <div className="absolute inset-0 rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${color}55 0%, transparent 70%)`, transform: 'scale(3)', filter: 'blur(18px)' }} />
-            <div className="w-[72px] h-[72px] rounded-[22px] flex items-center justify-center relative overflow-hidden" style={{ fontSize: 42, background: `radial-gradient(circle at 38% 30%, ${color}30, rgba(0,0,0,0.88))`, border: `1.5px solid ${color}66`, boxShadow: `0 10px 28px rgba(0,0,0,0.72), 0 0 22px ${color}28, inset 0 0 18px rgba(0,0,0,0.5)` }}>
+            <div className="legion-portrait-avatar w-[72px] h-[72px] rounded-[22px] flex items-center justify-center relative overflow-hidden" style={{ fontSize: 42, background: `radial-gradient(circle at 38% 30%, ${color}30, rgba(0,0,0,0.88))`, border: `1.5px solid ${color}66`, boxShadow: `0 10px 28px rgba(0,0,0,0.72), 0 0 22px ${color}28, inset 0 0 18px rgba(0,0,0,0.5)` }}>
               <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.09) 0%, transparent 52%)' }} />
               <span style={{ filter: `drop-shadow(0 0 10px ${color})`, lineHeight: 1 }}>{conf.emoji}</span>
             </div>
@@ -1873,21 +1874,20 @@ function PortraitCard({
 
       {/* Info strip */}
       {!isVacant && (
-        <div className="shrink-0 px-2.5 pt-2 pb-2.5 relative" style={{ background: `linear-gradient(0deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.2) 100%)`, borderTop: `1px solid ${color}1A` }}>
-          {mk === 'PLAYER' && <span className="absolute top-2 left-2 text-[7px] font-black px-1.5 py-0.5 rounded" style={{ background: `${color}28`, border: `1px solid ${color}44`, color, fontFamily: 'monospace' }}>MAIN</span>}
-          <div className="flex items-center justify-between mt-3 mb-1.5">
-            <span className="text-[12px] font-black truncate max-w-[58%] leading-tight" style={{ color: '#F0EAFF', fontFamily: "var(--font-cinzel-decorative), serif", textShadow: `0 0 8px ${color}55` }}>{info.name}</span>
-            <span className="text-[9px] font-black px-1.5 py-0.5 rounded shrink-0" style={{ background: `${color}20`, border: `1px solid ${color}3A`, color, fontFamily: 'monospace' }}>
-              {info.lvl !== null ? `Lv.${info.lvl}` : info.cost !== null ? `C${info.cost}` : '—'}
+        <div className="legion-portrait-info shrink-0 px-2.5 pt-2 pb-2.5 relative" style={{ background: `linear-gradient(0deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.2) 100%)`, borderTop: `1px solid ${color}1A` }}>
+          <div className="legion-portrait-info-row flex items-center justify-between mb-1.5">
+            <span data-testid="legion-member-name" className="text-[14px] font-black truncate max-w-[68%] leading-tight" style={{ color: '#F0EAFF', fontFamily: "var(--font-noto-sans-jp), sans-serif", textShadow: `0 0 8px ${color}55` }}>{info.name}</span>
+            <span className="text-[10px] font-black px-1.5 py-0.5 rounded shrink-0" style={{ background: `${color}20`, border: `1px solid ${color}3A`, color, fontFamily: 'monospace' }}>
+              {info.lvl !== null ? `Lv.${info.lvl}` : info.cost !== null ? `コスト ${info.cost}` : '—'}
             </span>
           </div>
           {/* equipment micro-icons */}
-          <div className="grid grid-cols-3 gap-1">
+          <div className="legion-equipment-grid grid grid-cols-3 gap-1">
             {slotIcons.map((s, idx) => {
               const hasItem = s.item !== null;
               const rc = hasItem && (s.item as any).rarity ? RARITY_COLOR[(s.item as any).rarity] : null;
               return (
-                <div key={idx} className="flex items-center justify-center rounded" style={{ height: 20, border: hasItem ? `1px solid ${rc ?? color}66` : '1px dashed rgba(120,70,200,0.3)', background: hasItem ? `${rc ?? color}14` : 'transparent', fontSize: 10 }}>
+                <div key={idx} className="legion-equipment-slot flex items-center justify-center rounded" style={{ height: 24, border: hasItem ? `1px solid ${rc ?? color}66` : '1px dashed rgba(120,70,200,0.3)', background: hasItem ? `${rc ?? color}14` : 'transparent', fontSize: 12 }}>
                   <span style={{ filter: hasItem ? `drop-shadow(0 0 4px ${rc ?? color})` : 'none', opacity: hasItem ? 1 : 0.3 }}>{s.icon}</span>
                 </div>
               );
@@ -1900,12 +1900,17 @@ function PortraitCard({
               whileTap={{ scale: 0.9 }}
               animate={{ boxShadow: isDemonMode ? ['0 0 8px rgba(220,30,30,0.4)', '0 0 18px rgba(220,30,30,0.8)', '0 0 8px rgba(220,30,30,0.4)'] : ['0 0 6px rgba(220,80,20,0.3)', '0 0 14px rgba(220,80,20,0.6)', '0 0 6px rgba(220,80,20,0.3)'] }}
               transition={{ duration: 1.5, repeat: Infinity }}
-              className="absolute top-2 right-2 text-[7px] font-black px-1.5 py-0.5 rounded"
+              className="absolute top-2 right-2 text-[9px] font-black px-1.5 py-0.5 rounded"
               style={{ background: isDemonMode ? 'rgba(220,30,30,0.4)' : 'rgba(200,60,20,0.3)', border: `1px solid ${isDemonMode ? 'rgba(240,60,60,0.8)' : 'rgba(220,80,20,0.6)'}`, color: isDemonMode ? '#ff8888' : '#ff9955', fontFamily: 'monospace' }}>
               {isDemonMode ? '✦魔神化中' : '魔神化'}
             </motion.button>
           )}
         </div>
+      )}
+      {isVacant && (
+        <span style={{ position: 'absolute', left: '50%', bottom: 20, transform: 'translateX(-50%)', color: '#6b5f7a', fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+          空き枠
+        </span>
       )}
       {!isVacant && (
         <div className="absolute top-3 right-3 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
@@ -1947,8 +1952,8 @@ function CharThumb({ mk, player, party, active, onSelect }: { mk: MemberKey; pla
           {isVacant ? '+' : conf.emoji}
         </span>
       </div>
-      <div style={{ fontFamily: 'monospace', fontSize: 7, color: active ? color : '#4a3a5a', letterSpacing: '0.06em', transition: 'color 0.3s ease' }}>
-        {isVacant ? '—' : info.rank}
+      <div title={isVacant ? undefined : info.name} style={{ maxWidth: 54, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 9, fontWeight: 700, color: active ? color : '#8b7da8', transition: 'color 0.3s ease' }}>
+        {isVacant ? '空き' : info.name}
       </div>
     </motion.button>
   );
@@ -1985,10 +1990,12 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
   const maxLvl = 80;
   const xpPct = Math.min(100, (lvl / maxLvl) * 100);
 
-  // Build HexSlot data for left column
+  // Build mobile-first equipment data. Each slot carries a user-facing name
+  // and effect so the grid does not need auxiliary developer labels.
   const leftSlots: HexSlotData[] = [
     {
-      id: 'weapon', icon: '⚔', label: '武器', sublabel: info.weapon ? (info.weapon as any).name : '空',
+      id: 'weapon', icon: '⚔', label: info.weapon?.name ?? '武器',
+      sublabel: info.weapon ? `武器 · 攻撃力 ${calculateWeaponBaseAttack(info.weapon)}` : '武器スロット',
       filled: !!info.weapon, level: null,
       rarity: info.weapon ? getWeaponRarity(info.weapon) : null,
       locked: !info.isPlayer,
@@ -1999,11 +2006,16 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
   const rightSlots: HexSlotData[] = RESIDUE_SLOT_ORDER.map((slotId, i) => {
     const r = info.residues[i] ?? null;
     const meta = getResidueSlotMeta(slotId);
-    const compactName = r?.name.replace(/^深淵の残滓[・\s]*/, '').trim() || r?.name;
+    const rawCompactName = r
+      ? (r.name.replace(/^深淵の残滓[・\s]*/, '').trim() || r.name)
+      : meta.nameJa;
+    const compactName = rawCompactName === slotId ? meta.nameJa : rawCompactName;
+    const optionLabel = r ? getOptionLabel(r.mainStat.type) : '';
+    const optionLabelJa = Object.values(STAT_VIEW_META).find((view) => view.label === optionLabel)?.labelJa ?? optionLabel;
     return {
       id: `residue_${i}`, icon: meta.icon,
-      label: r ? `${meta.nameJa} / ${compactName}` : meta.nameJa,
-      sublabel: r ? `${formatStat(r.mainStat.type, r.mainStat.value)} / ${getResidueScoreGrade(calculateResidueScore(r)).grade} · Lv.${r.level}` : meta.role,
+      label: r ? compactName : meta.nameJa,
+      sublabel: r ? `${optionLabelJa} ${formatStat(r.mainStat.type, r.mainStat.value)} · Lv.${r.level}` : meta.role,
       filled: !!r, level: r?.level ?? null,
       rarity: r?.rarity ?? null,
       locked: !isResidueUnlocked || (!info.isPlayer && i > 0),
@@ -2077,110 +2089,55 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
             <Home size={13} />
             <span>ホーム</span>
           </button>
-          <div style={{ fontFamily: "var(--font-cinzel-decorative), serif", fontSize: 9, color, letterSpacing: '0.18em', textTransform: 'uppercase', textShadow: `0 0 10px ${color}` }}>統合詳細ハブ</div>
-          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 16, fontWeight: 700, color: '#f5f0ff', letterSpacing: '0.04em', lineHeight: 1.1, textShadow: `0 0 20px ${color}60`, whiteSpace: 'nowrap' }}>
-            {info.nameEn}
+          <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, color, letterSpacing: '0.08em', textShadow: `0 0 10px ${color}` }}>軍団詳細</div>
+          <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 17, fontWeight: 800, color: '#f5f0ff', letterSpacing: '0.02em', lineHeight: 1.15, textShadow: `0 0 20px ${color}60`, whiteSpace: 'nowrap' }}>
+            {info.name}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 9, color: accent, border: `1px solid ${accent}50`, padding: '1px 6px', borderRadius: 3, background: `${accent}10`, flexShrink: 0 }}>{info.rank}</div>
-            <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#8b7da8', whiteSpace: 'nowrap' }}>{conf.label} · {info.isPlayer ? '主人公' : '軍団員'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+            <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, color: '#b9acd2', whiteSpace: 'nowrap' }}>{getConfLabelJa(conf)} · {info.isPlayer ? '主人公' : `軍団員・コスト ${info.cost ?? 0}`}</div>
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 9, color: '#6b5f7a' }}>LEVEL</div>
+          <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 9, color: '#7f7193' }}>{info.isPlayer ? 'レベル' : 'コスト'}</div>
           <div style={{ fontFamily: "'Cinzel', serif", fontSize: 24, fontWeight: 700, color, lineHeight: 1, textShadow: `0 0 16px ${color}` }}>{info.lvl ?? info.cost ?? '?'}</div>
-          <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 8, color: '#4a3a5a' }}>/ {maxLvl}</div>
-          <div style={{ width: 50, height: 3, background: '#1a1228', borderRadius: 2, marginTop: 4, marginLeft: 'auto' }}>
-            <div style={{ width: `${xpPct}%`, height: '100%', borderRadius: 2, background: `linear-gradient(90deg, ${color}, ${accent})`, boxShadow: `0 0 6px ${color}` }} />
-          </div>
+          {info.isPlayer && <>
+            <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 8, color: '#5b4c70' }}>/ {maxLvl}</div>
+            <div style={{ width: 50, height: 3, background: '#1a1228', borderRadius: 2, marginTop: 4, marginLeft: 'auto' }}>
+              <div style={{ width: `${xpPct}%`, height: '100%', borderRadius: 2, background: `linear-gradient(90deg, ${color}, ${accent})`, boxShadow: `0 0 6px ${color}` }} />
+            </div>
+          </>}
         </div>
       </div>
 
-      {/* Middle: absolutely-positioned slot columns flanking centered character art */}
-      <div className="flex-1 min-h-0 z-10" style={{ position: 'relative' }}>
-
-        {/* CENTER — fills the entire middle area, character centered within */}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+      {/* Character and equipment are separate rows so labels never collide. */}
+      <div data-testid="unit-detail-loadout" className="flex-1 min-h-0 z-10 safe-scroll" style={{ overflowY: 'auto', padding: '0 12px 6px', WebkitOverflowScrolling: 'touch' }}>
+        <div className="unit-detail-hero" style={{ height: 92, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', pointerEvents: 'none' }}>
           <AnimatePresence mode="wait">
             <motion.div key={selKey}
               initial={{ opacity: 0, scale: 0.94 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.04 }}
               transition={{ duration: 0.22, ease: 'easeOut' }}
-              style={{ width: 160, height: 255, position: 'relative', flexShrink: 0, marginTop: -10 }}>
-              {/* Void ring glow behind character */}
-              <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 110, height: 30, background: `radial-gradient(ellipse, ${color}50, transparent 70%)`, animation: 'void-pulse 2s ease-in-out infinite', pointerEvents: 'none' }} />
-              {/* Character display */}
-              <div style={{ width: '100%', height: '100%', position: 'relative', filter: isDemonMode ? `drop-shadow(0 0 20px ${color}) drop-shadow(0 0 40px ${color})` : `drop-shadow(0 0 8px ${color}60)`, transition: 'filter 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'auto' }}>
-                <motion.div animate={{ y: [-6, 6, -6] }} transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ width: 120, height: 180, borderRadius: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 88, background: `radial-gradient(circle at 35% 28%, ${color}2C, rgba(0,0,0,0.9))`, border: `2px solid ${color}66`, boxShadow: `0 14px 44px rgba(0,0,0,0.8), 0 0 36px ${color}2C, inset 0 0 24px rgba(0,0,0,0.55)`, position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 52%)', borderRadius: 'inherit' }} />
-                    <span style={{ filter: `drop-shadow(0 0 14px ${color}) drop-shadow(0 0 4px ${color})`, lineHeight: 1, animation: 'breathe 3.2s ease-in-out infinite', transformOrigin: 'center bottom' }}>{conf.emoji}</span>
-                  </div>
-                  <motion.div animate={{ scaleX: [1, 1.3, 1], opacity: [0.28, 0.07, 0.28] }} transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }} style={{ width: 80, height: 10, background: `radial-gradient(ellipse, ${color}77, transparent)`, filter: 'blur(6px)', borderRadius: 999, margin: '6px auto 0' }} />
-                </motion.div>
-              </div>
-              {/* Level ring */}
-              <svg style={{ position: 'absolute', bottom: -5, left: '50%', transform: 'translateX(-50%)', opacity: 0.6 }} width="90" height="30" viewBox="0 0 90 30">
-                <ellipse cx="45" cy="15" rx="42" ry="10" fill="none" stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.5"
-                  style={{ animation: 'magic-spin 12s linear infinite', transformOrigin: '45px 15px' }} />
-              </svg>
+              className="unit-detail-hero-motion"
+              style={{ width: 84, height: 84, position: 'relative' }}>
+              <div style={{ position: 'absolute', left: '50%', bottom: 0, transform: 'translateX(-50%)', width: 82, height: 18, background: `radial-gradient(ellipse, ${color}55, transparent 70%)`, filter: 'blur(4px)' }} />
+              <motion.div animate={{ y: [-3, 3, -3] }} transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 84, height: 78 }}>
+                <div className="unit-detail-avatar" style={{ width: 72, height: 72, borderRadius: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, background: `radial-gradient(circle at 35% 28%, ${color}2C, rgba(0,0,0,0.9))`, border: `2px solid ${color}66`, boxShadow: `0 10px 30px rgba(0,0,0,0.8), 0 0 24px ${color}2C`, position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 52%)' }} />
+                  <span style={{ filter: `drop-shadow(0 0 10px ${color})`, lineHeight: 1 }}>{conf.emoji}</span>
+                </div>
+              </motion.div>
             </motion.div>
           </AnimatePresence>
         </div>
 
-        {/* LEFT column — outer div: positioning only (no animation, so translateY(-50%) is never overridden) */}
-        <div style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 112, zIndex: 2 }}>
-          {/* Inner div: animation only (translateX won't conflict with parent's translateY) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, animation: 'slideInLeft 0.5s ease-out 0.2s both' }}>
-            {leftSlots.map((slot, i) => (
-              <HexSlot key={slot.id} slot={slot} selected={selectedSlot} onSelect={handleLeftSelect} color={color} delay={0.15 + i * 0.06} />
-            ))}
-            <div
-              onClick={() => selectedSlot && handleLeftSelect(selectedSlot)}
-              style={{
-                marginTop: 2, padding: '6px 8px',
-                background: selectedSlot ? `linear-gradient(135deg, ${color}28, ${color}14)` : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${selectedSlot ? color : color + '22'}`,
-                borderRadius: 8, textAlign: 'center', cursor: 'pointer',
-                fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600,
-                color: selectedSlot ? color : '#4a3a5a', letterSpacing: '0.08em',
-                boxShadow: selectedSlot ? `0 0 9px ${color}38` : 'none',
-                transition: 'all 0.22s ease',
-              }}>
-              装備
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT column — outer div: positioning only (no animation, so translateY(-50%) is never overridden) */}
-        <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 112, zIndex: 2 }}>
-          {/* Inner div: animation only */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, animation: 'slideInRight 0.5s ease-out 0.2s both' }}>
-            {rightSlots.map((slot, i) => (
-              <HexSlot key={slot.id} slot={slot} selected={selectedSlot} onSelect={handleRightSelect} color={color} delay={0.15 + i * 0.06} isVoid />
-            ))}
-            <div
-              onClick={() => {
-                if (!isResidueUnlocked) return;
-                const idx = selectedSlot?.startsWith('residue_') ? parseInt(selectedSlot.replace('residue_', '')) : 0;
-                haptic([10, 8, 18]); onOpenGear('RESIDUE', Number.isFinite(idx) ? idx : 0);
-              }}
-              style={{
-                marginTop: 2, padding: '6px 8px',
-                background: isResidueUnlocked ? `linear-gradient(135deg, ${color}22, ${color}0C)` : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${isResidueUnlocked ? color + '48' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: 8, textAlign: 'center', cursor: isResidueUnlocked ? 'pointer' : 'not-allowed',
-                fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 600,
-                color: isResidueUnlocked ? color : '#6b5f7a', letterSpacing: '0.08em',
-                boxShadow: isResidueUnlocked ? `0 0 10px ${color}28` : 'none',
-                animation: isResidueUnlocked ? 'glow-pulse 2.5s ease-in-out infinite' : 'none',
-                position: 'relative', overflow: 'hidden',
-              }}>
-              {isResidueUnlocked && <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(90deg, transparent, ${color}14, transparent)`, backgroundSize: '200% 100%', animation: 'shimmer 2s infinite', pointerEvents: 'none' }} />}
-              {isResidueUnlocked ? '強化' : '第2章'}
-            </div>
-          </div>
+        <div data-testid="unit-equipment-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 7 }}>
+          {leftSlots.map((slot) => (
+            <HexSlot key={slot.id} slot={slot} selected={selectedSlot} onSelect={handleLeftSelect} color={color} />
+          ))}
+          {rightSlots.map((slot) => (
+            <HexSlot key={slot.id} slot={slot} selected={selectedSlot} onSelect={handleRightSelect} color={color} isVoid />
+          ))}
         </div>
       </div>
 
@@ -2189,7 +2146,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
         <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 1, background: `linear-gradient(90deg, transparent, ${color}55, transparent)`, borderRadius: '50%' }} />
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
           <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${color}28, ${color}0C)` }} />
-          <div style={{ fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 600, color: color + '88', letterSpacing: '0.2em', padding: '0 10px' }}>STATUS</div>
+          <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, fontWeight: 700, color: color + 'A8', letterSpacing: '0.08em', padding: '0 10px' }}>能力値</div>
           <div style={{ flex: 1, height: 1, background: `linear-gradient(270deg, ${color}28, ${color}0C)` }} />
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
@@ -2203,13 +2160,8 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: 8, marginTop: 9 }}>
           <div style={{ display: 'flex', gap: 6, minWidth: 0, overflow: 'hidden' }}>
-            <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#8b7da8', whiteSpace: 'nowrap' }}>CR {formatStatValue('critRate', stats?.critRate ?? 0)}</span>
-            <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#8b7da8', whiteSpace: 'nowrap' }}>CD {formatStatValue('critDmg', stats?.critDmg ?? 0)}</span>
-            {statProfile && (
-              <span style={{ fontFamily: 'monospace', fontSize: 9, color, whiteSpace: 'nowrap' }}>
-                属性 {Math.max(...ELEMENT_DAMAGE_KEYS.map((element) => statProfile.elementDmgBoosts[element] ?? 0)).toFixed(1)}%
-              </span>
-            )}
+            <span style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, color: '#b9acd2', whiteSpace: 'nowrap' }}>会心率 {formatStatValue('critRate', stats?.critRate ?? 0)}</span>
+            <span style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, color: '#b9acd2', whiteSpace: 'nowrap' }}>会心ダメージ {formatStatValue('critDmg', stats?.critDmg ?? 0)}</span>
           </div>
           <button
             type="button"
@@ -2222,7 +2174,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
               border: `1px solid ${color}55`,
               color,
               fontFamily: "'Cinzel', serif",
-              fontSize: 9,
+              fontSize: 10,
               fontWeight: 800,
               letterSpacing: '0.08em',
               boxShadow: `0 0 10px ${color}22`,
@@ -2236,8 +2188,8 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
       <AnimatePresence>
         <StatusDetailSheet
           open={showStatusSheet}
-          name={info.nameEn}
-          subtitle={`${conf.label} / ${info.isPlayer ? '主人公ステータス' : '軍団員ステータス'}`}
+          name={info.name}
+          subtitle={`${getConfLabelJa(conf)}・${info.isPlayer ? '主人公' : '軍団員'}`}
           stats={stats}
           profile={statProfile}
           currentEnergy={info.isPlayer ? player?.currentEnergy : undefined}
@@ -2264,8 +2216,7 @@ function UnitDetailView({ selKey, setSelKey, player, party, equippedResidueSlots
           </div>
           {/* Formation button */}
           <button type="button" onClick={() => { haptic(5); onBack(); }} style={{ minHeight: 44, padding: '8px 12px', background: `linear-gradient(135deg, ${color}30, ${color}15)`, border: `1px solid ${color}60`, borderRadius: 10, cursor: 'pointer', boxShadow: `0 0 12px ${color}30`, flexShrink: 0, transition: 'all 0.2s ease' }}>
-            <div style={{ fontFamily: "'Cinzel', serif", fontSize: 8, fontWeight: 700, color, letterSpacing: '0.05em', textAlign: 'center' }}>編成</div>
-            <div style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: 7, color: accent + '80', textAlign: 'center', marginTop: 1 }}>Formation</div>
+            <div style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 11, fontWeight: 800, color, letterSpacing: '0.04em', textAlign: 'center' }}>編成へ戻る</div>
           </button>
         </div>
       </div>
@@ -2344,7 +2295,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     : '武器';
 
   const info = getMemberInfo(gearCtx.mk, player, party, equippedResidueSlots, []);
-  const memberName = info.nameEn;
+  const memberName = info.name;
 
   const equippedIds = useMemo(() => new Set(equippedResidueSlots.filter(Boolean).map(s => s!.id)), [equippedResidueSlots]);
 
@@ -2613,31 +2564,27 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
           className="flex items-center gap-1 px-2.5 py-2 rounded-xl"
           style={{ background: 'rgba(10,5,26,0.88)', border: `1px solid ${color}36`, color: `${color}DD`, minHeight: 44 }}>
           <ChevronLeft size={14} />
-          <span className="text-[10px] font-black tracking-wider" style={{ fontFamily: 'monospace' }}>DETAIL</span>
+          <span className="text-[10px] font-black" style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>詳細へ戻る</span>
         </motion.button>
         <div className="flex-1 text-center flex flex-col">
-          <span className="text-[11px] font-black" style={{ color: '#F0EAFF', fontFamily: "'Cinzel', serif", letterSpacing: '0.12em' }}>{slotLabel}</span>
-          <span className="text-[9px]" style={{ color: color + 'AA', fontFamily: 'monospace' }}>{memberName}</span>
+          <span className="text-[13px] font-black" style={{ color: '#F0EAFF', fontFamily: "'Cinzel', serif", letterSpacing: '0.1em' }}>{slotLabel}</span>
+          <span className="text-[10px]" style={{ color: color + 'CC', fontFamily: 'monospace' }}>{memberName}</span>
         </div>
-        <div className="px-2.5 py-1.5 rounded-xl shrink-0" style={{ background: `${color}1A`, border: `1px solid ${color}30` }}>
-          <span className="text-[10px] font-black" style={{ color, fontFamily: 'monospace' }}>
-            {gearCtx.slotType.slice(0, 3)}
-          </span>
-        </div>
+        <div aria-hidden="true" style={{ width: 70, flexShrink: 0 }} />
       </div>
 
       {/* Tab switcher */}
       <div className="shrink-0 flex mx-3 mt-2.5 rounded-xl overflow-hidden" style={{ background: 'rgba(7,3,18,0.88)', border: `1px solid ${color}20` }}>
         {(isResidueSlot ? (['EQUIP', 'ENHANCE', 'TRANSMUTE'] as const) : (['EQUIP', 'ENHANCE', 'DISMANTLE'] as const)).map(t => (
           <button key={t} id={!isResidueSlot && t === 'ENHANCE' ? 'tut-weapon-enhance-tab' : undefined} onClick={() => { haptic(5); setWeaponDetailOpen(false); setTab(t); }}
-            className="flex-1 py-2.5 text-[12px] font-black tracking-[0.12em] relative transition-colors"
+            className="flex-1 py-2.5 text-[13px] font-black tracking-[0.12em] relative transition-colors"
             style={{ minHeight: 44, color: tab === t ? '#F0EAFF' : 'rgba(185,165,230,0.36)', fontFamily: 'monospace', background: tab === t ? `linear-gradient(135deg, ${color}22, ${color}09)` : 'transparent' }}>
             {t === 'EQUIP' ? '装備' : t === 'ENHANCE' ? (isResidueSlot ? '強化' : '共鳴') : t === 'TRANSMUTE' ? '錬成' : '分解'}
             {tab === t && <motion.div layoutId="gear-tab-line" className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }} />}
           </button>
         ))}
       </div>
-      {!isResidueSlot && (
+      {!isResidueSlot && tab === 'ENHANCE' && (
         <BubbleHint
           hint={{
             id: 'hint_weapon_enhance',
@@ -2711,8 +2658,8 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
               ) : (
                 <>
                   <div className="shrink-0 px-4 pb-2 pt-1 flex items-center justify-between">
-                    <span className="text-[10px] font-black tracking-[0.18em]" style={{ color: 'rgba(185,110,255,0.9)', fontFamily: 'monospace' }}>⚔ 武器庫 — {filteredItems.length}本</span>
-                    <span className="text-[9px] font-black" style={{ color: '#7f7193', fontFamily: 'monospace' }}>戦力順</span>
+                    <span className="text-[12px] font-black tracking-[0.14em]" style={{ color: 'rgba(205,175,255,0.94)', fontFamily: 'monospace' }}>⚔ 武器庫 — {filteredItems.length}本</span>
+                    <span className="text-[10px] font-black" style={{ color: '#a695bd', fontFamily: 'monospace' }}>戦力順</span>
                   </div>
                   {filteredItems.length === 0 ? (
                     <div className="flex-1 flex items-center justify-center opacity-30">
@@ -2879,11 +2826,11 @@ function SynergyNodeRow({ party }: { party: (MonsterData | null)[] }) {
               </span>
               {m && (
                 <span style={{
-                  fontSize: 7, fontFamily: 'monospace', fontWeight: 900,
+                  fontSize: 9, fontFamily: 'monospace', fontWeight: 900,
                   color: conf.color, letterSpacing: '0.05em', marginTop: 1,
                   textShadow: `0 0 4px ${conf.color}`,
                 }}>
-                  {conf.label}
+                  {getConfLabelJa(conf)}
                 </span>
               )}
             </motion.div>
@@ -2926,7 +2873,7 @@ function SynergyPanel({ synergy }: { synergy: ActiveSynergy }) {
     : isLayer3
       ? 'linear-gradient(135deg, rgba(160,80,255,0.09) 0%, rgba(0,0,0,0) 60%)'
       : 'linear-gradient(135deg, rgba(120,100,200,0.06) 0%, rgba(0,0,0,0) 60%)';
-  const badge = isLayer2 ? '★ FULL' : isLayer3 ? '◆ CROSS' : '◇ PART';
+  const badge = isLayer2 ? '★ 完全発動' : isLayer3 ? '◆ 複合発動' : '◇ 発動中';
   const badgeColor = isLayer2 ? '#FFD700' : isLayer3 ? '#C080FF' : '#9090C0';
 
   return (
@@ -2961,22 +2908,16 @@ function SynergyPanel({ synergy }: { synergy: ActiveSynergy }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
             <span style={{
-              fontSize: 12, fontFamily: "var(--font-cinzel-decorative), serif", fontWeight: 900,
+              fontSize: 13, fontFamily: "var(--font-cinzel-decorative), serif", fontWeight: 900,
               color: synergy.color, textShadow: `0 0 10px ${synergy.color}88`,
               letterSpacing: '0.05em',
             }}>
               {synergy.name}
             </span>
-            <span style={{
-              fontSize: 8, fontFamily: 'monospace', color: 'rgba(160,140,210,0.55)',
-              letterSpacing: '0.1em', whiteSpace: 'nowrap',
-            }}>
-              {synergy.nameEn}
-            </span>
           </div>
           <div style={{
-            fontSize: 9, fontFamily: 'monospace',
-            color: 'rgba(210,200,240,0.72)',
+            fontSize: 10, fontFamily: 'monospace',
+            color: 'rgba(220,210,245,0.82)',
             marginTop: 2, letterSpacing: '0.04em',
           }}>
             {synergy.effectDesc}
@@ -2991,7 +2932,7 @@ function SynergyPanel({ synergy }: { synergy: ActiveSynergy }) {
           ]}}
           transition={{ duration: 2, repeat: Infinity }}
           style={{
-            fontSize: 8, fontWeight: 900, fontFamily: 'monospace',
+            fontSize: 9, fontWeight: 900, fontFamily: 'monospace',
             color: badgeColor, letterSpacing: '0.15em',
             whiteSpace: 'nowrap', flexShrink: 0,
           }}
@@ -3050,11 +2991,11 @@ function SynergyBanner({ party }: { party: (MonsterData | null)[] }) {
             </motion.span>
           )}
           <span style={{
-            fontSize: 9, fontFamily: 'monospace', fontWeight: 900,
+            fontSize: 10, fontFamily: 'monospace', fontWeight: 900,
             color: hasAny ? 'rgba(200,180,255,0.75)' : 'rgba(100,80,140,0.5)',
             letterSpacing: '0.25em',
           }}>
-            SYNERGY FORMATION
+            種族シナジー
           </span>
         </div>
         <span style={{
@@ -3087,7 +3028,7 @@ function SynergyBanner({ party }: { party: (MonsterData | null)[] }) {
               padding: '4px 0', letterSpacing: '0.15em',
             }}
           >
-            SYNERGY: NONE
+            発動中のシナジーなし
           </motion.div>
         )}
       </AnimatePresence>
@@ -3131,7 +3072,7 @@ function CostIndicator({ totalCost, maxCost, feedbackKey, feedbackMessage }: { t
         }}
       >
         <span className="text-[12px] font-black" style={{ color, fontFamily: 'monospace', fontVariantNumeric: 'tabular-nums' }}>
-          COST {totalCost}/{maxCost}{isOver ? ' OVER' : ''}
+          編成コスト {totalCost}/{maxCost}{isOver ? ' 超過' : ''}
         </span>
         <div className="w-[108px] h-[5px] rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.42)', border: '1px solid rgba(136,0,228,0.2)' }}>
           <motion.div
@@ -3318,11 +3259,11 @@ function MonsterRosterCard({
             <span className="truncate text-[15px] font-black" style={{ color: '#F0EAFF', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>{monster.name}</span>
             {alreadyInParty && (
               <span className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black" style={{ color: POSITION_META[inPartyIndex].color, background: `${POSITION_META[inPartyIndex].color}1A`, border: `1px solid ${POSITION_META[inPartyIndex].color}44`, fontFamily: 'monospace' }}>
-                {POSITION_META[inPartyIndex].short}
+                {POSITION_META[inPartyIndex].label}
               </span>
             )}
           </div>
-          <div style={{ marginTop: 4, color: conf.color, fontFamily: 'monospace', fontSize: 10, fontWeight: 900, letterSpacing: '0.1em' }}>{conf.label}</div>
+          <div style={{ marginTop: 4, color: conf.color, fontFamily: "var(--font-noto-sans-jp), sans-serif", fontSize: 10, fontWeight: 900 }}>{getConfLabelJa(conf)}</div>
         </div>
         <button
           type="button"
@@ -3422,14 +3363,14 @@ function MonsterDetailPage({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[11px] font-black tracking-[0.18em]" style={{ color: position.color, fontFamily: 'monospace' }}>
-              {position.short} / MONSTER DETAIL
+              {position.label}の詳細
             </div>
             <div className="truncate text-[28px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "var(--font-cinzel-decorative), var(--font-noto-sans-jp), serif", letterSpacing: '0.08em', textShadow: `0 0 18px ${conf.glow}` }}>
               {monster.name}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] font-black" style={{ fontFamily: 'monospace' }}>
               <span style={{ color: conf.color }}>{conf.label}</span>
-              <span style={{ color: costBlocked ? '#FF7777' : '#D4AF37' }}>COST {projectedCost}/{maxCost}</span>
+              <span style={{ color: costBlocked ? '#FF7777' : '#D4AF37' }}>編成コスト {projectedCost}/{maxCost}</span>
             </div>
           </div>
           <button
@@ -3723,14 +3664,14 @@ function MonsterPickerSheet({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-[10px] font-black tracking-[0.18em]" style={{ color: position.color, fontFamily: 'monospace' }}>
-                      {position.short} / HATE {position.hate}
+                      {position.label}・狙われ率 {position.hate}
                     </div>
                     <div className="truncate text-[18px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "var(--font-cinzel-decorative), var(--font-noto-sans-jp), serif", letterSpacing: '0.08em' }}>
                       魔物選択
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-[10px] font-bold" style={{ color: 'rgba(190,176,230,0.66)', fontFamily: 'monospace' }}>
-                      <span>{current ? current.name : 'VACANT'}</span>
-                      <span style={{ color: totalCost > maxCost ? '#FF7777' : '#D4AF37' }}>COST {totalCost}/{maxCost}</span>
+                      <span>{current ? current.name : '空き枠'}</span>
+                      <span style={{ color: totalCost > maxCost ? '#FF7777' : '#D4AF37' }}>編成コスト {totalCost}/{maxCost}</span>
                     </div>
                   </div>
                   <button
@@ -3919,14 +3860,14 @@ function MonsterPickerPage({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-[11px] font-black tracking-[0.18em]" style={{ color: position.color, fontFamily: 'monospace' }}>
-                  {position.short} / HATE {position.hate}
+                  {position.label}・狙われ率 {position.hate}
                 </div>
                 <div className="truncate text-[28px] font-black leading-tight" style={{ color: '#F0EAFF', fontFamily: "var(--font-cinzel-decorative), var(--font-noto-sans-jp), serif", letterSpacing: '0.08em', textShadow: '0 0 18px rgba(139,0,255,0.38)' }}>
                   魔物選択
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] font-black" style={{ color: 'rgba(190,176,230,0.72)', fontFamily: 'monospace' }}>
-                  <span>{current ? current.name : 'VACANT'}</span>
-                  <span style={{ color: totalCost > maxCost ? '#FF7777' : '#D4AF37' }}>COST {totalCost}/{maxCost}</span>
+                  <span>{current ? current.name : '空き枠'}</span>
+                  <span style={{ color: totalCost > maxCost ? '#FF7777' : '#D4AF37' }}>編成コスト {totalCost}/{maxCost}</span>
                 </div>
               </div>
               <button
@@ -4233,15 +4174,15 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
               <Home size={12} />
               <span>ホーム</span>
             </button>
-            <div className="text-[22px] font-black tracking-[0.3em] leading-tight" style={{ color: '#E090FF', fontFamily: "var(--font-cinzel-decorative), serif", textShadow: '0 0 18px rgba(196,28,250,0.58)' }}>LEGION</div>
-            <div className="text-[11px] font-bold tracking-[0.2em] mt-0.5" style={{ color: 'rgba(182,165,232,0.52)', fontFamily: 'monospace' }}>ARMY FORMATION</div>
+            <div className="text-[22px] font-black tracking-[0.2em] leading-tight" style={{ color: '#E090FF', fontFamily: "var(--font-cinzel-decorative), serif", textShadow: '0 0 18px rgba(196,28,250,0.58)' }}>LEGION</div>
+            <div className="text-[11px] font-bold tracking-[0.12em] mt-0.5" style={{ color: 'rgba(202,185,242,0.72)', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>軍団編成</div>
           </div>
           <div className="flex flex-col items-end gap-1.5">
             <motion.button onClick={() => { haptic(5); onBack(); }} whileTap={{ scale: 0.9 }}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl mb-1"
               style={{ minHeight: 44, background: 'rgba(10,5,26,0.88)', border: '1px solid rgba(140,60,220,0.36)', color: 'rgba(200,160,255,0.85)' }}>
               <ChevronLeft size={13} />
-              <span className="text-[10px] font-black tracking-wider" style={{ fontFamily: 'monospace' }}>DETAIL</span>
+              <span className="text-[10px] font-black" style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>詳細へ戻る</span>
             </motion.button>
             <CostIndicator totalCost={totalCost} maxCost={maxCost} feedbackKey={costFeedbackKey} feedbackMessage={costFeedbackMessage} />
           </div>
@@ -4265,8 +4206,8 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
             className="min-w-0 text-left"
             style={{ minHeight: 44, background: 'transparent', border: 0, padding: 0 }}
           >
-            <div className="text-[10px] font-black tracking-[0.18em]" style={{ color: selectedPosition.color, fontFamily: 'monospace' }}>{selectedPosition.short} / HATE {selectedPosition.hate}</div>
-            <div className="truncate text-[13px] font-black" style={{ color: 'rgba(240,234,255,0.9)', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>
+            <div className="text-[11px] font-black" style={{ color: selectedPosition.color, fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>{selectedPosition.label}・狙われ率 {selectedPosition.hate}</div>
+            <div className="truncate text-[15px] font-black" style={{ color: 'rgba(240,234,255,0.96)', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>
               {party[selectedSlotIndex]?.name ?? '空き枠'}
             </div>
           </button>
@@ -4277,7 +4218,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
               setDetailMonster(null);
               setPickerSlotIndex(selectedSlotIndex);
             }}
-            className="shrink-0 rounded-xl px-4 text-[11px] font-black tracking-[0.12em]"
+            className="shrink-0 rounded-xl px-4 text-[12px] font-black tracking-[0.1em]"
             style={{
               minHeight: 44,
               background: 'linear-gradient(135deg, rgba(139,0,255,0.26), rgba(139,0,255,0.12))',
@@ -4291,7 +4232,7 @@ function LegionListView({ player, party, equippedResidueSlots, soulShards, demon
           </motion.button>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 flex-1 min-h-0" style={{ gridTemplateRows: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
+        <div data-testid="legion-party-grid" className="legion-party-grid grid grid-cols-2 gap-2 flex-1 min-h-0" style={{ gridTemplateRows: 'minmax(0, 1fr) minmax(0, 1fr)' }}>
           <PortraitCard
             mk="PLAYER"
             player={player}

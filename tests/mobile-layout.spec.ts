@@ -1,7 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import { devices, expect, test, type Page } from '@playwright/test';
 import { openHomeSection, prepareE2EPage, startFirstDungeonBattle } from './helpers/e2e';
 
-const MOBILE_VIEWPORT = { width: 390, height: 844 };
+const { defaultBrowserType: _defaultBrowserType, ...IPHONE_13_PRO } = devices['iPhone 13 Pro'];
 
 async function expectMobileLayout(page: Page, screenName: string) {
   // Framer Motion and slot-reveal transforms temporarily scale hit areas while
@@ -54,6 +54,8 @@ async function expectMobileLayout(page: Page, screenName: string) {
     return {
       viewportWidth: document.documentElement.clientWidth,
       documentWidth: document.documentElement.scrollWidth,
+      devicePixelRatio: window.devicePixelRatio,
+      isIPhoneUserAgent: /iPhone/.test(window.navigator.userAgent),
       spacingToken: window.getComputedStyle(document.documentElement).getPropertyValue('--spacing').trim(),
       undersizedButtons,
       clippedText,
@@ -61,13 +63,15 @@ async function expectMobileLayout(page: Page, screenName: string) {
   });
 
   expect(audit.spacingToken, `${screenName}: Tailwind spacing token`).toBe('0.25rem');
+  expect(audit.devicePixelRatio, `${screenName}: iPhone 13 Pro DPR`).toBe(3);
+  expect(audit.isIPhoneUserAgent, `${screenName}: iPhone user agent`).toBe(true);
   expect(audit.documentWidth, `${screenName}: horizontal document overflow`).toBeLessThanOrEqual(audit.viewportWidth);
   expect(audit.undersizedButtons, `${screenName}: touch targets under 44px`).toEqual([]);
   expect(audit.clippedText, `${screenName}: unintentionally clipped text`).toEqual([]);
 }
 
 test.describe('Mobile layout regression', () => {
-  test.use({ viewport: MOBILE_VIEWPORT, isMobile: true, hasTouch: true });
+  test.use({ ...IPHONE_13_PRO });
 
   test.beforeEach(async ({ page }) => {
     await prepareE2EPage(page, { preset: 'endgame' });
@@ -89,14 +93,40 @@ test.describe('Mobile layout regression', () => {
   test('keeps equipment, lab, Yomi, and logs readable and touchable', async ({ page }) => {
     await openHomeSection(page, '装備・編成');
     await expect(page.getByRole('main').getByText('LEGION', { exact: true })).toBeVisible();
+    const memberCards = page.getByTestId('legion-member-card');
+    await expect(memberCards).toHaveCount(4);
+    await expect(memberCards.first().getByTestId('legion-member-name')).toHaveCSS('font-size', '14px');
     await expectMobileLayout(page, 'LEGION');
+    const legionText = await page.getByRole('main').innerText();
+    expect(legionText, 'LEGION: developer-facing labels').not.toMatch(/\b(?:HATE|PART|MAIN|VACANT)\b|\bC\d+\b/);
+    const memberRects = await memberCards.evaluateAll((cards) => cards.map((card) => {
+      const rect = card.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+    }));
+    expect(memberRects[0].right, 'LEGION: first-row cards overlap').toBeLessThanOrEqual(memberRects[1].left);
+    expect(memberRects[0].bottom, 'LEGION: card rows overlap').toBeLessThanOrEqual(memberRects[2].top);
 
-    await page.getByRole('button', { name: /MAIN アルド/ }).click();
-    await expect(page.getByText('統合詳細ハブ')).toBeVisible();
-    for (const residueName of ['思念の兜 / head', '剛力の籠手 / arms', '骸の胸当て / chest', '深淵の帯 / waist', '霊獣の具足 / legs']) {
+    await memberCards.first().click();
+    await expect(page.getByText('軍団詳細')).toBeVisible();
+    for (const residueName of ['思念の兜', '剛力の籠手', '骸の胸当て', '深淵の帯', '霊獣の具足']) {
       await expect(page.getByText(residueName, { exact: true })).toBeVisible();
     }
+    await expect(page.getByTestId('unit-gear-name').first()).toHaveCSS('font-size', '11px');
     await expectMobileLayout(page, 'UNIT DETAIL');
+    const unitDetailText = await page.getByRole('main').innerText();
+    expect(unitDetailText, 'UNIT DETAIL: developer-facing labels').not.toMatch(/STATUS|Formation|\b(?:SSR|SR)\b/);
+    const gearSlots = page.getByTestId('unit-gear-slot');
+    await expect(gearSlots).toHaveCount(6);
+    const gearRects = await gearSlots.evaluateAll((slots) => slots.map((slot) => {
+      const rect = slot.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+    }));
+    expect(gearRects[0].right, 'UNIT DETAIL: first-row equipment overlaps').toBeLessThanOrEqual(gearRects[1].left);
+    expect(gearRects[0].bottom, 'UNIT DETAIL: equipment rows overlap').toBeLessThanOrEqual(gearRects[2].top);
+    const clippedGearNames = await page.getByTestId('unit-gear-name').evaluateAll((names) => names
+      .filter((name) => name.scrollWidth > name.clientWidth + 1)
+      .map((name) => name.textContent));
+    expect(clippedGearNames, 'UNIT DETAIL: equipment names are clipped').toEqual([]);
 
     await page.getByRole('button', { name: /武器/ }).click();
     const weaponList = page.getByTestId('weapon-list-scroll');
@@ -104,7 +134,15 @@ test.describe('Mobile layout regression', () => {
     await expect(weaponList).toHaveCSS('overflow-y', 'auto');
     await expect(page.getByTestId('weapon-list-card').first().getByText('WEAPON ATK')).toBeVisible();
     await expect(page.getByTestId('weapon-list-card').first().getByLabel('サブオプション')).toBeVisible();
+    await expect(page.getByTestId('weapon-list-card').first().getByTestId('weapon-card-name')).toHaveCSS('font-size', '14px');
+    await expect(page.getByText('武器強化', { exact: true })).toHaveCount(0);
     await expectMobileLayout(page, 'WEAPON LIST');
+    const weaponRects = await page.getByTestId('weapon-list-card').evaluateAll((cards) => cards.map((card) => {
+      const rect = card.getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom, height: rect.height };
+    }));
+    expect(weaponRects[0].height, 'WEAPON LIST: first card is vertically compressed').toBeGreaterThanOrEqual(160);
+    expect(weaponRects[0].bottom, 'WEAPON LIST: cards overlap').toBeLessThanOrEqual(weaponRects[1].top);
 
     await page.getByRole('button', { name: 'LAB', exact: true }).click();
     await expect(page.getByText('NECRO-LAB')).toBeVisible();
@@ -135,10 +173,22 @@ test.describe('Mobile layout regression', () => {
     await openHomeSection(page, '装備・編成');
     await expect(page.getByRole('main').getByText('LEGION', { exact: true })).toBeVisible();
     await expectMobileLayout(page, 'COMPACT LEGION');
+    const compactGrid = page.getByTestId('legion-party-grid');
+    await expect(compactGrid).toHaveCSS('overflow-y', 'auto');
+    const compactCardHeight = await page.getByTestId('legion-member-card').first().evaluate((card) => card.getBoundingClientRect().height);
+    expect(compactCardHeight, 'COMPACT LEGION: member card is vertically compressed').toBeGreaterThanOrEqual(148);
 
-    await page.getByRole('button', { name: /MAIN アルド/ }).click();
-    await expect(page.getByText('統合詳細ハブ')).toBeVisible();
+    await page.getByTestId('legion-member-card').first().click();
+    await expect(page.getByText('軍団詳細')).toBeVisible();
     await expectMobileLayout(page, 'COMPACT UNIT DETAIL');
+    const compactLoadout = page.getByTestId('unit-detail-loadout');
+    const compactLoadoutSize = await compactLoadout.evaluate((element) => ({ clientHeight: element.clientHeight, scrollHeight: element.scrollHeight }));
+    expect(compactLoadoutSize.scrollHeight, 'COMPACT UNIT DETAIL: equipment is hidden below the fold').toBeLessThanOrEqual(compactLoadoutSize.clientHeight + 1);
+    const compactLoadoutBox = await compactLoadout.boundingBox();
+    const compactLastGearBox = await page.getByTestId('unit-gear-slot').last().boundingBox();
+    expect(compactLoadoutBox).not.toBeNull();
+    expect(compactLastGearBox).not.toBeNull();
+    expect(compactLastGearBox!.y + compactLastGearBox!.height, 'COMPACT UNIT DETAIL: equipment overlaps stats').toBeLessThanOrEqual(compactLoadoutBox!.y + compactLoadoutBox!.height);
 
     await page.getByRole('button', { name: 'LAB', exact: true }).click();
     await expect(page.getByText('NECRO-LAB')).toBeVisible();

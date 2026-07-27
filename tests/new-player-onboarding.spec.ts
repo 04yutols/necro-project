@@ -368,7 +368,7 @@ test.describe('新規プレイヤー オンボーディング', () => {
     await openHomeSection(page, '装備・編成');
 
     await expect(page.locator('#tut-cost-display')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('#tut-cost-display')).toContainText('COST');
+    await expect(page.locator('#tut-cost-display')).toContainText('編成コスト');
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -379,10 +379,10 @@ test.describe('新規プレイヤー オンボーディング', () => {
     await openHomeSection(page, '装備・編成');
 
     await expect(page.getByRole('main').getByText('LEGION', { exact: true })).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: /DETAIL/ }).click();
-    await expect(page.getByText('統合詳細ハブ')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('ATK', { exact: true })).toBeVisible();
-    await expect(page.getByText('DEF', { exact: true })).toBeVisible();
-    await expect(page.getByText('HP', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '詳細へ戻る' }).click();
+    await expect(page.getByText('軍団詳細')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('攻撃力', { exact: true })).toBeVisible();
+    await expect(page.getByText('防御力', { exact: true })).toBeVisible();
+    await expect(page.getByText('体力', { exact: true })).toBeVisible();
   });
 });

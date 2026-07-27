@@ -11,23 +11,23 @@ test.describe('Armory and status UX', () => {
 
   test('opens the current Legion detail screen and exposes Star-Rail-style stats', async ({ page }) => {
     await expect(page.getByRole('main').getByText('LEGION', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: /DETAIL/ }).click();
+    await page.getByRole('button', { name: '詳細へ戻る' }).click();
 
-    await expect(page.getByText('統合詳細ハブ')).toBeVisible();
-    await expect(page.getByText('STATUS')).toBeVisible();
-    await expect(page.getByText('ATK', { exact: true })).toBeVisible();
-    await expect(page.getByText('DEF', { exact: true })).toBeVisible();
-    await expect(page.getByText('SPD', { exact: true })).toBeVisible();
-    await expect(page.getByText('HP', { exact: true })).toBeVisible();
+    await expect(page.getByText('軍団詳細')).toBeVisible();
+    await expect(page.getByText('能力値')).toBeVisible();
+    await expect(page.getByText('攻撃力', { exact: true })).toBeVisible();
+    await expect(page.getByText('防御力', { exact: true })).toBeVisible();
+    await expect(page.getByText('速度', { exact: true })).toBeVisible();
+    await expect(page.getByText('体力', { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: '詳細' }).click();
-    await expect(page.getByText('STATUS ARCHIVE')).toBeVisible();
-    await expect(page.getByText('MAIN STATUS')).toBeVisible();
-    await expect(page.getByText('ELEMENT DMG')).toBeVisible();
+    await expect(page.getByText('能力詳細')).toBeVisible();
+    await expect(page.getByText('基本能力')).toBeVisible();
+    await expect(page.getByText('属性ダメージ')).toBeVisible();
   });
 
   test('opens the weapon armory from the current equipment hub', async ({ page }) => {
-    await page.getByRole('button', { name: /DETAIL/ }).click();
+    await page.getByRole('button', { name: '詳細へ戻る' }).click();
     await page.getByRole('button', { name: /武器/ }).click();
 
     await expect(page.getByText('武器庫')).toBeVisible();
@@ -69,7 +69,7 @@ test.describe('Armory and status UX', () => {
     await expect(page.getByText('拠点', { exact: true })).toBeVisible();
     await openHomeSection(page, '装備・編成');
     await expect(page.getByRole('main').getByText('LEGION', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: /DETAIL/ }).click();
+    await page.getByRole('button', { name: '詳細へ戻る' }).click();
     await page.getByRole('button', { name: /武器/ }).click();
 
     const list = page.getByTestId('weapon-list-scroll');
@@ -91,13 +91,13 @@ test.describe('Armory and status UX', () => {
     await equipButton.click();
     await expect(page.getByRole('button', { name: /霊銀の斬骨刀を装備中$/ })).toBeDisabled();
 
-    await page.getByRole('button', { name: /DETAIL/ }).click();
-    await expect(page.getByText('統合詳細ハブ')).toBeVisible();
+    await page.getByRole('button', { name: '詳細へ戻る' }).click();
+    await expect(page.getByText('軍団詳細')).toBeVisible();
     await expect(page.getByText('拠点', { exact: true })).toHaveCount(0);
   });
 
   test('reforges a weapon by one ILv and previews the next step', async ({ page }) => {
-    await page.getByRole('button', { name: /DETAIL/ }).click();
+    await page.getByRole('button', { name: '詳細へ戻る' }).click();
     await page.getByRole('button', { name: /武器/ }).click();
     await page.getByRole('button', { name: '共鳴' }).click();
 
