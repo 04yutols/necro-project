@@ -1060,29 +1060,81 @@ function materialQty(materials: WeaponMaterialData[], type: string): number {
   return materials.find((mat) => mat.type === type)?.quantity ?? 0;
 }
 
-function WeaponGridCard({ item, isSelected, isEquipped, onSelect }: { item: ItemData; isSelected: boolean; isEquipped: boolean; onSelect: () => void }) {
+function WeaponListCard({
+  item,
+  isSelected,
+  isEquipped,
+  onSelect,
+  onEquip,
+}: {
+  item: ItemData;
+  isSelected: boolean;
+  isEquipped: boolean;
+  onSelect: () => void;
+  onEquip: () => void;
+}) {
   const rarity = getWeaponRarity(item);
   const color = RARITY_COLOR[rarity] ?? RARITY_COLOR.R;
   const baseAtk = calculateWeaponBaseAttack(item);
+  const subOptions = getWeaponEffectiveSubOptions(item);
   return (
-    <motion.button onClick={onSelect} whileTap={{ scale: 0.92 }}
-      className="rounded-xl flex flex-col items-center gap-1.5 py-2.5 px-2 relative overflow-hidden"
-      style={{ minHeight: 126, background: isSelected ? `linear-gradient(160deg, ${RARITY_GLOW[rarity] ?? RARITY_GLOW.R}, rgba(12,5,28,0.94))` : 'rgba(12,6,28,0.72)', border: `1.5px solid ${isSelected ? color + 'BB' : 'rgba(130,70,200,0.35)'}`, boxShadow: isSelected ? `0 0 16px ${RARITY_GLOW[rarity] ?? RARITY_GLOW.R}` : 'none' }}>
-      <div className="absolute inset-0 pointer-events-none rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.065) 0%, transparent 50%)' }} />
-      {isEquipped && <div className="absolute top-1.5 right-1.5 text-[8px] font-black px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,221,119,0.16)', border: '1px solid rgba(0,221,119,0.48)', color: '#8DFFBF', fontFamily: 'monospace' }}>装備中</div>}
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `radial-gradient(circle at 35% 25%, ${color}34, rgba(0,0,0,0.82))`, border: `1px solid ${color}55`, boxShadow: `0 0 12px ${color}22` }}>
-        <Swords size={18} style={{ color }} />
+    <motion.div
+      data-testid="weapon-list-card"
+      layout
+      className="shrink-0 rounded-2xl relative overflow-hidden"
+      style={{
+        background: isSelected ? `linear-gradient(150deg, ${RARITY_GLOW[rarity] ?? RARITY_GLOW.R}, rgba(12,5,28,0.96))` : 'rgba(12,6,28,0.82)',
+        border: `1.5px solid ${isSelected ? color + 'BB' : color + '40'}`,
+        boxShadow: isSelected ? `0 0 16px ${RARITY_GLOW[rarity] ?? RARITY_GLOW.R}` : 'none',
+      }}
+    >
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06), transparent 48%)' }} />
+      <button type="button" onClick={onSelect} className="relative w-full min-w-0 p-3 text-left" style={{ minHeight: 96 }} aria-label={`${item.name}を選択`}>
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="shrink-0 w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `radial-gradient(circle at 35% 25%, ${color}34, rgba(0,0,0,0.82))`, border: `1px solid ${color}55`, boxShadow: `0 0 12px ${color}22` }}>
+            <Swords size={21} style={{ color }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2 min-w-0">
+              <span className="text-[12px] font-black leading-tight truncate" style={{ color: '#EDE8FF', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>{item.name}</span>
+              {isEquipped && <span className="shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(0,221,119,0.16)', border: '1px solid rgba(0,221,119,0.48)', color: '#8DFFBF', fontFamily: 'monospace' }}>装備中</span>}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+              <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: `${color}22`, border: `1px solid ${color}44`, color, fontFamily: 'monospace' }}>{rarity}</span>
+              <span className="text-[9px] font-bold" style={{ color, fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>{WEAPON_RARITY_LABEL[rarity]}</span>
+              <span className="text-[9px] font-black" style={{ color: '#8b7da8', fontFamily: 'monospace' }}>ILv.{getWeaponIlv(item)} / R{getWeaponRank(item)}</span>
+            </div>
+          </div>
+          <div className="shrink-0 text-right">
+            <div className="text-[8px] font-black tracking-wider" style={{ color: '#8b7da8', fontFamily: 'monospace' }}>WEAPON ATK</div>
+            <div className="text-[22px] font-black leading-none mt-1" style={{ color, fontFamily: "'Cinzel', serif", textShadow: `0 0 10px ${color}55` }}>{baseAtk}</div>
+          </div>
+        </div>
+        <div className="mt-2.5 flex flex-wrap gap-1.5" aria-label="サブオプション">
+          {subOptions.length > 0 ? subOptions.map((option) => (
+            <span key={option.type} className="rounded-lg px-2 py-1 text-[9px] font-black" style={{ color: '#D9CFF0', background: 'rgba(255,255,255,0.045)', border: `1px solid ${isElementDamageSubOption(option) ? 'rgba(212,175,55,0.38)' : 'rgba(139,0,255,0.22)'}`, fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>
+              {getOptionLabel(option.type)} <span style={{ color }}>+{formatOptionValue(option.type, option.value)}</span>
+            </span>
+          )) : (
+            <span className="text-[9px]" style={{ color: '#6b5f7a', fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>サブオプションなし</span>
+          )}
+        </div>
+      </button>
+      <div className="relative px-3 pb-3">
+        <motion.button
+          id={isSelected ? 'tut-weapon-equip-btn' : undefined}
+          type="button"
+          onClick={onEquip}
+          whileTap={isEquipped ? undefined : { scale: 0.97 }}
+          disabled={isEquipped}
+          className="w-full rounded-xl text-[12px] font-black tracking-[0.16em]"
+          style={{ minHeight: 44, background: isEquipped ? 'rgba(255,255,255,0.04)' : `linear-gradient(135deg, ${color}30, rgba(12,5,28,0.92))`, border: `1px solid ${isEquipped ? 'rgba(255,255,255,0.08)' : color + '66'}`, color: isEquipped ? '#5d5368' : color, fontFamily: "var(--font-noto-sans-jp), sans-serif" }}
+          aria-label={`${item.name}を${isEquipped ? '装備中' : '装備'}`}
+        >
+          {isEquipped ? '装備中' : '装備'}
+        </motion.button>
       </div>
-      <span className="text-[10px] font-black text-center leading-tight max-w-full px-1" style={{ color: '#EDE8FF', fontFamily: "var(--font-noto-sans-jp), sans-serif", display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: 26 }}>{item.name}</span>
-      <div className="flex items-center gap-1">
-        <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: `${color}22`, border: `1px solid ${color}44`, color, fontFamily: 'monospace' }}>{rarity}</span>
-        <span className="text-[9px] font-black" style={{ color: '#8b7da8', fontFamily: 'monospace' }}>R{getWeaponRank(item)}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-1 w-full">
-        <span className="text-[8px] font-black rounded px-1 py-0.5" style={{ color: '#bca8df', background: 'rgba(255,255,255,0.04)', fontFamily: 'monospace' }}>ILv.{getWeaponIlv(item)}</span>
-        <span className="text-[8px] font-black rounded px-1 py-0.5 text-right" style={{ color, background: `${color}12`, fontFamily: 'monospace' }}>ATK {baseAtk}</span>
-      </div>
-    </motion.button>
+    </motion.div>
   );
 }
 
@@ -2269,6 +2321,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   const [activeResidueSlotIndex, setActiveResidueSlotIndex] = useState(gearCtx.slotIndex);
   const [selectedResidueId, setSelectedResidueId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [weaponDetailOpen, setWeaponDetailOpen] = useState(false);
   const [selectedMatIds, setSelectedMatIds] = useState<Set<string>>(new Set());
   const [enhanceResult, setEnhanceResult] = useState<ResidueEnhanceResult | null>(null);
   const [weaponMutationPending, setWeaponMutationPending] = useState(false);
@@ -2326,6 +2379,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
   useEffect(() => {
     if (isResidueSlot) return;
     if (selectedItemId && filteredItems.some((item) => item.id === selectedItemId)) return;
+    setWeaponDetailOpen(false);
     setSelectedItemId(info.weapon?.id ?? filteredItems[0]?.id ?? null);
   }, [filteredItems, info.weapon?.id, isResidueSlot, selectedItemId]);
 
@@ -2333,6 +2387,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
     if (isResidueSlot) return;
     if (activeTutorialPhase === 'WEAPON_EQUIP') {
       setTab('EQUIP');
+      setWeaponDetailOpen(false);
       const unequipped = filteredItems.find(item => item.id !== info.weapon?.id);
       setSelectedItemId(unequipped?.id ?? filteredItems[0]?.id ?? null);
     }
@@ -2575,7 +2630,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
       {/* Tab switcher */}
       <div className="shrink-0 flex mx-3 mt-2.5 rounded-xl overflow-hidden" style={{ background: 'rgba(7,3,18,0.88)', border: `1px solid ${color}20` }}>
         {(isResidueSlot ? (['EQUIP', 'ENHANCE', 'TRANSMUTE'] as const) : (['EQUIP', 'ENHANCE', 'DISMANTLE'] as const)).map(t => (
-          <button key={t} id={!isResidueSlot && t === 'ENHANCE' ? 'tut-weapon-enhance-tab' : undefined} onClick={() => { haptic(5); setTab(t); }}
+          <button key={t} id={!isResidueSlot && t === 'ENHANCE' ? 'tut-weapon-enhance-tab' : undefined} onClick={() => { haptic(5); setWeaponDetailOpen(false); setTab(t); }}
             className="flex-1 py-2.5 text-[12px] font-black tracking-[0.12em] relative transition-colors"
             style={{ color: tab === t ? '#F0EAFF' : 'rgba(185,165,230,0.36)', fontFamily: 'monospace', background: tab === t ? `linear-gradient(135deg, ${color}22, ${color}09)` : 'transparent' }}>
             {t === 'EQUIP' ? '装備' : t === 'ENHANCE' ? (isResidueSlot ? '強化' : '共鳴') : t === 'TRANSMUTE' ? '錬成' : '分解'}
@@ -2600,7 +2655,7 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
         <AnimatePresence mode="wait">
           {tab === 'EQUIP' ? (
             <motion.div key="equip" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.16 }} className="absolute inset-0 pointer-events-none" style={{ position: 'absolute', inset: 0, width: '100%' }}>
-              <div className="absolute inset-0 flex flex-col overflow-hidden pointer-events-auto" style={{ width: '100%' }}>
+              <div className="absolute inset-0 flex flex-col overflow-hidden pointer-events-auto" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', minHeight: 0 }}>
               {isResidueSlot ? (
                 <>
                   <ResidueSlotRail
@@ -2626,33 +2681,52 @@ function GearHubView({ gearCtx, player, party, equippedResidueSlots, abyssalResi
                   </div>
                   <VirtualResidueGrid items={filteredResidues} selectedId={selectedResidueId} equippedIds={equippedIds} onSelect={id => { sound.playTap(); setSelectedResidueId(id); }} />
                 </>
+              ) : weaponDetailOpen && selectedItem ? (
+                <>
+                  <div className="shrink-0 px-3 pb-2 pt-1">
+                    <motion.button
+                      type="button"
+                      onClick={() => { haptic(5); sound.playTap(); setWeaponDetailOpen(false); }}
+                      whileTap={{ scale: 0.96 }}
+                      className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left"
+                      style={{ background: 'rgba(10,5,26,0.88)', border: `1px solid ${color}36`, color }}
+                      aria-label="武器一覧へ戻る"
+                    >
+                      <ChevronLeft size={15} />
+                      <span className="text-[11px] font-black tracking-[0.12em]" style={{ fontFamily: "var(--font-noto-sans-jp), sans-serif" }}>武器一覧</span>
+                    </motion.button>
+                  </div>
+                  <div data-testid="weapon-detail-scroll" className="flex-1 min-h-0 overflow-y-auto safe-scroll custom-scrollbar px-3" style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+                    <div style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
+                      <WeaponDetailPanel
+                        weapon={selectedItem}
+                        equipped={info.weapon}
+                        player={player}
+                        residues={equippedResidueSlots}
+                        color={color}
+                        onEquip={handleEquipItem}
+                      />
+                    </div>
+                  </div>
+                </>
               ) : (
                 <>
-                  <div className="shrink-0 px-3 pb-2">
-                    <WeaponDetailPanel
-                      weapon={selectedItem}
-                      equipped={info.weapon}
-                      player={player}
-                      residues={equippedResidueSlots}
-                      color={color}
-                      onEquip={handleEquipItem}
-                    />
-                  </div>
-                  <div className="shrink-0 px-4 pb-1.5 flex items-center justify-between">
+                  <div className="shrink-0 px-4 pb-2 pt-1 flex items-center justify-between">
                     <span className="text-[10px] font-black tracking-[0.18em]" style={{ color: 'rgba(185,110,255,0.9)', fontFamily: 'monospace' }}>⚔ 武器庫 — {filteredItems.length}本</span>
-                    <span className="text-[9px] font-black" style={{ color: '#7f7193', fontFamily: 'monospace' }}>RARITY順</span>
+                    <span className="text-[9px] font-black" style={{ color: '#7f7193', fontFamily: 'monospace' }}>戦力順</span>
                   </div>
                   {filteredItems.length === 0 ? (
                     <div className="flex-1 flex items-center justify-center opacity-30">
                       <span className="text-[12px]" style={{ color: 'rgba(180,100,255,0.7)', fontFamily: 'monospace' }}>武器なし</span>
                     </div>
                   ) : (
-                    <div className="flex-1 overflow-y-auto custom-scrollbar px-3">
-                      <div className="grid grid-cols-2 gap-3 pb-4 pt-1">
+                    <div data-testid="weapon-list-scroll" className="flex-1 min-h-0 overflow-y-auto safe-scroll custom-scrollbar px-3" style={{ flex: '1 1 0%', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
+                      <div className="flex flex-col gap-3 pt-1" style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
                         {filteredItems.map(item => (
-                          <WeaponGridCard key={item.id} item={item} isSelected={selectedItemId === item.id}
+                          <WeaponListCard key={item.id} item={item} isSelected={selectedItemId === item.id}
                             isEquipped={info.weapon?.id === item.id}
-                            onSelect={() => { sound.playTap(); setSelectedItemId(item.id); }} />
+                            onSelect={() => { sound.playTap(); setSelectedItemId(item.id); setWeaponDetailOpen(true); }}
+                            onEquip={() => { setSelectedItemId(item.id); void handleEquipItem(item); }} />
                         ))}
                       </div>
                     </div>
