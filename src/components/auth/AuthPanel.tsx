@@ -93,7 +93,7 @@ export function AuthPanel() {
 
   const helperText = useMemo(() => {
     if (status === 'authenticated') return user?.name ?? user?.email ?? 'クラウド同期中';
-    if (status === 'unavailable') return 'Next runtimeで認証有効';
+    if (status === 'unavailable') return 'ローカルプレイ';
     return 'ローカルプレイ';
   }, [status, user]);
 
@@ -204,7 +204,7 @@ export function AuthPanel() {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          minHeight: 40,
+          minHeight: 52,
           padding: '4px 4px 4px 10px',
           borderRadius: 13,
           background: status === 'authenticated'
@@ -234,6 +234,7 @@ export function AuthPanel() {
             color: '#F0EAFF',
             cursor: 'pointer',
             WebkitTapHighlightColor: 'transparent',
+            minHeight: 44,
           }}
         >
           <span style={{ fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', color: status === 'authenticated' ? '#D4AF37' : '#A5A9B4' }}>
@@ -251,8 +252,8 @@ export function AuthPanel() {
             onClick={handleSignOut}
             disabled={submitting}
             style={{
-              width: 34,
-              height: 34,
+              width: 44,
+              height: 44,
               borderRadius: 10,
               display: 'grid',
               placeItems: 'center',
@@ -270,8 +271,8 @@ export function AuthPanel() {
             aria-label="ログイン"
             onClick={() => openDialog('login')}
             style={{
-              width: 34,
-              height: 34,
+              width: 44,
+              height: 44,
               borderRadius: 10,
               display: 'grid',
               placeItems: 'center',
@@ -349,8 +350,8 @@ export function AuthPanel() {
                   aria-label="閉じる"
                   onClick={closeDialog}
                   style={{
-                    width: 38,
-                    height: 38,
+                    width: 44,
+                    height: 44,
                     borderRadius: 12,
                     border: '1px solid rgba(255,255,255,0.1)',
                     background: 'rgba(255,255,255,0.05)',
@@ -376,7 +377,7 @@ export function AuthPanel() {
                           setMessage(null);
                         }}
                         style={{
-                          minHeight: 42,
+                          minHeight: 44,
                           borderRadius: 12,
                           border: mode === tabMode ? '1px solid rgba(139,0,255,0.56)' : '1px solid rgba(255,255,255,0.08)',
                           background: mode === tabMode ? 'rgba(139,0,255,0.18)' : 'rgba(255,255,255,0.035)',

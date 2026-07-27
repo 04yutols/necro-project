@@ -243,6 +243,7 @@ describe('useGameStore party formation actions', () => {
 
   test('loadFromServer is authoritative over cached local progression', async () => {
     useGameStore.getState().addClearedStage('local_only');
+    useGameStore.getState().setCurrentTab('EQUIP');
 
     const state = useGameStore.getState();
     const serverPlayer = {
@@ -278,6 +279,7 @@ describe('useGameStore party formation actions', () => {
     expect(current.necroStatus?.level).toBe(7);
     expect(current.residueMaterials).toEqual(serverResidueMaterials);
     expect(current.transmutationPoints).toBe(77);
+    expect(current.currentTab).toBe('EQUIP');
     expect(persisted?.player?.clearedStages).toEqual(['server_stage']);
     expect(persisted?.necroStatus?.level).toBe(7);
     expect(persisted?.residueMaterials).toEqual(serverResidueMaterials);

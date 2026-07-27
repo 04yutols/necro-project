@@ -381,6 +381,7 @@ function GameContent() {
               <button
                 onClick={() => setCurrentTab('HOME')}
                 className="flex items-center gap-2 text-gray-400 hover:text-primary transition-colors text-[10px] font-black tracking-widest uppercase bg-black/40 border border-[#1A1A1A] px-3 py-1.5 rounded-md backdrop-blur-sm shadow-md"
+                style={{ minHeight: 44 }}
               >
                 <HomeIcon size={14} />
                 <span>RETURN TO HUB</span>
@@ -393,6 +394,7 @@ function GameContent() {
                     onClick={() => setLogPanel(panel)}
                     className="px-3 py-1.5 text-[9px] font-black tracking-widest uppercase transition-colors"
                     style={{
+                      minHeight: 44,
                       color: logPanel === panel ? '#F0EAFF' : '#A5A9B4',
                       background: logPanel === panel ? 'rgba(139,0,255,0.22)' : 'transparent',
                     }}

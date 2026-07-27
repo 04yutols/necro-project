@@ -901,7 +901,6 @@ export const useGameStore = create<GameState>()(
       equippingMonsterId: null,
       battleLogs: ['CLOUD SAVE LOADED...'],
       actionTrigger: null,
-      currentTab: 'HOME',
       demonGauge: 0,
       isDemonMode: false,
       demonActionsRemaining: 0,

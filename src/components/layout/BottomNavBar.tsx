@@ -26,7 +26,10 @@ export function BottomNavBar() {
       className="w-full shrink-0 bg-[#0D0D0D] border-t border-[#2C2C2C] z-50 relative"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="h-14 flex justify-around items-center px-1">
+      <div
+        className="h-14 flex justify-around items-center px-1"
+        style={{ height: 56, minHeight: 56, flexShrink: 0 }}
+      >
         {TABS.map((tab) => {
           const isActive = currentTab === tab.id;
           const isLocked = (tab.id === 'LAB' && !residueUnlocked) || (tab.id === 'YOMI' && !yomiUnlocked);
@@ -43,6 +46,7 @@ export function BottomNavBar() {
                 ${isActive ? 'bg-[#1A1A1A] text-secondary' : isLocked ? 'text-gray-700' : 'text-gray-600 hover:text-gray-400'}
               `}
               aria-disabled={isLocked}
+              style={{ minHeight: 44 }}
             >
               {isActive && (
                 <div className="absolute top-0 left-0 w-full h-[2px] bg-secondary" />

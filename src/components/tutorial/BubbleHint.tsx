@@ -18,7 +18,7 @@ interface Props {
 
 const BUBBLE_W = 210;
 const BUBBLE_GAP = 12;
-const BUBBLE_H = 104;
+const BUBBLE_H = 120;
 const PAD = 10;
 
 function getViewportSize() {
@@ -139,6 +139,7 @@ export function BubbleHint({ hint }: Props) {
             fontSize: 10,
             color: '#B09FF8',
             letterSpacing: '0.06em',
+            marginTop: 0,
             marginBottom: 5,
           }}>
             {hint.title}
@@ -148,6 +149,7 @@ export function BubbleHint({ hint }: Props) {
             fontSize: 11,
             color: 'rgba(210,200,235,0.88)',
             lineHeight: 1.7,
+            margin: 0,
           }}>
             {hint.body}
           </p>
@@ -157,6 +159,7 @@ export function BubbleHint({ hint }: Props) {
             fontSize: 9,
             color: 'rgba(139,0,255,0.6)',
             letterSpacing: '0.1em',
+            marginBottom: 0,
           }}>
             TAP TO CLOSE
           </p>

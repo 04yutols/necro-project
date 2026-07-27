@@ -196,6 +196,7 @@ function YomiFloorCard({
         onClick={() => onChallenge(entry.stage.id)}
         className="min-h-11 px-3 text-[10px] font-black tracking-[0.12em] transition-colors"
         style={{
+          minHeight: 44,
           borderRadius: 8,
           border: actionable ? '1px solid rgba(139,0,255,0.55)' : '1px solid rgba(255,255,255,0.06)',
           background: actionable ? 'rgba(139,0,255,0.18)' : 'rgba(255,255,255,0.03)',
@@ -270,6 +271,7 @@ export function YomiTowerScreen({ onChallenge }: YomiTowerScreenProps) {
           onClick={() => currentRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })}
           className="w-full min-h-11 flex items-center justify-center gap-2 text-[10px] font-black tracking-[0.14em]"
           style={{
+            minHeight: 44,
             borderRadius: 8,
             border: '1px solid rgba(255,255,255,0.08)',
             background: 'rgba(255,255,255,0.04)',

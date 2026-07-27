@@ -227,8 +227,8 @@ export default function JobChangeScreen() {
               onClick={() => setCurrentTab('HOME')}
               aria-label="拠点へ戻る"
               style={{
-                width: 36,
-                height: 36,
+                width: 44,
+                height: 44,
                 borderRadius: 10,
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)',
@@ -251,8 +251,8 @@ export default function JobChangeScreen() {
             </div>
             <div
               style={{
-                width: 36,
-                height: 36,
+                width: 44,
+                height: 44,
                 borderRadius: 10,
                 border: `1px solid ${currentStyle.color}55`,
                 color: currentStyle.color,
