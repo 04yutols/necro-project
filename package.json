@@ -32,6 +32,7 @@
     "balance:progression": "node scripts/progression-report.mjs",
     "balance:drops": "node scripts/drop-report.mjs",
     "balance:skills": "node scripts/skill-report.mjs",
+    "bot:test": "tsx scripts/run-bot-batch.mts",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",

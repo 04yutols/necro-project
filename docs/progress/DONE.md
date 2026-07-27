@@ -67,6 +67,7 @@
 | 共有テストファクトリ | `src/testing/factories.ts` | `makeCharacter`/`makeMonster`/`makeBaseStats` で `CharacterData`/`MonsterData` フルシェル生成を共通化。実マスターデータ非依存で5ファイルのローカルヘルパーを移行 |
 | 進行プリセット | `src/testing/presets.ts` | `fresh`/`ch1_mid`/`ch1_cleared`/`yomi_b5`/`endgame` の5種の `useGameStore` persist スナップショットを実マスターデータから構築 |
 | E2E/実機シード注入 | `tests/helpers/e2e.ts`（`seedGameState`）, `src/hooks/useDevPreset.ts` | `prepareE2EPage(page, { preset })` とブラウザの `?devPreset=<name>`（dev限定）でプリセット注入。詳細は `docs/仕様書/13_テストとCI.md` §5.5 |
+| API駆動Botテスト | `src/logic/BotSimulation.ts`, `src/app/api/admin/bot-*/`, `src/services/BotTest*`, `scripts/run-bot-batch.mts` | seed再現可能な全WAVE戦闘・報酬試行。第1章+黄泉B1〜B20、6プロファイル×4職業×3方針、任意武器/軍団/残滓、感度分析、履歴差分、Gothic管理画面、Upstash Redis分散worker、schedule/Cron、JSON/CSV・CIゲート対応。設計書127/128 |
 
 詳細仕様: `docs/仕様書/13_テストとCI.md`。積み残しは `docs/progress/TECH_DEBT.md`（TI-1〜TI-5）。
 

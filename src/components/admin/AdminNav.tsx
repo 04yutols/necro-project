@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: '/admin/story', label: 'ストーリー' },
   { href: '/admin/audit', label: '監査' },
   { href: '/admin/simulator', label: 'シミュ' },
+  { href: '/admin/bot-tests', label: 'Bot調査' },
 ];
 
 export default function AdminNav() {

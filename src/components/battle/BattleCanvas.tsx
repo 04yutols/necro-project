@@ -38,6 +38,7 @@ import {
   shouldTriggerBossGimmick,
 } from '../../logic/BossGimmickSystem';
 import { applyPlayerDamage, isPlayerDead } from '../../logic/PlayerDefeat';
+import { BattleSession } from '../../logic/BattleSession';
 import { applyEnemyStatScale } from '../../logic/EnemyScaling';
 import {
   canUseLocalStageResultFallback,
@@ -321,8 +322,6 @@ const POSITIONS_BY_COUNT: Record<number, EnemyState['pos'][]> = {
   3: ['left', 'center', 'right'],
 };
 
-const WAVE_REWARD_WEIGHTS = [0.25, 0.32, 0.43];
-
 const FORMATION_BADGES: FormationBadgeMeta[] = [
   { icon: '⚔', label: '前衛', short: 'FRONT', color: '#f97316' },
   { icon: '◈', label: '中衛', short: 'MID',   color: '#38bdf8' },
@@ -373,24 +372,16 @@ function buildBattleWaves(stageId?: string): BattleWave[] {
     }));
   }
 
-  const waves = stage.waves.map((wave, waveIndex) => {
-    const enemyMasters = wave.enemyIds
-      .map(enemyId => ENEMIES[enemyId])
-      .filter(Boolean)
-      .map(enemy => applyEnemyStatScale(enemy, wave.statScale));
-    const enemies = enemyMasters.map((enemy, index) => toEnemyState(enemy, index, enemyMasters.length));
-    const weight = WAVE_REWARD_WEIGHTS[waveIndex] ?? 1 / stage.waves.length;
+  const waves = BattleSession.buildWaves(stage, enemyId => ENEMIES[enemyId]).map((wave) => {
+    const enemies = wave.enemies.map((enemy, index) => toEnemyState(enemy, index, wave.enemies.length));
     return {
-      title: stage.nameJa,
+      title: wave.title,
       label: wave.label,
       role: wave.role,
       intent: wave.intent,
       statScale: wave.statScale,
-      isBoss: wave.role === 'BOSS',
-      rewards: {
-        exp: Math.max(0, Math.round(stage.rewards.baseExp * weight)),
-        gold: Math.max(0, Math.round(stage.rewards.baseGold * weight)),
-      },
+      isBoss: wave.isBoss,
+      rewards: wave.rewards,
       enemies,
     };
   }).filter(wave => wave.enemies.length > 0);
@@ -2937,8 +2928,13 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
   }
 
   function getTargetId() {
-    const t = enemies.find(e => e.targeted && e.hp > 0);
-    return t ? t.id : (enemies.find(e => e.hp > 0)?.id ?? 0);
+    const selected = enemies.find(e => e.targeted && e.hp > 0);
+    if (selected) return selected.id;
+    return BattleSession.pickTarget(enemies, {
+      isAlive: enemy => enemy.hp > 0,
+      getTier: enemy => enemy.tier,
+      getHp: enemy => enemy.hp,
+    })?.id ?? 0;
   }
 
   function endPlayerTurn() {

@@ -1,0 +1,51 @@
+name: Scheduled Bot Balance
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 18 * * *'
+
+jobs:
+  enqueue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enqueue due schedules
+        env:
+          BOT_TEST_BASE_URL: ${{ secrets.BOT_TEST_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$BOT_TEST_BASE_URL"
+          test -n "$CRON_SECRET"
+          curl --fail-with-body --silent --show-error \
+            -X POST "${BOT_TEST_BASE_URL%/}/api/cron/bot-tests" \
+            -H "Authorization: Bearer ${CRON_SECRET}"
+
+  workers:
+    needs: enqueue
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        worker: [1, 2, 3]
+    steps:
+      - name: Drain distributed bot queue
+        env:
+          BOT_TEST_BASE_URL: ${{ secrets.BOT_TEST_BASE_URL }}
+          BOT_TEST_API_TOKEN: ${{ secrets.BOT_TEST_API_TOKEN }}
+          WORKER_ID: gha-${{ github.run_id }}-${{ matrix.worker }}
+        run: |
+          test -n "$BOT_TEST_BASE_URL"
+          test -n "$BOT_TEST_API_TOKEN"
+          for attempt in $(seq 1 100); do
+            response=$(curl --fail-with-body --silent --show-error \
+              -X POST "${BOT_TEST_BASE_URL%/}/api/admin/bot-worker" \
+              -H "Authorization: Bearer ${BOT_TEST_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data "{\"workerId\":\"${WORKER_ID}\",\"maxJobs\":5}")
+            count=$(printf '%s' "$response" | jq '.processed | length')
+            if [ "$count" -eq 0 ]; then
+              exit 0
+            fi
+          done
+          echo "Queue still had work after 100 worker calls."
+          exit 1

@@ -15,7 +15,7 @@ import {
   EnemyStatScale,
 } from '../types/game';
 import { MasterDataService } from '../services/MasterDataService';
-import { calculateCharacterStatProfile, hasElementDmgBoosts } from './StatSystem';
+import { calculateCharacterStatProfile, hasElementDmgBoosts, type StatBreakdown } from './StatSystem';
 import {
   calcAVDelay,
   getAilmentAttackMultiplier,
@@ -27,6 +27,7 @@ import { calculatePartyTribeSynergy, type SynergyBonus } from './TribeSynergySys
 import { applyAreaGimmickToPlayer } from './AreaGimmickSystem';
 import {
   type DemonRuntimeState,
+  activateDemonMode as activateDemonModeState,
   calculateDemonSelfDamage,
   getDemonDamageMultiplier,
   getDemonActionHitCount,
@@ -79,6 +80,8 @@ export class BattleEngine {
   private demonState: DemonRuntimeState | null = null;
   private playerDefeatLogged = false;
   private enemyStatScale: EnemyStatScale | undefined;
+  private readonly rng: () => number;
+  private readonly playerStatProfileOverride?: StatBreakdown;
 
   constructor(
     player: CharacterData,
@@ -86,6 +89,8 @@ export class BattleEngine {
     areaGimmick: BattleState['areaGimmick'] = 'NONE',
     demonState?: DemonRuntimeState,
     enemyStatScale?: EnemyStatScale,
+    rng: () => number = Math.random,
+    playerStatProfileOverride?: StatBreakdown,
   ) {
     this.state = {
       player,
@@ -103,9 +108,11 @@ export class BattleEngine {
     this.synergyBonus = calculatePartyTribeSynergy(
       monsters.filter(Boolean) as MonsterData[]
     );
-    this.playerInitialMaxHp = player.stats.hp;
+    this.playerStatProfileOverride = playerStatProfileOverride;
+    this.playerInitialMaxHp = playerStatProfileOverride?.total.hp ?? player.stats.hp;
     this.demonState = demonState ?? null;
     this.enemyStatScale = enemyStatScale;
+    this.rng = rng;
 
     for (const m of monsters) {
       if (m) this.monsterCurrentHp[m.id] = m.stats.hp;
@@ -236,7 +243,7 @@ export class BattleEngine {
     }
 
     const ult = demon.form.ultimateSkill;
-    const profile = calculateCharacterStatProfile(player);
+    const profile = this.getPlayerStatProfile(player);
     const stats = profile.total;
     const elementBoosts = hasElementDmgBoosts(player.elementDmgBoosts)
       ? player.elementDmgBoosts
@@ -315,6 +322,7 @@ export class BattleEngine {
       powerMultiplier,
       element,
       synergyBonus: this.synergyBonus,
+      rng: this.rng,
     });
   }
 
@@ -325,7 +333,7 @@ export class BattleEngine {
     enemyCandidates: MonsterData[] = [target],
   ): void {
     const { player } = this.state;
-    const profile = calculateCharacterStatProfile(player);
+    const profile = this.getPlayerStatProfile(player);
     const isDemonActive = this.demonState?.isDemonMode ?? false;
     const stats = {
       ...profile.total,
@@ -563,7 +571,7 @@ export class BattleEngine {
       : getSkillAilment({ type: 'PHYSICAL', element, attackType });
     if (!ailmentType) return;
 
-    const profile = calculateCharacterStatProfile(player);
+    const profile = this.getPlayerStatProfile(player);
     const result = tryApplyAilment(
       ailmentType,
       {
@@ -576,6 +584,7 @@ export class BattleEngine {
         baseRate: skillData?.ailmentBaseRate,
         immune: false,
         durationBonus: this.synergyBonus.ailmentDurationBonus,
+        rng: this.rng,
       },
     );
     target.statusEffects = result.effects;
@@ -744,6 +753,7 @@ export class BattleEngine {
         baseRate: skillData.ailmentBaseRate,
         immune: false,
         durationBonus: this.synergyBonus.ailmentDurationBonus,
+        rng: this.rng,
       },
     );
     target.statusEffects = result.effects;
@@ -803,6 +813,7 @@ export class BattleEngine {
    * 敵の反撃フェーズ: 隊列ヘイト重みで味方モンスターを選び攻撃する。
    */
   private processEnemyCounterAttack(enemy: MonsterData): void {
+    if (this.getEnemyRuntimeHp(enemy) <= 0) return;
     const { player } = this.state;
     const monsterTarget = this.selectEnemyTarget();
 
@@ -813,6 +824,7 @@ export class BattleEngine {
         defenderStats: monsterTarget.stats,
         defenderResistances: monsterTarget.resistances,
         element,
+        rng: this.rng,
       });
       const sb = this.synergyBonus;
       const absorbed = sb.absorbDmgPct
@@ -845,7 +857,7 @@ export class BattleEngine {
       );
     } else {
       // モンスター全滅 → アルドが直接受ける
-      const playerProfile = calculateCharacterStatProfile(player);
+      const playerProfile = this.getPlayerStatProfile(player);
       const incomingMult = getDemonIncomingDamageMultiplier(this.demonState?.form ?? null);
       const rawDmg = calculateIncomingEnemyDamage({
         enemyAtk: enemy.stats.atk,
@@ -885,7 +897,7 @@ export class BattleEngine {
     const totalWeight = aliveMonsters.reduce(
       (sum, { idx }) => sum + (HATE_WEIGHTS[idx] ?? 20), 0
     );
-    let rand = Math.random() * totalWeight;
+    let rand = this.rng() * totalWeight;
     for (const { monster, idx } of aliveMonsters) {
       rand -= HATE_WEIGHTS[idx] ?? 20;
       if (rand <= 0) return monster;
@@ -1139,6 +1151,23 @@ export class BattleEngine {
     return this.demonState?.gauge ?? 0;
   }
 
+  public activateDemonMode(): boolean {
+    if (!this.demonState || this.demonState.isDemonMode || this.demonState.gauge < 100) return false;
+    const form = this.masterData.getDemonForm(this.state.player.currentJobId) ?? null;
+    const next = activateDemonModeState(form, this.demonState.gauge);
+    if (!next.isDemonMode) return false;
+    this.demonState = next;
+    return true;
+  }
+
+  public getDemonRuntimeState(): DemonRuntimeState | null {
+    return this.demonState ? { ...this.demonState } : null;
+  }
+
+  public setEnemyStatScale(statScale?: EnemyStatScale): void {
+    this.enemyStatScale = statScale;
+  }
+
   public getPendingSummons(): string[] {
     return [...this.pendingSummons];
   }
@@ -1166,6 +1195,34 @@ export class BattleEngine {
 
   public getEnemyCurrentHp(enemyId: string): number | undefined {
     return this.enemyCurrentHp[enemyId];
+  }
+
+  public getMonsterCurrentHp(monsterId: string): number | undefined {
+    return this.monsterCurrentHp[monsterId];
+  }
+
+  public getRuntimeSnapshot(): {
+    playerHp: number;
+    playerMaxHp: number;
+    playerEnergy: number;
+    monsterHp: Record<string, number>;
+    enemyHp: Record<string, number>;
+    turn: number;
+    wave: number;
+    demonGauge: number;
+    demonActive: boolean;
+  } {
+    return {
+      playerHp: this.state.player.stats.hp,
+      playerMaxHp: this.playerInitialMaxHp,
+      playerEnergy: this.state.player.currentEnergy,
+      monsterHp: { ...this.monsterCurrentHp },
+      enemyHp: { ...this.enemyCurrentHp },
+      turn: this.state.turn,
+      wave: this.state.wave,
+      demonGauge: this.demonState?.gauge ?? 0,
+      demonActive: this.demonState?.isDemonMode ?? false,
+    };
   }
 
   private ensureEnemyRuntimeHp(enemy: MonsterData): void {
@@ -1218,6 +1275,10 @@ export class BattleEngine {
     return player.stats;
   }
 
+  private getPlayerStatProfile(player: CharacterData): StatBreakdown {
+    return this.playerStatProfileOverride ?? calculateCharacterStatProfile(player);
+  }
+
   private applyDamageToPlayer(damage: number): number {
     const playerStats = this.getMutableStats(this.state.player);
     playerStats.hp = reducePlayerHp(playerStats.hp, Math.max(0, damage));
@@ -1256,7 +1317,7 @@ export class BattleEngine {
     const result = processStatusEffects(
       effects,
       { maxHp: targetMaxHp },
-      Math.random,
+      this.rng,
       isPlayer ? { immuneTypes: this.synergyBonus.ailmentImmune as AilmentType[] } : undefined,
     );
     if (result.totalDamage > 0) {
@@ -1281,7 +1342,7 @@ export class BattleEngine {
       if (!enemy.statusEffects || enemy.statusEffects.length === 0) continue;
       if (this.getEnemyRuntimeHp(enemy) <= 0) continue;
 
-      const result = processStatusEffects(enemy.statusEffects, { maxHp: this.getEnemyMaxHp(enemy) });
+      const result = processStatusEffects(enemy.statusEffects, { maxHp: this.getEnemyMaxHp(enemy) }, this.rng);
       enemy.statusEffects = result.effects;
       if (result.totalDamage > 0) {
         this.applyDamageToEnemy(enemy, result.totalDamage);
