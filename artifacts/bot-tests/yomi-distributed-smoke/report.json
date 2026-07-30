@@ -1,0 +1,781 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-27T14:27:47.911Z",
+  "baseUrl": "http://localhost:3002",
+  "seed": "yomi-distributed-smoke",
+  "config": {
+    "stages": [
+      "yomi_b01",
+      "yomi_b10",
+      "yomi_b20"
+    ],
+    "profiles": [
+      "yomi_deep"
+    ],
+    "policies": [
+      "weakness_first"
+    ],
+    "jobs": [
+      "warrior"
+    ],
+    "iterations": 2,
+    "chunkSize": 100,
+    "maxRounds": 200,
+    "firstClear": false
+  },
+  "totals": {
+    "scenarios": 3,
+    "simulations": 6,
+    "wins": 6,
+    "losses": 0,
+    "timeouts": 0
+  },
+  "scenarios": [
+    {
+      "version": 1,
+      "generatedAt": "2026-07-27T14:27:47.892Z",
+      "scenario": {
+        "stageId": "yomi_b01",
+        "profile": "yomi_deep",
+        "policy": "weakness_first",
+        "jobId": "warrior",
+        "iterations": 2,
+        "seed": "yomi-distributed-smoke",
+        "maxRounds": 200,
+        "firstClear": true,
+        "sampleRuns": 0
+      },
+      "resolvedProfile": {
+        "name": "yomi_deep",
+        "jobId": "warrior",
+        "jobLevel": 50,
+        "necroLevel": 200,
+        "weaponId": "grudge_manifest",
+        "partyMonsterIds": [
+          "goblin",
+          "skeleton",
+          "zombie"
+        ],
+        "ownedMonsterMasterIds": [
+          "goblin",
+          "skeleton",
+          "zombie",
+          "grave_soldier",
+          "rot_hound"
+        ],
+        "clearedStages": [
+          "area1_safe",
+          "area1_node1",
+          "area1_a2",
+          "area1_a_mini",
+          "area1_node2",
+          "area1_b2",
+          "area1_b3",
+          "area1_c1",
+          "area1_c2",
+          "area1_c3",
+          "area1_boss",
+          "area1_node3",
+          "yomi_b01",
+          "yomi_b02",
+          "yomi_b03",
+          "yomi_b04",
+          "yomi_b05",
+          "yomi_b06",
+          "yomi_b07",
+          "yomi_b08",
+          "yomi_b09",
+          "yomi_b10",
+          "yomi_b11",
+          "yomi_b12",
+          "yomi_b13",
+          "yomi_b14",
+          "yomi_b15"
+        ],
+        "residues": [],
+        "statAdjustmentsPct": {}
+      },
+      "stage": {
+        "id": "yomi_b01",
+        "nameJa": "黄泉の階層 B1",
+        "chapter": 1,
+        "difficulty": 1,
+        "waveCount": 3
+      },
+      "difficulty": {
+        "runs": 2,
+        "wins": 2,
+        "losses": 0,
+        "timeouts": 0,
+        "clearRate": 1,
+        "clearRate95": {
+          "low": 0.34238022750665303,
+          "high": 1
+        },
+        "rounds": {
+          "mean": 3,
+          "min": 3,
+          "max": 3,
+          "p50": 3,
+          "p95": 3
+        },
+        "actions": {
+          "mean": 7,
+          "min": 7,
+          "max": 7,
+          "p50": 7,
+          "p95": 7
+        },
+        "remainingHpPct": {
+          "mean": 100,
+          "min": 100,
+          "max": 100,
+          "p50": 100,
+          "p95": 100
+        },
+        "alivePartyMembers": {
+          "mean": 3,
+          "min": 3,
+          "max": 3,
+          "p50": 3,
+          "p95": 3
+        },
+        "remainingPartyHpPct": {
+          "mean": 98.37662337662337,
+          "min": 98.37662337662337,
+          "max": 98.37662337662337,
+          "p50": 98.37662337662337,
+          "p95": 98.37662337662337
+        },
+        "damageDealt": {
+          "mean": 3308,
+          "min": 2569,
+          "max": 4047,
+          "p50": 2569,
+          "p95": 2569
+        },
+        "damageTaken": {
+          "mean": 5,
+          "min": 5,
+          "max": 5,
+          "p50": 5,
+          "p95": 5
+        },
+        "criticalHits": 1,
+        "weaknessHits": 6,
+        "skillUses": 6,
+        "demonActivations": 0,
+        "demonUltimates": 0
+      },
+      "series": {
+        "outcomes": [
+          "VICTORY",
+          "VICTORY"
+        ],
+        "rounds": [
+          3,
+          3
+        ],
+        "actions": [
+          7,
+          7
+        ],
+        "remainingHpPct": [
+          100,
+          100
+        ],
+        "alivePartyMembers": [
+          3,
+          3
+        ],
+        "remainingPartyHpPct": [
+          98.37662337662337,
+          98.37662337662337
+        ],
+        "damageDealt": [
+          4047,
+          2569
+        ],
+        "damageTaken": [
+          5,
+          5
+        ]
+      },
+      "drops": [
+        {
+          "key": "MATERIAL:bone_chip",
+          "configuredRate": 1,
+          "eligibleRuns": 2,
+          "hitRuns": 2,
+          "dropCount": 2,
+          "observedRate": 1,
+          "observedRate95": {
+            "low": 0.34238022750665303,
+            "high": 1
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "NECROMANCE:abyss_warden",
+          "configuredRate": 0.053240000000000016,
+          "eligibleRuns": 2,
+          "hitRuns": 0,
+          "dropCount": 0,
+          "observedRate": 0,
+          "observedRate95": {
+            "low": 0,
+            "high": 0.6576197724933469
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "NECROMANCE:earthbound_grudge",
+          "configuredRate": 0.15972000000000006,
+          "eligibleRuns": 2,
+          "hitRuns": 0,
+          "dropCount": 0,
+          "observedRate": 0,
+          "observedRate95": {
+            "low": 0,
+            "high": 0.6576197724933469
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "NECROMANCE:wandering_guard_wraith",
+          "configuredRate": 0.15972000000000006,
+          "eligibleRuns": 2,
+          "hitRuns": 0,
+          "dropCount": 0,
+          "observedRate": 0,
+          "observedRate95": {
+            "low": 0,
+            "high": 0.6576197724933469
+          },
+          "configuredRateInside95": true
+        }
+      ],
+      "samples": [],
+      "warnings": []
+    },
+    {
+      "version": 1,
+      "generatedAt": "2026-07-27T14:27:47.894Z",
+      "scenario": {
+        "stageId": "yomi_b10",
+        "profile": "yomi_deep",
+        "policy": "weakness_first",
+        "jobId": "warrior",
+        "iterations": 2,
+        "seed": "yomi-distributed-smoke",
+        "maxRounds": 200,
+        "firstClear": true,
+        "sampleRuns": 0
+      },
+      "resolvedProfile": {
+        "name": "yomi_deep",
+        "jobId": "warrior",
+        "jobLevel": 50,
+        "necroLevel": 200,
+        "weaponId": "grudge_manifest",
+        "partyMonsterIds": [
+          "goblin",
+          "skeleton",
+          "zombie"
+        ],
+        "ownedMonsterMasterIds": [
+          "goblin",
+          "skeleton",
+          "zombie",
+          "grave_soldier",
+          "rot_hound"
+        ],
+        "clearedStages": [
+          "area1_safe",
+          "area1_node1",
+          "area1_a2",
+          "area1_a_mini",
+          "area1_node2",
+          "area1_b2",
+          "area1_b3",
+          "area1_c1",
+          "area1_c2",
+          "area1_c3",
+          "area1_boss",
+          "area1_node3",
+          "yomi_b01",
+          "yomi_b02",
+          "yomi_b03",
+          "yomi_b04",
+          "yomi_b05",
+          "yomi_b06",
+          "yomi_b07",
+          "yomi_b08",
+          "yomi_b09",
+          "yomi_b10",
+          "yomi_b11",
+          "yomi_b12",
+          "yomi_b13",
+          "yomi_b14",
+          "yomi_b15"
+        ],
+        "residues": [],
+        "statAdjustmentsPct": {}
+      },
+      "stage": {
+        "id": "yomi_b10",
+        "nameJa": "黄泉の階層 B10",
+        "chapter": 1,
+        "difficulty": 10,
+        "waveCount": 3
+      },
+      "difficulty": {
+        "runs": 2,
+        "wins": 2,
+        "losses": 0,
+        "timeouts": 0,
+        "clearRate": 1,
+        "clearRate95": {
+          "low": 0.34238022750665303,
+          "high": 1
+        },
+        "rounds": {
+          "mean": 5,
+          "min": 5,
+          "max": 5,
+          "p50": 5,
+          "p95": 5
+        },
+        "actions": {
+          "mean": 10,
+          "min": 10,
+          "max": 10,
+          "p50": 10,
+          "p95": 10
+        },
+        "remainingHpPct": {
+          "mean": 100,
+          "min": 100,
+          "max": 100,
+          "p50": 100,
+          "p95": 100
+        },
+        "alivePartyMembers": {
+          "mean": 1,
+          "min": 1,
+          "max": 1,
+          "p50": 1,
+          "p95": 1
+        },
+        "remainingPartyHpPct": {
+          "mean": 35.714285714285715,
+          "min": 35.714285714285715,
+          "max": 35.714285714285715,
+          "p50": 35.714285714285715,
+          "p95": 35.714285714285715
+        },
+        "damageDealt": {
+          "mean": 3869.5,
+          "min": 3224,
+          "max": 4515,
+          "p50": 3224,
+          "p95": 3224
+        },
+        "damageTaken": {
+          "mean": 242,
+          "min": 242,
+          "max": 242,
+          "p50": 242,
+          "p95": 242
+        },
+        "criticalHits": 1,
+        "weaknessHits": 8,
+        "skillUses": 10,
+        "demonActivations": 0,
+        "demonUltimates": 0
+      },
+      "series": {
+        "outcomes": [
+          "VICTORY",
+          "VICTORY"
+        ],
+        "rounds": [
+          5,
+          5
+        ],
+        "actions": [
+          10,
+          10
+        ],
+        "remainingHpPct": [
+          100,
+          100
+        ],
+        "alivePartyMembers": [
+          1,
+          1
+        ],
+        "remainingPartyHpPct": [
+          35.714285714285715,
+          35.714285714285715
+        ],
+        "damageDealt": [
+          3224,
+          4515
+        ],
+        "damageTaken": [
+          242,
+          242
+        ]
+      },
+      "drops": [
+        {
+          "key": "MATERIAL:ossuary_memory",
+          "configuredRate": 1,
+          "eligibleRuns": 2,
+          "hitRuns": 2,
+          "dropCount": 4,
+          "observedRate": 1,
+          "observedRate95": {
+            "low": 0.34238022750665303,
+            "high": 1
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "NECROMANCE:bone_colossus",
+          "configuredRate": 0.053240000000000016,
+          "eligibleRuns": 2,
+          "hitRuns": 0,
+          "dropCount": 0,
+          "observedRate": 0,
+          "observedRate95": {
+            "low": 0,
+            "high": 0.6576197724933469
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "NECROMANCE:hollow_handmaid",
+          "configuredRate": 0.15972000000000006,
+          "eligibleRuns": 2,
+          "hitRuns": 1,
+          "dropCount": 1,
+          "observedRate": 0.5,
+          "observedRate95": {
+            "low": 0.09453120573423074,
+            "high": 0.9054687942657693
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "NECROMANCE:ossuary_wyrm_lord",
+          "configuredRate": 0.0013310000000000004,
+          "eligibleRuns": 2,
+          "hitRuns": 0,
+          "dropCount": 0,
+          "observedRate": 0,
+          "observedRate95": {
+            "low": 0,
+            "high": 0.6576197724933469
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "NECROMANCE:wandering_guard_wraith",
+          "configuredRate": 0.15972000000000006,
+          "eligibleRuns": 2,
+          "hitRuns": 0,
+          "dropCount": 0,
+          "observedRate": 0,
+          "observedRate95": {
+            "low": 0,
+            "high": 0.6576197724933469
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "RESIDUE:EPIC",
+          "configuredRate": 1,
+          "eligibleRuns": 2,
+          "hitRuns": 2,
+          "dropCount": 2,
+          "observedRate": 1,
+          "observedRate95": {
+            "low": 0.34238022750665303,
+            "high": 1
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "WEAPON_MATERIAL:IDEA_SSR",
+          "configuredRate": 1,
+          "eligibleRuns": 2,
+          "hitRuns": 2,
+          "dropCount": 2,
+          "observedRate": 1,
+          "observedRate95": {
+            "low": 0.34238022750665303,
+            "high": 1
+          },
+          "configuredRateInside95": true
+        }
+      ],
+      "samples": [],
+      "warnings": []
+    },
+    {
+      "version": 1,
+      "generatedAt": "2026-07-27T14:27:47.896Z",
+      "scenario": {
+        "stageId": "yomi_b20",
+        "profile": "yomi_deep",
+        "policy": "weakness_first",
+        "jobId": "warrior",
+        "iterations": 2,
+        "seed": "yomi-distributed-smoke",
+        "maxRounds": 200,
+        "firstClear": true,
+        "sampleRuns": 0
+      },
+      "resolvedProfile": {
+        "name": "yomi_deep",
+        "jobId": "warrior",
+        "jobLevel": 50,
+        "necroLevel": 200,
+        "weaponId": "grudge_manifest",
+        "partyMonsterIds": [
+          "goblin",
+          "skeleton",
+          "zombie"
+        ],
+        "ownedMonsterMasterIds": [
+          "goblin",
+          "skeleton",
+          "zombie",
+          "grave_soldier",
+          "rot_hound"
+        ],
+        "clearedStages": [
+          "area1_safe",
+          "area1_node1",
+          "area1_a2",
+          "area1_a_mini",
+          "area1_node2",
+          "area1_b2",
+          "area1_b3",
+          "area1_c1",
+          "area1_c2",
+          "area1_c3",
+          "area1_boss",
+          "area1_node3",
+          "yomi_b01",
+          "yomi_b02",
+          "yomi_b03",
+          "yomi_b04",
+          "yomi_b05",
+          "yomi_b06",
+          "yomi_b07",
+          "yomi_b08",
+          "yomi_b09",
+          "yomi_b10",
+          "yomi_b11",
+          "yomi_b12",
+          "yomi_b13",
+          "yomi_b14",
+          "yomi_b15"
+        ],
+        "residues": [],
+        "statAdjustmentsPct": {}
+      },
+      "stage": {
+        "id": "yomi_b20",
+        "nameJa": "黄泉の階層 B20",
+        "chapter": 1,
+        "difficulty": 20,
+        "waveCount": 3
+      },
+      "difficulty": {
+        "runs": 2,
+        "wins": 2,
+        "losses": 0,
+        "timeouts": 0,
+        "clearRate": 1,
+        "clearRate95": {
+          "low": 0.34238022750665303,
+          "high": 1
+        },
+        "rounds": {
+          "mean": 6,
+          "min": 6,
+          "max": 6,
+          "p50": 6,
+          "p95": 6
+        },
+        "actions": {
+          "mean": 10,
+          "min": 10,
+          "max": 10,
+          "p50": 10,
+          "p95": 10
+        },
+        "remainingHpPct": {
+          "mean": 86.16352201257861,
+          "min": 72.32704402515722,
+          "max": 100,
+          "p50": 72.32704402515722,
+          "p95": 72.32704402515722
+        },
+        "alivePartyMembers": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "p50": 0,
+          "p95": 0
+        },
+        "remainingPartyHpPct": {
+          "mean": 0,
+          "min": 0,
+          "max": 0,
+          "p50": 0,
+          "p95": 0
+        },
+        "damageDealt": {
+          "mean": 4800,
+          "min": 3783,
+          "max": 5817,
+          "p50": 3783,
+          "p95": 3783
+        },
+        "damageTaken": {
+          "mean": 549,
+          "min": 498,
+          "max": 600,
+          "p50": 498,
+          "p95": 498
+        },
+        "criticalHits": 3,
+        "weaknessHits": 8,
+        "skillUses": 12,
+        "demonActivations": 0,
+        "demonUltimates": 0
+      },
+      "series": {
+        "outcomes": [
+          "VICTORY",
+          "VICTORY"
+        ],
+        "rounds": [
+          6,
+          6
+        ],
+        "actions": [
+          10,
+          10
+        ],
+        "remainingHpPct": [
+          72.32704402515722,
+          100
+        ],
+        "alivePartyMembers": [
+          0,
+          0
+        ],
+        "remainingPartyHpPct": [
+          0,
+          0
+        ],
+        "damageDealt": [
+          3783,
+          5817
+        ],
+        "damageTaken": [
+          600,
+          498
+        ]
+      },
+      "drops": [
+        {
+          "key": "MATERIAL:ossuary_memory",
+          "configuredRate": 1,
+          "eligibleRuns": 2,
+          "hitRuns": 2,
+          "dropCount": 4,
+          "observedRate": 1,
+          "observedRate95": {
+            "low": 0.34238022750665303,
+            "high": 1
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "NECROMANCE:bone_colossus",
+          "configuredRate": 0.053240000000000016,
+          "eligibleRuns": 2,
+          "hitRuns": 0,
+          "dropCount": 0,
+          "observedRate": 0,
+          "observedRate95": {
+            "low": 0,
+            "high": 0.6576197724933469
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "NECROMANCE:ossuary_wyrm_lord",
+          "configuredRate": 0.0013310000000000004,
+          "eligibleRuns": 2,
+          "hitRuns": 0,
+          "dropCount": 0,
+          "observedRate": 0,
+          "observedRate95": {
+            "low": 0,
+            "high": 0.6576197724933469
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "NECROMANCE:wandering_guard_wraith",
+          "configuredRate": 0.15972000000000006,
+          "eligibleRuns": 2,
+          "hitRuns": 1,
+          "dropCount": 1,
+          "observedRate": 0.5,
+          "observedRate95": {
+            "low": 0.09453120573423074,
+            "high": 0.9054687942657693
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "RESIDUE:LEGENDARY",
+          "configuredRate": 1,
+          "eligibleRuns": 2,
+          "hitRuns": 2,
+          "dropCount": 2,
+          "observedRate": 1,
+          "observedRate95": {
+            "low": 0.34238022750665303,
+            "high": 1
+          },
+          "configuredRateInside95": true
+        },
+        {
+          "key": "WEAPON_MATERIAL:ABYSSAL_OBSIDIAN",
+          "configuredRate": 1,
+          "eligibleRuns": 2,
+          "hitRuns": 2,
+          "dropCount": 2,
+          "observedRate": 1,
+          "observedRate95": {
+            "low": 0.34238022750665303,
+            "high": 1
+          },
+          "configuredRateInside95": true
+        }
+      ],
+      "samples": [],
+      "warnings": []
+    }
+  ]
+}
