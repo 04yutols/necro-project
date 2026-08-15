@@ -1,0 +1,3356 @@
+{
+  "schemaVersion": 2,
+  "id": "phase5_ash_regent_package",
+  "title": "灰冠王と固有武器「弔王剣」",
+  "revision": 6,
+  "chapter": 1,
+  "status": "DRAFT",
+  "brief": {
+    "playerExperience": "王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。",
+    "themes": [
+      "果たされなかった忠誠",
+      "灰に沈む王権",
+      "記憶を継ぐ武器"
+    ],
+    "mustInclude": [
+      "亡国の王都",
+      "灰の王冠",
+      "弔鐘を思わせる三連撃",
+      "固有武器の入手導線"
+    ],
+    "avoid": [
+      "善悪だけで説明できる悪役",
+      "現代的な装飾",
+      "王都設定と無関係な異世界要素",
+      "人間仲間の追加"
+    ]
+  },
+  "targets": [
+    {
+      "id": "enemy_ash_regent",
+      "kind": "combat-unit",
+      "loreRefs": [
+        "royal_capital",
+        "ash_regent"
+      ]
+    },
+    {
+      "id": "skill_ash_regent_triple_bell",
+      "kind": "skill",
+      "loreRefs": [
+        "ash_regent",
+        "mourning_regalia"
+      ]
+    },
+    {
+      "id": "weapon_grave_regalia",
+      "kind": "weapon",
+      "loreRefs": [
+        "ash_regent",
+        "mourning_regalia"
+      ]
+    },
+    {
+      "id": "encounter_ash_throne",
+      "kind": "encounter",
+      "loreRefs": [
+        "royal_capital",
+        "ash_regent",
+        "mourning_regalia"
+      ]
+    }
+  ],
+  "lore": {
+    "registryRefs": [
+      "royal_capital",
+      "necromancy_power"
+    ],
+    "entries": [
+      {
+        "id": "ash_regent",
+        "kind": "CHARACTER",
+        "certainty": "PROVISIONAL",
+        "nameJa": "灰冠王ヴァルグレイ",
+        "nameEn": "Valgrey, the Ashen Regent",
+        "aliases": [
+          "灰冠王"
+        ],
+        "summary": "王の帰還を待ち続け、灰を冠として玉座を守る亡霊騎士。忠誠の対象を失ってなお退くことができない。",
+        "chapterIntroduced": 1,
+        "sourceRefs": [
+          "content/requests/phase5-boss-signature-weapon.request.json",
+          "lore:royal_capital"
+        ],
+        "tags": [
+          "第1章",
+          "ボス",
+          "亡霊騎士",
+          "忠誠"
+        ]
+      },
+      {
+        "id": "mourning_regalia",
+        "kind": "ARTIFACT",
+        "certainty": "PROVISIONAL",
+        "nameJa": "弔王剣グレイヴ・レガリア",
+        "nameEn": "Grave Regalia",
+        "aliases": [
+          "弔王剣"
+        ],
+        "summary": "王の葬列で鳴らされなかった鐘の記憶を宿す大剣。灰冠王の執念を断った者へ託される。",
+        "chapterIntroduced": 1,
+        "sourceRefs": [
+          "content/requests/phase5-boss-signature-weapon.request.json",
+          "lore:ash_regent"
+        ],
+        "tags": [
+          "第1章",
+          "固有武器",
+          "王権",
+          "記憶"
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "id": "ash_regent_guards_capital",
+        "from": "ash_regent",
+        "to": "royal_capital",
+        "type": "死後の守護",
+        "certainty": "PROVISIONAL",
+        "summary": "灰冠王は亡国となった後も王都の玉座へ近づく者を侵入者とみなす。",
+        "sourceRefs": [
+          "content/requests/phase5-boss-signature-weapon.request.json"
+        ]
+      },
+      {
+        "id": "ash_regent_wields_regalia",
+        "from": "ash_regent",
+        "to": "mourning_regalia",
+        "type": "所有者",
+        "certainty": "PROVISIONAL",
+        "summary": "弔王剣は灰冠王の忠誠と未完の葬送を宿す。",
+        "sourceRefs": [
+          "content/requests/phase5-boss-signature-weapon.request.json"
+        ]
+      }
+    ],
+    "timelineEvents": [
+      {
+        "id": "ash_regent_last_vigil",
+        "order": 160,
+        "chapter": 1,
+        "title": "灰冠王、最後の不寝番",
+        "summary": "アルドは玉座へ縛られた灰冠王を倒し、眠れなかった忠誠の記憶を弔王剣として受け継ぐ。",
+        "participantRefs": [
+          "aldo",
+          "ash_regent"
+        ],
+        "locationRef": "royal_capital",
+        "certainty": "PROVISIONAL",
+        "sourceRefs": [
+          "content/requests/phase5-boss-signature-weapon.request.json"
+        ]
+      }
+    ]
+  },
+  "deliverables": [
+    {
+      "id": "enemy_ash_regent_combat_unit_identity",
+      "ownerId": "enemy_ash_regent",
+      "scope": "combat-unit",
+      "kind": "identity",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "change:enemy:enemy_ash_regent"
+      ]
+    },
+    {
+      "id": "enemy_ash_regent_combat_unit_stats",
+      "ownerId": "enemy_ash_regent",
+      "scope": "combat-unit",
+      "kind": "stats",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "change:enemy:enemy_ash_regent"
+      ],
+      "artifact": {
+        "authoringKind": "combat-unit",
+        "request": {
+          "kind": "ENEMY",
+          "id": "enemy_ash_regent",
+          "name": "Ashen Regent Valgrey",
+          "nameJa": "灰冠王ヴァルグレイ",
+          "nameEn": "Valgrey, the Ashen Regent",
+          "description": "王の帰還を待ち続け、灰を冠として玉座を守る亡霊騎士。",
+          "role": "TANK",
+          "level": 20,
+          "tribe": "UNDEAD",
+          "element": "DARK",
+          "weaknesses": [
+            "LIGHT",
+            "FIRE"
+          ],
+          "resistances": [
+            "DARK",
+            "ICE"
+          ],
+          "tier": "BOSS",
+          "maxEnergy": 90,
+          "skillIds": [
+            "skill_ash_regent_triple_bell"
+          ],
+          "necromance": true
+        },
+        "simulationTargets": {
+          "ttkTurns": {
+            "min": 6,
+            "max": 14
+          },
+          "incomingDamagePct": {
+            "min": 8,
+            "max": 55
+          }
+        },
+        "authored": {
+          "shared": {
+            "role": "TANK",
+            "level": 20,
+            "stats": {
+              "hp": 188,
+              "atk": 11,
+              "def": 17,
+              "spd": 45,
+              "critRate": 10,
+              "critDmg": 175,
+              "effectHit": 4,
+              "effectRes": 42
+            },
+            "resistances": {
+              "LIGHT": -25,
+              "FIRE": -25,
+              "DARK": 20,
+              "ICE": 20
+            },
+            "maxEnergy": 90,
+            "growth": {
+              "1": {
+                "hp": 79,
+                "atk": 4,
+                "def": 7,
+                "spd": 41,
+                "critRate": 7.5,
+                "critDmg": 164.5,
+                "effectHit": 1.2,
+                "effectRes": 12.6
+              },
+              "10": {
+                "hp": 131,
+                "atk": 7,
+                "def": 12,
+                "spd": 43,
+                "critRate": 8.7,
+                "critDmg": 169.5,
+                "effectHit": 2.5,
+                "effectRes": 26.5
+              },
+              "20": {
+                "hp": 188,
+                "atk": 11,
+                "def": 17,
+                "spd": 45,
+                "critRate": 10,
+                "critDmg": 175,
+                "effectHit": 4,
+                "effectRes": 42
+              }
+            }
+          },
+          "variants": {
+            "necromancedMonster": {
+              "cost": 4,
+              "stats": {
+                "hp": 225,
+                "atk": 24,
+                "def": 31,
+                "spd": 84,
+                "critRate": 9,
+                "critDmg": 165,
+                "effectHit": 15,
+                "effectRes": 27
+              },
+              "maxEnergy": 90,
+              "skillIds": [
+                "skill_ash_regent_triple_bell"
+              ]
+            },
+            "enemy": {
+              "id": "enemy_ash_regent",
+              "name": "Ashen Regent Valgrey",
+              "nameJa": "灰冠王ヴァルグレイ",
+              "nameEn": "Valgrey, the Ashen Regent",
+              "tier": "BOSS",
+              "tribe": "UNDEAD",
+              "stats": {
+                "hp": 188,
+                "atk": 11,
+                "def": 17,
+                "spd": 45,
+                "critRate": 10,
+                "critDmg": 175,
+                "effectHit": 4,
+                "effectRes": 42
+              },
+              "resistances": {
+                "LIGHT": -25,
+                "FIRE": -25,
+                "DARK": 20,
+                "ICE": 20
+              },
+              "weaknesses": [
+                "LIGHT",
+                "FIRE"
+              ],
+              "dropTable": [],
+              "battle": {
+                "color": "#8B00FF",
+                "sprite": "GIANT",
+                "size": 1.1
+              },
+              "description": "王の帰還を待ち続け、灰を冠として玉座を守る亡霊騎士。",
+              "necromance": {
+                "captureRate": 0.001,
+                "allyCost": 4,
+                "allyStats": {
+                  "hp": 225,
+                  "atk": 24,
+                  "def": 31,
+                  "spd": 84,
+                  "critRate": 9,
+                  "critDmg": 165,
+                  "effectHit": 15,
+                  "effectRes": 27
+                },
+                "allyMaxEnergy": 90,
+                "skillIds": [
+                  "skill_ash_regent_triple_bell"
+                ]
+              }
+            }
+          },
+          "rationale": [
+            {
+              "field": "stats",
+              "basis": "enemyの既存マスター中央値へTANK役割係数とLv20アンカーのlevel係数を適用",
+              "targetRange": "enemy既存帯 ± validator tolerance",
+              "selected": "{\"hp\":188,\"atk\":11,\"def\":17,\"spd\":45,\"critRate\":10,\"critDmg\":175,\"effectHit\":4,\"effectRes\":42}"
+            },
+            {
+              "field": "growth",
+              "basis": "Lv1から指定レベルまで役割比率を保つ決定論的補間",
+              "targetRange": "Lv1〜Lv20",
+              "selected": "1,10,20"
+            },
+            {
+              "field": "resistances",
+              "basis": "弱点=-25%、耐性=+20%の整数%規約",
+              "targetRange": "-50〜+50%",
+              "selected": "{\"LIGHT\":-25,\"FIRE\":-25,\"DARK\":20,\"ICE\":20}"
+            },
+            {
+              "field": "maxEnergy",
+              "basis": "主人公・使役魔物共通MPリソース（legacy名はmpCost）",
+              "targetRange": "1以上",
+              "selected": 90
+            },
+            {
+              "field": "necromance",
+              "basis": "BOSS捕獲率・cost規約とmonster側cost帯を使用",
+              "targetRange": "capture=0.001, cost=4",
+              "selected": "{\"cost\":4,\"stats\":{\"hp\":225,\"atk\":24,\"def\":31,\"spd\":84,\"critRate\":9,\"critDmg\":165,\"effectHit\":15,\"effectRes\":27},\"maxEnergy\":90,\"skillIds\":[\"skill_ash_regent_triple_bell\"]}"
+            }
+          ],
+          "gate": {
+            "ok": true,
+            "findings": [
+              {
+                "level": "WARN",
+                "field": "necromance.allyStats.atk",
+                "message": "味方 atk=24 が BOSS 帯 14〜14（許容 9〜19）から外れています。味方戦力バランスを確認してください。"
+              },
+              {
+                "level": "WARN",
+                "field": "necromance.skillIds",
+                "message": "BOSS の味方スキル数は 2〜4 が目安です（現在: 1）。"
+              },
+              {
+                "level": "PASS",
+                "field": "necromance.skillIds",
+                "message": "ネクロマンススキル参照 \"skill_ash_regent_triple_bell\" OK"
+              }
+            ]
+          }
+        },
+        "simulation": {
+          "engine": "BattleEngine",
+          "deterministicRng": 0.999,
+          "metrics": {
+            "ttkTurns": {
+              "value": 5,
+              "target": {
+                "min": 6,
+                "max": 14
+              },
+              "status": "WARN",
+              "summary": "TTK（行動回数）: 5（目標 6〜14）"
+            },
+            "incomingDamagePct": {
+              "value": 20.16,
+              "target": {
+                "min": 8,
+                "max": 55
+              },
+              "status": "PASS",
+              "summary": "累積被ダメージ率: 20.16（目標 8〜55）"
+            },
+            "aoeValue": {
+              "value": 1,
+              "target": {
+                "min": 2,
+                "max": 3.2
+              },
+              "status": "FAIL",
+              "summary": "AoE価値（単体比）: 1（目標 2〜3.2）"
+            },
+            "partyCost": {
+              "value": 3,
+              "target": {
+                "min": 0,
+                "max": 6
+              },
+              "status": "PASS",
+              "summary": "編成コスト: 3（目標 0〜6）"
+            }
+          },
+          "actionOrder": [
+            {
+              "id": "authoring_aldo",
+              "name": "アルド",
+              "side": "PLAYER",
+              "spd": 98,
+              "currentAv": 102.04081632653062,
+              "actionDelay": 102
+            },
+            {
+              "id": "goblin",
+              "name": "Goblin",
+              "side": "ALLY",
+              "spd": 80,
+              "currentAv": 125,
+              "actionDelay": 125
+            },
+            {
+              "id": "skeleton",
+              "name": "Skeleton",
+              "side": "ALLY",
+              "spd": 50,
+              "currentAv": 200.001,
+              "actionDelay": 200
+            },
+            {
+              "id": "enemy_ash_regent",
+              "name": "灰冠王ヴァルグレイ",
+              "side": "ENEMY",
+              "spd": 45,
+              "currentAv": 222.22222222222223,
+              "actionDelay": 222
+            },
+            {
+              "id": "zombie",
+              "name": "Zombie",
+              "side": "ALLY",
+              "spd": 20,
+              "currentAv": 500.002,
+              "actionDelay": 500
+            }
+          ],
+          "turns": [
+            {
+              "turn": 1,
+              "action": "PHYSICAL_ATTACK",
+              "dealt": 40,
+              "incoming": 10,
+              "targetHp": 148
+            },
+            {
+              "turn": 2,
+              "action": "PHYSICAL_ATTACK",
+              "dealt": 40,
+              "incoming": 10,
+              "targetHp": 108
+            },
+            {
+              "turn": 3,
+              "action": "PHYSICAL_ATTACK",
+              "dealt": 40,
+              "incoming": 10,
+              "targetHp": 68
+            },
+            {
+              "turn": 4,
+              "action": "PHYSICAL_ATTACK",
+              "dealt": 40,
+              "incoming": 10,
+              "targetHp": 28
+            },
+            {
+              "turn": 5,
+              "action": "PHYSICAL_ATTACK",
+              "dealt": 40,
+              "incoming": 10,
+              "targetHp": 0
+            }
+          ],
+          "overall": "FAIL",
+          "findings": [
+            {
+              "level": "WARN",
+              "field": "ttkTurns",
+              "message": "TTK（行動回数）: 5（目標 6〜14）"
+            },
+            {
+              "level": "FAIL",
+              "field": "aoeValue",
+              "message": "AoE価値（単体比）: 1（目標 2〜3.2）"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "enemy_ash_regent_combat_unit_growth",
+      "ownerId": "enemy_ash_regent",
+      "scope": "combat-unit",
+      "kind": "growth",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "change:enemy:enemy_ash_regent"
+      ]
+    },
+    {
+      "id": "enemy_ash_regent_combat_unit_skill_set",
+      "ownerId": "enemy_ash_regent",
+      "scope": "combat-unit",
+      "kind": "skill-set",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "change:enemy:enemy_ash_regent"
+      ]
+    },
+    {
+      "id": "enemy_ash_regent_asset_battle_visual",
+      "ownerId": "enemy_ash_regent",
+      "scope": "asset",
+      "kind": "battle-visual",
+      "required": true,
+      "state": "PLANNED",
+      "outputRefs": [
+        "asset:ash_regent_fullbody"
+      ]
+    },
+    {
+      "id": "enemy_ash_regent_asset_icon",
+      "ownerId": "enemy_ash_regent",
+      "scope": "asset",
+      "kind": "icon",
+      "required": true,
+      "state": "PLANNED",
+      "outputRefs": [
+        "asset:ash_regent_battle_icon"
+      ]
+    },
+    {
+      "id": "enemy_ash_regent_skill_presentation_unit_lifecycle",
+      "ownerId": "enemy_ash_regent",
+      "scope": "skill-presentation",
+      "kind": "unit-lifecycle",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "presentation:ash_regent_lifecycle_presentation"
+      ]
+    },
+    {
+      "id": "enemy_ash_regent_acquisition_link_runtime",
+      "ownerId": "enemy_ash_regent",
+      "scope": "acquisition-link",
+      "kind": "runtime",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "deliverable:enemy_ash_regent_acquisition_link_runtime"
+      ],
+      "artifact": {
+        "stageId": "area1_ash_throne",
+        "waveRole": "BOSS",
+        "enemyId": "enemy_ash_regent",
+        "necromance": true,
+        "reason": "撃破後は王座との契約が解け、使役魔物としてのみ3枠編成へ加えられる。人間仲間は追加しない。"
+      }
+    },
+    {
+      "id": "skill_ash_regent_triple_bell_skill_mechanics",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "scope": "skill",
+      "kind": "mechanics",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "change:skill:skill_ash_regent_triple_bell"
+      ],
+      "artifact": {
+        "authoringKind": "skill",
+        "request": {
+          "id": "skill_ash_regent_triple_bell",
+          "name": "灰冠の三葬鐘",
+          "description": "弔鐘の残響に合わせて三度斬りつけ、敵全体へ闇属性ダメージを与える。",
+          "type": "PHYSICAL",
+          "targetType": "ALL_ENEMIES",
+          "element": "DARK",
+          "attackType": "SLASH",
+          "ownerKind": "monster",
+          "ownerId": "enemy_ash_regent",
+          "tier": 1,
+          "potency": "HIGH"
+        },
+        "authored": {
+          "budget": {
+            "classification": "PHYS_AOE",
+            "powerRange": [
+              1.5,
+              1.9
+            ]
+          },
+          "rationale": [
+            {
+              "field": "mpCost",
+              "basis": "設計書19の系統別コスト帯",
+              "targetRange": "4〜24",
+              "selected": 18
+            },
+            {
+              "field": "power",
+              "basis": "PHYS_AOE/Tier1のHIGH点",
+              "targetRange": "1.5〜1.9",
+              "selected": 1.8
+            }
+          ],
+          "gate": {
+            "ok": true,
+            "findings": [
+              {
+                "level": "PASS",
+                "field": "power",
+                "message": "power 1.8 は PHYS_AOE/Tier1 範囲 1.5〜1.9 内 OK"
+              }
+            ]
+          }
+        },
+        "simulation": {
+          "engine": "BattleEngine",
+          "deterministicRng": 0.999,
+          "stageId": "area1_node1",
+          "waves": [
+            {
+              "label": "WAVE 1",
+              "role": "WARMUP",
+              "report": {
+                "engine": "BattleEngine",
+                "deterministicRng": 0.999,
+                "metrics": {
+                  "ttkTurns": {
+                    "value": 1,
+                    "target": {
+                      "min": 2,
+                      "max": 8
+                    },
+                    "status": "WARN",
+                    "summary": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  "incomingDamagePct": {
+                    "value": 0.4,
+                    "target": {
+                      "min": 5,
+                      "max": 75
+                    },
+                    "status": "WARN",
+                    "summary": "累積被ダメージ率: 0.4（目標 5〜75）"
+                  },
+                  "aoeValue": {
+                    "value": 3.26,
+                    "target": {
+                      "min": 2,
+                      "max": 3.2
+                    },
+                    "status": "WARN",
+                    "summary": "AoE価値（単体比）: 3.26（目標 2〜3.2）"
+                  },
+                  "partyCost": {
+                    "value": 3,
+                    "target": {
+                      "min": 0,
+                      "max": 6
+                    },
+                    "status": "PASS",
+                    "summary": "編成コスト: 3（目標 0〜6）"
+                  }
+                },
+                "actionOrder": [
+                  {
+                    "id": "authoring_aldo",
+                    "name": "アルド",
+                    "side": "PLAYER",
+                    "spd": 98,
+                    "currentAv": 102.04081632653062,
+                    "actionDelay": 102
+                  },
+                  {
+                    "id": "goblin",
+                    "name": "Goblin",
+                    "side": "ALLY",
+                    "spd": 80,
+                    "currentAv": 125,
+                    "actionDelay": 125
+                  },
+                  {
+                    "id": "grave_soldier",
+                    "name": "霊体騎士",
+                    "side": "ENEMY",
+                    "spd": 70,
+                    "currentAv": 142.85714285714286,
+                    "actionDelay": 143
+                  },
+                  {
+                    "id": "rot_hound",
+                    "name": "腐敗猟犬",
+                    "side": "ENEMY",
+                    "spd": 70,
+                    "currentAv": 142.85814285714287,
+                    "actionDelay": 143
+                  },
+                  {
+                    "id": "skeleton",
+                    "name": "Skeleton",
+                    "side": "ALLY",
+                    "spd": 50,
+                    "currentAv": 200.001,
+                    "actionDelay": 200
+                  },
+                  {
+                    "id": "zombie",
+                    "name": "Zombie",
+                    "side": "ALLY",
+                    "spd": 20,
+                    "currentAv": 500.002,
+                    "actionDelay": 500
+                  }
+                ],
+                "turns": [
+                  {
+                    "turn": 1,
+                    "action": "MAGIC_SKILL",
+                    "dealt": 140,
+                    "incoming": 1,
+                    "targetHp": 0
+                  }
+                ],
+                "overall": "WARN",
+                "findings": [
+                  {
+                    "level": "WARN",
+                    "field": "ttkTurns",
+                    "message": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  {
+                    "level": "WARN",
+                    "field": "incomingDamagePct",
+                    "message": "累積被ダメージ率: 0.4（目標 5〜75）"
+                  },
+                  {
+                    "level": "WARN",
+                    "field": "aoeValue",
+                    "message": "AoE価値（単体比）: 3.26（目標 2〜3.2）"
+                  }
+                ]
+              }
+            },
+            {
+              "label": "WAVE 2",
+              "role": "SHIELD",
+              "report": {
+                "engine": "BattleEngine",
+                "deterministicRng": 0.999,
+                "metrics": {
+                  "ttkTurns": {
+                    "value": 1,
+                    "target": {
+                      "min": 2,
+                      "max": 8
+                    },
+                    "status": "WARN",
+                    "summary": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  "incomingDamagePct": {
+                    "value": 0.4,
+                    "target": {
+                      "min": 5,
+                      "max": 75
+                    },
+                    "status": "WARN",
+                    "summary": "累積被ダメージ率: 0.4（目標 5〜75）"
+                  },
+                  "aoeValue": {
+                    "value": 3.5,
+                    "target": {
+                      "min": 2,
+                      "max": 3.2
+                    },
+                    "status": "WARN",
+                    "summary": "AoE価値（単体比）: 3.5（目標 2〜3.2）"
+                  },
+                  "partyCost": {
+                    "value": 3,
+                    "target": {
+                      "min": 0,
+                      "max": 6
+                    },
+                    "status": "PASS",
+                    "summary": "編成コスト: 3（目標 0〜6）"
+                  }
+                },
+                "actionOrder": [
+                  {
+                    "id": "authoring_aldo",
+                    "name": "アルド",
+                    "side": "PLAYER",
+                    "spd": 98,
+                    "currentAv": 102.04081632653062,
+                    "actionDelay": 102
+                  },
+                  {
+                    "id": "goblin",
+                    "name": "Goblin",
+                    "side": "ALLY",
+                    "spd": 80,
+                    "currentAv": 125,
+                    "actionDelay": 125
+                  },
+                  {
+                    "id": "hollow_handmaid",
+                    "name": "廃城の侍女",
+                    "side": "ENEMY",
+                    "spd": 76,
+                    "currentAv": 131.58094736842105,
+                    "actionDelay": 132
+                  },
+                  {
+                    "id": "grave_soldier",
+                    "name": "霊体騎士",
+                    "side": "ENEMY",
+                    "spd": 70,
+                    "currentAv": 142.85714285714286,
+                    "actionDelay": 143
+                  },
+                  {
+                    "id": "rot_hound",
+                    "name": "腐敗猟犬",
+                    "side": "ENEMY",
+                    "spd": 70,
+                    "currentAv": 142.85814285714287,
+                    "actionDelay": 143
+                  },
+                  {
+                    "id": "skeleton",
+                    "name": "Skeleton",
+                    "side": "ALLY",
+                    "spd": 50,
+                    "currentAv": 200.001,
+                    "actionDelay": 200
+                  },
+                  {
+                    "id": "zombie",
+                    "name": "Zombie",
+                    "side": "ALLY",
+                    "spd": 20,
+                    "currentAv": 500.002,
+                    "actionDelay": 500
+                  }
+                ],
+                "turns": [
+                  {
+                    "turn": 1,
+                    "action": "MAGIC_SKILL",
+                    "dealt": 217,
+                    "incoming": 1,
+                    "targetHp": 0
+                  }
+                ],
+                "overall": "WARN",
+                "findings": [
+                  {
+                    "level": "WARN",
+                    "field": "ttkTurns",
+                    "message": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  {
+                    "level": "WARN",
+                    "field": "incomingDamagePct",
+                    "message": "累積被ダメージ率: 0.4（目標 5〜75）"
+                  },
+                  {
+                    "level": "WARN",
+                    "field": "aoeValue",
+                    "message": "AoE価値（単体比）: 3.5（目標 2〜3.2）"
+                  }
+                ]
+              }
+            },
+            {
+              "label": "WAVE 3",
+              "role": "ELITE",
+              "report": {
+                "engine": "BattleEngine",
+                "deterministicRng": 0.999,
+                "metrics": {
+                  "ttkTurns": {
+                    "value": 1,
+                    "target": {
+                      "min": 2,
+                      "max": 8
+                    },
+                    "status": "WARN",
+                    "summary": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  "incomingDamagePct": {
+                    "value": 1.21,
+                    "target": {
+                      "min": 5,
+                      "max": 75
+                    },
+                    "status": "WARN",
+                    "summary": "累積被ダメージ率: 1.21（目標 5〜75）"
+                  },
+                  "aoeValue": {
+                    "value": 3,
+                    "target": {
+                      "min": 2,
+                      "max": 3.2
+                    },
+                    "status": "PASS",
+                    "summary": "AoE価値（単体比）: 3（目標 2〜3.2）"
+                  },
+                  "partyCost": {
+                    "value": 3,
+                    "target": {
+                      "min": 0,
+                      "max": 6
+                    },
+                    "status": "PASS",
+                    "summary": "編成コスト: 3（目標 0〜6）"
+                  }
+                },
+                "actionOrder": [
+                  {
+                    "id": "authoring_aldo",
+                    "name": "アルド",
+                    "side": "PLAYER",
+                    "spd": 98,
+                    "currentAv": 102.04081632653062,
+                    "actionDelay": 102
+                  },
+                  {
+                    "id": "goblin",
+                    "name": "Goblin",
+                    "side": "ALLY",
+                    "spd": 80,
+                    "currentAv": 125,
+                    "actionDelay": 125
+                  },
+                  {
+                    "id": "abyss_warden",
+                    "name": "深淵の看守",
+                    "side": "ENEMY",
+                    "spd": 75,
+                    "currentAv": 133.33333333333334,
+                    "actionDelay": 133
+                  },
+                  {
+                    "id": "skeleton",
+                    "name": "Skeleton",
+                    "side": "ALLY",
+                    "spd": 50,
+                    "currentAv": 200.001,
+                    "actionDelay": 200
+                  },
+                  {
+                    "id": "zombie",
+                    "name": "Zombie",
+                    "side": "ALLY",
+                    "spd": 20,
+                    "currentAv": 500.002,
+                    "actionDelay": 500
+                  }
+                ],
+                "turns": [
+                  {
+                    "turn": 1,
+                    "action": "MAGIC_SKILL",
+                    "dealt": 43,
+                    "incoming": 3,
+                    "targetHp": 0
+                  }
+                ],
+                "overall": "WARN",
+                "findings": [
+                  {
+                    "level": "WARN",
+                    "field": "ttkTurns",
+                    "message": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  {
+                    "level": "WARN",
+                    "field": "incomingDamagePct",
+                    "message": "累積被ダメージ率: 1.21（目標 5〜75）"
+                  }
+                ]
+              }
+            }
+          ],
+          "metrics": {
+            "ttkTurns": {
+              "value": 3,
+              "target": {
+                "min": 6,
+                "max": 24
+              },
+              "status": "WARN",
+              "summary": "Stage TTK（全WAVE行動回数）: 3（目標 6〜24）"
+            },
+            "incomingDamagePct": {
+              "value": 2.01,
+              "target": {
+                "min": 15,
+                "max": 225
+              },
+              "status": "WARN",
+              "summary": "Stage累積被ダメージ率: 2.01（目標 15〜225）"
+            },
+            "aoeValue": {
+              "value": 3.25,
+              "target": {
+                "min": 2,
+                "max": 3.2
+              },
+              "status": "WARN",
+              "summary": "Stage平均AoE価値: 3.25（目標 2〜3.2）"
+            },
+            "partyCost": {
+              "value": 3,
+              "target": {
+                "min": 0,
+                "max": 6
+              },
+              "status": "PASS",
+              "summary": "編成コスト: 3（目標 0〜6）"
+            }
+          },
+          "actionOrder": [
+            {
+              "id": "authoring_aldo",
+              "name": "アルド",
+              "side": "PLAYER",
+              "spd": 98,
+              "currentAv": 102.04081632653062,
+              "actionDelay": 102
+            },
+            {
+              "id": "goblin",
+              "name": "Goblin",
+              "side": "ALLY",
+              "spd": 80,
+              "currentAv": 125,
+              "actionDelay": 125
+            },
+            {
+              "id": "grave_soldier",
+              "name": "霊体騎士",
+              "side": "ENEMY",
+              "spd": 70,
+              "currentAv": 142.85714285714286,
+              "actionDelay": 143
+            },
+            {
+              "id": "rot_hound",
+              "name": "腐敗猟犬",
+              "side": "ENEMY",
+              "spd": 70,
+              "currentAv": 142.85814285714287,
+              "actionDelay": 143
+            },
+            {
+              "id": "skeleton",
+              "name": "Skeleton",
+              "side": "ALLY",
+              "spd": 50,
+              "currentAv": 200.001,
+              "actionDelay": 200
+            },
+            {
+              "id": "zombie",
+              "name": "Zombie",
+              "side": "ALLY",
+              "spd": 20,
+              "currentAv": 500.002,
+              "actionDelay": 500
+            }
+          ],
+          "turns": [
+            {
+              "turn": 1,
+              "action": "MAGIC_SKILL",
+              "dealt": 140,
+              "incoming": 1,
+              "targetHp": 0
+            },
+            {
+              "turn": 1001,
+              "action": "MAGIC_SKILL",
+              "dealt": 217,
+              "incoming": 1,
+              "targetHp": 0
+            },
+            {
+              "turn": 2001,
+              "action": "MAGIC_SKILL",
+              "dealt": 43,
+              "incoming": 3,
+              "targetHp": 0
+            }
+          ],
+          "overall": "WARN",
+          "findings": [
+            {
+              "level": "WARN",
+              "field": "ttkTurns",
+              "message": "Stage TTK（全WAVE行動回数）: 3（目標 6〜24）"
+            },
+            {
+              "level": "WARN",
+              "field": "incomingDamagePct",
+              "message": "Stage累積被ダメージ率: 2.01（目標 15〜225）"
+            },
+            {
+              "level": "WARN",
+              "field": "aoeValue",
+              "message": "Stage平均AoE価値: 3.25（目標 2〜3.2）"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "skill_ash_regent_triple_bell_asset_skill_icon",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "scope": "asset",
+      "kind": "skill-icon",
+      "required": true,
+      "state": "PLANNED",
+      "outputRefs": [
+        "asset:ash_regent_skill_icon"
+      ]
+    },
+    {
+      "id": "skill_ash_regent_triple_bell_skill_presentation_timeline",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "scope": "skill-presentation",
+      "kind": "timeline",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "presentation:ash_regent_triple_bell_presentation"
+      ]
+    },
+    {
+      "id": "skill_ash_regent_triple_bell_acquisition_link_owner",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "scope": "acquisition-link",
+      "kind": "owner",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "deliverable:skill_ash_regent_triple_bell_acquisition_link_owner"
+      ],
+      "artifact": {
+        "ownerType": "enemy-ai",
+        "ownerId": "enemy_ash_regent",
+        "trigger": "energy >= 60",
+        "fallbackAction": "basic-attack"
+      }
+    },
+    {
+      "id": "weapon_grave_regalia_asset_inventory_icon",
+      "ownerId": "weapon_grave_regalia",
+      "scope": "asset",
+      "kind": "inventory-icon",
+      "required": true,
+      "state": "PLANNED",
+      "outputRefs": [
+        "asset:grave_regalia_icon"
+      ]
+    },
+    {
+      "id": "weapon_grave_regalia_asset_detail_art",
+      "ownerId": "weapon_grave_regalia",
+      "scope": "asset",
+      "kind": "detail-art",
+      "required": true,
+      "state": "PLANNED",
+      "outputRefs": [
+        "asset:grave_regalia_card"
+      ]
+    },
+    {
+      "id": "weapon_grave_regalia_acquisition_link_drop_source",
+      "ownerId": "weapon_grave_regalia",
+      "scope": "acquisition-link",
+      "kind": "drop-source",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "deliverable:weapon_grave_regalia_acquisition_link_drop_source"
+      ],
+      "artifact": {
+        "stageId": "area1_ash_throne",
+        "enemyId": "enemy_ash_regent",
+        "dropType": "FIRST_CLEAR",
+        "itemId": "weapon_grave_regalia",
+        "quantity": 1
+      }
+    },
+    {
+      "id": "weapon_grave_regalia_acquisition_link_inventory_equip",
+      "ownerId": "weapon_grave_regalia",
+      "scope": "acquisition-link",
+      "kind": "inventory-equip",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "deliverable:weapon_grave_regalia_acquisition_link_inventory_equip"
+      ],
+      "artifact": {
+        "inventoryType": "WEAPON",
+        "equipSlot": "weapon",
+        "owner": "aldo",
+        "unique": true
+      }
+    },
+    {
+      "id": "weapon_grave_regalia_master_data",
+      "ownerId": "weapon_grave_regalia",
+      "scope": "combat-unit",
+      "kind": "master-data",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "change:weapon:weapon_grave_regalia"
+      ],
+      "artifact": {
+        "authoringKind": "weapon",
+        "request": {
+          "id": "weapon_grave_regalia",
+          "name": "弔王剣グレイヴ・レガリア",
+          "flavor": "鳴らされなかった葬鐘の記憶が刃の奥で震え、王を弔う一撃だけを待っている。",
+          "rarity": "UR",
+          "archetype": "MYTHIC",
+          "ilv": 70,
+          "subOption": "CRIT_DMG",
+          "element": "DARK",
+          "passiveA": {
+            "nameJa": "王骸への弔鐘",
+            "descTemplate": "BOSSへ与えるダメージ+{value}%",
+            "baseValue": 8,
+            "systemTag": "GIANT_KILLING"
+          },
+          "passiveB": {
+            "nameJa": "灰冠破り",
+            "descTemplate": "霊的防壁へのダメージ+{value}%",
+            "baseValue": 10,
+            "systemTag": "SHIELD_PIERCE"
+          }
+        },
+        "authored": {
+          "baseAtk": {
+            "ilv": 70,
+            "current": 170,
+            "lv90": 220
+          },
+          "rationale": [
+            {
+              "field": "baseAtk",
+              "basis": "WeaponSystemのrarity×archetype×ILv式",
+              "targetRange": "ILv1〜90",
+              "selected": 170
+            },
+            {
+              "field": "subOptions",
+              "basis": "設計書92の通常1枠＋SSR/UR固定属性1枠",
+              "targetRange": "UR規約",
+              "selected": "[{\"type\":\"CRIT_DMG\",\"value\":17.6},{\"type\":\"DARK_DMG_BOOST\",\"value\":20.6}]"
+            },
+            {
+              "field": "passiveA/B",
+              "basis": "魂の共鳴Rank I〜Vを1.0/1.2/1.4/1.6/2.0倍で生成",
+              "targetRange": "5段階",
+              "selected": "8/9.6/11.2/12.8/16 | 10/12/14/16/20"
+            }
+          ],
+          "gate": {
+            "ok": true,
+            "findings": [
+              {
+                "level": "PASS",
+                "field": "subOptions",
+                "message": "UR のサブオプション枠構成 OK（通常1/属性1）"
+              }
+            ]
+          }
+        },
+        "simulation": {
+          "engine": "BattleEngine",
+          "deterministicRng": 0.999,
+          "stageId": "area1_node1",
+          "waves": [
+            {
+              "label": "WAVE 1",
+              "role": "WARMUP",
+              "report": {
+                "engine": "BattleEngine",
+                "deterministicRng": 0.999,
+                "metrics": {
+                  "ttkTurns": {
+                    "value": 1,
+                    "target": {
+                      "min": 2,
+                      "max": 8
+                    },
+                    "status": "WARN",
+                    "summary": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  "incomingDamagePct": {
+                    "value": 0.4,
+                    "target": {
+                      "min": 5,
+                      "max": 75
+                    },
+                    "status": "WARN",
+                    "summary": "累積被ダメージ率: 0.4（目標 5〜75）"
+                  },
+                  "aoeValue": {
+                    "value": 1,
+                    "target": {
+                      "min": 2,
+                      "max": 3.2
+                    },
+                    "status": "FAIL",
+                    "summary": "AoE価値（単体比）: 1（目標 2〜3.2）"
+                  },
+                  "partyCost": {
+                    "value": 3,
+                    "target": {
+                      "min": 0,
+                      "max": 6
+                    },
+                    "status": "PASS",
+                    "summary": "編成コスト: 3（目標 0〜6）"
+                  }
+                },
+                "actionOrder": [
+                  {
+                    "id": "authoring_aldo",
+                    "name": "アルド",
+                    "side": "PLAYER",
+                    "spd": 98,
+                    "currentAv": 102.04081632653062,
+                    "actionDelay": 102
+                  },
+                  {
+                    "id": "goblin",
+                    "name": "Goblin",
+                    "side": "ALLY",
+                    "spd": 80,
+                    "currentAv": 125,
+                    "actionDelay": 125
+                  },
+                  {
+                    "id": "grave_soldier",
+                    "name": "霊体騎士",
+                    "side": "ENEMY",
+                    "spd": 70,
+                    "currentAv": 142.85714285714286,
+                    "actionDelay": 143
+                  },
+                  {
+                    "id": "rot_hound",
+                    "name": "腐敗猟犬",
+                    "side": "ENEMY",
+                    "spd": 70,
+                    "currentAv": 142.85814285714287,
+                    "actionDelay": 143
+                  },
+                  {
+                    "id": "skeleton",
+                    "name": "Skeleton",
+                    "side": "ALLY",
+                    "spd": 50,
+                    "currentAv": 200.001,
+                    "actionDelay": 200
+                  },
+                  {
+                    "id": "zombie",
+                    "name": "Zombie",
+                    "side": "ALLY",
+                    "spd": 20,
+                    "currentAv": 500.002,
+                    "actionDelay": 500
+                  }
+                ],
+                "turns": [
+                  {
+                    "turn": 1,
+                    "action": "PHYSICAL_ATTACK",
+                    "dealt": 210,
+                    "incoming": 1,
+                    "targetHp": 0
+                  }
+                ],
+                "overall": "FAIL",
+                "findings": [
+                  {
+                    "level": "WARN",
+                    "field": "ttkTurns",
+                    "message": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  {
+                    "level": "WARN",
+                    "field": "incomingDamagePct",
+                    "message": "累積被ダメージ率: 0.4（目標 5〜75）"
+                  },
+                  {
+                    "level": "FAIL",
+                    "field": "aoeValue",
+                    "message": "AoE価値（単体比）: 1（目標 2〜3.2）"
+                  }
+                ]
+              }
+            },
+            {
+              "label": "WAVE 2",
+              "role": "SHIELD",
+              "report": {
+                "engine": "BattleEngine",
+                "deterministicRng": 0.999,
+                "metrics": {
+                  "ttkTurns": {
+                    "value": 1,
+                    "target": {
+                      "min": 2,
+                      "max": 8
+                    },
+                    "status": "WARN",
+                    "summary": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  "incomingDamagePct": {
+                    "value": 0.4,
+                    "target": {
+                      "min": 5,
+                      "max": 75
+                    },
+                    "status": "WARN",
+                    "summary": "累積被ダメージ率: 0.4（目標 5〜75）"
+                  },
+                  "aoeValue": {
+                    "value": 1,
+                    "target": {
+                      "min": 2,
+                      "max": 3.2
+                    },
+                    "status": "FAIL",
+                    "summary": "AoE価値（単体比）: 1（目標 2〜3.2）"
+                  },
+                  "partyCost": {
+                    "value": 3,
+                    "target": {
+                      "min": 0,
+                      "max": 6
+                    },
+                    "status": "PASS",
+                    "summary": "編成コスト: 3（目標 0〜6）"
+                  }
+                },
+                "actionOrder": [
+                  {
+                    "id": "authoring_aldo",
+                    "name": "アルド",
+                    "side": "PLAYER",
+                    "spd": 98,
+                    "currentAv": 102.04081632653062,
+                    "actionDelay": 102
+                  },
+                  {
+                    "id": "goblin",
+                    "name": "Goblin",
+                    "side": "ALLY",
+                    "spd": 80,
+                    "currentAv": 125,
+                    "actionDelay": 125
+                  },
+                  {
+                    "id": "hollow_handmaid",
+                    "name": "廃城の侍女",
+                    "side": "ENEMY",
+                    "spd": 76,
+                    "currentAv": 131.58094736842105,
+                    "actionDelay": 132
+                  },
+                  {
+                    "id": "grave_soldier",
+                    "name": "霊体騎士",
+                    "side": "ENEMY",
+                    "spd": 70,
+                    "currentAv": 142.85714285714286,
+                    "actionDelay": 143
+                  },
+                  {
+                    "id": "rot_hound",
+                    "name": "腐敗猟犬",
+                    "side": "ENEMY",
+                    "spd": 70,
+                    "currentAv": 142.85814285714287,
+                    "actionDelay": 143
+                  },
+                  {
+                    "id": "skeleton",
+                    "name": "Skeleton",
+                    "side": "ALLY",
+                    "spd": 50,
+                    "currentAv": 200.001,
+                    "actionDelay": 200
+                  },
+                  {
+                    "id": "zombie",
+                    "name": "Zombie",
+                    "side": "ALLY",
+                    "spd": 20,
+                    "currentAv": 500.002,
+                    "actionDelay": 500
+                  }
+                ],
+                "turns": [
+                  {
+                    "turn": 1,
+                    "action": "PHYSICAL_ATTACK",
+                    "dealt": 210,
+                    "incoming": 1,
+                    "targetHp": 0
+                  }
+                ],
+                "overall": "FAIL",
+                "findings": [
+                  {
+                    "level": "WARN",
+                    "field": "ttkTurns",
+                    "message": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  {
+                    "level": "WARN",
+                    "field": "incomingDamagePct",
+                    "message": "累積被ダメージ率: 0.4（目標 5〜75）"
+                  },
+                  {
+                    "level": "FAIL",
+                    "field": "aoeValue",
+                    "message": "AoE価値（単体比）: 1（目標 2〜3.2）"
+                  }
+                ]
+              }
+            },
+            {
+              "label": "WAVE 3",
+              "role": "ELITE",
+              "report": {
+                "engine": "BattleEngine",
+                "deterministicRng": 0.999,
+                "metrics": {
+                  "ttkTurns": {
+                    "value": 1,
+                    "target": {
+                      "min": 2,
+                      "max": 8
+                    },
+                    "status": "WARN",
+                    "summary": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  "incomingDamagePct": {
+                    "value": 1.21,
+                    "target": {
+                      "min": 5,
+                      "max": 75
+                    },
+                    "status": "WARN",
+                    "summary": "累積被ダメージ率: 1.21（目標 5〜75）"
+                  },
+                  "aoeValue": {
+                    "value": 1,
+                    "target": {
+                      "min": 2,
+                      "max": 3.2
+                    },
+                    "status": "FAIL",
+                    "summary": "AoE価値（単体比）: 1（目標 2〜3.2）"
+                  },
+                  "partyCost": {
+                    "value": 3,
+                    "target": {
+                      "min": 0,
+                      "max": 6
+                    },
+                    "status": "PASS",
+                    "summary": "編成コスト: 3（目標 0〜6）"
+                  }
+                },
+                "actionOrder": [
+                  {
+                    "id": "authoring_aldo",
+                    "name": "アルド",
+                    "side": "PLAYER",
+                    "spd": 98,
+                    "currentAv": 102.04081632653062,
+                    "actionDelay": 102
+                  },
+                  {
+                    "id": "goblin",
+                    "name": "Goblin",
+                    "side": "ALLY",
+                    "spd": 80,
+                    "currentAv": 125,
+                    "actionDelay": 125
+                  },
+                  {
+                    "id": "abyss_warden",
+                    "name": "深淵の看守",
+                    "side": "ENEMY",
+                    "spd": 75,
+                    "currentAv": 133.33333333333334,
+                    "actionDelay": 133
+                  },
+                  {
+                    "id": "skeleton",
+                    "name": "Skeleton",
+                    "side": "ALLY",
+                    "spd": 50,
+                    "currentAv": 200.001,
+                    "actionDelay": 200
+                  },
+                  {
+                    "id": "zombie",
+                    "name": "Zombie",
+                    "side": "ALLY",
+                    "spd": 20,
+                    "currentAv": 500.002,
+                    "actionDelay": 500
+                  }
+                ],
+                "turns": [
+                  {
+                    "turn": 1,
+                    "action": "PHYSICAL_ATTACK",
+                    "dealt": 149,
+                    "incoming": 3,
+                    "targetHp": 0
+                  }
+                ],
+                "overall": "FAIL",
+                "findings": [
+                  {
+                    "level": "WARN",
+                    "field": "ttkTurns",
+                    "message": "TTK（行動回数）: 1（目標 2〜8）"
+                  },
+                  {
+                    "level": "WARN",
+                    "field": "incomingDamagePct",
+                    "message": "累積被ダメージ率: 1.21（目標 5〜75）"
+                  },
+                  {
+                    "level": "FAIL",
+                    "field": "aoeValue",
+                    "message": "AoE価値（単体比）: 1（目標 2〜3.2）"
+                  }
+                ]
+              }
+            }
+          ],
+          "metrics": {
+            "ttkTurns": {
+              "value": 3,
+              "target": {
+                "min": 6,
+                "max": 24
+              },
+              "status": "WARN",
+              "summary": "Stage TTK（全WAVE行動回数）: 3（目標 6〜24）"
+            },
+            "incomingDamagePct": {
+              "value": 2.01,
+              "target": {
+                "min": 15,
+                "max": 225
+              },
+              "status": "WARN",
+              "summary": "Stage累積被ダメージ率: 2.01（目標 15〜225）"
+            },
+            "aoeValue": {
+              "value": 1,
+              "target": {
+                "min": 2,
+                "max": 3.2
+              },
+              "status": "FAIL",
+              "summary": "Stage平均AoE価値: 1（目標 2〜3.2）"
+            },
+            "partyCost": {
+              "value": 3,
+              "target": {
+                "min": 0,
+                "max": 6
+              },
+              "status": "PASS",
+              "summary": "編成コスト: 3（目標 0〜6）"
+            }
+          },
+          "actionOrder": [
+            {
+              "id": "authoring_aldo",
+              "name": "アルド",
+              "side": "PLAYER",
+              "spd": 98,
+              "currentAv": 102.04081632653062,
+              "actionDelay": 102
+            },
+            {
+              "id": "goblin",
+              "name": "Goblin",
+              "side": "ALLY",
+              "spd": 80,
+              "currentAv": 125,
+              "actionDelay": 125
+            },
+            {
+              "id": "grave_soldier",
+              "name": "霊体騎士",
+              "side": "ENEMY",
+              "spd": 70,
+              "currentAv": 142.85714285714286,
+              "actionDelay": 143
+            },
+            {
+              "id": "rot_hound",
+              "name": "腐敗猟犬",
+              "side": "ENEMY",
+              "spd": 70,
+              "currentAv": 142.85814285714287,
+              "actionDelay": 143
+            },
+            {
+              "id": "skeleton",
+              "name": "Skeleton",
+              "side": "ALLY",
+              "spd": 50,
+              "currentAv": 200.001,
+              "actionDelay": 200
+            },
+            {
+              "id": "zombie",
+              "name": "Zombie",
+              "side": "ALLY",
+              "spd": 20,
+              "currentAv": 500.002,
+              "actionDelay": 500
+            }
+          ],
+          "turns": [
+            {
+              "turn": 1,
+              "action": "PHYSICAL_ATTACK",
+              "dealt": 210,
+              "incoming": 1,
+              "targetHp": 0
+            },
+            {
+              "turn": 1001,
+              "action": "PHYSICAL_ATTACK",
+              "dealt": 210,
+              "incoming": 1,
+              "targetHp": 0
+            },
+            {
+              "turn": 2001,
+              "action": "PHYSICAL_ATTACK",
+              "dealt": 149,
+              "incoming": 3,
+              "targetHp": 0
+            }
+          ],
+          "overall": "FAIL",
+          "findings": [
+            {
+              "level": "WARN",
+              "field": "ttkTurns",
+              "message": "Stage TTK（全WAVE行動回数）: 3（目標 6〜24）"
+            },
+            {
+              "level": "WARN",
+              "field": "incomingDamagePct",
+              "message": "Stage累積被ダメージ率: 2.01（目標 15〜225）"
+            },
+            {
+              "level": "FAIL",
+              "field": "aoeValue",
+              "message": "Stage平均AoE価値: 1（目標 2〜3.2）"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "encounter_ash_throne_combat_unit_enemy_data",
+      "ownerId": "encounter_ash_throne",
+      "scope": "combat-unit",
+      "kind": "enemy-data",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "deliverable:encounter_ash_throne_combat_unit_enemy_data"
+      ],
+      "artifact": {
+        "stageDraft": {
+          "id": "area1_ash_throne",
+          "chapter": 1,
+          "nodeType": "BOSS",
+          "element": "DARK",
+          "difficulty": 5,
+          "waves": [
+            {
+              "label": "WAVE 1",
+              "role": "BOSS",
+              "enemyIds": [
+                "enemy_ash_regent"
+              ],
+              "intent": "三連撃の予兆、弱点攻撃、防壁破壊を総合確認する。"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "encounter_ash_throne_asset_background",
+      "ownerId": "encounter_ash_throne",
+      "scope": "asset",
+      "kind": "background",
+      "required": true,
+      "state": "PLANNED",
+      "outputRefs": [
+        "asset:ash_throne_background"
+      ]
+    },
+    {
+      "id": "encounter_ash_throne_asset_enemy_visual",
+      "ownerId": "encounter_ash_throne",
+      "scope": "asset",
+      "kind": "enemy-visual",
+      "required": true,
+      "state": "PLANNED",
+      "outputRefs": [
+        "asset:ash_throne_enemy_visual"
+      ]
+    },
+    {
+      "id": "encounter_ash_throne_acquisition_link_stage_wave",
+      "ownerId": "encounter_ash_throne",
+      "scope": "acquisition-link",
+      "kind": "stage-wave",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "deliverable:encounter_ash_throne_acquisition_link_stage_wave"
+      ],
+      "artifact": {
+        "stageId": "area1_ash_throne",
+        "unlockRequires": [
+          "area1_node5"
+        ],
+        "waveCount": 1,
+        "bossEnemyId": "enemy_ash_regent"
+      }
+    },
+    {
+      "id": "encounter_ash_throne_acquisition_link_reward",
+      "ownerId": "encounter_ash_throne",
+      "scope": "acquisition-link",
+      "kind": "reward",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "deliverable:encounter_ash_throne_acquisition_link_reward"
+      ],
+      "artifact": {
+        "firstClear": [
+          {
+            "type": "WEAPON",
+            "itemId": "weapon_grave_regalia",
+            "quantity": 1
+          }
+        ],
+        "repeatDrop": [
+          {
+            "type": "MATERIAL",
+            "materialId": "dark_essence",
+            "rate": 0.35
+          }
+        ]
+      }
+    },
+    {
+      "id": "encounter_ash_throne_acquisition_link_story_trigger",
+      "ownerId": "encounter_ash_throne",
+      "scope": "acquisition-link",
+      "kind": "story-trigger",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "deliverable:encounter_ash_throne_acquisition_link_story_trigger"
+      ],
+      "artifact": {
+        "beforeBattle": "scene_ash_regent_vigil",
+        "afterBattle": "scene_ash_regent_release",
+        "archiveCategory": "chapter1"
+      }
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "dep_1_enemy_ash_regent_asset_battle_visual_enemy_ash_regent_combat_unit_stats",
+      "from": "deliverable:enemy_ash_regent_asset_battle_visual",
+      "to": "deliverable:enemy_ash_regent_combat_unit_stats",
+      "relation": "REQUIRES",
+      "reason": "表示・演出・入手導線は確定した仕様とIDに依存する。"
+    },
+    {
+      "id": "dep_2_enemy_ash_regent_asset_icon_enemy_ash_regent_combat_unit_stats",
+      "from": "deliverable:enemy_ash_regent_asset_icon",
+      "to": "deliverable:enemy_ash_regent_combat_unit_stats",
+      "relation": "REQUIRES",
+      "reason": "表示・演出・入手導線は確定した仕様とIDに依存する。"
+    },
+    {
+      "id": "dep_3_enemy_ash_regent_skill_presentation_unit_lifecycle_enemy_ash_regent_combat_unit_stats",
+      "from": "deliverable:enemy_ash_regent_skill_presentation_unit_lifecycle",
+      "to": "deliverable:enemy_ash_regent_combat_unit_stats",
+      "relation": "REQUIRES",
+      "reason": "表示・演出・入手導線は確定した仕様とIDに依存する。"
+    },
+    {
+      "id": "dep_4_enemy_ash_regent_acquisition_link_runtime_enemy_ash_regent_combat_unit_stats",
+      "from": "deliverable:enemy_ash_regent_acquisition_link_runtime",
+      "to": "deliverable:enemy_ash_regent_combat_unit_stats",
+      "relation": "REQUIRES",
+      "reason": "表示・演出・入手導線は確定した仕様とIDに依存する。"
+    },
+    {
+      "id": "dep_5_skill_ash_regent_triple_bell_asset_skill_icon_skill_ash_regent_triple_bell_skill_mechanics",
+      "from": "deliverable:skill_ash_regent_triple_bell_asset_skill_icon",
+      "to": "deliverable:skill_ash_regent_triple_bell_skill_mechanics",
+      "relation": "REQUIRES",
+      "reason": "表示・演出・入手導線は確定した仕様とIDに依存する。"
+    },
+    {
+      "id": "dep_6_skill_ash_regent_triple_bell_skill_presentation_timeline_skill_ash_regent_triple_bell_skill_mechanics",
+      "from": "deliverable:skill_ash_regent_triple_bell_skill_presentation_timeline",
+      "to": "deliverable:skill_ash_regent_triple_bell_skill_mechanics",
+      "relation": "REQUIRES",
+      "reason": "表示・演出・入手導線は確定した仕様とIDに依存する。"
+    },
+    {
+      "id": "dep_7_skill_ash_regent_triple_bell_acquisition_link_owner_skill_ash_regent_triple_bell_skill_mechanics",
+      "from": "deliverable:skill_ash_regent_triple_bell_acquisition_link_owner",
+      "to": "deliverable:skill_ash_regent_triple_bell_skill_mechanics",
+      "relation": "REQUIRES",
+      "reason": "表示・演出・入手導線は確定した仕様とIDに依存する。"
+    },
+    {
+      "id": "dep_8_skill_ash_regent_triple_bell_enemy_ash_regent",
+      "from": "target:skill_ash_regent_triple_bell",
+      "to": "target:enemy_ash_regent",
+      "relation": "REQUIRES",
+      "reason": "元依頼で指定された対象間依存。"
+    },
+    {
+      "id": "dep_9_weapon_grave_regalia_asset_inventory_icon_weapon_grave_regalia_master_data",
+      "from": "deliverable:weapon_grave_regalia_asset_inventory_icon",
+      "to": "deliverable:weapon_grave_regalia_master_data",
+      "relation": "REQUIRES",
+      "reason": "表示・演出・入手導線は確定した仕様とIDに依存する。"
+    },
+    {
+      "id": "dep_10_weapon_grave_regalia_asset_detail_art_weapon_grave_regalia_master_data",
+      "from": "deliverable:weapon_grave_regalia_asset_detail_art",
+      "to": "deliverable:weapon_grave_regalia_master_data",
+      "relation": "REQUIRES",
+      "reason": "表示・演出・入手導線は確定した仕様とIDに依存する。"
+    },
+    {
+      "id": "dep_11_weapon_grave_regalia_acquisition_link_drop_source_weapon_grave_regalia_master_data",
+      "from": "deliverable:weapon_grave_regalia_acquisition_link_drop_source",
+      "to": "deliverable:weapon_grave_regalia_master_data",
+      "relation": "REQUIRES",
+      "reason": "表示・演出・入手導線は確定した仕様とIDに依存する。"
+    },
+    {
+      "id": "dep_12_weapon_grave_regalia_acquisition_link_inventory_equip_weapon_grave_regalia_master_data",
+      "from": "deliverable:weapon_grave_regalia_acquisition_link_inventory_equip",
+      "to": "deliverable:weapon_grave_regalia_master_data",
+      "relation": "REQUIRES",
+      "reason": "表示・演出・入手導線は確定した仕様とIDに依存する。"
+    },
+    {
+      "id": "dep_13_weapon_grave_regalia_enemy_ash_regent",
+      "from": "target:weapon_grave_regalia",
+      "to": "target:enemy_ash_regent",
+      "relation": "REQUIRES",
+      "reason": "元依頼で指定された対象間依存。"
+    },
+    {
+      "id": "dep_14_encounter_ash_throne_enemy_ash_regent",
+      "from": "target:encounter_ash_throne",
+      "to": "target:enemy_ash_regent",
+      "relation": "REQUIRES",
+      "reason": "元依頼で指定された対象間依存。"
+    },
+    {
+      "id": "dep_15_encounter_ash_throne_skill_ash_regent_triple_bell",
+      "from": "target:encounter_ash_throne",
+      "to": "target:skill_ash_regent_triple_bell",
+      "relation": "REQUIRES",
+      "reason": "元依頼で指定された対象間依存。"
+    },
+    {
+      "id": "dep_16_encounter_ash_throne_weapon_grave_regalia",
+      "from": "target:encounter_ash_throne",
+      "to": "target:weapon_grave_regalia",
+      "relation": "REQUIRES",
+      "reason": "元依頼で指定された対象間依存。"
+    }
+  ],
+  "changes": [
+    {
+      "scope": "enemy",
+      "id": "enemy_ash_regent",
+      "data": {
+        "id": "enemy_ash_regent",
+        "name": "Ashen Regent Valgrey",
+        "nameJa": "灰冠王ヴァルグレイ",
+        "nameEn": "Valgrey, the Ashen Regent",
+        "tier": "BOSS",
+        "tribe": "UNDEAD",
+        "stats": {
+          "hp": 188,
+          "atk": 11,
+          "def": 17,
+          "spd": 45,
+          "critRate": 10,
+          "critDmg": 175,
+          "effectHit": 4,
+          "effectRes": 42
+        },
+        "resistances": {
+          "LIGHT": -25,
+          "FIRE": -25,
+          "DARK": 20,
+          "ICE": 20
+        },
+        "weaknesses": [
+          "LIGHT",
+          "FIRE"
+        ],
+        "dropTable": [],
+        "battle": {
+          "color": "#8B00FF",
+          "sprite": "GIANT",
+          "size": 1.1
+        },
+        "description": "王の帰還を待ち続け、灰を冠として玉座を守る亡霊騎士。",
+        "necromance": {
+          "captureRate": 0.001,
+          "allyCost": 4,
+          "allyStats": {
+            "hp": 225,
+            "atk": 24,
+            "def": 31,
+            "spd": 84,
+            "critRate": 9,
+            "critDmg": 165,
+            "effectHit": 15,
+            "effectRes": 27
+          },
+          "allyMaxEnergy": 90,
+          "skillIds": [
+            "skill_ash_regent_triple_bell"
+          ]
+        }
+      }
+    },
+    {
+      "scope": "weapon",
+      "id": "weapon_grave_regalia",
+      "data": {
+        "id": "weapon_grave_regalia",
+        "name": "弔王剣グレイヴ・レガリア",
+        "type": "WEAPON",
+        "rarity": "UR",
+        "weaponRarity": "UR",
+        "archetype": "MYTHIC",
+        "rank": 1,
+        "ilv": 70,
+        "isUnique": true,
+        "stats": {},
+        "subOptions": [
+          {
+            "type": "CRIT_DMG",
+            "value": 8.5
+          },
+          {
+            "type": "DARK_DMG_BOOST",
+            "value": 10
+          }
+        ],
+        "passiveA": {
+          "nameJa": "王骸への弔鐘",
+          "descTemplate": "BOSSへ与えるダメージ+{value}%",
+          "values": [
+            8,
+            9.6,
+            11.2,
+            12.8,
+            16
+          ],
+          "systemTag": "GIANT_KILLING"
+        },
+        "passiveB": {
+          "nameJa": "灰冠破り",
+          "descTemplate": "霊的防壁へのダメージ+{value}%",
+          "values": [
+            10,
+            12,
+            14,
+            16,
+            20
+          ],
+          "systemTag": "SHIELD_PIERCE"
+        },
+        "flavor": "鳴らされなかった葬鐘の記憶が刃の奥で震え、王を弔う一撃だけを待っている。"
+      }
+    },
+    {
+      "scope": "skill",
+      "id": "skill_ash_regent_triple_bell",
+      "data": {
+        "id": "skill_ash_regent_triple_bell",
+        "name": "灰冠の三葬鐘",
+        "mpCost": 18,
+        "power": 1.8,
+        "type": "PHYSICAL",
+        "element": "DARK",
+        "attackType": "SLASH",
+        "targetType": "ALL_ENEMIES",
+        "effectKey": "ash_regent_triple_bell",
+        "description": "弔鐘の残響に合わせて三度斬りつけ、敵全体へ闇属性ダメージを与える。"
+      }
+    }
+  ],
+  "assets": [
+    {
+      "id": "ash_regent_fullbody",
+      "ownerId": "enemy_ash_regent",
+      "kind": "battle-visual",
+      "state": "PLANNED",
+      "mediaType": "image",
+      "format": "webp",
+      "outputPath": "public/images/generated/characters/enemy_ash_regent/fullbody-base.webp",
+      "referenceAssetRefs": [],
+      "spec": {
+        "schemaVersion": 1,
+        "usage": "character-fullbody",
+        "variant": "base",
+        "width": 1536,
+        "height": 2048,
+        "aspectRatio": {
+          "width": 3,
+          "height": 4
+        },
+        "transparency": "CHROMA_KEY",
+        "safeArea": {
+          "top": 120,
+          "right": 120,
+          "bottom": 80,
+          "left": 120
+        },
+        "consistencyGroup": "ash_regent",
+        "style": {
+          "medium": "重厚なダークファンタジー・ゲームコンセプトアート",
+          "palette": [
+            "#17121f",
+            "#5f5665",
+            "#8B00FF",
+            "#d4af37"
+          ],
+          "lighting": "消えかけた玉座の逆光と冷たい紫の魂光",
+          "mood": "威厳、疲弊、終わらない忠誠",
+          "materials": [
+            "灰を被った黒鉄",
+            "ひび割れた金箔",
+            "焼けた王旗",
+            "骨灰"
+          ]
+        },
+        "mustInclude": [
+          "灰で固まった王冠",
+          "両手大剣",
+          "背中の折れた王旗",
+          "一目で読める騎士シルエット"
+        ],
+        "avoid": [
+          "生者の健康な肌",
+          "華美で新品の鎧",
+          "銃器",
+          "文字"
+        ],
+        "maxBytes": 900000
+      },
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_regent_fullbody.png",
+      "provenancePromptRef": "asset_prompt_ash_regent_fullbody"
+    },
+    {
+      "id": "ash_regent_battle_icon",
+      "ownerId": "enemy_ash_regent",
+      "kind": "icon",
+      "state": "PLANNED",
+      "mediaType": "image",
+      "format": "webp",
+      "outputPath": "public/images/generated/characters/enemy_ash_regent/battle-boss.webp",
+      "referenceAssetRefs": [
+        "ash_regent_fullbody"
+      ],
+      "spec": {
+        "schemaVersion": 1,
+        "usage": "battle-unit",
+        "variant": "boss",
+        "width": 512,
+        "height": 512,
+        "aspectRatio": {
+          "width": 1,
+          "height": 1
+        },
+        "transparency": "ALPHA",
+        "safeArea": {
+          "top": 48,
+          "right": 48,
+          "bottom": 48,
+          "left": 48
+        },
+        "consistencyGroup": "ash_regent",
+        "style": {
+          "medium": "高精細モバイルRPGバトルユニット",
+          "palette": [
+            "#17121f",
+            "#5f5665",
+            "#8B00FF",
+            "#d4af37"
+          ],
+          "lighting": "輪郭を強調する紫のリムライト",
+          "mood": "不動の威圧感",
+          "materials": [
+            "黒鉄",
+            "灰",
+            "古い金箔"
+          ]
+        },
+        "mustInclude": [
+          "基準立ち絵と同じ王冠・鎧・大剣",
+          "小サイズで明確な輪郭"
+        ],
+        "avoid": [
+          "デザイン変更",
+          "背景",
+          "文字"
+        ],
+        "maxBytes": 320000
+      },
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_regent_battle_icon.png",
+      "provenancePromptRef": "asset_prompt_ash_regent_battle_icon"
+    },
+    {
+      "id": "ash_regent_skill_icon",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "kind": "skill-icon",
+      "state": "PLANNED",
+      "mediaType": "image",
+      "format": "webp",
+      "outputPath": "public/images/generated/skills/ash_regent_triple_bell/icon-triple-bell.webp",
+      "referenceAssetRefs": [],
+      "spec": {
+        "schemaVersion": 1,
+        "usage": "skill-icon",
+        "variant": "triple-bell",
+        "width": 512,
+        "height": 512,
+        "aspectRatio": {
+          "width": 1,
+          "height": 1
+        },
+        "transparency": "ALPHA",
+        "safeArea": {
+          "top": 56,
+          "right": 56,
+          "bottom": 56,
+          "left": 56
+        },
+        "effectKey": "ash_regent_triple_bell",
+        "style": {
+          "medium": "高コントラストのゴシック・スキルアイコン",
+          "palette": [
+            "#090711",
+            "#8B00FF",
+            "#d4af37",
+            "#ede9fe"
+          ],
+          "lighting": "三本の斬線と鐘形の魂光",
+          "mood": "葬送と決着",
+          "materials": [
+            "魂光",
+            "砕けた金属",
+            "灰"
+          ]
+        },
+        "mustInclude": [
+          "三本の斬線",
+          "抽象化した弔鐘",
+          "灰の王冠"
+        ],
+        "avoid": [
+          "細かすぎる人物画",
+          "文字",
+          "明るい祝祭色"
+        ],
+        "maxBytes": 280000
+      },
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_regent_skill_icon.png",
+      "provenancePromptRef": "asset_prompt_ash_regent_skill_icon"
+    },
+    {
+      "id": "ash_regent_vfx_texture",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "kind": "vfx-texture",
+      "state": "PLANNED",
+      "mediaType": "image",
+      "format": "webp",
+      "outputPath": "public/images/generated/skills/ash_regent_triple_bell/vfx-ash-slash.webp",
+      "referenceAssetRefs": [
+        "ash_regent_skill_icon"
+      ],
+      "spec": {
+        "schemaVersion": 1,
+        "usage": "vfx-texture",
+        "variant": "ash-slash",
+        "width": 1024,
+        "height": 1024,
+        "aspectRatio": {
+          "width": 1,
+          "height": 1
+        },
+        "transparency": "ALPHA",
+        "safeArea": {
+          "top": 96,
+          "right": 96,
+          "bottom": 96,
+          "left": 96
+        },
+        "effectKey": "ash_regent_triple_bell",
+        "style": {
+          "medium": "加算合成用VFXテクスチャ",
+          "palette": [
+            "#8B00FF",
+            "#d4af37",
+            "#f5f3ff"
+          ],
+          "lighting": "中心から裂ける魂光",
+          "mood": "鋭い葬送",
+          "materials": [
+            "灰粒子",
+            "魂火",
+            "刃の残光"
+          ]
+        },
+        "mustInclude": [
+          "三方向へ分かれる斬撃残光",
+          "色以外でも読める形状差"
+        ],
+        "avoid": [
+          "背景",
+          "文字",
+          "不透明な黒ベタ"
+        ],
+        "maxBytes": 500000
+      },
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_regent_vfx_texture.png",
+      "provenancePromptRef": "asset_prompt_ash_regent_vfx_texture"
+    },
+    {
+      "id": "grave_regalia_card",
+      "ownerId": "weapon_grave_regalia",
+      "kind": "detail-art",
+      "state": "PLANNED",
+      "mediaType": "image",
+      "format": "webp",
+      "outputPath": "public/images/generated/weapons/weapon_grave_regalia/card-base.webp",
+      "referenceAssetRefs": [],
+      "spec": {
+        "schemaVersion": 1,
+        "usage": "weapon-card",
+        "variant": "base",
+        "width": 1024,
+        "height": 1536,
+        "aspectRatio": {
+          "width": 2,
+          "height": 3
+        },
+        "transparency": "OPAQUE",
+        "safeArea": {
+          "top": 96,
+          "right": 72,
+          "bottom": 128,
+          "left": 72
+        },
+        "consistencyGroup": "grave_regalia",
+        "style": {
+          "medium": "ダークファンタジー武器カードアート",
+          "palette": [
+            "#08060d",
+            "#51485d",
+            "#8B00FF",
+            "#d4af37"
+          ],
+          "lighting": "刃の内側から漏れる鐘形の紫光",
+          "mood": "荘厳な葬送",
+          "materials": [
+            "黒鉄",
+            "割れた王冠の金",
+            "魂を封じた黒曜石"
+          ]
+        },
+        "mustInclude": [
+          "大剣",
+          "鍔に埋め込まれた割れた王冠",
+          "鐘の余韻を示す同心円"
+        ],
+        "avoid": [
+          "キャラクター主体",
+          "銃器",
+          "文字",
+          "新品の鏡面金属"
+        ],
+        "maxBytes": 650000
+      },
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/grave_regalia_card.png",
+      "provenancePromptRef": "asset_prompt_grave_regalia_card"
+    },
+    {
+      "id": "grave_regalia_icon",
+      "ownerId": "weapon_grave_regalia",
+      "kind": "inventory-icon",
+      "state": "PLANNED",
+      "mediaType": "image",
+      "format": "webp",
+      "outputPath": "public/images/generated/weapons/weapon_grave_regalia/icon-inventory.webp",
+      "referenceAssetRefs": [
+        "grave_regalia_card"
+      ],
+      "spec": {
+        "schemaVersion": 1,
+        "usage": "weapon-icon",
+        "variant": "inventory",
+        "width": 512,
+        "height": 512,
+        "aspectRatio": {
+          "width": 1,
+          "height": 1
+        },
+        "transparency": "ALPHA",
+        "safeArea": {
+          "top": 52,
+          "right": 52,
+          "bottom": 52,
+          "left": 52
+        },
+        "consistencyGroup": "grave_regalia",
+        "style": {
+          "medium": "高精細モバイルRPG武器アイコン",
+          "palette": [
+            "#08060d",
+            "#51485d",
+            "#8B00FF",
+            "#d4af37"
+          ],
+          "lighting": "紫の輪郭光",
+          "mood": "重く静かな威圧",
+          "materials": [
+            "黒鉄",
+            "古い金",
+            "黒曜石"
+          ]
+        },
+        "mustInclude": [
+          "基準カードと同じ鍔・刃・王冠意匠",
+          "斜め配置で明確な輪郭"
+        ],
+        "avoid": [
+          "デザイン変更",
+          "背景",
+          "文字"
+        ],
+        "maxBytes": 260000
+      },
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/grave_regalia_icon.png",
+      "provenancePromptRef": "asset_prompt_grave_regalia_icon"
+    },
+    {
+      "id": "ash_throne_background",
+      "ownerId": "encounter_ash_throne",
+      "kind": "background",
+      "state": "PLANNED",
+      "mediaType": "image",
+      "format": "webp",
+      "outputPath": "public/images/generated/backgrounds/encounter_ash_throne/background-battle.webp",
+      "referenceAssetRefs": [],
+      "spec": {
+        "schemaVersion": 1,
+        "usage": "background",
+        "variant": "battle",
+        "width": 1920,
+        "height": 1080,
+        "aspectRatio": {
+          "width": 16,
+          "height": 9
+        },
+        "transparency": "OPAQUE",
+        "safeArea": {
+          "top": 80,
+          "right": 120,
+          "bottom": 180,
+          "left": 120
+        },
+        "style": {
+          "medium": "横長モバイルRPGバトル背景",
+          "palette": [
+            "#05040a",
+            "#24172f",
+            "#51485d",
+            "#8B00FF"
+          ],
+          "lighting": "崩れた天井からの冷光と玉座下の魂光",
+          "mood": "滅びた王権の静寂",
+          "materials": [
+            "焼けた石床",
+            "破れた王旗",
+            "灰",
+            "黒曜石ガラス"
+          ]
+        },
+        "mustInclude": [
+          "中央奥の空の玉座",
+          "戦闘UIを邪魔しない床面",
+          "左右の折れた王旗"
+        ],
+        "avoid": [
+          "人物",
+          "文字",
+          "明るい昼空",
+          "近代建築"
+        ],
+        "maxBytes": 900000
+      },
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_throne_background.png",
+      "provenancePromptRef": "asset_prompt_ash_throne_background"
+    },
+    {
+      "id": "ash_throne_enemy_visual",
+      "ownerId": "encounter_ash_throne",
+      "kind": "enemy-visual",
+      "state": "PLANNED",
+      "mediaType": "image",
+      "format": "webp",
+      "outputPath": "public/images/generated/characters/encounter_ash_throne/battle-encounter.webp",
+      "referenceAssetRefs": [
+        "ash_regent_fullbody"
+      ],
+      "spec": {
+        "schemaVersion": 1,
+        "usage": "battle-unit",
+        "variant": "encounter",
+        "width": 768,
+        "height": 768,
+        "aspectRatio": {
+          "width": 1,
+          "height": 1
+        },
+        "transparency": "ALPHA",
+        "safeArea": {
+          "top": 72,
+          "right": 72,
+          "bottom": 72,
+          "left": 72
+        },
+        "consistencyGroup": "ash_regent",
+        "style": {
+          "medium": "高精細モバイルRPG敵ユニット",
+          "palette": [
+            "#17121f",
+            "#5f5665",
+            "#8B00FF",
+            "#d4af37"
+          ],
+          "lighting": "背景から分離する紫のリムライト",
+          "mood": "玉座を塞ぐ不動の騎士",
+          "materials": [
+            "黒鉄",
+            "灰",
+            "古い金箔"
+          ]
+        },
+        "mustInclude": [
+          "基準立ち絵と同一デザイン",
+          "戦闘中に読める大剣の構え"
+        ],
+        "avoid": [
+          "背景",
+          "デザイン変更",
+          "文字"
+        ],
+        "maxBytes": 420000
+      },
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_throne_enemy_visual.png",
+      "provenancePromptRef": "asset_prompt_ash_throne_enemy_visual"
+    }
+  ],
+  "presentation": [
+    {
+      "id": "ash_regent_lifecycle_presentation",
+      "ownerId": "enemy_ash_regent",
+      "effectKey": "ash_regent_lifecycle",
+      "state": "READY",
+      "element": "DARK",
+      "attackType": "SUMMON",
+      "label": "灰冠王・王座顕現",
+      "notes": "PRESENTATION工程で決定論fallbackを専用effectKeyの草案へ展開する。",
+      "timeline": {
+        "castMs": 420,
+        "travelMs": 160,
+        "impactMs": 420,
+        "aftermathMs": 420,
+        "damageTimingsMs": [
+          680
+        ]
+      },
+      "vfx": {
+        "implementation": "SVG",
+        "particleBudget": 36,
+        "domNodeBudget": 46,
+        "blendMode": "screen",
+        "colors": {
+          "primary": "#a855f7",
+          "secondary": "#4c1d95",
+          "accent": "#f5d0fe"
+        },
+        "textureAssetRefs": [],
+        "hitStopMs": 82,
+        "cameraShake": {
+          "intensity": 0.72,
+          "durationMs": 210
+        },
+        "screenFlash": {
+          "color": "#a855f7",
+          "opacity": 0.22,
+          "durationMs": 120
+        },
+        "targetMarker": "RUNE",
+        "shapeCue": "門と召喚紋"
+      },
+      "sfx": {
+        "cues": [
+          {
+            "profileKey": "abyss_gate",
+            "atMs": 0,
+            "pitch": 1,
+            "volume": 0.72,
+            "layer": "CAST"
+          },
+          {
+            "profileKey": "abyss_impact",
+            "atMs": 680,
+            "pitch": 1,
+            "volume": 0.92,
+            "layer": "IMPACT"
+          }
+        ]
+      },
+      "accessibility": {
+        "reducedMotion": "STATIC_GLYPH",
+        "reducedParticleScale": 0.25,
+        "flashHzMax": 2,
+        "colorIndependent": true
+      },
+      "performance": {
+        "lowDeviceParticleBudget": 18,
+        "maxDomNodes": 52,
+        "targetFrameMs": 16.67
+      }
+    },
+    {
+      "id": "ash_regent_triple_bell_presentation",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "effectKey": "ash_regent_triple_bell",
+      "state": "READY",
+      "element": "DARK",
+      "attackType": "SLASH",
+      "label": "灰冠の三葬鐘",
+      "notes": "PRESENTATION工程で決定論fallbackを専用effectKeyの草案へ展開する。",
+      "timeline": {
+        "castMs": 120,
+        "travelMs": 120,
+        "impactMs": 260,
+        "aftermathMs": 300,
+        "damageTimingsMs": [
+          250
+        ]
+      },
+      "vfx": {
+        "implementation": "CSS",
+        "particleBudget": 24,
+        "domNodeBudget": 46,
+        "blendMode": "screen",
+        "colors": {
+          "primary": "#a855f7",
+          "secondary": "#4c1d95",
+          "accent": "#f5d0fe"
+        },
+        "textureAssetRefs": [],
+        "hitStopMs": 48,
+        "cameraShake": {
+          "intensity": 0.38,
+          "durationMs": 140
+        },
+        "screenFlash": {
+          "color": "#a855f7",
+          "opacity": 0.22,
+          "durationMs": 120
+        },
+        "targetMarker": "CROSSHAIR",
+        "shapeCue": "交差する三本の刃線"
+      },
+      "sfx": {
+        "cues": [
+          {
+            "profileKey": "rune_cast",
+            "atMs": 0,
+            "pitch": 1,
+            "volume": 0.72,
+            "layer": "CAST"
+          },
+          {
+            "profileKey": "blade_cut",
+            "atMs": 250,
+            "pitch": 1,
+            "volume": 0.92,
+            "layer": "IMPACT"
+          }
+        ]
+      },
+      "accessibility": {
+        "reducedMotion": "STATIC_GLYPH",
+        "reducedParticleScale": 0.25,
+        "flashHzMax": 2,
+        "colorIndependent": true
+      },
+      "performance": {
+        "lowDeviceParticleBudget": 12,
+        "maxDomNodes": 52,
+        "targetFrameMs": 16.67
+      }
+    }
+  ],
+  "localization": [
+    {
+      "id": "enemy_ash_regent_name_ja",
+      "ownerId": "enemy_ash_regent",
+      "locale": "ja",
+      "kind": "name",
+      "text": "灰冠王ヴァルグレイ"
+    },
+    {
+      "id": "enemy_ash_regent_name_en",
+      "ownerId": "enemy_ash_regent",
+      "locale": "en",
+      "kind": "name",
+      "text": "Valgrey, the Ashen Regent"
+    },
+    {
+      "id": "enemy_ash_regent_alt_ja",
+      "ownerId": "enemy_ash_regent",
+      "locale": "ja",
+      "kind": "alt",
+      "text": "灰冠王ヴァルグレイのゲーム内ビジュアル"
+    },
+    {
+      "id": "enemy_ash_regent_alt_en",
+      "ownerId": "enemy_ash_regent",
+      "locale": "en",
+      "kind": "alt",
+      "text": "Game visual for Valgrey, the Ashen Regent"
+    },
+    {
+      "id": "enemy_ash_regent_description_ja",
+      "ownerId": "enemy_ash_regent",
+      "locale": "ja",
+      "kind": "description",
+      "text": "灰の王冠と折れた王旗を背負い、三度の弔鐘に合わせて大剣を振るう亡霊騎士。"
+    },
+    {
+      "id": "skill_ash_regent_triple_bell_name_ja",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "locale": "ja",
+      "kind": "name",
+      "text": "灰冠の三葬鐘"
+    },
+    {
+      "id": "skill_ash_regent_triple_bell_name_en",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "locale": "en",
+      "kind": "name",
+      "text": "Three Knells of the Ashen Crown"
+    },
+    {
+      "id": "skill_ash_regent_triple_bell_alt_ja",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "locale": "ja",
+      "kind": "alt",
+      "text": "灰冠の三葬鐘のゲーム内ビジュアル"
+    },
+    {
+      "id": "skill_ash_regent_triple_bell_alt_en",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "locale": "en",
+      "kind": "alt",
+      "text": "Game visual for Three Knells of the Ashen Crown"
+    },
+    {
+      "id": "skill_ash_regent_triple_bell_description_ja",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "locale": "ja",
+      "kind": "description",
+      "text": "弔鐘の残響に合わせて三度斬りつけ、王都の灰を爆ぜさせる。"
+    },
+    {
+      "id": "weapon_grave_regalia_name_ja",
+      "ownerId": "weapon_grave_regalia",
+      "locale": "ja",
+      "kind": "name",
+      "text": "弔王剣グレイヴ・レガリア"
+    },
+    {
+      "id": "weapon_grave_regalia_name_en",
+      "ownerId": "weapon_grave_regalia",
+      "locale": "en",
+      "kind": "name",
+      "text": "Grave Regalia"
+    },
+    {
+      "id": "weapon_grave_regalia_alt_ja",
+      "ownerId": "weapon_grave_regalia",
+      "locale": "ja",
+      "kind": "alt",
+      "text": "弔王剣グレイヴ・レガリアのゲーム内ビジュアル"
+    },
+    {
+      "id": "weapon_grave_regalia_alt_en",
+      "ownerId": "weapon_grave_regalia",
+      "locale": "en",
+      "kind": "alt",
+      "text": "Game visual for Grave Regalia"
+    },
+    {
+      "id": "weapon_grave_regalia_description_ja",
+      "ownerId": "weapon_grave_regalia",
+      "locale": "ja",
+      "kind": "description",
+      "text": "灰冠王の未完の葬送を宿し、巨敵と霊的防壁へ強く響く固有大剣。"
+    },
+    {
+      "id": "encounter_ash_throne_name_ja",
+      "ownerId": "encounter_ash_throne",
+      "locale": "ja",
+      "kind": "name",
+      "text": "灰の玉座・最後の不寝番"
+    },
+    {
+      "id": "encounter_ash_throne_name_en",
+      "ownerId": "encounter_ash_throne",
+      "locale": "en",
+      "kind": "name",
+      "text": "The Ashen Throne — Last Vigil"
+    },
+    {
+      "id": "encounter_ash_throne_alt_ja",
+      "ownerId": "encounter_ash_throne",
+      "locale": "ja",
+      "kind": "alt",
+      "text": "灰の玉座・最後の不寝番のゲーム内ビジュアル"
+    },
+    {
+      "id": "encounter_ash_throne_alt_en",
+      "ownerId": "encounter_ash_throne",
+      "locale": "en",
+      "kind": "alt",
+      "text": "Game visual for The Ashen Throne — Last Vigil"
+    },
+    {
+      "id": "encounter_ash_throne_description_ja",
+      "ownerId": "encounter_ash_throne",
+      "locale": "ja",
+      "kind": "description",
+      "text": "王都最深部で灰冠王と対峙し、撃破後にその忠誠を弔王剣として継承するボス遭遇。"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "enemy_ash_regent_balance_simulation",
+      "ownerId": "enemy_ash_regent",
+      "kind": "balance-simulation",
+      "status": "FAIL",
+      "summary": "BattleEngine: TTK 5, 被ダメージ 20.16%, AoE価値 1, cost 3",
+      "createdAt": "2026-08-01T03:10:38.258Z"
+    },
+    {
+      "id": "skill_ash_regent_triple_bell_skill_balance",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "kind": "skill-balance",
+      "status": "WARN",
+      "summary": "PHYS_AOE: power 1.8, MP 18; BattleEngine TTK 3, AoE価値 3.25",
+      "createdAt": "2026-08-01T03:10:38.270Z"
+    },
+    {
+      "id": "weapon_grave_regalia_weapon_balance",
+      "ownerId": "weapon_grave_regalia",
+      "kind": "weapon-balance",
+      "status": "FAIL",
+      "summary": "基礎ATK 170（ILv70）; BattleEngine TTK 3",
+      "createdAt": "2026-08-01T03:10:38.258Z"
+    },
+    {
+      "id": "encounter_ash_throne_combat_simulation",
+      "ownerId": "encounter_ash_throne",
+      "kind": "combat-simulation",
+      "status": "PENDING",
+      "summary": "TTK・被ダメージ検証は対応工程の実行待ち。",
+      "createdAt": "2026-08-01T03:10:38.250Z"
+    },
+    {
+      "id": "encounter_ash_throne_clear_flow",
+      "ownerId": "encounter_ash_throne",
+      "kind": "clear-flow",
+      "status": "PENDING",
+      "summary": "解放・戦闘・リザルト永続化証跡は対応工程の実行待ち。",
+      "createdAt": "2026-08-01T03:10:38.250Z"
+    },
+    {
+      "id": "enemy_ash_regent_presentation_preview",
+      "ownerId": "enemy_ash_regent",
+      "kind": "presentation-preview",
+      "status": "PASS",
+      "summary": "1演出のtimeline・damage・VFX/SFX・accessibility・performance予算をstoryboard検査。",
+      "artifactPath": "content/packages/phase5_ash_regent_package/reviews/presentation-preview.svg",
+      "contentHash": "ab12bb0e5b5a131aeab5265aaf6a79ff858ab1aa62846cdbe6436bced639b9ab",
+      "createdAt": "2026-08-01T03:10:38.509Z"
+    },
+    {
+      "id": "skill_ash_regent_triple_bell_presentation_preview",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "kind": "presentation-preview",
+      "status": "PASS",
+      "summary": "1演出のtimeline・damage・VFX/SFX・accessibility・performance予算をstoryboard検査。",
+      "artifactPath": "content/packages/phase5_ash_regent_package/reviews/presentation-preview.svg",
+      "contentHash": "ab12bb0e5b5a131aeab5265aaf6a79ff858ab1aa62846cdbe6436bced639b9ab",
+      "createdAt": "2026-08-01T03:10:38.509Z"
+    }
+  ],
+  "orchestration": {
+    "request": {
+      "id": "phase5_boss_signature_weapon_request",
+      "text": "亡国の王都に新しいボスと固有武器を追加",
+      "recipe": "BOSS_WITH_SIGNATURE_WEAPON",
+      "sourceRef": "content/requests/phase5-boss-signature-weapon.request.json"
+    },
+    "releaseScope": {
+      "chapter": 1,
+      "state": "IN_SCOPE",
+      "reason": "現在のrelease scopeである第1章「亡国の王都」に限定。"
+    },
+    "state": "INCOMPLETE",
+    "stages": [
+      {
+        "id": "LORE",
+        "state": "PASS",
+        "dependsOn": [],
+        "attempt": 1,
+        "artifactRefs": [
+          "lore:royal_capital",
+          "lore:necromancy_power",
+          "lore:ash_regent",
+          "lore:mourning_regalia"
+        ],
+        "startedAt": "2026-08-01T03:10:38.255Z",
+        "summary": "Lore 4参照を固定。",
+        "findings": [],
+        "completedAt": "2026-08-01T03:10:38.255Z"
+      },
+      {
+        "id": "STATS",
+        "state": "WARN",
+        "dependsOn": [
+          "LORE"
+        ],
+        "attempt": 1,
+        "artifactRefs": [
+          "deliverable:enemy_ash_regent_combat_unit_stats",
+          "change:enemy:enemy_ash_regent",
+          "deliverable:enemy_ash_regent_combat_unit_identity",
+          "deliverable:enemy_ash_regent_combat_unit_growth",
+          "deliverable:enemy_ash_regent_combat_unit_skill_set",
+          "deliverable:weapon_grave_regalia_master_data",
+          "change:weapon:weapon_grave_regalia"
+        ],
+        "startedAt": "2026-08-01T03:10:38.258Z",
+        "summary": "2 master change / 2 evidenceを生成。",
+        "findings": [
+          {
+            "level": "WARN",
+            "message": "味方 atk=24 が BOSS 帯 14〜14（許容 9〜19）から外れています。味方戦力バランスを確認してください。"
+          },
+          {
+            "level": "WARN",
+            "message": "BOSS の味方スキル数は 2〜4 が目安です（現在: 1）。"
+          }
+        ],
+        "completedAt": "2026-08-01T03:10:38.258Z"
+      },
+      {
+        "id": "SKILLS",
+        "state": "PASS",
+        "dependsOn": [
+          "STATS"
+        ],
+        "attempt": 1,
+        "artifactRefs": [
+          "deliverable:skill_ash_regent_triple_bell_skill_mechanics",
+          "change:skill:skill_ash_regent_triple_bell"
+        ],
+        "startedAt": "2026-08-01T03:10:38.270Z",
+        "summary": "1 master change / 1 evidenceを生成。",
+        "findings": [],
+        "completedAt": "2026-08-01T03:10:38.270Z"
+      },
+      {
+        "id": "ASSETS",
+        "state": "PASS",
+        "dependsOn": [
+          "LORE"
+        ],
+        "attempt": 1,
+        "artifactRefs": [
+          "asset:ash_regent_fullbody",
+          "asset:ash_regent_battle_icon",
+          "asset:ash_regent_skill_icon",
+          "asset:ash_regent_vfx_texture",
+          "asset:grave_regalia_card",
+          "asset:grave_regalia_icon",
+          "asset:ash_throne_background",
+          "asset:ash_throne_enemy_visual"
+        ],
+        "startedAt": "2026-08-01T03:10:38.274Z",
+        "summary": "8画像のAssetSpec・生成プロンプト・参照順を草案化。",
+        "findings": [],
+        "completedAt": "2026-08-01T03:10:38.274Z"
+      },
+      {
+        "id": "PRESENTATION",
+        "state": "PASS",
+        "dependsOn": [
+          "SKILLS",
+          "ASSETS"
+        ],
+        "attempt": 1,
+        "artifactRefs": [
+          "presentation:ash_regent_lifecycle_presentation",
+          "deliverable:enemy_ash_regent_skill_presentation_unit_lifecycle",
+          "presentation:ash_regent_triple_bell_presentation",
+          "deliverable:skill_ash_regent_triple_bell_skill_presentation_timeline"
+        ],
+        "startedAt": "2026-08-01T03:10:38.279Z",
+        "summary": "2件のVFX/SFX timeline草案を生成。",
+        "findings": [],
+        "completedAt": "2026-08-01T03:10:38.279Z"
+      },
+      {
+        "id": "ACQUISITION",
+        "state": "PASS",
+        "dependsOn": [
+          "STATS",
+          "SKILLS"
+        ],
+        "attempt": 1,
+        "artifactRefs": [
+          "deliverable:enemy_ash_regent_acquisition_link_runtime",
+          "deliverable:skill_ash_regent_triple_bell_acquisition_link_owner",
+          "deliverable:weapon_grave_regalia_acquisition_link_drop_source",
+          "deliverable:weapon_grave_regalia_acquisition_link_inventory_equip",
+          "deliverable:encounter_ash_throne_combat_unit_enemy_data",
+          "deliverable:encounter_ash_throne_acquisition_link_stage_wave",
+          "deliverable:encounter_ash_throne_acquisition_link_reward",
+          "deliverable:encounter_ash_throne_acquisition_link_story_trigger"
+        ],
+        "startedAt": "2026-08-01T03:10:38.524Z",
+        "summary": "8件のstage・wave・drop・story接続草案を生成。",
+        "findings": [],
+        "completedAt": "2026-08-01T03:10:38.524Z"
+      },
+      {
+        "id": "VALIDATION",
+        "state": "WARN",
+        "dependsOn": [
+          "LORE",
+          "STATS",
+          "SKILLS",
+          "ASSETS",
+          "PRESENTATION",
+          "ACQUISITION"
+        ],
+        "attempt": 1,
+        "artifactRefs": [
+          "package:validation-report"
+        ],
+        "startedAt": "2026-08-01T03:10:38.528Z",
+        "summary": "26件の未完成項目を検出。画像原本など人間・生成ツール待ちを保持。",
+        "findings": [
+          {
+            "level": "WARN",
+            "message": "工程が未完了です: WARN"
+          },
+          {
+            "level": "WARN",
+            "message": "工程が未完了です: RUNNING"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: asset/battle-visual"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: asset/icon"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: asset/skill-icon"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: asset/inventory-icon"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: asset/detail-art"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: asset/background"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: asset/enemy-visual"
+          },
+          {
+            "level": "WARN",
+            "message": "検証証跡がFAILです。"
+          },
+          {
+            "level": "WARN",
+            "message": "検証証跡がFAILです。"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: バトル表示"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: ユニットアイコン"
+          },
+          {
+            "level": "WARN",
+            "message": "必須証跡が完了していません: EHP・TTK・AV・コスト評価"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: スキルアイコン"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: 武器インベントリアイコン"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: 武器詳細・カード画像"
+          },
+          {
+            "level": "WARN",
+            "message": "必須証跡が完了していません: 武器バランス検証"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: 戦闘背景"
+          },
+          {
+            "level": "WARN",
+            "message": "必須成果物がREADYではありません: 敵表示"
+          },
+          {
+            "level": "WARN",
+            "message": "必須証跡が完了していません: TTK・被ダメージ検証"
+          },
+          {
+            "level": "WARN",
+            "message": "必須証跡が完了していません: 解放・戦闘・リザルト永続化証跡"
+          },
+          {
+            "level": "WARN",
+            "message": "味方 atk=24 が BOSS 帯 14〜14（許容 9〜19）から外れています。味方戦力バランスを確認してください。"
+          },
+          {
+            "level": "WARN",
+            "message": "BOSS の味方スキル数は 2〜4 が目安です（現在: 1）。"
+          },
+          {
+            "level": "WARN",
+            "message": "effectKey は \"dark_slash\" または \"dark_slash_専用名\" が規約です。現在: \"ash_regent_triple_bell\"。"
+          },
+          {
+            "level": "WARN",
+            "message": "内容のsha256 contentHashが未記録です。VALIDATED遷移時に自動計算できます。"
+          }
+        ],
+        "completedAt": "2026-08-01T03:10:38.528Z"
+      }
+    ],
+    "updatedAt": "2026-08-01T03:10:38.528Z"
+  },
+  "provenance": {
+    "createdAt": "2026-08-01T03:10:38.250Z",
+    "createdBy": {
+      "name": "content-package-orchestrator",
+      "type": "automation"
+    },
+    "generator": {
+      "name": "Necromance Brave Package Orchestrator",
+      "version": "phase5"
+    },
+    "prompts": [
+      {
+        "id": "phase5_boss_signature_weapon_request",
+        "purpose": "BOSS_WITH_SIGNATURE_WEAPON",
+        "text": "亡国の王都に新しいボスと固有武器を追加"
+      },
+      {
+        "id": "asset_prompt_ash_regent_fullbody",
+        "purpose": "battle-visual / character-fullbody",
+        "text": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / character-fullbody\nPrimary request: 灰冠王と固有武器「弔王剣」 の battle-visual。対象ID enemy_ash_regent、種別 combat-unit、variant base。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 完全に均一な #00ff00 クロマキー背景。影、床面、反射、勾配、模様、照明むらを一切入れない。\nStyle/medium: 重厚なダークファンタジー・ゲームコンセプトアート。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 1536x2048、aspect ratio 3:4。safe area top 120px / right 120px / bottom 80px / left 120px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 消えかけた玉座の逆光と冷たい紫の魂光。威厳、疲弊、終わらない忠誠。\nColor palette: #17121f、#5f5665、#8B00FF、#d4af37。\nMaterials/textures: 灰を被った黒鉄、ひび割れた金箔、焼けた王旗、骨灰。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、灰で固まった王冠、両手大剣、背中の折れた王旗、一目で読める騎士シルエット。\nConsistency: ash_regent の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、生者の健康な肌、華美で新品の鎧、銃器、文字、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+      },
+      {
+        "id": "asset_prompt_ash_regent_battle_icon",
+        "purpose": "icon / battle-unit",
+        "text": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / battle-unit\nPrimary request: 灰冠王と固有武器「弔王剣」 の icon。対象ID enemy_ash_regent、種別 combat-unit、variant boss。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 被写体以外は透明になる切り抜き前提の単色背景。輪郭を明瞭にし、十分な余白を取る。\nStyle/medium: 高精細モバイルRPGバトルユニット。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 512x512、aspect ratio 1:1。safe area top 48px / right 48px / bottom 48px / left 48px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 輪郭を強調する紫のリムライト。不動の威圧感。\nColor palette: #17121f、#5f5665、#8B00FF、#d4af37。\nMaterials/textures: 黒鉄、灰、古い金箔。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、基準立ち絵と同じ王冠・鎧・大剣、小サイズで明確な輪郭。\nConsistency: ash_regent の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、デザイン変更、背景、文字、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+      },
+      {
+        "id": "asset_prompt_ash_regent_skill_icon",
+        "purpose": "skill-icon / skill-icon",
+        "text": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / skill-icon\nPrimary request: 灰冠王と固有武器「弔王剣」 の skill-icon。対象ID skill_ash_regent_triple_bell、種別 skill、variant triple-bell。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 被写体以外は透明になる切り抜き前提の単色背景。輪郭を明瞭にし、十分な余白を取る。\nStyle/medium: 高コントラストのゴシック・スキルアイコン。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 512x512、aspect ratio 1:1。safe area top 56px / right 56px / bottom 56px / left 56px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 三本の斬線と鐘形の魂光。葬送と決着。\nColor palette: #090711、#8B00FF、#d4af37、#ede9fe。\nMaterials/textures: 魂光、砕けた金属、灰。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、三本の斬線、抽象化した弔鐘、灰の王冠。\nConsistency: 同一ownerの派生画像では造形、比率、配色、素材を維持する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、細かすぎる人物画、文字、明るい祝祭色、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+      },
+      {
+        "id": "asset_prompt_ash_regent_vfx_texture",
+        "purpose": "vfx-texture / vfx-texture",
+        "text": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / vfx-texture\nPrimary request: 灰冠王と固有武器「弔王剣」 の vfx-texture。対象ID skill_ash_regent_triple_bell、種別 skill、variant ash-slash。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 被写体以外は透明になる切り抜き前提の単色背景。輪郭を明瞭にし、十分な余白を取る。\nStyle/medium: 加算合成用VFXテクスチャ。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 1024x1024、aspect ratio 1:1。safe area top 96px / right 96px / bottom 96px / left 96px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 中心から裂ける魂光。鋭い葬送。\nColor palette: #8B00FF、#d4af37、#f5f3ff。\nMaterials/textures: 灰粒子、魂火、刃の残光。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、三方向へ分かれる斬撃残光、色以外でも読める形状差。\nConsistency: 同一ownerの派生画像では造形、比率、配色、素材を維持する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、背景、文字、不透明な黒ベタ、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+      },
+      {
+        "id": "asset_prompt_grave_regalia_card",
+        "purpose": "detail-art / weapon-card",
+        "text": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / weapon-card\nPrimary request: 灰冠王と固有武器「弔王剣」 の detail-art。対象ID weapon_grave_regalia、種別 weapon、variant base。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 黒曜石色から深い紫へ落ちる簡潔なゴシック背景。\nStyle/medium: ダークファンタジー武器カードアート。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 1024x1536、aspect ratio 2:3。safe area top 96px / right 72px / bottom 128px / left 72px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 刃の内側から漏れる鐘形の紫光。荘厳な葬送。\nColor palette: #08060d、#51485d、#8B00FF、#d4af37。\nMaterials/textures: 黒鉄、割れた王冠の金、魂を封じた黒曜石。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、大剣、鍔に埋め込まれた割れた王冠、鐘の余韻を示す同心円。\nConsistency: grave_regalia の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、キャラクター主体、銃器、文字、新品の鏡面金属、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+      },
+      {
+        "id": "asset_prompt_grave_regalia_icon",
+        "purpose": "inventory-icon / weapon-icon",
+        "text": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / weapon-icon\nPrimary request: 灰冠王と固有武器「弔王剣」 の inventory-icon。対象ID weapon_grave_regalia、種別 weapon、variant inventory。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 被写体以外は透明になる切り抜き前提の単色背景。輪郭を明瞭にし、十分な余白を取る。\nStyle/medium: 高精細モバイルRPG武器アイコン。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 512x512、aspect ratio 1:1。safe area top 52px / right 52px / bottom 52px / left 52px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 紫の輪郭光。重く静かな威圧。\nColor palette: #08060d、#51485d、#8B00FF、#d4af37。\nMaterials/textures: 黒鉄、古い金、黒曜石。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、基準カードと同じ鍔・刃・王冠意匠、斜め配置で明確な輪郭。\nConsistency: grave_regalia の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、デザイン変更、背景、文字、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+      },
+      {
+        "id": "asset_prompt_ash_throne_background",
+        "purpose": "background / background",
+        "text": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / background\nPrimary request: 灰冠王と固有武器「弔王剣」 の background。対象ID encounter_ash_throne、種別 encounter、variant battle。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 黒曜石色から深い紫へ落ちる簡潔なゴシック背景。\nStyle/medium: 横長モバイルRPGバトル背景。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 1920x1080、aspect ratio 16:9。safe area top 80px / right 120px / bottom 180px / left 120px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 崩れた天井からの冷光と玉座下の魂光。滅びた王権の静寂。\nColor palette: #05040a、#24172f、#51485d、#8B00FF。\nMaterials/textures: 焼けた石床、破れた王旗、灰、黒曜石ガラス。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、中央奥の空の玉座、戦闘UIを邪魔しない床面、左右の折れた王旗。\nConsistency: 同一ownerの派生画像では造形、比率、配色、素材を維持する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、人物、文字、明るい昼空、近代建築、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+      },
+      {
+        "id": "asset_prompt_ash_throne_enemy_visual",
+        "purpose": "enemy-visual / battle-unit",
+        "text": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / battle-unit\nPrimary request: 灰冠王と固有武器「弔王剣」 の enemy-visual。対象ID encounter_ash_throne、種別 encounter、variant encounter。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 被写体以外は透明になる切り抜き前提の単色背景。輪郭を明瞭にし、十分な余白を取る。\nStyle/medium: 高精細モバイルRPG敵ユニット。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 768x768、aspect ratio 1:1。safe area top 72px / right 72px / bottom 72px / left 72px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 背景から分離する紫のリムライト。玉座を塞ぐ不動の騎士。\nColor palette: #17121f、#5f5665、#8B00FF、#d4af37。\nMaterials/textures: 黒鉄、灰、古い金箔。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、基準立ち絵と同一デザイン、戦闘中に読める大剣の構え。\nConsistency: ash_regent の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、背景、デザイン変更、文字、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+      }
+    ],
+    "references": [
+      {
+        "id": "phase5_boss_signature_weapon_request",
+        "kind": "request",
+        "uri": "content/requests/phase5-boss-signature-weapon.request.json"
+      }
+    ],
+    "hashAlgorithm": "sha256"
+  },
+  "review": {
+    "history": [],
+    "blockers": []
+  }
+}

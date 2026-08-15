@@ -58,6 +58,15 @@ import { applyPlayerDamage as reducePlayerHp, isPlayerDead } from './PlayerDefea
 import { getBaseAttackType } from './JobSystem';
 import { applyEnemyStatScale } from './EnemyScaling';
 
+export type BattleEngineMasterData = Pick<MasterDataService, 'getJob' | 'getSkill' | 'getEnemy'>;
+
+export type BattleEngineDependencies = {
+  /** Authoring/simulation can inject draft master data without mutating the singleton master files. */
+  masterData?: BattleEngineMasterData;
+  /** Deterministic simulations inject a seeded/constant RNG. Runtime defaults to Math.random. */
+  rng?: () => number;
+};
+
 /**
  * Necromance Brave Battle Engine
  * ターン制RPGの戦闘ロジック、ダメージ計算、リソース管理、WAVE進行を担当。
@@ -65,7 +74,8 @@ import { applyEnemyStatScale } from './EnemyScaling';
 export class BattleEngine {
   private state: BattleState;
   private logs: BattleLog[] = [];
-  private masterData: MasterDataService;
+  private masterData: BattleEngineMasterData;
+  private rng: () => number;
   private synergyBonus: SynergyBonus;
   private playerInitialMaxHp: number;
   private monsterCurrentHp: Record<string, number> = {};
@@ -86,6 +96,7 @@ export class BattleEngine {
     areaGimmick: BattleState['areaGimmick'] = 'NONE',
     demonState?: DemonRuntimeState,
     enemyStatScale?: EnemyStatScale,
+    dependencies: BattleEngineDependencies = {},
   ) {
     this.state = {
       player,
@@ -99,7 +110,8 @@ export class BattleEngine {
       pendingSummons: [],
       summonedEnemies: [],
     };
-    this.masterData = MasterDataService.getInstance();
+    this.masterData = dependencies.masterData ?? MasterDataService.getInstance();
+    this.rng = dependencies.rng ?? Math.random;
     this.synergyBonus = calculatePartyTribeSynergy(
       monsters.filter(Boolean) as MonsterData[]
     );
@@ -315,6 +327,7 @@ export class BattleEngine {
       powerMultiplier,
       element,
       synergyBonus: this.synergyBonus,
+      rng: this.rng,
     });
   }
 
@@ -576,6 +589,7 @@ export class BattleEngine {
         baseRate: skillData?.ailmentBaseRate,
         immune: false,
         durationBonus: this.synergyBonus.ailmentDurationBonus,
+        rng: this.rng,
       },
     );
     target.statusEffects = result.effects;
@@ -744,6 +758,7 @@ export class BattleEngine {
         baseRate: skillData.ailmentBaseRate,
         immune: false,
         durationBonus: this.synergyBonus.ailmentDurationBonus,
+        rng: this.rng,
       },
     );
     target.statusEffects = result.effects;
@@ -813,6 +828,7 @@ export class BattleEngine {
         defenderStats: monsterTarget.stats,
         defenderResistances: monsterTarget.resistances,
         element,
+        rng: this.rng,
       });
       const sb = this.synergyBonus;
       const absorbed = sb.absorbDmgPct
@@ -885,7 +901,7 @@ export class BattleEngine {
     const totalWeight = aliveMonsters.reduce(
       (sum, { idx }) => sum + (HATE_WEIGHTS[idx] ?? 20), 0
     );
-    let rand = Math.random() * totalWeight;
+    let rand = this.rng() * totalWeight;
     for (const { monster, idx } of aliveMonsters) {
       rand -= HATE_WEIGHTS[idx] ?? 20;
       if (rand <= 0) return monster;
@@ -1256,7 +1272,7 @@ export class BattleEngine {
     const result = processStatusEffects(
       effects,
       { maxHp: targetMaxHp },
-      Math.random,
+      this.rng,
       isPlayer ? { immuneTypes: this.synergyBonus.ailmentImmune as AilmentType[] } : undefined,
     );
     if (result.totalDamage > 0) {

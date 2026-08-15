@@ -1,0 +1,4 @@
+interface:
+  display_name: "Necromance Content Forge"
+  short_description: "世界観・数値・画像・演出を一つのゲームコンテンツとして制作する"
+  default_prompt: "Use $forge-game-content to create a complete, reviewable Necromance Brave content package."

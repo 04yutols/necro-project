@@ -8,6 +8,7 @@ import {
   Space_Grotesk,
 } from "next/font/google";
 import "./globals.css";
+import { MotionAccessibilityProvider } from "../components/layout/MotionAccessibilityProvider";
 
 const cinzel = Cinzel({
   subsets: ["latin"],
@@ -69,7 +70,7 @@ export default function RootLayout({
       className={`${cinzel.variable} ${cinzelDecorative.variable} ${imFellEnglish.variable} ${inter.variable} ${notoSansJP.variable} ${spaceGrotesk.variable}`}
     >
       <body className="antialiased bg-dark text-foreground font-noto">
-        {children}
+        <MotionAccessibilityProvider>{children}</MotionAccessibilityProvider>
       </body>
     </html>
   );

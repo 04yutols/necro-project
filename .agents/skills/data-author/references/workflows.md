@@ -1,5 +1,16 @@
 # Data Authoring ワークフロー
 
+## Content Packageから数値を作る
+
+複数種類を同じ企画で作る場合や、combat-unit / skill / weaponの新規数値を作る場合は、先に`forge-game-content`のContent Packageを使う。
+
+1. READY deliverableの`artifact.authoringKind`と`artifact.request`へrole、target level、tier/cost、ownerなどを記録する。
+2. `npm run content:author -- <package.json>`を実行する。
+3. 生成された`changes`、`artifact.authored.rationale`、`artifact.simulation`、`evidence`を確認する。
+4. `npm run content:validate -- <package.json>`と通常のmaster監査を通す。
+
+`content:author`は既存enemy / monster / skill / job / weapon gateと実BattleEngineを使う。目標帯外のWARN/FAILを手作業で消さず、役割や目標帯を見直して再生成する。job / monsterの草稿changeには検証用`id`が入るが、apply時はキーIDだけを残してmaster規約へ正規化される。
+
 ## 新しいボス戦の追加
 
 1. **エネミー設計** (`enemies.json`):
@@ -43,6 +54,12 @@
 `/skill-design` コマンドが手順化済み（power 倍率は `docs/設計書/19_スキルバランス設計書.md` に従う）。
 手動で行う場合: `skills.json` に追加 → `jobs.json` の該当職業 `skills` 配列に
 `{ "level": <習得Lv>, "skillId": "<id>" }` 形式で追加（文字列ではない）。
+
+## 新しい深淵の残滓名称の追加
+
+`residueNames.json` に `id / name / rarity / chapter / origin / tags` を追加する。
+性能フィールドは追加しない。複数種類のコンテンツを同じ企画で作る場合は
+`forge-game-content` スキルのcontent bundleを使う。
 
 ## 検証
 

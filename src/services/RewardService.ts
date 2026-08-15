@@ -75,13 +75,6 @@ const SUB_OPTION_POOL: StatRange[] = [
   { type: 'EFFECT_RES', range: [1,  6]   },
 ];
 
-const RESIDUE_NAMES: Record<AbyssalResidueData['rarity'], string[]> = {
-  COMMON:    ['骸の指輪', '虚ろの護符', '亡者の欠片', '幽霊の痕跡'],
-  RARE:      ['深淵の残滓', '魔骨の砕片', '怨霊の結晶', '冥界の遺物'],
-  EPIC:      ['奈落の紋章', '魂喰いの印', '深淵王の礎', '竜骨の至宝'],
-  LEGENDARY: ['神骸の結晶', '深淵神の欠片'],
-};
-
 // [min, max] sub option counts per rarity
 const SUB_COUNT_RANGE: Record<AbyssalResidueData['rarity'], [number, number]> = {
   COMMON:    [1, 2],
@@ -160,6 +153,7 @@ export class RewardService {
   private static generateResidue(
     rarity: AbyssalResidueData['rarity'],
     rng: () => number,
+    mds: MasterDataService,
   ): AbyssalResidueData {
     const slot = RESIDUE_SLOTS[Math.floor(rng() * RESIDUE_SLOTS.length)];
     const mainPool = MAIN_STAT_POOLS[slot];
@@ -177,8 +171,11 @@ export class RewardService {
       value: rollValue(s.range, rng),
     }));
 
-    const namePool = RESIDUE_NAMES[rarity];
-    const name = namePool[Math.floor(rng() * namePool.length)];
+    const namePool = mds.getResidueNames(rarity);
+    if (namePool.length === 0) {
+      throw new Error(`Residue name master has no entries for rarity ${rarity}.`);
+    }
+    const name = namePool[Math.floor(rng() * namePool.length)].name;
 
     return {
       id:        RewardService.generateResidueId(),
@@ -226,7 +223,7 @@ export class RewardService {
         const rarity = (entry.rarity ?? 'COMMON') as AbyssalResidueData['rarity'];
         const quantity = Math.max(1, entry.quantity ?? 1);
         for (let i = 0; i < quantity; i += 1) {
-          result.residues.push(RewardService.generateResidue(rarity, rng));
+          result.residues.push(RewardService.generateResidue(rarity, rng, mds));
         }
         break;
       }

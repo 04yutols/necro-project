@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "packageId": "phase3_visual_example",
+  "packageRevision": 3,
+  "promptQueuePath": "content/packages/phase3_visual_example/reviews/asset-prompts.json",
+  "jobs": [
+    {
+      "assetId": "codex_ash_blade_card",
+      "ownerId": "codex_ash_blade",
+      "usage": "weapon-card",
+      "originalPath": "content/packages/phase3_visual_example/originals/codex_ash_blade_card.png",
+      "outputPath": "public/images/generated/weapons/codex_ash_blade/card-default.webp",
+      "referenceAssetRefs": [],
+      "referenceAssetPaths": [],
+      "prompt": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / weapon-card\nPrimary request: 灰冠の葬剣 Visual Asset作例 の detail-art。対象ID codex_ash_blade、種別 weapon、variant default。\nWorld and theme: 王都の焼け跡で、名を失った臣下の忠誠が灰から鍛え直した葬剣を発見する。。主題は 亡国、灰、死者の忠誠、失われた戴冠式。\nScene/backdrop: 黒曜石色から深い紫へ落ちる簡潔なゴシック背景。\nStyle/medium: 重厚なダークファンタジーRPGの武器カード用コンセプトアート。写実寄りの手描き質感。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 768x1152、aspect ratio 2:3。safe area top 72px / right 72px / bottom 72px / left 72px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 冷たい背面光と刃の亀裂から漏れる弱い紫の魔力光。滅びた臣下の忠誠、静かな威圧感、弔い。\nColor palette: ash black、obsidian、aged bone ivory、tarnished gold、restrained void purple。\nMaterials/textures: 焼けた黒鋼、灰の堆積、ひび割れた古金、骨白の革巻き。\nMust include: 第1章・亡国の王都で成立する意匠、武器単体で判別できる強いシルエット、灰で形作られた王冠型の鍔、長く欠けた片刃、刃の内部に沈むごく細い紫の亀裂、剣以外の主役を置かない。\nConsistency: codex_ash_blade の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 人間の追加プレイアブル同行者、第2章以降の確定設定、明るい英雄譚の祝祭感、現代的な工業製品、人物、手、過剰な宝石、鮮やかな虹色、SF機械部品、画面を覆う炎、文字や紋章の可読テキスト、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+    }
+  ]
+}

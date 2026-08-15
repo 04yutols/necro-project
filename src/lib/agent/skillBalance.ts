@@ -36,6 +36,8 @@ export type SkillOwner = {
   tribe?: string;
   /** 魔物の属性傾向（耐性から導出）。 */
   elementAffinity?: string[];
+  /** 職業の奥義コスト（= maxEnergy）。奥義草稿の mpCost と照合する。 */
+  ultimateCost?: number;
 };
 
 export type SkillBalanceContext = {
@@ -51,7 +53,7 @@ export const VALID_SKILL_TYPES = ['PHYSICAL', 'MAGICAL'] as const;
 export const VALID_SKILL_ELEMENTS = [
   'FIRE', 'WATER', 'THUNDER', 'EARTH', 'WIND', 'ICE', 'LIGHT', 'DARK', 'NONE',
 ] as const;
-export const VALID_ATTACK_TYPES = ['SLASH', 'STRIKE', 'PROJECTILE', 'MAGIC', 'SUMMON'] as const;
+export const VALID_ATTACK_TYPES = ['SLASH', 'STRIKE', 'PROJECTILE', 'MAGIC', 'SUMMON', 'HEAL'] as const;
 export const VALID_TARGET_TYPES = ['SINGLE', 'ALL_ENEMIES'] as const;
 
 type Range = [number, number];
@@ -179,7 +181,24 @@ export function validateSkillDraft(draft: unknown, ctx: SkillBalanceContext): Sk
 
   // --- power 表（設計書19）による検閲 ---
   const ownerTier = ctx.owner?.tier === 2 ? 2 : 1;
+  const isUltimate = draft.isUltimate === true;
+  if (isUltimate && power !== null) {
+    const range: Range = targetType === 'ALL_ENEMIES'
+      ? ownerTier === 2 ? [2.5, 3.5] : [2.0, 2.8]
+      : ownerTier === 2 ? [3.5, 4.8] : [2.8, 3.5];
+    if (power < range[0] || power > range[1]) {
+      fail('power', `奥義 / Tier${ownerTier} / ${String(targetType)} の power 範囲は ${range[0]}〜${range[1]}（設計書19）。現在 ${power} は範囲外です。`);
+    } else {
+      pass('power', `奥義 power ${power} は Tier${ownerTier} 範囲 ${range[0]}〜${range[1]} 内 OK`);
+    }
+    if (power >= 5) fail('power', '奥義 power 5.0以上は禁止です。魔神技との差別化を維持してください。');
+    const ultimateCost = ctx.owner?.ultimateCost;
+    if (typeof ultimateCost === 'number' && mpCost !== ultimateCost) {
+      fail('mpCost', `奥義 mpCost は owner の ultimateCost ${ultimateCost} と一致させてください（現在: ${String(mpCost)}）。`);
+    }
+  }
   if (
+    !isUltimate &&
     typeof type === 'string' &&
     typeof targetType === 'string' &&
     mpCost !== null &&
@@ -211,8 +230,8 @@ export function validateSkillDraft(draft: unknown, ctx: SkillBalanceContext): Sk
   // --- effectKey 規約（element_attackType 小文字） ---
   if (typeof element === 'string' && typeof attackType === 'string') {
     const expected = `${element.toLowerCase()}_${attackTypeToEffectPart(attackType)}`;
-    if (draft.effectKey !== undefined && draft.effectKey !== expected) {
-      warn('effectKey', `effectKey は "${expected}"（element_attackType）が規約です。現在: "${String(draft.effectKey)}"。`);
+    if (draft.effectKey !== undefined && draft.effectKey !== expected && !String(draft.effectKey).startsWith(`${expected}_`)) {
+      warn('effectKey', `effectKey は "${expected}" または "${expected}_専用名" が規約です。現在: "${String(draft.effectKey)}"。`);
     }
   }
 

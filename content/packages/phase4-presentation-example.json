@@ -1,0 +1,346 @@
+{
+  "schemaVersion": 2,
+  "id": "phase4_presentation_example",
+  "title": "Phase 4 作例：灰冠の三葬",
+  "revision": 1,
+  "chapter": 1,
+  "status": "DRAFT",
+  "brief": {
+    "playerExperience": "亡国の臣下の灰が王冠を描き、三度の斬撃と音が同時に敵へ刻まれる。",
+    "themes": [
+      "亡国",
+      "灰",
+      "死者の忠誠"
+    ],
+    "mustInclude": [
+      "三段ヒット同期",
+      "形状で判別できる王冠と斬線",
+      "低性能端末フォールバック"
+    ],
+    "avoid": [
+      "色だけに依存する予兆",
+      "3Hzを超える点滅",
+      "人間の追加同行者"
+    ]
+  },
+  "targets": [
+    {
+      "id": "phase4_ashen_crown",
+      "kind": "skill",
+      "loreRefs": [
+        "royal_capital"
+      ]
+    }
+  ],
+  "lore": {
+    "registryRefs": [
+      "royal_capital"
+    ],
+    "entries": [],
+    "relationships": [],
+    "timelineEvents": []
+  },
+  "deliverables": [
+    {
+      "id": "phase4_ashen_crown_mechanics",
+      "ownerId": "phase4_ashen_crown",
+      "scope": "skill",
+      "kind": "mechanics",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "change:skill:phase4_ashen_crown"
+      ],
+      "artifact": {
+        "power": 1.6,
+        "mpCost": 18,
+        "targetType": "SINGLE",
+        "hits": 3
+      }
+    },
+    {
+      "id": "phase4_ashen_crown_icon_deliverable",
+      "ownerId": "phase4_ashen_crown",
+      "scope": "asset",
+      "kind": "skill-icon",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "asset:phase4_ashen_crown_icon"
+      ]
+    },
+    {
+      "id": "phase4_ashen_crown_timeline",
+      "ownerId": "phase4_ashen_crown",
+      "scope": "skill-presentation",
+      "kind": "timeline",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "presentation:phase4_ashen_crown_presentation"
+      ]
+    },
+    {
+      "id": "phase4_ashen_crown_owner",
+      "ownerId": "phase4_ashen_crown",
+      "scope": "acquisition-link",
+      "kind": "owner",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "change:skill:phase4_ashen_crown"
+      ],
+      "artifact": {
+        "ownerKind": "job",
+        "ownerId": "dark_priest",
+        "unlockLevel": 28
+      }
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "phase4_presentation_uses_skill",
+      "from": "presentation:phase4_ashen_crown_presentation",
+      "to": "change:skill:phase4_ashen_crown",
+      "relation": "INTEGRATES",
+      "reason": "skill.effectKeyから専用演出を解決する。"
+    }
+  ],
+  "changes": [
+    {
+      "scope": "skill",
+      "id": "phase4_ashen_crown",
+      "data": {
+        "id": "phase4_ashen_crown",
+        "name": "灰冠の三葬",
+        "mpCost": 18,
+        "power": 1.6,
+        "type": "MAGICAL",
+        "element": "DARK",
+        "attackType": "MAGIC",
+        "targetType": "SINGLE",
+        "effectKey": "dark_magic_ashen_crown",
+        "ailmentType": "WEAKEN",
+        "ailmentBaseRate": 0.35,
+        "description": "臣下の灰で王冠を描き、三つの葬刃を時間差で落とす。"
+      }
+    }
+  ],
+  "assets": [
+    {
+      "id": "phase4_ashen_crown_icon",
+      "ownerId": "phase4_ashen_crown",
+      "kind": "skill-icon",
+      "state": "READY",
+      "mediaType": "image",
+      "format": "svg",
+      "sourcePath": "content/packages/phase4_presentation_example/assets/phase4_ashen_crown_icon.svg",
+      "outputPath": "public/images/generated/skills/phase4_ashen_crown_icon.svg",
+      "width": 256,
+      "height": 256,
+      "alpha": false,
+      "safeArea": {
+        "top": 20,
+        "right": 20,
+        "bottom": 20,
+        "left": 20
+      },
+      "bytes": 1228,
+      "contentHash": "1073e79e24f08ae44182e00a2906044b130c07a04c78e27babd7b7a23339b158",
+      "provenancePromptRef": "phase4_presentation_brief",
+      "referenceAssetRefs": [],
+      "notes": "Phase 4 integration fixtureとしてSVGで制作。"
+    }
+  ],
+  "presentation": [
+    {
+      "id": "phase4_ashen_crown_presentation",
+      "ownerId": "phase4_ashen_crown",
+      "effectKey": "dark_magic_ashen_crown",
+      "state": "READY",
+      "element": "DARK",
+      "attackType": "MAGIC",
+      "label": "灰冠三葬",
+      "timeline": {
+        "castMs": 360,
+        "travelMs": 160,
+        "impactMs": 420,
+        "aftermathMs": 320,
+        "damageTimingsMs": [
+          610,
+          720,
+          830
+        ]
+      },
+      "vfx": {
+        "implementation": "SVG",
+        "particleBudget": 48,
+        "domNodeBudget": 60,
+        "blendMode": "screen",
+        "colors": {
+          "primary": "#a855f7",
+          "secondary": "#4c1d95",
+          "accent": "#fff1d6"
+        },
+        "textureAssetRefs": [],
+        "hitStopMs": 62,
+        "cameraShake": {
+          "intensity": 0.58,
+          "durationMs": 240
+        },
+        "screenFlash": {
+          "color": "#a855f7",
+          "opacity": 0.24,
+          "durationMs": 130
+        },
+        "targetMarker": "RUNE",
+        "shapeCue": "王冠形の術式と時間差で交差する三本の灰刃"
+      },
+      "sfx": {
+        "cues": [
+          {
+            "profileKey": "rune_cast",
+            "atMs": 0,
+            "pitch": 0.9,
+            "volume": 0.72,
+            "layer": "CAST"
+          },
+          {
+            "profileKey": "spectral_flight",
+            "atMs": 390,
+            "pitch": 0.82,
+            "volume": 0.58,
+            "layer": "TRAVEL"
+          },
+          {
+            "profileKey": "abyss_impact",
+            "atMs": 610,
+            "pitch": 0.86,
+            "volume": 0.94,
+            "layer": "IMPACT"
+          },
+          {
+            "profileKey": "abyss_impact",
+            "atMs": 720,
+            "pitch": 0.79,
+            "volume": 0.86,
+            "layer": "IMPACT"
+          },
+          {
+            "profileKey": "blade_cut",
+            "atMs": 830,
+            "pitch": 0.72,
+            "volume": 0.78,
+            "layer": "IMPACT"
+          }
+        ]
+      },
+      "accessibility": {
+        "reducedMotion": "STATIC_GLYPH",
+        "reducedParticleScale": 0.2,
+        "flashHzMax": 2,
+        "colorIndependent": true
+      },
+      "performance": {
+        "lowDeviceParticleBudget": 18,
+        "maxDomNodes": 72,
+        "targetFrameMs": 16.67
+      }
+    }
+  ],
+  "localization": [
+    {
+      "id": "phase4_ashen_crown_name_ja",
+      "ownerId": "phase4_ashen_crown",
+      "locale": "ja",
+      "kind": "name",
+      "text": "灰冠の三葬"
+    },
+    {
+      "id": "phase4_ashen_crown_name_en",
+      "ownerId": "phase4_ashen_crown",
+      "locale": "en",
+      "kind": "name",
+      "text": "THREEFOLD ASH CROWN"
+    },
+    {
+      "id": "phase4_ashen_crown_alt_ja",
+      "ownerId": "phase4_ashen_crown",
+      "locale": "ja",
+      "kind": "alt",
+      "text": "紫の王冠と三本の灰刃を描いたスキルアイコン"
+    },
+    {
+      "id": "phase4_ashen_crown_alt_en",
+      "ownerId": "phase4_ashen_crown",
+      "locale": "en",
+      "kind": "alt",
+      "text": "Skill icon showing a violet crown crossed by three ash blades"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "phase4_ashen_crown_skill_balance",
+      "ownerId": "phase4_ashen_crown",
+      "kind": "skill-balance",
+      "status": "PASS",
+      "summary": "単体・MP18・威力1.6・WEAKEN 35%を第1章後半術の範囲として確認。",
+      "createdAt": "2026-08-01T00:00:00.000Z"
+    },
+    {
+      "id": "phase4_ashen_crown_presentation_preview",
+      "ownerId": "phase4_ashen_crown",
+      "kind": "presentation-preview",
+      "status": "PASS",
+      "summary": "1演出のtimeline・damage・VFX/SFX・accessibility・performance予算をstoryboard検査。",
+      "artifactPath": "content/packages/phase4_presentation_example/reviews/presentation-preview.svg",
+      "contentHash": "8c62cec96aba2b7045ecefe0499ae269153af18c1bc02bf435185f04b810e6b7",
+      "createdAt": "2026-08-01T01:07:25.875Z"
+    },
+    {
+      "id": "phase4_ashen_crown_presentation_screenshot",
+      "ownerId": "phase4_ashen_crown",
+      "kind": "presentation-screenshot",
+      "status": "PASS",
+      "summary": "/admin/effectsでdark_summonを0.5倍再生し、44粒子、DOM 58/64、RUNE形状、3,040ms timelineを通常表示で確認。console errorなし。",
+      "artifactPath": "content/packages/phase4_presentation_example/reviews/admin-effects-dark-summon.png",
+      "contentHash": "4e04e1a93d0daf78931440cd96f462b5c4422486ea10b508790f16d9647a2000",
+      "createdAt": "2026-08-01T01:00:00.000Z"
+    }
+  ],
+  "provenance": {
+    "createdAt": "2026-08-01T00:00:00.000Z",
+    "createdBy": {
+      "name": "Codex",
+      "type": "codex"
+    },
+    "generator": {
+      "name": "Codex Content Forge",
+      "version": "phase4"
+    },
+    "prompts": [
+      {
+        "id": "phase4_presentation_brief",
+        "purpose": "演出同期作例",
+        "text": "亡国の臣下の灰が王冠を描き、三段の闇魔法をダメージ・SFXと同期させる。色だけに依存せず、低性能端末でも判読可能にする。"
+      }
+    ],
+    "references": [
+      {
+        "id": "world_bible",
+        "kind": "file",
+        "uri": ".agents/skills/forge-game-content/references/world-bible.md"
+      },
+      {
+        "id": "phase4_roadmap",
+        "kind": "file",
+        "uri": "docs/progress/CODEX_CONTENT_ROADMAP.md"
+      }
+    ],
+    "hashAlgorithm": "sha256"
+  },
+  "review": {
+    "history": [],
+    "blockers": []
+  }
+}

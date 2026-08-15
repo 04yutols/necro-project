@@ -26,6 +26,7 @@ const data = {
   skills: readJson('skills.json'),
   jobs: readJson('jobs.json'),
   demonForms: readJson('demonForms.json'),
+  residueNames: readJson('residueNames.json'),
 };
 
 const ELEMENTS = new Set(['FIRE', 'WATER', 'THUNDER', 'EARTH', 'WIND', 'ICE', 'LIGHT', 'DARK', 'NONE']);
@@ -83,6 +84,8 @@ function normalizeType(value) {
     jobs: 'jobs',
     demonForm: 'demonForms',
     demonForms: 'demonForms',
+    residueName: 'residueNames',
+    residueNames: 'residueNames',
   })[value] ?? value;
 }
 
@@ -555,6 +558,31 @@ function validateDemonForms(findings) {
   }
 }
 
+function validateResidueNames(findings) {
+  validateRecordIds(findings, 'residueNames', data.residueNames, { requiresId: true });
+  const seenNames = new Set();
+  for (const [id, entry] of Object.entries(data.residueNames)) {
+    if (!shouldInclude('residueNames', id)) continue;
+    if (typeof entry.name !== 'string' || entry.name.trim() === '') add(findings, 'residueNames', id, 'FAIL', 'name must be a non-empty string');
+    if (!RESIDUE_RARITIES.has(entry.rarity)) add(findings, 'residueNames', id, 'FAIL', `invalid rarity ${entry.rarity}`);
+    if (!Number.isInteger(entry.chapter) || entry.chapter < 1) add(findings, 'residueNames', id, 'FAIL', 'chapter must be an integer >= 1');
+    if (typeof entry.origin !== 'string' || entry.origin.trim() === '') add(findings, 'residueNames', id, 'FAIL', 'origin must be a non-empty string');
+    if (!Array.isArray(entry.tags) || entry.tags.length === 0 || entry.tags.some(tag => typeof tag !== 'string' || tag.trim() === '')) {
+      add(findings, 'residueNames', id, 'FAIL', 'tags must be a non-empty string array');
+    }
+    if (seenNames.has(entry.name)) add(findings, 'residueNames', id, 'WARN', `duplicate display name: ${entry.name}`);
+    seenNames.add(entry.name);
+    for (const forbidden of ['mainStat', 'subOptions', 'stats', 'power', 'effect']) {
+      if (forbidden in entry) add(findings, 'residueNames', id, 'FAIL', `${forbidden} is not allowed in the lore-only residue name master`);
+    }
+  }
+  for (const rarity of RESIDUE_RARITIES) {
+    if (!Object.values(data.residueNames).some(entry => entry.rarity === rarity)) {
+      add(findings, 'residueNames', rarity, 'FAIL', 'at least one name is required for runtime generation');
+    }
+  }
+}
+
 function printFindings(findings) {
   const visible = showAll
     ? findings
@@ -596,6 +624,7 @@ function main() {
   validateJobs(findings);
   validateSkills(findings);
   validateDemonForms(findings);
+  validateResidueNames(findings);
   printFindings(findings);
 
   if (strict && findings.some((finding) => finding.level === 'FAIL')) {

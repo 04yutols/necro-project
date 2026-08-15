@@ -8,6 +8,7 @@ import type {
   MonsterData,
   NecroConfigData,
   ResidueMatData,
+  ResidueNameData,
   SkillData,
   StageData,
 } from '../types/game';
@@ -35,6 +36,8 @@ type _MasterDataGetterReturnTypesAreNotAny = [
   AssertFalse<IsAny<ReturnType<MasterDataService['getNecroConfig']>>>,
   AssertFalse<IsAny<ReturnType<MasterDataService['getMaterial']>>>,
   AssertFalse<IsAny<ReturnType<MasterDataService['getAllMaterials']>>>,
+  AssertFalse<IsAny<ReturnType<MasterDataService['getAllResidueNames']>>>,
+  AssertFalse<IsAny<ReturnType<MasterDataService['getResidueNames']>>>,
 ];
 
 const svc = MasterDataService.getInstance();
@@ -76,6 +79,7 @@ describe('MasterDataService typed accessors', () => {
     const skills: Record<string, SkillData> = svc.getAllSkills();
     const demonForms: Record<string, DemonFormData> = svc.getAllDemonForms();
     const materials: Record<string, ResidueMatData> = svc.getAllMaterials();
+    const residueNames: Record<string, ResidueNameData> = svc.getAllResidueNames();
 
     expect(jobs.warrior.displayName).toBe('剣士');
     expect(monsters.goblin.id).toBe('goblin');
@@ -86,6 +90,8 @@ describe('MasterDataService typed accessors', () => {
     expect(skills.skill_warrior_1.mpCost).toBe(5);
     expect(demonForms.warrior.formName).toBe('黒翼の剣聖');
     expect(materials.bone_chip.rarity).toBe('COMMON');
+    expect(residueNames.bone_ring.name).toBe('骸の指輪');
+    expect(svc.getResidueNames('LEGENDARY')).toHaveLength(2);
   });
 
   test('all jobs expose a matching ultimate skill in master data', () => {

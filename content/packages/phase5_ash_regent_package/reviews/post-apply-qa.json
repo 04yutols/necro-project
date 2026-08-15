@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "packageId": "phase5_ash_regent_package",
+  "packageRevision": 6,
+  "createdAt": "2026-08-01T03:20:20.522Z",
+  "status": "PASS",
+  "gates": [
+    {
+      "id": "master-audit",
+      "command": "npm run data:audit",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationMs": 162
+    },
+    {
+      "id": "typescript",
+      "command": "npx tsc --noEmit",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationMs": 2380
+    },
+    {
+      "id": "jest",
+      "command": "npm test -- --runInBand",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationMs": 89802
+    },
+    {
+      "id": "playwright-and-visual-regression",
+      "command": "npx playwright test tests/content-package-review.spec.ts --project=chromium",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationMs": 2600
+    }
+  ],
+  "artifacts": {
+    "report": "content/packages/phase5_ash_regent_package/reviews/post-apply-qa.json",
+    "screenshot": "content/packages/phase5_ash_regent_package/reviews/content-package-review.png"
+  }
+}

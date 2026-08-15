@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 2,
+  "id": "fallen_crown_package_example",
+  "title": "落冠の灰 Content Package（作例）",
+  "revision": 1,
+  "chapter": 1,
+  "status": "DRAFT",
+  "brief": {
+    "playerExperience": "亡国の最後の戴冠式に残った記憶を、収集可能な深淵の残滓として発見する。",
+    "themes": ["喪失", "王権", "死者の記憶"],
+    "mustInclude": ["残滓の名称・由来と性能RNGを分離する", "小さなスロット表示でも王冠の輪郭を判別できる"],
+    "avoid": ["現代的な製品意匠", "第2章以降の確定設定", "残滓名称packageによる性能値変更"]
+  },
+  "targets": [
+    {
+      "id": "fallen_crown_ash",
+      "kind": "abyssal-residue",
+      "loreRefs": ["royal_capital"]
+    }
+  ],
+  "lore": {
+    "registryRefs": ["royal_capital"],
+    "entries": [],
+    "relationships": [],
+    "timelineEvents": []
+  },
+  "deliverables": [
+    {
+      "id": "fallen_crown_slot_visual",
+      "ownerId": "fallen_crown_ash",
+      "scope": "asset",
+      "kind": "slot-visual",
+      "required": true,
+      "state": "PLANNED",
+      "outputRefs": ["asset:fallen_crown_slot"],
+      "notes": "Phase 3のAsset Forgeで生成・寸法検査・hash記録を行う。"
+    },
+    {
+      "id": "fallen_crown_name_pool",
+      "ownerId": "fallen_crown_ash",
+      "scope": "acquisition-link",
+      "kind": "name-pool",
+      "required": true,
+      "state": "READY",
+      "outputRefs": ["change:residue-name:fallen_crown_ash"],
+      "artifact": {
+        "service": "RewardService",
+        "pool": "EPIC",
+        "policy": "名称だけをresidueNamesへ追加し、mainStat/subOptions抽選は変更しない。"
+      }
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "name_pool_requires_master_change",
+      "from": "deliverable:fallen_crown_name_pool",
+      "to": "change:residue-name:fallen_crown_ash",
+      "relation": "REQUIRES",
+      "reason": "名称プール接続にはresidueNamesの追加が必要。"
+    },
+    {
+      "id": "visual_uses_capital_lore",
+      "from": "deliverable:fallen_crown_slot_visual",
+      "to": "lore:royal_capital",
+      "relation": "USES",
+      "reason": "王都の王権・亡国モチーフを画像へ反映する。"
+    }
+  ],
+  "changes": [
+    {
+      "scope": "residue-name",
+      "id": "fallen_crown_ash",
+      "data": {
+        "id": "fallen_crown_ash",
+        "name": "落冠の灰",
+        "rarity": "EPIC",
+        "chapter": 1,
+        "origin": "最後の戴冠式を焼いた黒炎から、ただ一粒だけ残った灰。",
+        "tags": ["亡国", "王権", "喪失"]
+      }
+    }
+  ],
+  "assets": [
+    {
+      "id": "fallen_crown_slot",
+      "ownerId": "fallen_crown_ash",
+      "kind": "slot-visual",
+      "state": "PLANNED",
+      "mediaType": "image",
+      "format": "webp",
+      "outputPath": "public/images/generated/residues/fallen_crown_ash/slot.webp",
+      "provenancePromptRef": "fallen_crown_visual_prompt",
+      "referenceAssetRefs": [],
+      "notes": "256x256、透過、16px safe areaを予定。"
+    }
+  ],
+  "presentation": [],
+  "localization": [],
+  "evidence": [],
+  "provenance": {
+    "createdAt": "2026-07-31T00:00:00.000Z",
+    "createdBy": {
+      "name": "Codex",
+      "type": "codex"
+    },
+    "generator": {
+      "name": "Codex Content Forge",
+      "version": "phase1"
+    },
+    "prompts": [
+      {
+        "id": "fallen_crown_visual_prompt",
+        "purpose": "残滓スロット画像",
+        "text": "亡国の王冠が黒炎と灰へ崩れる瞬間。黒曜石、褪せた金、Void Purple。小さな正方形表示で王冠の輪郭を明確にする。"
+      }
+    ],
+    "references": [
+      {
+        "id": "world_bible",
+        "kind": "file",
+        "uri": ".agents/skills/forge-game-content/references/world-bible.md"
+      },
+      {
+        "id": "user_request",
+        "kind": "request",
+        "uri": "ストーリー・数値・イラスト・スキル演出をCodex内で制作しゲームへ統合できる仕組み"
+      }
+    ],
+    "hashAlgorithm": "sha256"
+  },
+  "review": {
+    "history": [],
+    "blockers": []
+  }
+}

@@ -291,6 +291,16 @@ export interface AbyssalResidueData {
   tierHistory?: number[];
 }
 
+/** 残滓の性能抽選とは分離した、世界観準拠の名称マスター。 */
+export interface ResidueNameData {
+  id: string;
+  name: string;
+  rarity: AbyssalResidueData['rarity'];
+  chapter: number;
+  origin: string;
+  tags: string[];
+}
+
 export interface ResidueMatData {
   id: string;
   name: string;

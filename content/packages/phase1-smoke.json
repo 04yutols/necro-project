@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 2,
+  "id": "phase1_smoke_package",
+  "title": "Phase 1 適用・復旧スモークパッケージ",
+  "revision": 1,
+  "chapter": 1,
+  "status": "DRAFT",
+  "brief": {
+    "playerExperience": "Content Packageの検証・承認・画像適用・復旧を最小構成で再現する。",
+    "themes": ["亡国", "王権"],
+    "mustInclude": ["名称と性能RNGの責務分離", "asset stagingから生成物ディレクトリへの適用"],
+    "avoid": ["実ゲームへの無承認適用", "第2章設定"]
+  },
+  "targets": [
+    {
+      "id": "phase1_smoke_residue",
+      "kind": "abyssal-residue",
+      "loreRefs": ["royal_capital"]
+    }
+  ],
+  "lore": {
+    "registryRefs": ["royal_capital"],
+    "entries": [],
+    "relationships": [],
+    "timelineEvents": []
+  },
+  "deliverables": [
+    {
+      "id": "smoke_slot_visual",
+      "ownerId": "phase1_smoke_residue",
+      "scope": "asset",
+      "kind": "slot-visual",
+      "required": true,
+      "state": "READY",
+      "outputRefs": ["asset:smoke_slot_asset"]
+    },
+    {
+      "id": "smoke_name_pool",
+      "ownerId": "phase1_smoke_residue",
+      "scope": "acquisition-link",
+      "kind": "name-pool",
+      "required": true,
+      "state": "READY",
+      "outputRefs": ["change:residue-name:phase1_smoke_residue"],
+      "artifact": {
+        "service": "RewardService",
+        "pool": "COMMON"
+      }
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "smoke_visual_uses_lore",
+      "from": "deliverable:smoke_slot_visual",
+      "to": "lore:royal_capital",
+      "relation": "USES",
+      "reason": "王都の王冠意匠を使用する。"
+    },
+    {
+      "id": "smoke_pool_requires_change",
+      "from": "deliverable:smoke_name_pool",
+      "to": "change:residue-name:phase1_smoke_residue",
+      "relation": "REQUIRES",
+      "reason": "RewardServiceが読む名称マスターが必要。"
+    }
+  ],
+  "changes": [
+    {
+      "scope": "residue-name",
+      "id": "phase1_smoke_residue",
+      "data": {
+        "id": "phase1_smoke_residue",
+        "name": "煤冠の欠片",
+        "rarity": "COMMON",
+        "chapter": 1,
+        "origin": "王都の路地へ落ちた、名もなき冠飾りの煤けた欠片。",
+        "tags": ["亡国", "王権", "煤"]
+      }
+    }
+  ],
+  "assets": [
+    {
+      "id": "smoke_slot_asset",
+      "ownerId": "phase1_smoke_residue",
+      "kind": "slot-visual",
+      "state": "READY",
+      "mediaType": "image",
+      "format": "svg",
+      "sourcePath": "content/packages/phase1-smoke/assets/slot.svg",
+      "outputPath": "public/images/generated/residues/phase1_smoke_residue/slot.svg",
+      "width": 64,
+      "height": 64,
+      "alpha": true,
+      "safeArea": {
+        "top": 4,
+        "right": 4,
+        "bottom": 4,
+        "left": 4
+      },
+      "bytes": 343,
+      "contentHash": "0d6810c705308d4a08d96c4c2b89a633cd6e078bb91851552bd86191754f74d7",
+      "provenancePromptRef": "smoke_asset_spec",
+      "referenceAssetRefs": []
+    }
+  ],
+  "presentation": [],
+  "localization": [
+    {
+      "id": "smoke_name_ja",
+      "ownerId": "phase1_smoke_residue",
+      "locale": "ja",
+      "kind": "name",
+      "text": "煤冠の欠片"
+    },
+    {
+      "id": "smoke_name_en",
+      "ownerId": "phase1_smoke_residue",
+      "locale": "en",
+      "kind": "name",
+      "text": "Soot-Crown Fragment"
+    },
+    {
+      "id": "smoke_alt_ja",
+      "ownerId": "phase1_smoke_residue",
+      "locale": "ja",
+      "kind": "alt",
+      "text": "紫の残光を宿す煤けた金の王冠片"
+    },
+    {
+      "id": "smoke_alt_en",
+      "ownerId": "phase1_smoke_residue",
+      "locale": "en",
+      "kind": "alt",
+      "text": "A soot-darkened golden crown fragment holding a violet afterglow"
+    }
+  ],
+  "evidence": [],
+  "provenance": {
+    "createdAt": "2026-07-31T00:00:00.000Z",
+    "createdBy": {
+      "name": "Codex",
+      "type": "codex"
+    },
+    "generator": {
+      "name": "Codex Content Forge",
+      "version": "phase1"
+    },
+    "prompts": [
+      {
+        "id": "smoke_asset_spec",
+        "purpose": "トランザクション検証用SVG",
+        "text": "黒曜石、褪せた金、Void Purpleを用い、64pxで王冠と判別できる最小SVGを作る。"
+      }
+    ],
+    "references": [
+      {
+        "id": "world_bible",
+        "kind": "file",
+        "uri": ".agents/skills/forge-game-content/references/world-bible.md"
+      },
+      {
+        "id": "phase1_contract",
+        "kind": "file",
+        "uri": "content/package.schema.json"
+      }
+    ],
+    "hashAlgorithm": "sha256"
+  },
+  "review": {
+    "history": [],
+    "blockers": []
+  }
+}

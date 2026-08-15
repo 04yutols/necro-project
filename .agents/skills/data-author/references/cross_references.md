@@ -18,6 +18,7 @@
 | `jobs.json` | `unlock.jobs[].jobId` | `jobs.json` | キー |
 | `jobs.json` | `unlock.clearedStageId` | `stages.json` | キー / `id` |
 | `demonForms.json` | キー / `jobId` | `jobs.json` | キー（全12職業と 1:1） |
+| `RewardService` | rarity別名称プール | `residueNames.json` | 各rarityに最低1件 |
 
 ## src/data/story/ → master
 
@@ -29,7 +30,7 @@
 ## 検証手順
 
 1. **ID 一貫性**: `id` フィールドを持つファイル（enemies / items / stages / skills /
-   materials / areas）はオブジェクト内 `id` と JSON キーの一致を確認する。
+   materials / residueNames / areas）はオブジェクト内 `id` と JSON キーの一致を確認する。
    jobs / monsters / demonForms はキー自体が ID。
 2. **参照整合性**: dropTable に追加したアイテムは items.json か materials.json に
    必ず存在すること。

@@ -1,0 +1,216 @@
+{
+  "schemaVersion": 2,
+  "id": "phase3_visual_example",
+  "title": "灰冠の葬剣 Visual Asset作例",
+  "revision": 3,
+  "chapter": 1,
+  "status": "DRAFT",
+  "brief": {
+    "playerExperience": "王都の焼け跡で、名を失った臣下の忠誠が灰から鍛え直した葬剣を発見する。",
+    "themes": [
+      "亡国",
+      "灰",
+      "死者の忠誠",
+      "失われた戴冠式"
+    ],
+    "mustInclude": [
+      "第1章・亡国の王都で成立する意匠",
+      "武器単体で判別できる強いシルエット"
+    ],
+    "avoid": [
+      "人間の追加プレイアブル同行者",
+      "第2章以降の確定設定",
+      "明るい英雄譚の祝祭感",
+      "現代的な工業製品"
+    ]
+  },
+  "targets": [
+    {
+      "id": "codex_ash_blade",
+      "kind": "weapon",
+      "loreRefs": [
+        "royal_capital"
+      ]
+    }
+  ],
+  "lore": {
+    "registryRefs": [
+      "royal_capital"
+    ],
+    "entries": [],
+    "relationships": [],
+    "timelineEvents": []
+  },
+  "deliverables": [
+    {
+      "id": "codex_ash_blade_detail_art",
+      "ownerId": "codex_ash_blade",
+      "scope": "asset",
+      "kind": "detail-art",
+      "required": true,
+      "state": "READY",
+      "outputRefs": [
+        "asset:codex_ash_blade_card"
+      ]
+    }
+  ],
+  "dependencies": [],
+  "changes": [],
+  "assets": [
+    {
+      "id": "codex_ash_blade_card",
+      "ownerId": "codex_ash_blade",
+      "kind": "detail-art",
+      "state": "READY",
+      "mediaType": "image",
+      "format": "webp",
+      "outputPath": "public/images/generated/weapons/codex_ash_blade/card-default.webp",
+      "referenceAssetRefs": [],
+      "spec": {
+        "schemaVersion": 1,
+        "usage": "weapon-card",
+        "variant": "default",
+        "width": 768,
+        "height": 1152,
+        "aspectRatio": {
+          "width": 2,
+          "height": 3
+        },
+        "transparency": "OPAQUE",
+        "safeArea": {
+          "top": 72,
+          "right": 72,
+          "bottom": 72,
+          "left": 72
+        },
+        "consistencyGroup": "codex_ash_blade",
+        "style": {
+          "medium": "重厚なダークファンタジーRPGの武器カード用コンセプトアート。写実寄りの手描き質感",
+          "palette": [
+            "ash black",
+            "obsidian",
+            "aged bone ivory",
+            "tarnished gold",
+            "restrained void purple"
+          ],
+          "lighting": "冷たい背面光と刃の亀裂から漏れる弱い紫の魔力光",
+          "mood": "滅びた臣下の忠誠、静かな威圧感、弔い",
+          "materials": [
+            "焼けた黒鋼",
+            "灰の堆積",
+            "ひび割れた古金",
+            "骨白の革巻き"
+          ]
+        },
+        "mustInclude": [
+          "灰で形作られた王冠型の鍔",
+          "長く欠けた片刃",
+          "刃の内部に沈むごく細い紫の亀裂",
+          "剣以外の主役を置かない"
+        ],
+        "avoid": [
+          "人物",
+          "手",
+          "過剰な宝石",
+          "鮮やかな虹色",
+          "SF機械部品",
+          "画面を覆う炎",
+          "文字や紋章の可読テキスト"
+        ],
+        "maxBytes": 900000
+      },
+      "originalPath": "content/packages/phase3_visual_example/originals/codex_ash_blade_card.png",
+      "provenancePromptRef": "asset_prompt_codex_ash_blade_card",
+      "sourcePath": "content/packages/phase3_visual_example/optimized/codex_ash_blade_card.webp",
+      "width": 768,
+      "height": 1152,
+      "alpha": false,
+      "safeArea": {
+        "top": 72,
+        "right": 72,
+        "bottom": 72,
+        "left": 72
+      },
+      "bytes": 126712,
+      "contentHash": "a7d49828975f25f8aa103c4e506d60f970636dea08bce09cc0babf3cedc99f64"
+    }
+  ],
+  "presentation": [],
+  "localization": [
+    {
+      "id": "codex_ash_blade_name_ja",
+      "ownerId": "codex_ash_blade",
+      "locale": "ja",
+      "kind": "name",
+      "text": "灰冠の葬剣"
+    },
+    {
+      "id": "codex_ash_blade_name_en",
+      "ownerId": "codex_ash_blade",
+      "locale": "en",
+      "kind": "name",
+      "text": "Ash-Crown Burial Blade"
+    },
+    {
+      "id": "codex_ash_blade_alt_ja",
+      "ownerId": "codex_ash_blade",
+      "locale": "ja",
+      "kind": "alt",
+      "text": "灰の王冠を鍔に持ち、紫の亀裂が沈む黒鋼の葬剣"
+    },
+    {
+      "id": "codex_ash_blade_alt_en",
+      "ownerId": "codex_ash_blade",
+      "locale": "en",
+      "kind": "alt",
+      "text": "A black-steel burial blade with an ash crown guard and faint violet fissures"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "asset_quality_codex_ash_blade_card",
+      "ownerId": "codex_ash_blade",
+      "kind": "asset-quality",
+      "status": "PASS",
+      "summary": "寸法・形式・alpha・容量・命名・参照検査を通過。contact sheetで人間の造形一貫性レビューが必要。",
+      "artifactPath": "content/packages/phase3_visual_example/reviews/contact-sheet.webp",
+      "contentHash": "a7d49828975f25f8aa103c4e506d60f970636dea08bce09cc0babf3cedc99f64",
+      "createdAt": "2026-07-31T16:00:48.844Z"
+    }
+  ],
+  "provenance": {
+    "createdAt": "2026-08-01T00:00:00.000Z",
+    "createdBy": {
+      "name": "Codex",
+      "type": "codex"
+    },
+    "generator": {
+      "name": "Codex Visual Asset Forge",
+      "version": "phase3"
+    },
+    "prompts": [
+      {
+        "id": "asset_prompt_codex_ash_blade_card",
+        "purpose": "detail-art / weapon-card",
+        "text": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / weapon-card\nPrimary request: 灰冠の葬剣 Visual Asset作例 の detail-art。対象ID codex_ash_blade、種別 weapon、variant default。\nWorld and theme: 王都の焼け跡で、名を失った臣下の忠誠が灰から鍛え直した葬剣を発見する。。主題は 亡国、灰、死者の忠誠、失われた戴冠式。\nScene/backdrop: 黒曜石色から深い紫へ落ちる簡潔なゴシック背景。\nStyle/medium: 重厚なダークファンタジーRPGの武器カード用コンセプトアート。写実寄りの手描き質感。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 768x1152、aspect ratio 2:3。safe area top 72px / right 72px / bottom 72px / left 72px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 冷たい背面光と刃の亀裂から漏れる弱い紫の魔力光。滅びた臣下の忠誠、静かな威圧感、弔い。\nColor palette: ash black、obsidian、aged bone ivory、tarnished gold、restrained void purple。\nMaterials/textures: 焼けた黒鋼、灰の堆積、ひび割れた古金、骨白の革巻き。\nMust include: 第1章・亡国の王都で成立する意匠、武器単体で判別できる強いシルエット、灰で形作られた王冠型の鍔、長く欠けた片刃、刃の内部に沈むごく細い紫の亀裂、剣以外の主役を置かない。\nConsistency: codex_ash_blade の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 人間の追加プレイアブル同行者、第2章以降の確定設定、明るい英雄譚の祝祭感、現代的な工業製品、人物、手、過剰な宝石、鮮やかな虹色、SF機械部品、画面を覆う炎、文字や紋章の可読テキスト、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+      }
+    ],
+    "references": [
+      {
+        "id": "world_bible",
+        "kind": "file",
+        "uri": ".agents/skills/forge-game-content/references/world-bible.md"
+      },
+      {
+        "id": "phase3_roadmap",
+        "kind": "file",
+        "uri": "docs/progress/CODEX_CONTENT_ROADMAP.md"
+      }
+    ],
+    "hashAlgorithm": "sha256"
+  },
+  "review": {
+    "history": [],
+    "blockers": []
+  }
+}

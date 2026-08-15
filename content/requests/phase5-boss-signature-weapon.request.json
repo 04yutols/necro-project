@@ -1,0 +1,474 @@
+{
+  "schemaVersion": 1,
+  "id": "phase5_boss_signature_weapon_request",
+  "packageId": "phase5_ash_regent_package",
+  "title": "灰冠王と固有武器「弔王剣」",
+  "chapter": 1,
+  "request": "亡国の王都に新しいボスと固有武器を追加",
+  "recipe": "BOSS_WITH_SIGNATURE_WEAPON",
+  "sourceRef": "content/requests/phase5-boss-signature-weapon.request.json",
+  "brief": {
+    "playerExperience": "王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。",
+    "themes": ["果たされなかった忠誠", "灰に沈む王権", "記憶を継ぐ武器"],
+    "mustInclude": ["亡国の王都", "灰の王冠", "弔鐘を思わせる三連撃", "固有武器の入手導線"],
+    "avoid": ["善悪だけで説明できる悪役", "現代的な装飾", "王都設定と無関係な異世界要素", "人間仲間の追加"]
+  },
+  "lore": {
+    "registryRefs": ["royal_capital", "necromancy_power"],
+    "entries": [
+      {
+        "id": "ash_regent",
+        "kind": "CHARACTER",
+        "certainty": "PROVISIONAL",
+        "nameJa": "灰冠王ヴァルグレイ",
+        "nameEn": "Valgrey, the Ashen Regent",
+        "aliases": ["灰冠王"],
+        "summary": "王の帰還を待ち続け、灰を冠として玉座を守る亡霊騎士。忠誠の対象を失ってなお退くことができない。",
+        "chapterIntroduced": 1,
+        "sourceRefs": ["content/requests/phase5-boss-signature-weapon.request.json", "lore:royal_capital"],
+        "tags": ["第1章", "ボス", "亡霊騎士", "忠誠"]
+      },
+      {
+        "id": "mourning_regalia",
+        "kind": "ARTIFACT",
+        "certainty": "PROVISIONAL",
+        "nameJa": "弔王剣グレイヴ・レガリア",
+        "nameEn": "Grave Regalia",
+        "aliases": ["弔王剣"],
+        "summary": "王の葬列で鳴らされなかった鐘の記憶を宿す大剣。灰冠王の執念を断った者へ託される。",
+        "chapterIntroduced": 1,
+        "sourceRefs": ["content/requests/phase5-boss-signature-weapon.request.json", "lore:ash_regent"],
+        "tags": ["第1章", "固有武器", "王権", "記憶"]
+      }
+    ],
+    "relationships": [
+      {
+        "id": "ash_regent_guards_capital",
+        "from": "ash_regent",
+        "to": "royal_capital",
+        "type": "死後の守護",
+        "certainty": "PROVISIONAL",
+        "summary": "灰冠王は亡国となった後も王都の玉座へ近づく者を侵入者とみなす。",
+        "sourceRefs": ["content/requests/phase5-boss-signature-weapon.request.json"]
+      },
+      {
+        "id": "ash_regent_wields_regalia",
+        "from": "ash_regent",
+        "to": "mourning_regalia",
+        "type": "所有者",
+        "certainty": "PROVISIONAL",
+        "summary": "弔王剣は灰冠王の忠誠と未完の葬送を宿す。",
+        "sourceRefs": ["content/requests/phase5-boss-signature-weapon.request.json"]
+      }
+    ],
+    "timelineEvents": [
+      {
+        "id": "ash_regent_last_vigil",
+        "order": 160,
+        "chapter": 1,
+        "title": "灰冠王、最後の不寝番",
+        "summary": "アルドは玉座へ縛られた灰冠王を倒し、眠れなかった忠誠の記憶を弔王剣として受け継ぐ。",
+        "participantRefs": ["aldo", "ash_regent"],
+        "locationRef": "royal_capital",
+        "certainty": "PROVISIONAL",
+        "sourceRefs": ["content/requests/phase5-boss-signature-weapon.request.json"]
+      }
+    ]
+  },
+  "targets": [
+    {
+      "id": "enemy_ash_regent",
+      "kind": "combat-unit",
+      "nameJa": "灰冠王ヴァルグレイ",
+      "nameEn": "Valgrey, the Ashen Regent",
+      "description": "灰の王冠と折れた王旗を背負い、三度の弔鐘に合わせて大剣を振るう亡霊騎士。",
+      "loreRefs": ["royal_capital", "ash_regent"],
+      "authoring": {
+        "authoringKind": "combat-unit",
+        "request": {
+          "kind": "ENEMY",
+          "id": "enemy_ash_regent",
+          "name": "Ashen Regent Valgrey",
+          "nameJa": "灰冠王ヴァルグレイ",
+          "nameEn": "Valgrey, the Ashen Regent",
+          "description": "王の帰還を待ち続け、灰を冠として玉座を守る亡霊騎士。",
+          "role": "TANK",
+          "level": 20,
+          "tribe": "UNDEAD",
+          "element": "DARK",
+          "weaknesses": ["LIGHT", "FIRE"],
+          "resistances": ["DARK", "ICE"],
+          "tier": "BOSS",
+          "maxEnergy": 90,
+          "skillIds": ["skill_ash_regent_triple_bell"],
+          "necromance": true
+        },
+        "simulationTargets": {
+          "ttkTurns": { "min": 6, "max": 14 },
+          "incomingDamagePct": { "min": 8, "max": 55 }
+        }
+      },
+      "assets": [
+        {
+          "id": "ash_regent_fullbody",
+          "kind": "battle-visual",
+          "spec": {
+            "schemaVersion": 1,
+            "usage": "character-fullbody",
+            "variant": "base",
+            "width": 1536,
+            "height": 2048,
+            "aspectRatio": { "width": 3, "height": 4 },
+            "transparency": "CHROMA_KEY",
+            "safeArea": { "top": 120, "right": 120, "bottom": 80, "left": 120 },
+            "consistencyGroup": "ash_regent",
+            "style": {
+              "medium": "重厚なダークファンタジー・ゲームコンセプトアート",
+              "palette": ["#17121f", "#5f5665", "#8B00FF", "#d4af37"],
+              "lighting": "消えかけた玉座の逆光と冷たい紫の魂光",
+              "mood": "威厳、疲弊、終わらない忠誠",
+              "materials": ["灰を被った黒鉄", "ひび割れた金箔", "焼けた王旗", "骨灰"]
+            },
+            "mustInclude": ["灰で固まった王冠", "両手大剣", "背中の折れた王旗", "一目で読める騎士シルエット"],
+            "avoid": ["生者の健康な肌", "華美で新品の鎧", "銃器", "文字"],
+            "maxBytes": 900000
+          }
+        },
+        {
+          "id": "ash_regent_battle_icon",
+          "kind": "icon",
+          "referenceAssetRefs": ["ash_regent_fullbody"],
+          "spec": {
+            "schemaVersion": 1,
+            "usage": "battle-unit",
+            "variant": "boss",
+            "width": 512,
+            "height": 512,
+            "aspectRatio": { "width": 1, "height": 1 },
+            "transparency": "ALPHA",
+            "safeArea": { "top": 48, "right": 48, "bottom": 48, "left": 48 },
+            "consistencyGroup": "ash_regent",
+            "style": {
+              "medium": "高精細モバイルRPGバトルユニット",
+              "palette": ["#17121f", "#5f5665", "#8B00FF", "#d4af37"],
+              "lighting": "輪郭を強調する紫のリムライト",
+              "mood": "不動の威圧感",
+              "materials": ["黒鉄", "灰", "古い金箔"]
+            },
+            "mustInclude": ["基準立ち絵と同じ王冠・鎧・大剣", "小サイズで明確な輪郭"],
+            "avoid": ["デザイン変更", "背景", "文字"],
+            "maxBytes": 320000
+          }
+        }
+      ],
+      "presentation": {
+        "id": "ash_regent_lifecycle_presentation",
+        "effectKey": "ash_regent_lifecycle",
+        "element": "DARK",
+        "attackType": "SUMMON",
+        "label": "灰冠王・王座顕現"
+      },
+      "acquisition": {
+        "runtime": {
+          "stageId": "area1_ash_throne",
+          "waveRole": "BOSS",
+          "enemyId": "enemy_ash_regent",
+          "necromance": true,
+          "reason": "撃破後は王座との契約が解け、使役魔物としてのみ3枠編成へ加えられる。人間仲間は追加しない。"
+        }
+      }
+    },
+    {
+      "id": "skill_ash_regent_triple_bell",
+      "kind": "skill",
+      "nameJa": "灰冠の三葬鐘",
+      "nameEn": "Three Knells of the Ashen Crown",
+      "description": "弔鐘の残響に合わせて三度斬りつけ、王都の灰を爆ぜさせる。",
+      "loreRefs": ["ash_regent", "mourning_regalia"],
+      "dependsOnTargetIds": ["enemy_ash_regent"],
+      "authoring": {
+        "authoringKind": "skill",
+        "request": {
+          "id": "skill_ash_regent_triple_bell",
+          "name": "灰冠の三葬鐘",
+          "description": "弔鐘の残響に合わせて三度斬りつけ、敵全体へ闇属性ダメージを与える。",
+          "type": "PHYSICAL",
+          "targetType": "ALL_ENEMIES",
+          "element": "DARK",
+          "attackType": "SLASH",
+          "ownerKind": "monster",
+          "ownerId": "enemy_ash_regent",
+          "tier": 1,
+          "potency": "HIGH"
+        }
+      },
+      "assets": [
+        {
+          "id": "ash_regent_skill_icon",
+          "kind": "skill-icon",
+          "spec": {
+            "schemaVersion": 1,
+            "usage": "skill-icon",
+            "variant": "triple-bell",
+            "width": 512,
+            "height": 512,
+            "aspectRatio": { "width": 1, "height": 1 },
+            "transparency": "ALPHA",
+            "safeArea": { "top": 56, "right": 56, "bottom": 56, "left": 56 },
+            "effectKey": "ash_regent_triple_bell",
+            "style": {
+              "medium": "高コントラストのゴシック・スキルアイコン",
+              "palette": ["#090711", "#8B00FF", "#d4af37", "#ede9fe"],
+              "lighting": "三本の斬線と鐘形の魂光",
+              "mood": "葬送と決着",
+              "materials": ["魂光", "砕けた金属", "灰"]
+            },
+            "mustInclude": ["三本の斬線", "抽象化した弔鐘", "灰の王冠"],
+            "avoid": ["細かすぎる人物画", "文字", "明るい祝祭色"],
+            "maxBytes": 280000
+          }
+        },
+        {
+          "id": "ash_regent_vfx_texture",
+          "kind": "vfx-texture",
+          "referenceAssetRefs": ["ash_regent_skill_icon"],
+          "spec": {
+            "schemaVersion": 1,
+            "usage": "vfx-texture",
+            "variant": "ash-slash",
+            "width": 1024,
+            "height": 1024,
+            "aspectRatio": { "width": 1, "height": 1 },
+            "transparency": "ALPHA",
+            "safeArea": { "top": 96, "right": 96, "bottom": 96, "left": 96 },
+            "effectKey": "ash_regent_triple_bell",
+            "style": {
+              "medium": "加算合成用VFXテクスチャ",
+              "palette": ["#8B00FF", "#d4af37", "#f5f3ff"],
+              "lighting": "中心から裂ける魂光",
+              "mood": "鋭い葬送",
+              "materials": ["灰粒子", "魂火", "刃の残光"]
+            },
+            "mustInclude": ["三方向へ分かれる斬撃残光", "色以外でも読める形状差"],
+            "avoid": ["背景", "文字", "不透明な黒ベタ"],
+            "maxBytes": 500000
+          }
+        }
+      ],
+      "presentation": {
+        "id": "ash_regent_triple_bell_presentation",
+        "effectKey": "ash_regent_triple_bell",
+        "element": "DARK",
+        "attackType": "SLASH",
+        "label": "灰冠の三葬鐘"
+      },
+      "acquisition": {
+        "owner": {
+          "ownerType": "enemy-ai",
+          "ownerId": "enemy_ash_regent",
+          "trigger": "energy >= 60",
+          "fallbackAction": "basic-attack"
+        }
+      }
+    },
+    {
+      "id": "weapon_grave_regalia",
+      "kind": "weapon",
+      "nameJa": "弔王剣グレイヴ・レガリア",
+      "nameEn": "Grave Regalia",
+      "description": "灰冠王の未完の葬送を宿し、巨敵と霊的防壁へ強く響く固有大剣。",
+      "loreRefs": ["ash_regent", "mourning_regalia"],
+      "dependsOnTargetIds": ["enemy_ash_regent"],
+      "authoring": {
+        "authoringKind": "weapon",
+        "request": {
+          "id": "weapon_grave_regalia",
+          "name": "弔王剣グレイヴ・レガリア",
+          "flavor": "鳴らされなかった葬鐘の記憶が刃の奥で震え、王を弔う一撃だけを待っている。",
+          "rarity": "UR",
+          "archetype": "MYTHIC",
+          "ilv": 70,
+          "subOption": "CRIT_DMG",
+          "element": "DARK",
+          "passiveA": {
+            "nameJa": "王骸への弔鐘",
+            "descTemplate": "BOSSへ与えるダメージ+{value}%",
+            "baseValue": 8,
+            "systemTag": "GIANT_KILLING"
+          },
+          "passiveB": {
+            "nameJa": "灰冠破り",
+            "descTemplate": "霊的防壁へのダメージ+{value}%",
+            "baseValue": 10,
+            "systemTag": "SHIELD_PIERCE"
+          }
+        }
+      },
+      "assets": [
+        {
+          "id": "grave_regalia_card",
+          "kind": "detail-art",
+          "spec": {
+            "schemaVersion": 1,
+            "usage": "weapon-card",
+            "variant": "base",
+            "width": 1024,
+            "height": 1536,
+            "aspectRatio": { "width": 2, "height": 3 },
+            "transparency": "OPAQUE",
+            "safeArea": { "top": 96, "right": 72, "bottom": 128, "left": 72 },
+            "consistencyGroup": "grave_regalia",
+            "style": {
+              "medium": "ダークファンタジー武器カードアート",
+              "palette": ["#08060d", "#51485d", "#8B00FF", "#d4af37"],
+              "lighting": "刃の内側から漏れる鐘形の紫光",
+              "mood": "荘厳な葬送",
+              "materials": ["黒鉄", "割れた王冠の金", "魂を封じた黒曜石"]
+            },
+            "mustInclude": ["大剣", "鍔に埋め込まれた割れた王冠", "鐘の余韻を示す同心円"],
+            "avoid": ["キャラクター主体", "銃器", "文字", "新品の鏡面金属"],
+            "maxBytes": 650000
+          }
+        },
+        {
+          "id": "grave_regalia_icon",
+          "kind": "inventory-icon",
+          "referenceAssetRefs": ["grave_regalia_card"],
+          "spec": {
+            "schemaVersion": 1,
+            "usage": "weapon-icon",
+            "variant": "inventory",
+            "width": 512,
+            "height": 512,
+            "aspectRatio": { "width": 1, "height": 1 },
+            "transparency": "ALPHA",
+            "safeArea": { "top": 52, "right": 52, "bottom": 52, "left": 52 },
+            "consistencyGroup": "grave_regalia",
+            "style": {
+              "medium": "高精細モバイルRPG武器アイコン",
+              "palette": ["#08060d", "#51485d", "#8B00FF", "#d4af37"],
+              "lighting": "紫の輪郭光",
+              "mood": "重く静かな威圧",
+              "materials": ["黒鉄", "古い金", "黒曜石"]
+            },
+            "mustInclude": ["基準カードと同じ鍔・刃・王冠意匠", "斜め配置で明確な輪郭"],
+            "avoid": ["デザイン変更", "背景", "文字"],
+            "maxBytes": 260000
+          }
+        }
+      ],
+      "acquisition": {
+        "drop-source": {
+          "stageId": "area1_ash_throne",
+          "enemyId": "enemy_ash_regent",
+          "dropType": "FIRST_CLEAR",
+          "itemId": "weapon_grave_regalia",
+          "quantity": 1
+        },
+        "inventory-equip": {
+          "inventoryType": "WEAPON",
+          "equipSlot": "weapon",
+          "owner": "aldo",
+          "unique": true
+        }
+      }
+    },
+    {
+      "id": "encounter_ash_throne",
+      "kind": "encounter",
+      "nameJa": "灰の玉座・最後の不寝番",
+      "nameEn": "The Ashen Throne — Last Vigil",
+      "description": "王都最深部で灰冠王と対峙し、撃破後にその忠誠を弔王剣として継承するボス遭遇。",
+      "loreRefs": ["royal_capital", "ash_regent", "mourning_regalia"],
+      "dependsOnTargetIds": ["enemy_ash_regent", "skill_ash_regent_triple_bell", "weapon_grave_regalia"],
+      "artifacts": {
+        "enemy-data": {
+          "stageDraft": {
+            "id": "area1_ash_throne",
+            "chapter": 1,
+            "nodeType": "BOSS",
+            "element": "DARK",
+            "difficulty": 5,
+            "waves": [
+              {
+                "label": "WAVE 1",
+                "role": "BOSS",
+                "enemyIds": ["enemy_ash_regent"],
+                "intent": "三連撃の予兆、弱点攻撃、防壁破壊を総合確認する。"
+              }
+            ]
+          }
+        }
+      },
+      "assets": [
+        {
+          "id": "ash_throne_background",
+          "kind": "background",
+          "spec": {
+            "schemaVersion": 1,
+            "usage": "background",
+            "variant": "battle",
+            "width": 1920,
+            "height": 1080,
+            "aspectRatio": { "width": 16, "height": 9 },
+            "transparency": "OPAQUE",
+            "safeArea": { "top": 80, "right": 120, "bottom": 180, "left": 120 },
+            "style": {
+              "medium": "横長モバイルRPGバトル背景",
+              "palette": ["#05040a", "#24172f", "#51485d", "#8B00FF"],
+              "lighting": "崩れた天井からの冷光と玉座下の魂光",
+              "mood": "滅びた王権の静寂",
+              "materials": ["焼けた石床", "破れた王旗", "灰", "黒曜石ガラス"]
+            },
+            "mustInclude": ["中央奥の空の玉座", "戦闘UIを邪魔しない床面", "左右の折れた王旗"],
+            "avoid": ["人物", "文字", "明るい昼空", "近代建築"],
+            "maxBytes": 900000
+          }
+        },
+        {
+          "id": "ash_throne_enemy_visual",
+          "kind": "enemy-visual",
+          "referenceAssetRefs": ["ash_regent_fullbody"],
+          "spec": {
+            "schemaVersion": 1,
+            "usage": "battle-unit",
+            "variant": "encounter",
+            "width": 768,
+            "height": 768,
+            "aspectRatio": { "width": 1, "height": 1 },
+            "transparency": "ALPHA",
+            "safeArea": { "top": 72, "right": 72, "bottom": 72, "left": 72 },
+            "consistencyGroup": "ash_regent",
+            "style": {
+              "medium": "高精細モバイルRPG敵ユニット",
+              "palette": ["#17121f", "#5f5665", "#8B00FF", "#d4af37"],
+              "lighting": "背景から分離する紫のリムライト",
+              "mood": "玉座を塞ぐ不動の騎士",
+              "materials": ["黒鉄", "灰", "古い金箔"]
+            },
+            "mustInclude": ["基準立ち絵と同一デザイン", "戦闘中に読める大剣の構え"],
+            "avoid": ["背景", "デザイン変更", "文字"],
+            "maxBytes": 420000
+          }
+        }
+      ],
+      "acquisition": {
+        "stage-wave": {
+          "stageId": "area1_ash_throne",
+          "unlockRequires": ["area1_node5"],
+          "waveCount": 1,
+          "bossEnemyId": "enemy_ash_regent"
+        },
+        "reward": {
+          "firstClear": [{ "type": "WEAPON", "itemId": "weapon_grave_regalia", "quantity": 1 }],
+          "repeatDrop": [{ "type": "MATERIAL", "materialId": "dark_essence", "rate": 0.35 }]
+        },
+        "story-trigger": {
+          "beforeBattle": "scene_ash_regent_vigil",
+          "afterBattle": "scene_ash_regent_release",
+          "archiveCategory": "chapter1"
+        }
+      }
+    }
+  ]
+}

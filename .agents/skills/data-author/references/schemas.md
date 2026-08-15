@@ -1,7 +1,7 @@
 # Necromance Brave マスターデータスキーマ
 
 実フィールド定義は `src/types/game.ts`（EnemyData / StageData / JobData / SkillData /
-DemonFormData / ItemData / MonsterData / ResidueMatData / AreaData）が正。
+DemonFormData / ItemData / MonsterData / ResidueMatData / ResidueNameData / AreaData）が正。
 ここでは authoring に必要な要点と基準値をまとめる。
 
 ## 1. enemies.json (EnemyData) — キー = `id`
@@ -153,7 +153,20 @@ Tier1 ×4 + Tier2 ×8 の 12 職業構成。
 | `position` | `{ x, y }` | ワールドマップ座標。 |
 | `sortOrder` | number | 任意。 |
 
-## 10. src/data/story/ （master 外・参考）
+## 10. residueNames.json (ResidueNameData) — キー = `id`
+
+| Field | Type | Description |
+|---|---|---|
+| `id` / `name` | string | id はキーと一致。name は日本語表示名。 |
+| `rarity` | `COMMON` \| `RARE` \| `EPIC` \| `LEGENDARY` | 各rarityに最低1件必要。 |
+| `chapter` | number | 名称の世界観上の出典章。 |
+| `origin` | string | 由来を示す短いフレーバー。 |
+| `tags` | string[] | 亡国、王権、深淵などの検索・重複確認用タグ。 |
+
+`mainStat` / `subOptions` / `stats` / `power` / `effect` は禁止。残滓性能は
+`RewardService` の決定論的抽選が所有し、名称制作と混ぜない。
+
+## 11. src/data/story/ （master 外・参考）
 
 `ch1_scenes.json` は `{ "scenes": [...] }` — **配列**（キー付きオブジェクトではない）。
 

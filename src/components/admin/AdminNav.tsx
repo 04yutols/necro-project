@@ -16,6 +16,9 @@ const NAV_ITEMS = [
   { href: '/admin/necro-config', label: '死霊術' },
   { href: '/admin/demon-forms', label: '魔神化' },
   { href: '/admin/story', label: 'ストーリー' },
+  { href: '/admin/assets', label: '画像Forge' },
+  { href: '/admin/effects', label: '演出Forge' },
+  { href: '/admin/content-packages', label: 'Package' },
   { href: '/admin/audit', label: '監査' },
   { href: '/admin/simulator', label: 'シミュ' },
 ];

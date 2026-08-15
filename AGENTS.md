@@ -31,6 +31,9 @@ npm test             # Run all Jest tests
 npm test -- --testPathPattern="BattleEngine"  # Single test file
 npx tsc --noEmit     # Type check (run after every code change)
 npx playwright test  # E2E tests (expects dev server at localhost:3080)
+npm run content:assets:prompts -- <package.json>  # Codex画像生成jobを作る
+npm run content:assets:forge -- <package.json>    # 原本を検査・WebP化・manifest更新
+npm run content:assets:check -- <package.json>    # 画像manifestを非破壊検査
 ```
 
 CI（`.github/workflows/ci.yml`）: push/PR で tsc + jest（`src/tests/` の DB 統合テストは除外）+
@@ -51,10 +54,12 @@ CI（`.github/workflows/ci.yml`）: push/PR で tsc + jest（`src/tests/` の DB
 - **`src/store/useGameStore.ts`** — Zustand store: all client runtime state.
 - **`src/lib/agent/`** — admin-screen AI draft agents (LangGraph + Gemini) with deterministic
   balance gates (`*Balance.ts`). Surfaced via `src/app/admin/`. See `docs/設計書/100〜107`.
+- **`src/lib/content/`** — Content Package、数値Authoring、Visual Asset Forge。画像原本は`content/packages/{id}/originals/`、最適化物は`optimized/`。
 
-### Master data (src/data/master/ — 9 files)
+### Master data (src/data/master/)
 
-`areas` / `demonForms` / `enemies` / `items` / `jobs` / `materials` / `monsters` / `skills` / `stages`.
+`areas` / `demonForms` / `enemies` / `items` / `jobs` / `materials` / `monsters` / `skills` / `stages` /
+`necroConfig` / `residueNames`.
 Keyed JSON objects loaded by `MasterDataService`. Story scenes live in `src/data/story/`.
 
 ### Routing / navigation

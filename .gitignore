@@ -49,3 +49,6 @@ next-env.d.ts
 
 # 一括変更の undo 用スナップショット（git追跡しない）
 src/data/master/.snapshots/
+
+# Codexコンテンツバンドル適用時の復旧用スナップショット
+.content-snapshots/

@@ -130,6 +130,7 @@
 | 黄泉の階層のDB・ランキング基盤（bestDungeonFloor / DUNGEON_FLOOR / playerState v4）の実装仕様を知りたい | [124_黄泉DB基盤実装仕様.md](124_黄泉DB基盤実装仕様.md) |
 | 黄泉の階層のジェネレータ・admin運用・監査WARN・本番反映の実装仕様を知りたい | [125_黄泉ジェネレータとadmin運用実装仕様.md](125_黄泉ジェネレータとadmin運用実装仕様.md) |
 | 黄泉の階層の専用タブ・階層選択UI・MAP除外・世界ログ・バトル復帰の実装仕様を知りたい | [126_黄泉プレイヤーUI実装仕様.md](126_黄泉プレイヤーUI実装仕様.md) |
+| Codexで数値・画像・VFX/SFXを含むゲームコンテンツ一式を制作し、安全に反映する仕組みを知りたい | [127_Codexコンテンツ制作基盤設計.md](127_Codexコンテンツ制作基盤設計.md) |
 
 ## 重要ファイルパス一覧
 
@@ -151,7 +152,7 @@ src/lib/agent/simEvalAgent.ts   — Agent E シミュレーション評価・ver
 src/services/RankingService.ts  — StageRecord / PlayerStats ランキング集計
 src/services/WorldEventService.ts — WorldLog 永続化・Pusher配信
 src/components/battle/BattleCanvas.tsx — バトル画面（PixiJS）
-src/data/master/               — マスターデータ JSON 5ファイル
+src/data/master/               — マスターデータ JSON
 prisma/schema.prisma           — DBスキーマ
 src/app/globals.css            — Gothic-Morphism CSS変数
 tailwind.config.ts             — デザイントークン定義

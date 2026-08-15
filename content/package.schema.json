@@ -1,0 +1,560 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://necromance-brave.local/schemas/content-package-v2.json",
+  "title": "Necromance Brave Content Package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "title",
+    "revision",
+    "chapter",
+    "status",
+    "brief",
+    "targets",
+    "lore",
+    "deliverables",
+    "dependencies",
+    "changes",
+    "assets",
+    "presentation",
+    "localization",
+    "evidence",
+    "provenance",
+    "review"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "id": { "$ref": "#/$defs/id" },
+    "title": { "$ref": "#/$defs/nonEmptyString" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "chapter": { "type": "integer", "minimum": 1, "maximum": 1, "description": "現在のrelease scopeは第1章のみ。第2章以降はDEFERRED。" },
+    "status": { "$ref": "#/$defs/packageState" },
+    "brief": { "$ref": "#/$defs/brief" },
+    "targets": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/target" } },
+    "lore": { "$ref": "#/$defs/packageLore" },
+    "deliverables": { "type": "array", "items": { "$ref": "#/$defs/deliverable" } },
+    "dependencies": { "type": "array", "items": { "$ref": "#/$defs/dependency" } },
+    "changes": { "type": "array", "items": { "$ref": "#/$defs/change" } },
+    "assets": { "type": "array", "items": { "$ref": "#/$defs/asset" } },
+    "presentation": { "type": "array", "items": { "$ref": "#/$defs/presentation" } },
+    "localization": { "type": "array", "items": { "$ref": "#/$defs/localization" } },
+    "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+    "orchestration": { "$ref": "#/$defs/orchestration" },
+    "provenance": { "$ref": "#/$defs/provenance" },
+    "review": { "$ref": "#/$defs/review" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "stringArray": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "repositoryPath": { "type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//).+$" },
+    "packageState": { "enum": ["DRAFT", "VALIDATED", "REVIEWED", "APPROVED", "APPLIED", "BLOCKED"] },
+    "actorType": { "enum": ["human", "codex", "automation"] },
+    "reviewItemState": { "enum": ["PENDING", "APPROVED", "CHANGES_REQUESTED"] },
+    "reviewAuditAction": { "enum": ["REVIEW_INITIALIZED", "ITEM_APPROVED", "CHANGES_REQUESTED", "ITEM_RESET", "STAGE_REGENERATED", "UNDO_COMPLETED", "UNDO_CONFLICT"] },
+    "artifactState": { "enum": ["PLANNED", "READY", "BLOCKED"] },
+    "brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["playerExperience", "themes", "mustInclude", "avoid"],
+      "properties": {
+        "playerExperience": { "$ref": "#/$defs/nonEmptyString" },
+        "themes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "mustInclude": { "$ref": "#/$defs/stringArray" },
+        "avoid": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "loreRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["story-character", "combat-unit", "weapon", "skill", "abyssal-residue", "encounter"] },
+        "loreRefs": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "loreCertainty": { "enum": ["CONFIRMED", "PROVISIONAL", "REJECTED"] },
+    "loreEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "certainty", "nameJa", "aliases", "summary", "chapterIntroduced", "sourceRefs", "tags"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["CHARACTER", "PLACE", "FACTION", "EVENT", "ARTIFACT", "CONCEPT"] },
+        "certainty": { "$ref": "#/$defs/loreCertainty" },
+        "nameJa": { "$ref": "#/$defs/nonEmptyString" },
+        "nameEn": { "$ref": "#/$defs/nonEmptyString" },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "summary": { "$ref": "#/$defs/nonEmptyString" },
+        "chapterIntroduced": { "type": "integer", "minimum": 0 },
+        "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "tags": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } }
+      }
+    },
+    "loreRelationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "from", "to", "type", "certainty", "summary", "sourceRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "from": { "$ref": "#/$defs/id" },
+        "to": { "$ref": "#/$defs/id" },
+        "type": { "$ref": "#/$defs/nonEmptyString" },
+        "certainty": { "$ref": "#/$defs/loreCertainty" },
+        "summary": { "$ref": "#/$defs/nonEmptyString" },
+        "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } }
+      }
+    },
+    "loreTimeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "order", "chapter", "title", "summary", "participantRefs", "certainty", "sourceRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "order": { "type": "number" },
+        "chapter": { "type": "integer", "minimum": 0 },
+        "title": { "$ref": "#/$defs/nonEmptyString" },
+        "summary": { "$ref": "#/$defs/nonEmptyString" },
+        "participantRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/id" } },
+        "locationRef": { "$ref": "#/$defs/id" },
+        "certainty": { "$ref": "#/$defs/loreCertainty" },
+        "sourceRefs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } }
+      }
+    },
+    "packageLore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registryRefs", "entries", "relationships", "timelineEvents"],
+      "properties": {
+        "registryRefs": { "$ref": "#/$defs/stringArray" },
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/loreEntry" } },
+        "relationships": { "type": "array", "items": { "$ref": "#/$defs/loreRelationship" } },
+        "timelineEvents": { "type": "array", "items": { "$ref": "#/$defs/loreTimeline" } }
+      }
+    },
+    "deliverable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ownerId", "scope", "kind", "required", "state", "outputRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "ownerId": { "$ref": "#/$defs/id" },
+        "scope": { "enum": ["character-profile", "combat-unit", "skill", "asset", "skill-presentation", "acquisition-link"] },
+        "kind": { "$ref": "#/$defs/nonEmptyString" },
+        "required": { "type": "boolean" },
+        "state": { "$ref": "#/$defs/artifactState" },
+        "outputRefs": { "$ref": "#/$defs/stringArray" },
+        "artifact": { "type": "object" },
+        "notes": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "from", "to", "relation", "reason"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "from": { "$ref": "#/$defs/nonEmptyString" },
+        "to": { "$ref": "#/$defs/nonEmptyString" },
+        "relation": { "enum": ["REQUIRES", "USES", "INTEGRATES"] },
+        "reason": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "id", "data"],
+      "properties": {
+        "scope": { "enum": ["story-character", "story-scene", "enemy", "monster", "skill", "job", "weapon", "stage", "residue-name"] },
+        "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
+        "packId": { "$ref": "#/$defs/id" },
+        "data": { "type": "object" }
+      }
+    },
+    "safeArea": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["top", "right", "bottom", "left"],
+      "properties": {
+        "top": { "type": "number", "minimum": 0 },
+        "right": { "type": "number", "minimum": 0 },
+        "bottom": { "type": "number", "minimum": 0 },
+        "left": { "type": "number", "minimum": 0 }
+      }
+    },
+    "assetSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "usage", "variant", "width", "height", "aspectRatio", "transparency", "safeArea", "style", "mustInclude", "avoid", "maxBytes"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "usage": { "enum": ["character-fullbody", "character-expression", "character-bust", "battle-unit", "weapon-icon", "weapon-card", "weapon-silhouette", "residue-icon", "skill-icon", "vfx-texture", "vfx-mask", "background"] },
+        "variant": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+        "width": { "type": "integer", "minimum": 64, "maximum": 4096 },
+        "height": { "type": "integer", "minimum": 64, "maximum": 4096 },
+        "aspectRatio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height"],
+          "properties": {
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "transparency": { "enum": ["OPAQUE", "ALPHA", "CHROMA_KEY"] },
+        "safeArea": { "$ref": "#/$defs/safeArea" },
+        "expression": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+        "effectKey": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+        "consistencyGroup": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+        "style": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["medium", "palette", "lighting", "mood", "materials"],
+          "properties": {
+            "medium": { "$ref": "#/$defs/nonEmptyString" },
+            "palette": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } },
+            "lighting": { "$ref": "#/$defs/nonEmptyString" },
+            "mood": { "$ref": "#/$defs/nonEmptyString" },
+            "materials": { "$ref": "#/$defs/stringArray" }
+          }
+        },
+        "mustInclude": { "$ref": "#/$defs/stringArray" },
+        "avoid": { "$ref": "#/$defs/stringArray" },
+        "maxBytes": { "type": "integer", "minimum": 1024 }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ownerId", "kind", "state", "mediaType", "format", "outputPath", "referenceAssetRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "ownerId": { "$ref": "#/$defs/id" },
+        "kind": { "$ref": "#/$defs/nonEmptyString" },
+        "state": { "$ref": "#/$defs/artifactState" },
+        "mediaType": { "enum": ["image", "audio"] },
+        "format": { "enum": ["png", "webp", "jpg", "svg", "mp3", "wav", "ogg"] },
+        "originalPath": { "$ref": "#/$defs/repositoryPath" },
+        "sourcePath": { "$ref": "#/$defs/repositoryPath" },
+        "outputPath": { "$ref": "#/$defs/repositoryPath" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "alpha": { "type": "boolean" },
+        "safeArea": { "$ref": "#/$defs/safeArea" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "contentHash": { "$ref": "#/$defs/sha256" },
+        "provenancePromptRef": { "$ref": "#/$defs/id" },
+        "referenceAssetRefs": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "spec": { "$ref": "#/$defs/assetSpec" },
+        "notes": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "state": { "const": "READY" } }, "required": ["state"] },
+          "then": { "required": ["sourcePath", "bytes", "contentHash"] }
+        },
+        {
+          "if": { "properties": { "state": { "const": "READY" }, "mediaType": { "const": "image" } }, "required": ["state", "mediaType"] },
+          "then": { "required": ["width", "height", "alpha", "safeArea"] }
+        },
+        {
+          "if": { "properties": { "state": { "const": "BLOCKED" } }, "required": ["state"] },
+          "then": { "required": ["notes"] }
+        }
+      ]
+    },
+    "timeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["castMs", "travelMs", "impactMs", "aftermathMs", "damageTimingsMs"],
+      "properties": {
+        "castMs": { "type": "number", "minimum": 0 },
+        "travelMs": { "type": "number", "minimum": 0 },
+        "impactMs": { "type": "number", "minimum": 0 },
+        "aftermathMs": { "type": "number", "minimum": 0 },
+        "damageTimingsMs": { "type": "array", "minItems": 1, "items": { "type": "number", "minimum": 0 } }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ownerId", "effectKey", "state"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "ownerId": { "$ref": "#/$defs/id" },
+        "effectKey": { "$ref": "#/$defs/nonEmptyString" },
+        "state": { "$ref": "#/$defs/artifactState" },
+        "element": { "enum": ["FIRE", "WATER", "THUNDER", "EARTH", "WIND", "ICE", "LIGHT", "DARK", "NONE"] },
+        "attackType": { "enum": ["SLASH", "STRIKE", "PROJECTILE", "MAGIC", "SUMMON", "HEAL"] },
+        "label": { "$ref": "#/$defs/nonEmptyString" },
+        "timeline": { "$ref": "#/$defs/timeline" },
+        "vfx": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["implementation", "particleBudget", "domNodeBudget", "blendMode", "colors", "textureAssetRefs", "hitStopMs", "cameraShake", "screenFlash", "targetMarker", "shapeCue"],
+          "properties": {
+            "implementation": { "enum": ["CSS", "SVG", "FRAMER", "PIXI"] },
+            "particleBudget": { "type": "integer", "minimum": 0 },
+            "domNodeBudget": { "type": "integer", "minimum": 0 },
+            "blendMode": { "enum": ["normal", "screen", "multiply", "overlay", "lighten"] },
+            "colors": {
+              "type": "object", "additionalProperties": false, "required": ["primary", "secondary", "accent"],
+              "properties": { "primary": { "$ref": "#/$defs/nonEmptyString" }, "secondary": { "$ref": "#/$defs/nonEmptyString" }, "accent": { "$ref": "#/$defs/nonEmptyString" } }
+            },
+            "textureAssetRefs": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+            "hitStopMs": { "type": "number", "minimum": 0 },
+            "cameraShake": {
+              "type": "object", "additionalProperties": false, "required": ["intensity", "durationMs"],
+              "properties": { "intensity": { "type": "number", "minimum": 0, "maximum": 1 }, "durationMs": { "type": "number", "minimum": 0 } }
+            },
+            "screenFlash": {
+              "type": "object", "additionalProperties": false, "required": ["color", "opacity", "durationMs"],
+              "properties": { "color": { "$ref": "#/$defs/nonEmptyString" }, "opacity": { "type": "number", "minimum": 0, "maximum": 1 }, "durationMs": { "type": "number", "minimum": 0 } }
+            },
+            "targetMarker": { "enum": ["NONE", "RING", "CROSSHAIR", "RUNE"] },
+            "shapeCue": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "sfx": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cues"],
+          "properties": {
+            "cues": {
+              "type": "array", "minItems": 1,
+              "items": {
+                "type": "object", "additionalProperties": false, "required": ["profileKey", "atMs", "pitch", "volume", "layer"],
+                "properties": {
+                  "profileKey": { "$ref": "#/$defs/nonEmptyString" }, "atMs": { "type": "number", "minimum": 0 },
+                  "pitch": { "type": "number", "minimum": 0.5, "maximum": 2 }, "volume": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "layer": { "enum": ["CAST", "TRAVEL", "IMPACT", "AFTERMATH"] }
+                }
+              }
+            }
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reducedMotion", "reducedParticleScale", "flashHzMax", "colorIndependent"],
+          "properties": {
+            "reducedMotion": { "enum": ["FADE_ONLY", "STATIC_GLYPH", "SHORTENED"] },
+            "reducedParticleScale": { "type": "number", "minimum": 0, "maximum": 1 },
+            "flashHzMax": { "type": "number", "minimum": 0, "maximum": 3 },
+            "colorIndependent": { "type": "boolean" }
+          }
+        },
+        "performance": {
+          "type": "object", "additionalProperties": false, "required": ["lowDeviceParticleBudget", "maxDomNodes", "targetFrameMs"],
+          "properties": {
+            "lowDeviceParticleBudget": { "type": "integer", "minimum": 0 },
+            "maxDomNodes": { "type": "integer", "minimum": 1 },
+            "targetFrameMs": { "type": "number", "minimum": 16.6 }
+          }
+        },
+        "notes": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "state": { "const": "READY" } }, "required": ["state"] },
+          "then": { "required": ["element", "attackType", "label", "timeline", "vfx", "sfx", "accessibility", "performance"] }
+        },
+        {
+          "if": { "properties": { "state": { "const": "BLOCKED" } }, "required": ["state"] },
+          "then": { "required": ["notes"] }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ownerId", "kind", "status", "summary", "createdAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "ownerId": { "$ref": "#/$defs/id" },
+        "kind": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "enum": ["PENDING", "PASS", "WARN", "FAIL"] },
+        "summary": { "$ref": "#/$defs/nonEmptyString" },
+        "artifactPath": { "$ref": "#/$defs/repositoryPath" },
+        "contentHash": { "$ref": "#/$defs/sha256" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "localization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ownerId", "locale", "kind", "text"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "ownerId": { "$ref": "#/$defs/id" },
+        "locale": { "enum": ["ja", "en"] },
+        "kind": { "enum": ["name", "description", "dialogue", "alt", "subtitle"] },
+        "text": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "pipelineStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "state", "dependsOn", "attempt", "artifactRefs"],
+      "properties": {
+        "id": { "enum": ["LORE", "STATS", "SKILLS", "ASSETS", "PRESENTATION", "ACQUISITION", "VALIDATION"] },
+        "state": { "enum": ["PENDING", "RUNNING", "PASS", "WARN", "FAIL", "BLOCKED"] },
+        "dependsOn": { "type": "array", "items": { "enum": ["LORE", "STATS", "SKILLS", "ASSETS", "PRESENTATION", "ACQUISITION", "VALIDATION"] } },
+        "attempt": { "type": "integer", "minimum": 0 },
+        "artifactRefs": { "$ref": "#/$defs/stringArray" },
+        "summary": { "$ref": "#/$defs/nonEmptyString" },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["level", "message"],
+            "properties": {
+              "level": { "enum": ["WARN", "FAIL"] },
+              "message": { "$ref": "#/$defs/nonEmptyString" }
+            }
+          }
+        },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "orchestration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request", "releaseScope", "state", "stages", "updatedAt"],
+      "properties": {
+        "request": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "text", "recipe", "sourceRef"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "text": { "$ref": "#/$defs/nonEmptyString" },
+            "recipe": { "$ref": "#/$defs/nonEmptyString" },
+            "sourceRef": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "releaseScope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["chapter", "state", "reason"],
+          "properties": {
+            "chapter": { "const": 1 },
+            "state": { "const": "IN_SCOPE" },
+            "reason": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "state": { "enum": ["PLANNED", "RUNNING", "INCOMPLETE", "PARTIAL", "READY"] },
+        "stages": { "type": "array", "minItems": 7, "maxItems": 7, "items": { "$ref": "#/$defs/pipelineStage" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "purpose", "text"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "purpose": { "$ref": "#/$defs/nonEmptyString" },
+        "text": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "uri"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "enum": ["file", "image", "url", "request"] },
+        "uri": { "$ref": "#/$defs/nonEmptyString" },
+        "contentHash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["createdAt", "createdBy", "generator", "prompts", "references", "hashAlgorithm"],
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "type"],
+          "properties": { "name": { "$ref": "#/$defs/nonEmptyString" }, "type": { "$ref": "#/$defs/actorType" } }
+        },
+        "generator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": {
+            "name": { "$ref": "#/$defs/nonEmptyString" },
+            "model": { "$ref": "#/$defs/nonEmptyString" },
+            "version": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "prompts": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/prompt" } },
+        "references": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/reference" } },
+        "hashAlgorithm": { "const": "sha256" },
+        "contentHash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "history": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "actor", "actorType", "at"],
+      "properties": {
+        "from": { "$ref": "#/$defs/packageState" },
+        "to": { "$ref": "#/$defs/packageState" },
+        "actor": { "$ref": "#/$defs/nonEmptyString" },
+        "actorType": { "$ref": "#/$defs/actorType" },
+        "at": { "type": "string", "format": "date-time" },
+        "comment": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "reviewItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "status", "contentHash"],
+      "properties": {
+        "ref": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "$ref": "#/$defs/reviewItemState" },
+        "contentHash": { "$ref": "#/$defs/sha256" },
+        "reviewer": { "$ref": "#/$defs/nonEmptyString" },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "comment": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "reviewAudit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "action", "actor", "actorType", "at", "comment"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "action": { "$ref": "#/$defs/reviewAuditAction" },
+        "actor": { "$ref": "#/$defs/nonEmptyString" },
+        "actorType": { "$ref": "#/$defs/actorType" },
+        "at": { "type": "string", "format": "date-time" },
+        "comment": { "$ref": "#/$defs/nonEmptyString" },
+        "subjectRef": { "$ref": "#/$defs/nonEmptyString" },
+        "details": { "type": "object" }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["history", "blockers"],
+      "properties": {
+        "history": { "type": "array", "items": { "$ref": "#/$defs/history" } },
+        "blockers": { "$ref": "#/$defs/stringArray" },
+        "snapshot": { "$ref": "#/$defs/repositoryPath" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/reviewItem" } },
+        "audit": { "type": "array", "items": { "$ref": "#/$defs/reviewAudit" } }
+      }
+    }
+  }
+}

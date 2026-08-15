@@ -1,6 +1,7 @@
 'use client';
 
 import type { ElementType, SkillAttackType } from '../types/game';
+import { getPresentationSfxProfile } from '../lib/presentation/sfxProfiles';
 
 export type BGMScene =
   | 'HOME_LOBBY'
@@ -250,6 +251,28 @@ class AudioServiceImpl {
     const isSharp = attackType === 'SLASH' || element === 'THUNDER';
     this.playNoise(isSharp ? 0.22 : 0.34, isSharp ? 0.12 : 0.09, isSharp ? 1800 : 700, isSharp ? 'highpass' : 'bandpass');
     this.playChord(freqs, element === 'THUNDER' ? 0.14 : 0.1, isSharp ? 0.28 : 0.5, isSharp ? 'square' : 'triangle');
+  }
+
+  playPresentationSfx(profileKey: string, pitch = 1, volume = 1): void {
+    const profile = getPresentationSfxProfile(profileKey);
+    const safePitch = Math.max(0.5, Math.min(2, pitch));
+    const safeVolume = Math.max(0, Math.min(1, volume));
+    if (profile.noise) {
+      this.playNoise(
+        profile.noise.duration,
+        profile.noise.volume * safeVolume,
+        profile.noise.filterFrequency * safePitch,
+        profile.noise.filterType,
+      );
+    }
+    if (profile.tone) {
+      this.playChord(
+        profile.tone.frequencies.map(frequency => frequency * safePitch),
+        profile.tone.volume * safeVolume,
+        profile.tone.duration,
+        profile.tone.wave,
+      );
+    }
   }
 
   playDemonActivation(): void {

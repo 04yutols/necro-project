@@ -5,7 +5,7 @@ description: Necromance Brave のマスターデータ JSON オーサリング�
 
 # Data Authoring Skill
 
-Necromance Brave のマスターデータ JSON（`src/data/master/` の 9 ファイル）と
+Necromance Brave のマスターデータ JSON（`src/data/master/`）と
 ストーリーデータ（`src/data/story/`）を正確に生成・保守するためのスキル。
 
 ## 対象ファイル
@@ -18,6 +18,7 @@ src/data/master/
   items.json       武器 + 消耗品
   jobs.json        職業（Tier1×4 + Tier2×8、レベル別基礎ステータス）
   materials.json   残滓強化素材
+  residueNames.json 深淵の残滓名称・由来（性能値は持たない）
   monsters.json    味方モンスター（初期テンプレート）
   skills.json      スキル
   stages.json      ステージ（WAVE 構成 + 報酬）
@@ -32,7 +33,8 @@ src/data/story/
    - **ステージ?** → `references/workflows.md#新しいボス戦の追加`（Stage セクション）
    - **武器?** → `references/workflows.md#新しい武器の作成`
    - **スキル?** → `/skill-design` コマンドのガイドラインに従う（設計書19参照）
-   - **ストーリーシーン?** → `references/schemas.md#10-src-data-story`
+   - **深淵の残滓名称?** → `references/schemas.md#10-residuenamesjson`
+   - **ストーリーシーン?** → `references/schemas.md#11-src-data-story`
 2. **依存関係は？**
    - `references/cross_references.md` で参照先 ID が実在することを確認。
 3. **バランスは？**
@@ -41,7 +43,7 @@ src/data/story/
 ## Guidelines
 
 - **キー対称性**: master JSON はキー付きオブジェクト。`id` フィールドを持つファイル
-  （enemies, items, stages, skills, materials, areas）はキーと `id` を一致させる。
+  （enemies, items, stages, skills, materials, residueNames, areas）はキーと `id` を一致させる。
   jobs / monsters / demonForms は **キーが ID**（オブジェクト内に `id` なし。
   demonForms はキー = `jobId`）。story の scenes は **配列**で、この規則の対象外。
 - **言語**: enemies / stages / areas は `nameJa` + `nameEn`（UI 用 nameEn は大文字）。
@@ -51,7 +53,7 @@ src/data/story/
 
 ## Resources
 
-- **[references/schemas.md](references/schemas.md)**: 全 9 ファイルのフィールド定義とステータス基準。
+- **[references/schemas.md](references/schemas.md)**: 対象マスターファイルのフィールド定義とステータス基準。
 - **[references/cross_references.md](references/cross_references.md)**: ID 参照関係マップ。
 - **[references/workflows.md](references/workflows.md)**: よくある作業の手順書。
 

@@ -8,6 +8,7 @@ import areas from '../data/master/areas.json';
 import skills from '../data/master/skills.json';
 import demonForms from '../data/master/demonForms.json';
 import necroConfig from '../data/master/necroConfig.json';
+import residueNames from '../data/master/residueNames.json';
 import type {
   AreaData,
   DemonFormData,
@@ -17,6 +18,7 @@ import type {
   MonsterData,
   NecroConfigData,
   ResidueMatData,
+  ResidueNameData,
   SkillData,
   StageData,
 } from '../types/game';
@@ -35,6 +37,7 @@ const AREAS = areas as unknown as MasterRecord<AreaData>;
 const SKILLS = skills as unknown as MasterRecord<SkillData>;
 const DEMON_FORMS = demonForms as unknown as MasterRecord<DemonFormData>;
 const NECRO_CONFIG = necroConfig as NecroConfigData;
+const RESIDUE_NAMES = residueNames as unknown as MasterRecord<ResidueNameData>;
 
 function withMonsterId(id: string, monster: MonsterMasterEntry): MonsterData {
   return hydrateMonsterEnergy({ ...monster, id: monster.id ?? id });
@@ -129,5 +132,13 @@ export class MasterDataService {
 
   public getAllMaterials(): MasterRecord<ResidueMatData> {
     return MATERIALS;
+  }
+
+  public getAllResidueNames(): MasterRecord<ResidueNameData> {
+    return RESIDUE_NAMES;
+  }
+
+  public getResidueNames(rarity: ResidueNameData['rarity']): ResidueNameData[] {
+    return Object.values(RESIDUE_NAMES).filter(entry => entry.rarity === rarity);
   }
 }

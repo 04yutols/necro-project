@@ -1003,3 +1003,15 @@ body > * {
   .blood-border { border: 1px solid #4A0000; }
   .void-border  { border: 1px solid rgba(139,0,255,0.4); box-shadow: 0 0 8px rgba(139,0,255,0.3); }
 }
+
+/* OS accessibility preference is the final fallback for every CSS animation.
+   Framer Motion receives the same preference through MotionAccessibilityProvider. */
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

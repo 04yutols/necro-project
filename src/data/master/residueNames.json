@@ -1,0 +1,114 @@
+{
+  "bone_ring": {
+    "id": "bone_ring",
+    "name": "骸の指輪",
+    "rarity": "COMMON",
+    "chapter": 1,
+    "origin": "王都の共同墓地から掘り出された、名もなき死者の環。",
+    "tags": ["亡国", "骸骨"]
+  },
+  "hollow_talisman": {
+    "id": "hollow_talisman",
+    "name": "虚ろの護符",
+    "rarity": "COMMON",
+    "chapter": 1,
+    "origin": "祈りだけが剥がれ落ちた護符。",
+    "tags": ["亡国", "信仰"]
+  },
+  "dead_fragment": {
+    "id": "dead_fragment",
+    "name": "亡者の欠片",
+    "rarity": "COMMON",
+    "chapter": 1,
+    "origin": "死者の未練が硬質化した小片。",
+    "tags": ["死霊術"]
+  },
+  "ghost_trace": {
+    "id": "ghost_trace",
+    "name": "幽霊の痕跡",
+    "rarity": "COMMON",
+    "chapter": 1,
+    "origin": "夜明けとともに消え損ねた霊の痕。",
+    "tags": ["幽霊"]
+  },
+  "abyssal_residue": {
+    "id": "abyssal_residue",
+    "name": "深淵の残滓",
+    "rarity": "RARE",
+    "chapter": 1,
+    "origin": "深淵へ触れた魂が遺した凝結物。",
+    "tags": ["深淵"]
+  },
+  "demon_bone_shard": {
+    "id": "demon_bone_shard",
+    "name": "魔骨の砕片",
+    "rarity": "RARE",
+    "chapter": 1,
+    "origin": "魔力を帯びた骨が砕けてもなお脈打つ。",
+    "tags": ["魔族", "骸骨"]
+  },
+  "vengeful_crystal": {
+    "id": "vengeful_crystal",
+    "name": "怨霊の結晶",
+    "rarity": "RARE",
+    "chapter": 1,
+    "origin": "言葉にならなかった憎悪の結晶。",
+    "tags": ["怨念"]
+  },
+  "underworld_relic": {
+    "id": "underworld_relic",
+    "name": "冥界の遺物",
+    "rarity": "RARE",
+    "chapter": 1,
+    "origin": "生者の歴史には記録されない冥界の遺物。",
+    "tags": ["冥界"]
+  },
+  "abyss_emblem": {
+    "id": "abyss_emblem",
+    "name": "奈落の紋章",
+    "rarity": "EPIC",
+    "chapter": 1,
+    "origin": "奈落の契約を刻む、消せない紋章。",
+    "tags": ["奈落", "契約"]
+  },
+  "soul_eater_mark": {
+    "id": "soul_eater_mark",
+    "name": "魂喰いの印",
+    "rarity": "EPIC",
+    "chapter": 1,
+    "origin": "喰らった魂の声を内側へ封じ込める印。",
+    "tags": ["魂", "禁忌"]
+  },
+  "abyss_king_foundation": {
+    "id": "abyss_king_foundation",
+    "name": "深淵王の礎",
+    "rarity": "EPIC",
+    "chapter": 1,
+    "origin": "深淵の王座を支えたとされる黒い礎石。",
+    "tags": ["深淵", "王権"]
+  },
+  "dragonbone_treasure": {
+    "id": "dragonbone_treasure",
+    "name": "竜骨の至宝",
+    "rarity": "EPIC",
+    "chapter": 1,
+    "origin": "古竜の骨髄に残った魔力を封じた至宝。",
+    "tags": ["竜", "古代"]
+  },
+  "divine_corpse_crystal": {
+    "id": "divine_corpse_crystal",
+    "name": "神骸の結晶",
+    "rarity": "LEGENDARY",
+    "chapter": 1,
+    "origin": "神性を失った骸から一度だけ生じる結晶。",
+    "tags": ["神骸", "禁忌"]
+  },
+  "abyss_god_fragment": {
+    "id": "abyss_god_fragment",
+    "name": "深淵神の欠片",
+    "rarity": "LEGENDARY",
+    "chapter": 1,
+    "origin": "名を呼ぶことさえ禁じられた深淵神の欠片。",
+    "tags": ["深淵", "神性", "禁忌"]
+  }
+}

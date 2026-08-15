@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 2,
+  "id": "phase2_authoring_example",
+  "title": "Phase 2 数値オーサリング作例",
+  "revision": 1,
+  "chapter": 1,
+  "status": "DRAFT",
+  "brief": {
+    "playerExperience": "王都の焼け跡で灰を操る亡霊を使役し、その記憶から武器と術を得る。",
+    "themes": ["亡国", "灰", "死者の記憶"],
+    "mustInclude": ["アルド＋使役魔物3枠", "実BattleEngineの数値証跡", "残滓性能RNGとの分離"],
+    "avoid": ["人間の追加プレイアブル同行者", "第2章以降の確定設定", "Codexによる自己承認"]
+  },
+  "targets": [
+    { "id": "codex_ash_wraith", "kind": "combat-unit", "loreRefs": ["royal_capital"] },
+    { "id": "codex_ash_scythe", "kind": "skill", "loreRefs": ["royal_capital"] },
+    { "id": "codex_ash_blade", "kind": "weapon", "loreRefs": ["royal_capital"] },
+    { "id": "codex_ash_memory", "kind": "abyssal-residue", "loreRefs": ["royal_capital"] }
+  ],
+  "lore": {
+    "registryRefs": ["royal_capital"],
+    "entries": [],
+    "relationships": [],
+    "timelineEvents": []
+  },
+  "deliverables": [
+    {
+      "id": "codex_ash_wraith_stats",
+      "ownerId": "codex_ash_wraith",
+      "scope": "combat-unit",
+      "kind": "stats",
+      "required": true,
+      "state": "READY",
+      "outputRefs": ["change:enemy:codex_ash_wraith"],
+      "artifact": {
+        "authoringKind": "combat-unit",
+        "request": {
+          "kind": "ENEMY",
+          "id": "codex_ash_wraith",
+          "name": "Ash Wraith",
+          "nameJa": "戴冠灰の亡霊",
+          "nameEn": "ASH-CROWN WRAITH",
+          "description": "最後の戴冠式で焼け落ちた臣下の記憶。灰の術で行動を乱す。",
+          "role": "CONTROLLER",
+          "level": 20,
+          "tribe": "UNDEAD",
+          "element": "DARK",
+          "weaknesses": ["LIGHT", "WIND"],
+          "resistances": ["DARK"],
+          "tier": "MINION",
+          "cost": 1,
+          "maxEnergy": 30,
+          "skillIds": ["skill_darkpriest_1"]
+        },
+        "simulationTargets": {
+          "ttkTurns": { "min": 1, "max": 50 },
+          "incomingDamagePct": { "min": 0, "max": 100 },
+          "aoeValue": { "min": 0.8, "max": 1.2 },
+          "partyCost": { "min": 0, "max": 6 }
+        }
+      }
+    },
+    {
+      "id": "codex_ash_scythe_mechanics",
+      "ownerId": "codex_ash_scythe",
+      "scope": "skill",
+      "kind": "mechanics",
+      "required": true,
+      "state": "READY",
+      "outputRefs": ["change:skill:codex_ash_scythe"],
+      "artifact": {
+        "authoringKind": "skill",
+        "request": {
+          "id": "codex_ash_scythe",
+          "name": "戴冠灰刈り",
+          "description": "王冠の形を描く灰刃で敵単体を裂き、衰弱を刻む。",
+          "type": "MAGICAL",
+          "targetType": "SINGLE",
+          "element": "DARK",
+          "attackType": "MAGIC",
+          "ownerKind": "job",
+          "ownerId": "dark_priest",
+          "tier": 1,
+          "potency": "MID",
+          "ailmentType": "WEAKEN"
+        },
+        "simulationTargets": {
+          "ttkTurns": { "min": 1, "max": 50 },
+          "incomingDamagePct": { "min": 0, "max": 100 },
+          "aoeValue": { "min": 0.8, "max": 1.2 },
+          "partyCost": { "min": 0, "max": 6 }
+        }
+      }
+    },
+    {
+      "id": "codex_ash_blade_master",
+      "ownerId": "codex_ash_blade",
+      "scope": "acquisition-link",
+      "kind": "inventory-equip",
+      "required": true,
+      "state": "READY",
+      "outputRefs": ["change:weapon:codex_ash_blade"],
+      "artifact": {
+        "authoringKind": "weapon",
+        "request": {
+          "id": "codex_ash_blade",
+          "name": "灰冠の葬剣",
+          "flavor": "名を失った臣下たちが、最後の王冠を守るため灰から鍛えた剣。",
+          "rarity": "SSR",
+          "archetype": "HIGH",
+          "ilv": 70,
+          "subOption": "EFFECT_HIT",
+          "element": "DARK",
+          "passiveA": { "nameJa": "灰の王命", "descTemplate": "闇属性ダメージが{value}%上昇する。", "baseValue": 8 },
+          "passiveB": { "nameJa": "臣下の残響", "descTemplate": "状態異常の効果命中が{value}%上昇する。", "baseValue": 5 }
+        },
+        "simulationTargets": {
+          "ttkTurns": { "min": 1, "max": 50 },
+          "incomingDamagePct": { "min": 0, "max": 100 },
+          "aoeValue": { "min": 0.8, "max": 1.2 },
+          "partyCost": { "min": 0, "max": 6 }
+        }
+      }
+    },
+    {
+      "id": "codex_ash_memory_name_pool",
+      "ownerId": "codex_ash_memory",
+      "scope": "acquisition-link",
+      "kind": "name-pool",
+      "required": true,
+      "state": "READY",
+      "outputRefs": ["change:residue-name:codex_ash_memory"],
+      "artifact": {
+        "authoringKind": "residue-name",
+        "request": {
+          "id": "codex_ash_memory",
+          "name": "臣灰の残滓",
+          "rarity": "EPIC",
+          "chapter": 1,
+          "origin": "最後の戴冠式で王へ捧げられ、黒炎の後にも残った臣下の記憶。",
+          "themes": ["亡国", "忠誠", "灰"]
+        }
+      }
+    }
+  ],
+  "dependencies": [],
+  "changes": [],
+  "assets": [],
+  "presentation": [],
+  "localization": [],
+  "evidence": [],
+  "provenance": {
+    "createdAt": "2026-07-31T00:00:00.000Z",
+    "createdBy": { "name": "Codex", "type": "codex" },
+    "generator": { "name": "Codex Content Forge", "version": "phase2" },
+    "prompts": [
+      {
+        "id": "phase2_numeric_brief",
+        "purpose": "数値オーサリング作例",
+        "text": "亡国・灰・死者の忠誠を主題に、CONTROLLER役の敵と対応する術・武器・残滓名を第1章帯で設計する。"
+      }
+    ],
+    "references": [
+      { "id": "world_bible", "kind": "file", "uri": ".agents/skills/forge-game-content/references/world-bible.md" },
+      { "id": "phase2_roadmap", "kind": "file", "uri": "docs/progress/CODEX_CONTENT_ROADMAP.md" }
+    ],
+    "hashAlgorithm": "sha256"
+  },
+  "review": { "history": [], "blockers": [] }
+}

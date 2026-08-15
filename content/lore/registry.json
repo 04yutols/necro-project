@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-07-31T00:00:00.000Z",
+  "entries": [
+    {
+      "id": "aldo",
+      "kind": "CHARACTER",
+      "certainty": "CONFIRMED",
+      "nameJa": "アルド",
+      "nameEn": "Aldo",
+      "aliases": [],
+      "summary": "亡き友ラインに由来する死霊術の力を継ぎ、滅びた世界を進む主人公。",
+      "chapterIntroduced": 0,
+      "sourceRefs": ["src/data/story/characters.json#/aldo", ".agents/skills/forge-game-content/references/world-bible.md#core-pillars"],
+      "tags": ["主人公", "死霊術", "復讐"]
+    },
+    {
+      "id": "line",
+      "kind": "CHARACTER",
+      "certainty": "CONFIRMED",
+      "nameJa": "ライン",
+      "nameEn": "Line",
+      "aliases": [],
+      "summary": "アルドの亡き友。アルドが継いだ死霊術の力の由来に関わる。",
+      "chapterIntroduced": 0,
+      "sourceRefs": ["src/data/story/characters.json#/line", ".agents/skills/forge-game-content/references/world-bible.md#core-pillars"],
+      "tags": ["友人", "喪失", "死霊術"]
+    },
+    {
+      "id": "demon_king",
+      "kind": "CHARACTER",
+      "certainty": "CONFIRMED",
+      "nameJa": "魔王",
+      "nameEn": "Demon King",
+      "aliases": [],
+      "summary": "アルドが進む世界を滅ぼした存在。",
+      "chapterIntroduced": 0,
+      "sourceRefs": ["src/data/story/characters.json#/demon_king", ".agents/skills/forge-game-content/references/world-bible.md#core-pillars"],
+      "tags": ["魔王", "滅亡", "敵対者"]
+    },
+    {
+      "id": "royal_capital",
+      "kind": "PLACE",
+      "certainty": "CONFIRMED",
+      "nameJa": "亡国の王都",
+      "nameEn": "Fallen Royal Capital",
+      "aliases": ["王都"],
+      "summary": "第1章の舞台。繁栄の残骸、果たされなかった忠誠、眠れない死者が残る。",
+      "chapterIntroduced": 1,
+      "sourceRefs": ["docs/progress/CH1_TODO.md", ".agents/skills/forge-game-content/references/world-bible.md#core-pillars"],
+      "tags": ["第1章", "亡国", "王権", "死者"]
+    },
+    {
+      "id": "necromancy_power",
+      "kind": "CONCEPT",
+      "certainty": "CONFIRMED",
+      "nameJa": "死霊術の力",
+      "nameEn": "Necromancy",
+      "aliases": ["死霊術"],
+      "summary": "死、記憶、怨念、契約、喪失と結び付き、代償や不穏さを伴う力。",
+      "chapterIntroduced": 0,
+      "sourceRefs": [".agents/skills/forge-game-content/references/world-bible.md#core-pillars"],
+      "tags": ["力", "代償", "契約", "死"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "aldo_and_line",
+      "from": "aldo",
+      "to": "line",
+      "type": "亡き友",
+      "certainty": "CONFIRMED",
+      "summary": "ラインはアルドの亡き友であり、アルドの死霊術の由来に関わる。",
+      "sourceRefs": [".agents/skills/forge-game-content/references/world-bible.md#core-pillars"]
+    },
+    {
+      "id": "aldo_inherits_necromancy",
+      "from": "aldo",
+      "to": "necromancy_power",
+      "type": "継承",
+      "certainty": "CONFIRMED",
+      "summary": "アルドはラインに由来する死霊術の力を継いだ。",
+      "sourceRefs": [".agents/skills/forge-game-content/references/world-bible.md#core-pillars"]
+    }
+  ],
+  "timeline": [
+    {
+      "id": "royal_capital_aftermath",
+      "order": 100,
+      "chapter": 1,
+      "title": "亡国の王都へ",
+      "summary": "アルドは繁栄の残骸と眠れない死者が残る王都を進む。",
+      "participantRefs": ["aldo"],
+      "locationRef": "royal_capital",
+      "certainty": "CONFIRMED",
+      "sourceRefs": ["docs/progress/CH1_TODO.md", ".agents/skills/forge-game-content/references/world-bible.md#core-pillars"]
+    }
+  ]
+}

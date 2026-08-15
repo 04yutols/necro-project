@@ -14,10 +14,10 @@ src/
     layout.tsx        ← viewport 設定 (maximumScale:1, viewportFit:cover)、フォント定義
     globals.css       ← Gothic-Morphism グローバル CSS
     actions.ts        ← Server Actions（auth() 必須、ステージトークン検証あり）
-    api/              ← API Routes（NextAuth 等）
+    api/              ← API Routes（NextAuth、development限定content asset preview等）
     admin/            ← 管理画面（adminGuard.ts でガード。enemies/skills/jobs/stages/
                          monsters/items/materials/areas/demon-forms/story/agents/
-                         simulator/audit の各サブページ + admin/actions.ts）
+                         simulator/audit/assets の各サブページ + admin/actions.ts）
   components/
     admin/     AdminNav, *List.tsx (各マスター一覧), AI*DraftPanel.tsx (AI草案),
                AuditPanel, BulkChangePanel, SimulatorClient, forms/
@@ -66,11 +66,12 @@ src/
     materialAgent/areaAgent/demonAgent/storyAgent.ts + 各 *Balance.ts (決定論的ゲート)
     auditFixAgent.ts + auditFix/, bulkAgent.ts + bulk/, simEvalAgent.ts + sim/,
     story/ (storyContext, storyValidator), gemini.ts, knownFields.ts, thinkingBudget.ts
+  lib/content/ ← Content Package、Lore、数値Authoring、Battle simulation、AssetSpec、Visual Asset Forge
   types/
     game.ts           ← 全型定義の正典（serverGame.ts はサーバー受け渡し用）
   data/
     master/   areas, demonForms, enemies, items, jobs, materials, monsters,
-              skills, stages の 9 JSON
+              skills, stages, necroConfig, residueNames
     story/    ch1_scenes.json, prologue_scenes.json, characters.json, packs.ts
     tutorial/ phases.ts
 ```

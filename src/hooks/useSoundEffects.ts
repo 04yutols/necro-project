@@ -32,6 +32,7 @@ export function useSoundEffects() {
     }),
     battleAttack: (mode: 'physical' | 'demon' = 'physical') => run(() => AudioService.playAttack(mode === 'demon')),
     skillCast: (element: ElementType = 'NONE', attackType: SkillAttackType = 'MAGIC') => run(() => AudioService.playSkill(element, attackType)),
+    presentationCue: (profileKey: string, pitch = 1, volume = 1) => run(() => AudioService.playPresentationSfx(profileKey, pitch, volume)),
     demonActivate: () => run(() => AudioService.playDemonActivation()),
     demonUltimate: () => run(() => AudioService.playDemonUltimate()),
     setDemonOverlay: (active: boolean) => {

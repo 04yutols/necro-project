@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "packageId": "phase5_ash_regent_package",
+  "packageRevision": 4,
+  "promptQueuePath": "content/packages/phase5_ash_regent_package/reviews/asset-prompts.json",
+  "jobs": [
+    {
+      "assetId": "ash_regent_fullbody",
+      "ownerId": "enemy_ash_regent",
+      "usage": "character-fullbody",
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_regent_fullbody.png",
+      "outputPath": "public/images/generated/characters/enemy_ash_regent/fullbody-base.webp",
+      "referenceAssetRefs": [],
+      "referenceAssetPaths": [],
+      "prompt": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / character-fullbody\nPrimary request: 灰冠王と固有武器「弔王剣」 の battle-visual。対象ID enemy_ash_regent、種別 combat-unit、variant base。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 完全に均一な #00ff00 クロマキー背景。影、床面、反射、勾配、模様、照明むらを一切入れない。\nStyle/medium: 重厚なダークファンタジー・ゲームコンセプトアート。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 1536x2048、aspect ratio 3:4。safe area top 120px / right 120px / bottom 80px / left 120px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 消えかけた玉座の逆光と冷たい紫の魂光。威厳、疲弊、終わらない忠誠。\nColor palette: #17121f、#5f5665、#8B00FF、#d4af37。\nMaterials/textures: 灰を被った黒鉄、ひび割れた金箔、焼けた王旗、骨灰。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、灰で固まった王冠、両手大剣、背中の折れた王旗、一目で読める騎士シルエット。\nConsistency: ash_regent の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、生者の健康な肌、華美で新品の鎧、銃器、文字、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+    },
+    {
+      "assetId": "ash_regent_battle_icon",
+      "ownerId": "enemy_ash_regent",
+      "usage": "battle-unit",
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_regent_battle_icon.png",
+      "outputPath": "public/images/generated/characters/enemy_ash_regent/battle-boss.webp",
+      "referenceAssetRefs": [
+        "ash_regent_fullbody"
+      ],
+      "referenceAssetPaths": [
+        "content/packages/phase5_ash_regent_package/originals/ash_regent_fullbody.png"
+      ],
+      "prompt": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / battle-unit\nPrimary request: 灰冠王と固有武器「弔王剣」 の icon。対象ID enemy_ash_regent、種別 combat-unit、variant boss。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 被写体以外は透明になる切り抜き前提の単色背景。輪郭を明瞭にし、十分な余白を取る。\nStyle/medium: 高精細モバイルRPGバトルユニット。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 512x512、aspect ratio 1:1。safe area top 48px / right 48px / bottom 48px / left 48px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 輪郭を強調する紫のリムライト。不動の威圧感。\nColor palette: #17121f、#5f5665、#8B00FF、#d4af37。\nMaterials/textures: 黒鉄、灰、古い金箔。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、基準立ち絵と同じ王冠・鎧・大剣、小サイズで明確な輪郭。\nConsistency: ash_regent の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、デザイン変更、背景、文字、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+    },
+    {
+      "assetId": "ash_regent_skill_icon",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "usage": "skill-icon",
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_regent_skill_icon.png",
+      "outputPath": "public/images/generated/skills/ash_regent_triple_bell/icon-triple-bell.webp",
+      "referenceAssetRefs": [],
+      "referenceAssetPaths": [],
+      "prompt": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / skill-icon\nPrimary request: 灰冠王と固有武器「弔王剣」 の skill-icon。対象ID skill_ash_regent_triple_bell、種別 skill、variant triple-bell。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 被写体以外は透明になる切り抜き前提の単色背景。輪郭を明瞭にし、十分な余白を取る。\nStyle/medium: 高コントラストのゴシック・スキルアイコン。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 512x512、aspect ratio 1:1。safe area top 56px / right 56px / bottom 56px / left 56px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 三本の斬線と鐘形の魂光。葬送と決着。\nColor palette: #090711、#8B00FF、#d4af37、#ede9fe。\nMaterials/textures: 魂光、砕けた金属、灰。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、三本の斬線、抽象化した弔鐘、灰の王冠。\nConsistency: 同一ownerの派生画像では造形、比率、配色、素材を維持する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、細かすぎる人物画、文字、明るい祝祭色、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+    },
+    {
+      "assetId": "ash_regent_vfx_texture",
+      "ownerId": "skill_ash_regent_triple_bell",
+      "usage": "vfx-texture",
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_regent_vfx_texture.png",
+      "outputPath": "public/images/generated/skills/ash_regent_triple_bell/vfx-ash-slash.webp",
+      "referenceAssetRefs": [
+        "ash_regent_skill_icon"
+      ],
+      "referenceAssetPaths": [
+        "content/packages/phase5_ash_regent_package/originals/ash_regent_skill_icon.png"
+      ],
+      "prompt": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / vfx-texture\nPrimary request: 灰冠王と固有武器「弔王剣」 の vfx-texture。対象ID skill_ash_regent_triple_bell、種別 skill、variant ash-slash。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 被写体以外は透明になる切り抜き前提の単色背景。輪郭を明瞭にし、十分な余白を取る。\nStyle/medium: 加算合成用VFXテクスチャ。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 1024x1024、aspect ratio 1:1。safe area top 96px / right 96px / bottom 96px / left 96px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 中心から裂ける魂光。鋭い葬送。\nColor palette: #8B00FF、#d4af37、#f5f3ff。\nMaterials/textures: 灰粒子、魂火、刃の残光。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、三方向へ分かれる斬撃残光、色以外でも読める形状差。\nConsistency: 同一ownerの派生画像では造形、比率、配色、素材を維持する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、背景、文字、不透明な黒ベタ、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+    },
+    {
+      "assetId": "grave_regalia_card",
+      "ownerId": "weapon_grave_regalia",
+      "usage": "weapon-card",
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/grave_regalia_card.png",
+      "outputPath": "public/images/generated/weapons/weapon_grave_regalia/card-base.webp",
+      "referenceAssetRefs": [],
+      "referenceAssetPaths": [],
+      "prompt": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / weapon-card\nPrimary request: 灰冠王と固有武器「弔王剣」 の detail-art。対象ID weapon_grave_regalia、種別 weapon、variant base。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 黒曜石色から深い紫へ落ちる簡潔なゴシック背景。\nStyle/medium: ダークファンタジー武器カードアート。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 1024x1536、aspect ratio 2:3。safe area top 96px / right 72px / bottom 128px / left 72px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 刃の内側から漏れる鐘形の紫光。荘厳な葬送。\nColor palette: #08060d、#51485d、#8B00FF、#d4af37。\nMaterials/textures: 黒鉄、割れた王冠の金、魂を封じた黒曜石。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、大剣、鍔に埋め込まれた割れた王冠、鐘の余韻を示す同心円。\nConsistency: grave_regalia の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、キャラクター主体、銃器、文字、新品の鏡面金属、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+    },
+    {
+      "assetId": "grave_regalia_icon",
+      "ownerId": "weapon_grave_regalia",
+      "usage": "weapon-icon",
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/grave_regalia_icon.png",
+      "outputPath": "public/images/generated/weapons/weapon_grave_regalia/icon-inventory.webp",
+      "referenceAssetRefs": [
+        "grave_regalia_card"
+      ],
+      "referenceAssetPaths": [
+        "content/packages/phase5_ash_regent_package/originals/grave_regalia_card.png"
+      ],
+      "prompt": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / weapon-icon\nPrimary request: 灰冠王と固有武器「弔王剣」 の inventory-icon。対象ID weapon_grave_regalia、種別 weapon、variant inventory。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 被写体以外は透明になる切り抜き前提の単色背景。輪郭を明瞭にし、十分な余白を取る。\nStyle/medium: 高精細モバイルRPG武器アイコン。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 512x512、aspect ratio 1:1。safe area top 52px / right 52px / bottom 52px / left 52px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 紫の輪郭光。重く静かな威圧。\nColor palette: #08060d、#51485d、#8B00FF、#d4af37。\nMaterials/textures: 黒鉄、古い金、黒曜石。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、基準カードと同じ鍔・刃・王冠意匠、斜め配置で明確な輪郭。\nConsistency: grave_regalia の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、デザイン変更、背景、文字、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+    },
+    {
+      "assetId": "ash_throne_background",
+      "ownerId": "encounter_ash_throne",
+      "usage": "background",
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_throne_background.png",
+      "outputPath": "public/images/generated/backgrounds/encounter_ash_throne/background-battle.webp",
+      "referenceAssetRefs": [],
+      "referenceAssetPaths": [],
+      "prompt": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / background\nPrimary request: 灰冠王と固有武器「弔王剣」 の background。対象ID encounter_ash_throne、種別 encounter、variant battle。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 黒曜石色から深い紫へ落ちる簡潔なゴシック背景。\nStyle/medium: 横長モバイルRPGバトル背景。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 1920x1080、aspect ratio 16:9。safe area top 80px / right 120px / bottom 180px / left 120px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 崩れた天井からの冷光と玉座下の魂光。滅びた王権の静寂。\nColor palette: #05040a、#24172f、#51485d、#8B00FF。\nMaterials/textures: 焼けた石床、破れた王旗、灰、黒曜石ガラス。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、中央奥の空の玉座、戦闘UIを邪魔しない床面、左右の折れた王旗。\nConsistency: 同一ownerの派生画像では造形、比率、配色、素材を維持する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、人物、文字、明るい昼空、近代建築、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+    },
+    {
+      "assetId": "ash_throne_enemy_visual",
+      "ownerId": "encounter_ash_throne",
+      "usage": "battle-unit",
+      "originalPath": "content/packages/phase5_ash_regent_package/originals/ash_throne_enemy_visual.png",
+      "outputPath": "public/images/generated/characters/encounter_ash_throne/battle-encounter.webp",
+      "referenceAssetRefs": [
+        "ash_regent_fullbody"
+      ],
+      "referenceAssetPaths": [
+        "content/packages/phase5_ash_regent_package/originals/ash_regent_fullbody.png"
+      ],
+      "prompt": "Use case: stylized-concept\nAsset type: Necromance Brave game asset / battle-unit\nPrimary request: 灰冠王と固有武器「弔王剣」 の enemy-visual。対象ID encounter_ash_throne、種別 encounter、variant encounter。\nWorld and theme: 王都を守れなかった忠誠が死後も王座へ縛りつき、撃破によってその執念を武器として継承する悲劇的なボス体験。。主題は 果たされなかった忠誠、灰に沈む王権、記憶を継ぐ武器。\nScene/backdrop: 被写体以外は透明になる切り抜き前提の単色背景。輪郭を明瞭にし、十分な余白を取る。\nStyle/medium: 高精細モバイルRPG敵ユニット。Gothic-Morphism、黒曜石ガラス、古びた羊皮紙、骨の縁取り、Void Purple #8B00FFを節度ある魔力光として使う。\nComposition/framing: 768x768、aspect ratio 1:1。safe area top 72px / right 72px / bottom 72px / left 72px。明確なシルエット、UI縮小時にも判別可能。\nLighting/mood: 背景から分離する紫のリムライト。玉座を塞ぐ不動の騎士。\nColor palette: #17121f、#5f5665、#8B00FF、#d4af37。\nMaterials/textures: 黒鉄、灰、古い金箔。\nMust include: 亡国の王都、灰の王冠、弔鐘を思わせる三連撃、固有武器の入手導線、基準立ち絵と同一デザイン、戦闘中に読める大剣の構え。\nConsistency: ash_regent の基準デザインと顔、比率、装備、配色、素材を変えない。referenceAssetRefsを優先する。\nAvoid: 善悪だけで説明できる悪役、現代的な装飾、王都設定と無関係な異世界要素、人間仲間の追加、背景、デザイン変更、文字、文字、ロゴ、透かし、既存作品の固有意匠。\nConstraints: no text; no logos or trademarks; no watermark; mobile game production asset; preserve the requested silhouette and safe area."
+    }
+  ]
+}

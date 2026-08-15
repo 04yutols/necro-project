@@ -1,9 +1,11 @@
 'use client';
 
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import type { CSSProperties } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import ResultScreen from './ResultScreen';
+import SkillPresentationOverlay, { type ActiveSkillPresentation } from './SkillPresentationOverlay';
 import jobsData from '../../data/master/jobs.json';
 import skillsData from '../../data/master/skills.json';
 import stagesData from '../../data/master/stages.json';
@@ -67,6 +69,7 @@ import {
   tryApplyAilment,
 } from '../../logic/StatusAilmentSystem';
 import type { AilmentType, BaseStats, BossGimmick, DemonFormData, DropEntry, ElementType, EnemyData, EnemyStatScale, EnemyTier, ItemData, JobData, MonsterData, Resistances, SkillAttackType, SkillData, StageData, StatusEffect } from '../../types/game';
+import { createPresentationSchedule, resolveSkillPresentation } from '../../lib/presentation/skillPresentation';
 
 interface BattleCanvasProps {
   stageId?: string;
@@ -86,19 +89,11 @@ type BattleSkill = {
   aoe: boolean;
   element: ElementType;
   attackType: SkillAttackType;
+  effectKey?: string;
   ailmentType?: AilmentType;
   ailmentBaseRate?: number;
   healSelfPct?: number;
 };
-
-interface ActiveSkillEffect {
-  id: number;
-  name: string;
-  element: ElementType;
-  attackType: SkillAttackType;
-  targetIds: number[];
-  aoe: boolean;
-}
 
 interface DemonBurstState {
   id: number;
@@ -279,6 +274,7 @@ function toBattleSkill(skill: SkillData): BattleSkill {
     aoe: skill.targetType === 'ALL_ENEMIES',
     element,
     attackType,
+    effectKey: skill.effectKey,
     ailmentType: skill.ailmentType,
     ailmentBaseRate: skill.ailmentBaseRate,
     healSelfPct: skill.healSelfPct,
@@ -297,6 +293,7 @@ function toDemonUltimateSkill(form: DemonFormData): BattleSkill {
     aoe: form.ultimateSkill.damage.targetType === 'ALL',
     element,
     attackType: form.ultimateSkill.damage.attackType ?? 'MAGIC',
+    effectKey: `${element.toLowerCase()}_${(form.ultimateSkill.damage.attackType ?? 'MAGIC').toLowerCase()}_ult`,
   };
 }
 
@@ -638,10 +635,11 @@ async function processStageResultLocal(
 
 // ── SVG ENEMIES ───────────────────────────────────────────────────────────────
 function WraithKnightSVG({ hit, targeted, color }: { hit?: boolean; targeted: boolean; color: string }) {
+  const reducedMotion = useReducedMotion();
   return (
     <svg viewBox="0 0 80 130" fill="none" style={{
       width: '100%', height: '100%',
-      animation: hit ? 'enemyHit 0.5s ease-out' : 'breathe 3.5s ease-in-out infinite',
+      animation: hit ? 'enemyHit 0.5s ease-out' : reducedMotion ? 'none' : 'breathe 3.5s ease-in-out infinite',
       filter: targeted ? `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 18px ${color}90)` : `drop-shadow(0 0 3px ${color}50)`,
       transition: 'filter 0.3s ease',
     }}>
@@ -687,10 +685,11 @@ function WraithKnightSVG({ hit, targeted, color }: { hit?: boolean; targeted: bo
 }
 
 function BoneGiantSVG({ hit, targeted, color }: { hit?: boolean; targeted: boolean; color: string }) {
+  const reducedMotion = useReducedMotion();
   return (
     <svg viewBox="0 0 120 150" fill="none" style={{
       width: '100%', height: '100%',
-      animation: hit ? 'enemyHit 0.5s ease-out' : 'breathe 4s ease-in-out infinite',
+      animation: hit ? 'enemyHit 0.5s ease-out' : reducedMotion ? 'none' : 'breathe 4s ease-in-out infinite',
       filter: targeted ? `drop-shadow(0 0 10px ${color}) drop-shadow(0 0 22px ${color}60)` : 'none',
       transition: 'filter 0.3s ease',
     }}>
@@ -738,10 +737,11 @@ function BoneGiantSVG({ hit, targeted, color }: { hit?: boolean; targeted: boole
 }
 
 function BoneDragonSVG({ hit, targeted, color }: { hit?: boolean; targeted: boolean; color: string }) {
+  const reducedMotion = useReducedMotion();
   return (
     <svg viewBox="0 0 140 110" fill="none" style={{
       width: '100%', height: '100%',
-      animation: hit ? 'enemyHit 0.5s ease-out' : 'breathe 3s ease-in-out infinite 0.8s',
+      animation: hit ? 'enemyHit 0.5s ease-out' : reducedMotion ? 'none' : 'breathe 3s ease-in-out infinite 0.8s',
       filter: targeted ? `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 20px ${color}60)` : `drop-shadow(0 0 3px ${color}50)`,
       transition: 'filter 0.3s ease',
     }}>
@@ -804,235 +804,6 @@ function DamageFloat({ floats }: { floats: FloatDmg[] }) {
           {f.crit && <span style={{ fontSize: 12, marginLeft: 4, color: '#fbbf24' }}>CRIT</span>}
         </div>
       ))}
-    </div>
-  );
-}
-
-function getEffectAnchor(targetIds: number[], aoe: boolean) {
-  if (aoe || targetIds.length > 1) return { x: 50, y: 34 };
-  const positions: Record<number, { x: number; y: number }> = {
-    0: { x: 23, y: 34 },
-    1: { x: 50, y: 32 },
-    2: { x: 73, y: 34 },
-  };
-  return positions[targetIds[0]] ?? { x: 50, y: 34 };
-}
-
-function SkillEffectOverlay({ effect }: { effect: ActiveSkillEffect | null }) {
-  if (!effect) return null;
-
-  const style = ELEMENT_VFX[effect.element];
-  const anchor = getEffectAnchor(effect.targetIds, effect.aoe);
-  const isSlash = effect.attackType === 'SLASH';
-  const isStrike = effect.attackType === 'STRIKE';
-  const isProjectile = effect.attackType === 'PROJECTILE';
-  const isMagic = effect.attackType === 'MAGIC' || isProjectile;
-
-  return (
-    <div
-      key={effect.id}
-      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 32, overflow: 'hidden' }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: `radial-gradient(ellipse at ${anchor.x}% ${anchor.y}%, ${style.soft}, transparent 42%)`,
-          animation: 'skillScreenBloom 0.82s ease-out both',
-        }}
-      />
-
-      <div
-        style={{
-          position: 'absolute',
-          left: `${anchor.x}%`,
-          top: `${anchor.y}%`,
-          width: effect.aoe ? 280 : 190,
-          height: effect.aoe ? 280 : 190,
-          transform: 'translate(-50%, -50%)',
-        }}
-      >
-        {isMagic && (
-          <>
-            <div
-              style={{
-                position: 'absolute',
-                inset: effect.aoe ? 18 : 34,
-                borderRadius: '50%',
-                border: `1px solid ${style.color}80`,
-                boxShadow: `0 0 28px ${style.glow}, inset 0 0 22px ${style.soft}`,
-                background: style.aura,
-                animation: 'skillMagicCircle 0.88s ease-out both',
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                left: '50%',
-                top: '50%',
-                width: effect.aoe ? 190 : 132,
-                height: effect.aoe ? 190 : 132,
-                transform: 'translate(-50%, -50%)',
-                borderRadius: '50%',
-                border: `1px dashed ${style.color}90`,
-                animation: 'skillRuneSpin 1.1s linear both',
-              }}
-            />
-          </>
-        )}
-
-        {isSlash && Array.from({ length: effect.aoe ? 5 : 3 }, (_, i) => (
-          <div
-            key={`slash-${i}`}
-            style={{
-              position: 'absolute',
-              left: `${-10 + i * 9}%`,
-              top: `${38 + i * 4}%`,
-              width: effect.aoe ? 290 : 220,
-              height: effect.element === 'THUNDER' ? 5 : 4,
-              borderRadius: 999,
-              background: `linear-gradient(90deg, transparent, ${style.color}, #fff, ${style.color}, transparent)`,
-              boxShadow: `0 0 16px ${style.glow}`,
-              transform: `rotate(${-24 + i * 9}deg)`,
-              '--slash-rotate': `${-24 + i * 9}deg`,
-              animation: `skillElementSlash ${0.64 + i * 0.05}s cubic-bezier(0.18,0.9,0.26,1) ${i * 0.045}s both`,
-            } as CSSProperties & { '--slash-rotate': string }}
-          />
-        ))}
-
-        {effect.element === 'THUNDER' && (
-          <svg viewBox="0 0 200 200" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: `drop-shadow(0 0 10px ${style.color})`, animation: 'thunderVfxFlicker 0.78s steps(3,end) both' }}>
-            <polyline points="105,0 78,56 112,50 74,126 126,75 102,84 138,10" fill="none" stroke={style.color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-            <polyline points="72,28 52,78 82,70 48,146 104,88" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.86" />
-          </svg>
-        )}
-
-        {effect.element === 'FIRE' && Array.from({ length: 10 }, (_, i) => (
-          <div
-            key={`fire-${i}`}
-            style={{
-              position: 'absolute',
-              left: `${22 + ((i * 17) % 58)}%`,
-              top: `${24 + ((i * 23) % 56)}%`,
-              width: 10 + (i % 4) * 5,
-              height: 28 + (i % 3) * 9,
-              borderRadius: '50% 50% 46% 46%',
-              background: `linear-gradient(180deg, #fff7ad, ${style.color}, transparent)`,
-              boxShadow: `0 0 20px ${style.glow}`,
-              transformOrigin: 'center bottom',
-              animation: `fireVfxRise ${0.75 + i * 0.03}s ease-out ${i * 0.035}s both`,
-            }}
-          />
-        ))}
-
-        {effect.element === 'WATER' && Array.from({ length: 3 }, (_, i) => (
-          <div
-            key={`water-${i}`}
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: '50%',
-              width: 84 + i * 46,
-              height: 84 + i * 46,
-              borderRadius: '50%',
-              border: `2px solid ${style.color}80`,
-              transform: 'translate(-50%, -50%)',
-              animation: `waterVfxRing 0.86s ease-out ${i * 0.11}s both`,
-            }}
-          />
-        ))}
-
-        {effect.element === 'EARTH' && Array.from({ length: effect.aoe ? 12 : 7 }, (_, i) => (
-          <div
-            key={`earth-${i}`}
-            style={{
-              position: 'absolute',
-              left: `${15 + ((i * 13) % 72)}%`,
-              bottom: `${12 + (i % 4) * 5}%`,
-              width: 12 + (i % 3) * 7,
-              height: 24 + (i % 4) * 9,
-              clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)',
-              background: `linear-gradient(180deg, #f7d59a, ${style.color})`,
-              boxShadow: `0 0 14px ${style.glow}`,
-              animation: `earthVfxSpike ${0.68 + i * 0.02}s cubic-bezier(0.2,1.2,0.28,1) ${i * 0.03}s both`,
-            }}
-          />
-        ))}
-
-        {effect.element === 'WIND' && Array.from({ length: effect.aoe ? 5 : 3 }, (_, i) => (
-          <div
-            key={`wind-${i}`}
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: '50%',
-              width: 106 + i * 36,
-              height: 58 + i * 18,
-              borderTop: `3px solid ${style.color}`,
-              borderRadius: '50%',
-              transform: 'translate(-50%, -50%) rotate(-22deg)',
-              boxShadow: `0 -8px 18px ${style.soft}`,
-              animation: `windVfxArc ${0.72 + i * 0.05}s ease-out ${i * 0.05}s both`,
-            }}
-          />
-        ))}
-
-        {isStrike && (
-          <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: '56%',
-              width: effect.aoe ? 220 : 150,
-              height: effect.aoe ? 92 : 70,
-              transform: 'translate(-50%, -50%)',
-              borderRadius: '50%',
-              border: `2px solid ${style.color}90`,
-              boxShadow: `0 0 24px ${style.glow}`,
-              animation: 'strikeShockwave 0.72s ease-out both',
-            }}
-          />
-        )}
-
-        {Array.from({ length: effect.aoe ? 24 : 14 }, (_, i) => (
-          <div
-            key={`particle-${i}`}
-            style={{
-              position: 'absolute',
-              left: `${48 + (((i * 19) % 38) - 19)}%`,
-              top: `${48 + (((i * 31) % 38) - 19)}%`,
-              width: 3 + (i % 3),
-              height: 3 + (i % 3),
-              borderRadius: '50%',
-              background: i % 4 === 0 ? '#fff' : style.color,
-              boxShadow: `0 0 10px ${style.glow}`,
-              animation: `skillVfxParticle ${0.72 + (i % 5) * 0.08}s ease-out ${i * 0.018}s both`,
-            }}
-          />
-        ))}
-      </div>
-
-      <div
-        style={{
-          position: 'absolute',
-          left: `${anchor.x}%`,
-          top: `calc(${anchor.y}% - 108px)`,
-          transform: 'translateX(-50%)',
-          padding: '4px 11px',
-          borderRadius: 999,
-          background: `${style.soft}`,
-          border: `1px solid ${style.color}80`,
-          color: style.color,
-          fontFamily: "'Cinzel', serif",
-          fontSize: 10,
-          fontWeight: 900,
-          letterSpacing: '0.12em',
-          textShadow: `0 0 10px ${style.glow}`,
-          animation: 'skillNameFlash 0.86s ease-out both',
-        }}
-      >
-        {style.label} × {ATTACK_TYPE_LABEL[effect.attackType]}
-      </div>
     </div>
   );
 }
@@ -1310,6 +1081,7 @@ function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShak
   screenShake: boolean;
   demonColor: string;
 }) {
+  const reducedMotion = useReducedMotion();
   const arenaRef = useRef<HTMLDivElement>(null);
   const [arenaH, setArenaH] = useState(260);
 
@@ -1438,7 +1210,7 @@ function BattleArena({ enemies, onTargetEnemy, demonized, flashColor, screenShak
             )}
             {/* Target marker */}
             {enemy.targeted && (
-              <div style={{ position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)', fontSize: 14, animation: 'breathe 1s ease-in-out infinite' }}>▼</div>
+              <div style={{ position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)', fontSize: 14, animation: reducedMotion ? 'none' : 'breathe 1s ease-in-out infinite' }}>▼</div>
             )}
             {/* SVG sprite */}
             <div style={{ width: '100%', aspectRatio: '1/1.15' }}>
@@ -1960,7 +1732,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
   const [floats, setFloats] = useState<FloatDmg[]>([]);
   const [flashColor, setFlashColor] = useState<string | null>(null);
   const [screenShake, setScreenShake] = useState(false);
-  const [skillEffect, setSkillEffect] = useState<ActiveSkillEffect | null>(null);
+  const [skillEffect, setSkillEffect] = useState<ActiveSkillPresentation | null>(null);
   const [demonBurst, setDemonBurst] = useState<DemonBurstState | null>(null);
   const [turnOrderPreview, setTurnOrderPreview] = useState<TurnOrderEntry[]>([]);
   const [showRetreatConfirm, setShowRetreatConfirm] = useState(false);
@@ -2540,19 +2312,34 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
     addLog(`${skill.name}：HP +${actualHeal} 回復。`);
   }
 
-  function triggerSkillEffect(skill: Pick<BattleSkill, 'name' | 'element' | 'attackType' | 'aoe'>, targetIds: number[]) {
+  function triggerSkillEffect(skill: Pick<BattleSkill, 'name' | 'element' | 'attackType' | 'aoe' | 'effectKey'>, targetIds: number[]) {
+    const spec = resolveSkillPresentation(skill.effectKey, skill.element, skill.attackType);
+    const schedule = createPresentationSchedule(spec, speed);
     const id = ++effectIdRef.current;
     setSkillEffect({
       id,
       name: skill.name,
-      element: skill.element,
-      attackType: skill.attackType,
       aoe: skill.aoe,
       targetIds,
+      spec,
+      playbackRate: speed,
     });
+    schedule.sfxCues.forEach(cue => {
+      window.setTimeout(() => sfx.presentationCue(cue.profileKey, cue.pitch, cue.volume), cue.atMs);
+    });
+    const impactAt = schedule.damageTimingsMs[0] ?? schedule.phaseStarts.impact;
+    window.setTimeout(() => {
+      setFlashColor(`color-mix(in srgb, ${spec.vfx.screenFlash.color} ${Math.round(spec.vfx.screenFlash.opacity * 100)}%, transparent)`);
+      window.setTimeout(() => setFlashColor(null), Math.max(80, spec.vfx.screenFlash.durationMs / speed));
+      if (spec.vfx.cameraShake.intensity > 0) {
+        setScreenShake(true);
+        window.setTimeout(() => setScreenShake(false), Math.max(80, spec.vfx.cameraShake.durationMs / speed));
+      }
+    }, impactAt);
     window.setTimeout(() => {
       setSkillEffect(prev => prev?.id === id ? null : prev);
-    }, battleDelay(skill.element === 'THUNDER' || skill.attackType === 'SLASH' ? 920 : 1080, 420));
+    }, Math.max(160, schedule.totalMs));
+    return schedule;
   }
 
   function doEnemyHit(eid: number) {
@@ -3083,23 +2870,25 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
     if (!tryLockPlayerAction('playerTurn')) return;
     if (resolvePlayerStatusBeforeAction()) return;
     actionCountRef.current += 1;
-    sfx.battleAttack(demonized ? 'demon' : 'physical');
     setBattlePhase('animating');
     const tid = getTargetId();
     const enemy = enemies.find(e => e.id === tid);
     const attackElement = demonized ? demonForm.ultimateSkill.damage.element : 'NONE';
     const hitCount = demonized ? getDemonActionHitCount(demonForm, baseAttackType) : 1;
-    triggerSkillEffect({
+    const presentation = triggerSkillEffect({
       name: demonized ? demonForm.formName : '攻撃',
       element: attackElement,
       attackType: baseAttackType,
       aoe: false,
     }, [tid]);
     addLog(demonized ? `魔神化『${demonForm.formName}』の攻撃！ ${enemy?.name}へ${hitCount > 1 ? `${hitCount}連撃` : '深淵の一撃'}！` : `骸骨騎士の攻撃！ ${enemy?.name}を狙う！`);
+    const firstDamageAt = presentation.damageTimingsMs[0] ?? presentation.phaseStarts.impact;
     setTimeout(() => {
       let totalDamage = 0;
       const hitInterval = battleDelay(120, 58);
       Array.from({ length: hitCount }).forEach((_, hitIndex) => {
+        const hitAt = presentation.damageTimingsMs[hitIndex];
+        const relativeHitAt = hitAt === undefined ? hitIndex * hitInterval : Math.max(0, hitAt - firstDamageAt);
         setTimeout(() => {
           const result = calculatePlayerHitDamage(tid, {
             powerMultiplier: 1.0,
@@ -3114,7 +2903,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
             isWeakness: result.isWeakness,
             isResisted: result.isResisted,
           });
-        }, hitIndex * hitInterval);
+        }, relativeHitAt);
       });
       if (demonized) { setFlashColor(demonForm.visual?.soft ?? 'rgba(220,38,38,0.3)'); setTimeout(() => setFlashColor(null), 350); }
       setTimeout(() => {
@@ -3125,7 +2914,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
         }
         endPlayerTurn();
       }, hitCount * hitInterval + speedMs * 0.35);
-    }, speedMs * 0.3);
+    }, firstDamageAt);
   }
 
   function applyDemonRiskFeedback(attackType: SkillAttackType) {
@@ -3164,15 +2953,13 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
     // MP消費（魔神化ゲージとは別リソース）
     if (skill.mp) updateEnergyBy(-skill.mp);
     actionCountRef.current += 1;
-    sfx.skillCast(skill.element, skill.attackType);
     setBattlePhase('animating');
     const targets = skill.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[skill.element];
     const hitCount = demonized ? getDemonActionHitCount(demonForm, skill.attackType) : 1;
-    triggerSkillEffect(skill, targets);
+    const presentation = triggerSkillEffect(skill, targets);
     addLog(`${demonized ? `魔神化『${demonForm.formName}』` : 'スキル'}発動！ ${skill.name}！ ${vfxStyle.label}属性/${ATTACK_TYPE_LABEL[skill.attackType]}`);
-    setFlashColor(vfxStyle.soft);
-    setTimeout(() => setFlashColor(null), 400);
+    const firstDamageAt = presentation.damageTimingsMs[0] ?? presentation.phaseStarts.impact;
     setTimeout(() => {
       const targetInterval = battleDelay(200, 90);
       const hitInterval = battleDelay(110, 55);
@@ -3180,6 +2967,8 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
         setTimeout(() => {
           let totalDamage = 0;
           Array.from({ length: hitCount }).forEach((_, hitIndex) => {
+            const hitAt = presentation.damageTimingsMs[hitIndex];
+            const relativeHitAt = hitAt === undefined ? hitIndex * hitInterval : Math.max(0, hitAt - firstDamageAt);
             setTimeout(() => {
               const result = calculatePlayerHitDamage(tid, {
                 powerMultiplier: skill.powerMultiplier,
@@ -3194,7 +2983,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
                 isWeakness: result.isWeakness,
                 isResisted: result.isResisted,
               });
-            }, hitIndex * hitInterval);
+            }, relativeHitAt);
           });
           setTimeout(() => {
             addLog(`${enemies.find(e => e.id === tid)?.name}に 合計${totalDamage}ダメージ！`);
@@ -3209,7 +2998,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
       setTimeout(() => {
         endPlayerTurn();
       }, targets.length * targetInterval + speedMs * 0.3);
-    }, speedMs * 0.4);
+    }, firstDamageAt);
   }
 
   function handleMonsterAttack() {
@@ -3217,12 +3006,11 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
     if (!monster) return;
     if (!tryLockPlayerAction('monsterTurn')) return;
     actionCountRef.current += 1;
-    sfx.battleAttack('physical');
     setBattlePhase('animating');
     const tid = getTargetId();
     const enemy = enemies.find(e => e.id === tid);
     const attackProfile = calculateMonsterAttackProfile(monster, { awakened: Boolean(player?.isAwakened) });
-    triggerSkillEffect({
+    const presentation = triggerSkillEffect({
       name: `${monster.name}の命令攻撃`,
       element: attackProfile.element,
       attackType: 'STRIKE',
@@ -3250,7 +3038,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
       });
       addLog(`${monster.name}の攻撃！${attackProfile.spiritCoreName ? ` 霊核「${attackProfile.spiritCoreName}」が共鳴。` : ''} ${target.name}に ${actualDamage}ダメージ！`);
       setTimeout(() => endMonsterTurn(monster), speedMs * 0.35);
-    }, speedMs * 0.3);
+    }, presentation.damageTimingsMs[0] ?? presentation.phaseStarts.impact);
   }
 
   function handleMonsterSkill(skill: BattleSkill) {
@@ -3268,16 +3056,13 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
 
     spendMonsterEnergy(monster.id, cost);
     actionCountRef.current += 1;
-    sfx.skillCast(skill.element, skill.attackType);
     setBattlePhase('animating');
 
     const targets = skill.aoe ? enemies.filter(e => e.hp > 0).map(e => e.id) : [getTargetId()];
     const vfxStyle = ELEMENT_VFX[skill.element];
     const attackProfile = calculateMonsterAttackProfile(monster, { awakened: Boolean(player?.isAwakened) });
-    triggerSkillEffect(skill, targets);
+    const presentation = triggerSkillEffect(skill, targets);
     addLog(`${monster.name}の術！ ${skill.name}！ ${vfxStyle.label}属性/${ATTACK_TYPE_LABEL[skill.attackType]}`);
-    setFlashColor(vfxStyle.soft);
-    setTimeout(() => setFlashColor(null), 400);
 
     setTimeout(() => {
       const targetInterval = battleDelay(190, 85);
@@ -3305,7 +3090,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
         }, i * targetInterval);
       });
       setTimeout(() => endMonsterTurn(monster), targets.length * targetInterval + speedMs * 0.35);
-    }, speedMs * 0.4);
+    }, presentation.damageTimingsMs[0] ?? presentation.phaseStarts.impact);
   }
 
   function handleAutoMonsterAction() {
@@ -3368,10 +3153,8 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
     const vfxStyle = ELEMENT_VFX[ultimate.element];
     const ignoreShield = shouldBypassDefense(demonForm);
     const ignoreResistance = Boolean(demonForm.ultimateSkill.damage.flags?.includes('IGNORE_RESISTANCE'));
-    triggerSkillEffect(ultimate, targets);
+    const presentation = triggerSkillEffect(ultimate, targets);
     addLog(`魔神技『${ultimate.name}』解放！ ${demonForm.formName}が戦場の理を塗り替える。`);
-    setFlashColor(demonForm.visual?.soft ?? vfxStyle.soft);
-    setTimeout(() => setFlashColor(null), 520);
 
     setTimeout(() => {
       const targetInterval = battleDelay(180, 85);
@@ -3400,7 +3183,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
       });
       addLog(`残留効果: ${demonForm.ultimateSkill.lingering.descJa}`);
       setTimeout(() => { endPlayerTurn(); }, targets.length * targetInterval + speedMs * 0.35);
-    }, speedMs * 0.45);
+    }, presentation.damageTimingsMs[0] ?? presentation.phaseStarts.impact);
   }
 
   function handleDemonize() {
@@ -3556,7 +3339,7 @@ export default function BattleCanvas({ stageId, stageAttemptId, requiresCloudSav
       <DamageFloat floats={floats}/>
 
       {/* Element × attack-type skill VFX overlay */}
-      <SkillEffectOverlay effect={skillEffect}/>
+      <SkillPresentationOverlay effect={skillEffect}/>
 
       {/* Demonization cinematic VFX overlay */}
       <DemonizeBurstOverlay burst={demonBurst}/>

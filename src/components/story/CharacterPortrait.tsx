@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import type { CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import charactersData from '../../data/story/characters.json';
 import type { CharacterPortrait as PortraitState, StoryCharacter } from '../../types/story';
 
@@ -42,6 +42,23 @@ export function CharacterPortrait({ portrait, isSpeaker }: Props) {
   const dimmed = portrait.isDimmed || !isSpeaker;
   const tint = EXPRESSION_TINT[portrait.expression] ?? EXPRESSION_TINT.default;
   const symbol = SYMBOL_BY_CHARACTER[portrait.characterId] ?? character.nameEn.slice(0, 1);
+  const portraitSources = useMemo(() => {
+    if (!character.portraitBase) return [];
+    return [...new Set([
+      `${character.portraitBase}/${portrait.expression}.webp`,
+      `${character.portraitBase}/default.webp`,
+      `${character.portraitBase}.webp`,
+    ])];
+  }, [character.portraitBase, portrait.expression]);
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    setSourceIndex(0);
+    setImageLoaded(false);
+  }, [portrait.characterId, portrait.expression]);
+
+  const imageSource = portraitSources[sourceIndex];
 
   return (
     <motion.div
@@ -118,6 +135,28 @@ export function CharacterPortrait({ portrait, isSpeaker }: Props) {
           filter: 'blur(12px)',
           opacity: 0.75,
         }} />
+        {imageSource && (
+          <img
+            src={imageSource}
+            alt={`${character.nameJa}・${portrait.expression}`}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => {
+              setImageLoaded(false);
+              setSourceIndex(current => current + 1);
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              objectPosition: 'center bottom',
+              opacity: imageLoaded ? 1 : 0,
+              transition: 'opacity 180ms ease-out',
+              filter: `drop-shadow(0 0 18px ${character.glow})`,
+            }}
+          />
+        )}
       </div>
       <div style={{
         position: 'absolute',

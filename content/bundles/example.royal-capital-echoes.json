@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "royal_capital_echoes_example",
+  "title": "亡国の残響（作例）",
+  "chapter": 1,
+  "creativeBrief": {
+    "themes": ["喪失", "死者の記憶", "禁忌の力"],
+    "mustInclude": ["力には代償がある", "固有名詞は既存設定を優先する"],
+    "avoid": ["現代俗語", "軽いコメディ", "第2章以降の確定設定"]
+  },
+  "changes": [
+    {
+      "scope": "residue-name",
+      "id": "fallen_crown_ash",
+      "data": {
+        "id": "fallen_crown_ash",
+        "name": "落冠の灰",
+        "rarity": "EPIC",
+        "chapter": 1,
+        "origin": "最後の戴冠式を焼いた黒炎から、ただ一粒だけ残った灰。",
+        "tags": ["亡国", "王権", "喪失"]
+      }
+    }
+  ]
+}
